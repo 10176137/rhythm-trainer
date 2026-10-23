@@ -816,7 +816,8 @@ wss.on('connection', (socket) => {
     pushHitCount: 0,
     finalPerformedNotes: 0,
     finalSkippedByAdmission: 0,
-    suppressedNoteOns: { 'count-in': 0, paused: 0, clock: 0 },
+    finalDuplicateLifecycles: 0,
+    suppressedNoteOns: { 'count-in': 0, paused: 0, clock: 0, duplicate: 0 },
     captureQuarantinedPackets: 0,
     duplicateEventIds: 0,
   };
@@ -956,6 +957,7 @@ wss.on('connection', (socket) => {
         segmentId: admission.decisionSegmentId,
         realtime: admission.eligibleForRealtime,
         finalOnset: admission.eligibleForFinalOnsetScore,
+        duplicateOf: admission.duplicateOf,
       },
       countdownSuppressed: admission.suppressionReason === 'count-in',
     });
@@ -1003,19 +1005,28 @@ wss.on('connection', (socket) => {
    */
   function recordAdmission(decoded, packet, atMs) {
     const isNoteOn = decoded?.kind === 'note-on';
+    const eventId = decoded?.eventId ?? null;
+    // Identity first: a packet whose event id was already admitted/rejected is a
+    // duplicate and can never produce a second hit or a second lifecycle.
+    const existing = eventId ? admissionByEventId.get(eventId) : undefined;
     let reason = null;
-    if (pausedAtMs !== null) {
+    if (existing) {
+      reason = 'duplicate';
+    } else if (pausedAtMs !== null) {
       reason = 'paused';
-    } else if (isNoteOn) {
-      if (atMs === null || !Number.isFinite(atMs)) reason = 'clock';
-      else if (isInClosedPauseSegment(atMs)) reason = 'paused';
-      else if (atMs < meta.scoringStartMs) reason = 'count-in';
+    } else if (atMs === null || !Number.isFinite(atMs)) {
+      // Applies to note-offs too: an unmappable packet has no usable event time.
+      reason = 'clock';
+    } else if (isNoteOn && isInClosedPauseSegment(atMs)) {
+      reason = 'paused';
+    } else if (isNoteOn && atMs < meta.scoringStartMs) {
+      reason = 'count-in';
     }
     const complete = decoded?.complete !== false;
-    const admitted = isNoteOn && complete && reason === null;
+    const admitted = isNoteOn && complete && reason === null && !existing;
     const decision = {
       decisionId: `adm-${++admissionSeq}`,
-      eventId: decoded?.eventId ?? null,
+      eventId,
       sourceId: String(packet.sourceId),
       sourceSeq: Number(packet.sourceSeq),
       kind: decoded?.kind ?? 'unknown',
@@ -1025,6 +1036,7 @@ wss.on('connection', (socket) => {
       sessionTimeMs: atMs === null || !Number.isFinite(atMs) ? null : atMs,
       clockDomainId: packet.clockDomainId ?? null,
       suppressionReason: reason,
+      duplicateOf: existing?.decisionId ?? null,
       eligibleForRealtime: admitted,
       eligibleForFinalOnsetScore: admitted,
     };
@@ -1036,9 +1048,10 @@ wss.on('connection', (socket) => {
     } else {
       admissionCounters.nonOnsets += 1;
     }
-    if (decision.eventId) {
-      if (admissionByEventId.has(decision.eventId)) admissionCounters.duplicateEventIds += 1;
-      else admissionByEventId.set(decision.eventId, decision);
+    if (eventId && !existing) {
+      admissionByEventId.set(eventId, decision);
+    } else if (existing) {
+      admissionCounters.duplicateEventIds += 1;
     }
     return decision;
   }
@@ -1060,11 +1073,13 @@ wss.on('connection', (socket) => {
     admissionCounters.pushHitCount = 0;
     admissionCounters.finalPerformedNotes = 0;
     admissionCounters.finalSkippedByAdmission = 0;
+    admissionCounters.finalDuplicateLifecycles = 0;
     admissionCounters.captureQuarantinedPackets = 0;
     admissionCounters.duplicateEventIds = 0;
     admissionCounters.suppressedNoteOns['count-in'] = 0;
     admissionCounters.suppressedNoteOns.paused = 0;
     admissionCounters.suppressedNoteOns.clock = 0;
+    admissionCounters.suppressedNoteOns.duplicate = 0;
     pauseSegments = [];
     pauseSegmentSeq = 0;
     activePauseSegmentId = 'active-0';
@@ -1877,7 +1892,15 @@ wss.on('connection', (socket) => {
         // realtime path suppressed can never reappear here.
         const closedPauseSegments = pauseSegments.filter((segment) => segment.endSession !== null);
         const performedNotes = [];
+        // One Note On may produce at most one performed-note lifecycle, even if
+        // a duplicate packet slipped past the ingress guard.
+        const consumedOnsetEventIds = new Set();
         for (const observation of observations) {
+          if (consumedOnsetEventIds.has(observation.noteOnEventId)) {
+            admissionCounters.finalDuplicateLifecycles += 1;
+            continue;
+          }
+          consumedOnsetEventIds.add(observation.noteOnEventId);
           const admission = admissionByEventId.get(observation.noteOnEventId);
           if (!admission) {
             // A lifecycle without an admission decision is a structural gap, not
@@ -1985,10 +2008,12 @@ wss.on('connection', (socket) => {
         pushHitCount: admissionCounters.pushHitCount,
         finalPerformedNotes: admissionCounters.finalPerformedNotes,
         finalSkippedByAdmission: admissionCounters.finalSkippedByAdmission,
+        finalDuplicateLifecycles: admissionCounters.finalDuplicateLifecycles,
         suppressedNoteOns: {
           countIn: admissionCounters.suppressedNoteOns['count-in'],
           paused: admissionCounters.suppressedNoteOns.paused,
           clock: admissionCounters.suppressedNoteOns.clock,
+          duplicate: admissionCounters.suppressedNoteOns.duplicate,
         },
         captureQuarantinedPackets: admissionCounters.captureQuarantinedPackets,
         duplicateEventIds: admissionCounters.duplicateEventIds,

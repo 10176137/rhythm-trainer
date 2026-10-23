@@ -12,6 +12,7 @@
 
 - 复现向量（`pauseAt = target+20ms`、`onset = target+8ms`、暂停中送达）现在得到**唯一结论**：实时抑制、最终评分也拒绝，`scoreInputNoteCount = 0`，`scoreV1` 不把它判为命中。
 - 每个输入包在入口产生**一条不可变 admission decision**；最终评分只消费该决策，**不再按 onset 重新判断暂停/count-in**。
+- **重复 eventId 现在 fail-closed**：第二个同 ID 包被标记 `duplicate`，不进入实时引擎、不覆盖账本；最终评分另有"一个 Note On 至多一条生命周期"的消费守卫。
 - 三层计数分别定义并可断言守衡：packet、Note On、performed-note lifecycle。
 - 真实 Node MIDI、raw packet、迟到事件、暂停中结束 Take、count-in 边界、clock 不可映射均有回归测试。
 - mutation check 证明测试有效：绕过最终评分端的准入过滤后 T1/T3/T4 立刻变红（13 项断言失败）。
@@ -22,12 +23,15 @@
 
 ```
 CaptureRouter quarantine（epoch/序号/quarantine，独立于评分准入，不产生 admission）
+  → 重复 eventId（账本已有同一事件）                reason = duplicate
   → 当前处于暂停（到达时）                         reason = paused
-  → session 时间不可用                              reason = clock
+  → session 时间不可用                              reason = clock（对所有包，不只 Note On）
   → 事件时间落在已闭合暂停段                        reason = paused
   → Note On 早于 scoringStart                      reason = count-in
   → admitted
 ```
+
+**重复判定放在最前**：身份重复与时序无关，重复包无论是否在暂停中都不能成为第二个证据。`duplicateOf` 记录首次决策的 `decisionId`，便于从 Trace 追溯。
 
 实现位置：`rhythm-trainer-frontend/server/engine-server.mjs` 的 `recordAdmission()`。
 与任务卡建议顺序一致；未调整。所有判定都在**同一个 ingress 函数**（`ingestRawPacket`）内完成，Web/模拟 raw packet 与 Node MIDI 共用。
@@ -46,7 +50,8 @@ CaptureRouter quarantine（epoch/序号/quarantine，独立于评分准入，不
   handlerAtMs,                    // 入口时间（可用时）
   sessionTimeMs,                  // 仅当映射有效，否则 null，不回填
   clockDomainId,
-  suppressionReason: 'count-in' | 'paused' | 'clock' | null,
+  suppressionReason: 'count-in' | 'paused' | 'clock' | 'duplicate' | null,
+  duplicateOf: string | null,     // 重复包指向首次决策
   eligibleForRealtime: boolean,
   eligibleForFinalOnsetScore: boolean,
 }
@@ -78,18 +83,20 @@ T2 断言了 `crossed_pause_boundary`；T3 断言了"恢复后 Note Off 不复�
 | 层 | 字段 | 单位 |
 |---|---|---|
 | Packet | `packets`, `nonOnsets`, `captureQuarantinedPackets`, `duplicateEventIds` | 包 |
-| Note On | `noteOns`, `admittedNoteOns`, `pushHitCount`, `suppressedNoteOns{countIn,paused,clock}` | Note On |
-| Performed | `finalPerformedNotes`, `finalSkippedByAdmission` | 生命周期 |
+| Note On | `noteOns`, `admittedNoteOns`, `pushHitCount`, `suppressedNoteOns{countIn,paused,clock,duplicate}` | Note On |
+| Performed | `finalPerformedNotes`, `finalSkippedByAdmission`, `finalDuplicateLifecycles` | 生命周期 |
 | 兼容 | `pauseSuppressed`（包）、`pauseExcludedFromScore`（生命周期） | 各自单位已注明 |
 
 每个 Take 的测试都断言：
 
 1. `packets === noteOns + nonOnsets`
-2. `noteOns === admittedNoteOns + suppressedNoteOns.countIn + paused + clock`
+2. `noteOns === admittedNoteOns + suppressedNoteOns.countIn + paused + clock + duplicate`
 3. `admittedNoteOns === pushHitCount`
-4. `duplicateEventIds === 0`
+4. 普通 Take `duplicateEventIds === 0`；T9 专门断言重复时为 1 且仍守衡 1–3
 
 另：被 CaptureRouter 隔离的包**不进入** admission（不参与 1–2），单独计数，保持既有 quarantine 语义。
+
+**clock 原因的口径**：现在对所有包生效——任何 session 时间不可用的包都会记录 `clock`（包括 Note Off）。`suppressedNoteOns.clock` 仍只统计 Note On；Note Off 的 `clock` 只用于诊断，不改变起音准入（起音是否可评分由该 Note On 自己的决策决定）。
 
 ---
 
@@ -105,6 +112,7 @@ T2 断言了 `crossed_pause_boundary`；T3 断言了"恢复后 Note Off 不复�
 | T6 | 暂停中结束 Take | 保留开放暂停段、0 输入、任务仍完成 | PASS |
 | T7 | clock 不可映射的 Node MIDI | `clock≥1`、`nodeEventsUnmapped≥1`、不进入评分、不报崩溃 | PASS |
 | T8 | 目标窗口关闭后暂停 | 实时 1 miss/0 extra，最终 1 命中/1 漏，一致 | PASS |
+| T9 | **重复 eventId 且无 captureEpoch**（绕过 CaptureRouter） | `duplicateEventIds=1`、`duplicate 抑制=1`、`pushHit=1`、实时仅 1 次命中、最终仅 1 条生命周期 | PASS |
 
 ### 6.1 Mutation check（实测）
 
@@ -120,13 +128,25 @@ FAIL  T4: 暂停前的起音在恢复后仍可准入 — count 2（应为 1）
 
 恢复实现后全绿。证明 T1/T3/T4 不是恒真测试。
 
+### 6.2 Mutation check：重复准入
+
+把 `const existing = eventId ? admissionByEventId.get(eventId) : undefined;` 临时改成 `undefined`：
+
+```
+FAIL  T9: 重复 eventId 被单独计数 — duplicateEventIds 0（应为 1）
+FAIL  T9: 重复 Note On 记为 duplicate 抑制 — duplicate 0（应为 1）
+FAIL  T9: 重复包不产生第二次实时命中 — admitted 2 / pushHit 2 / live extra 1
+```
+
+注意当时最终评分仍只有 1 条生命周期（消费守卫生效），这正好复现了"实时两次命中、最终一次"的不一致；补上入口拒付后两者都只剩一次。
+
 ---
 
 ## 7. 全量测试结果（本次实跑）
 
 | 命令 | 结果 |
 |---|---|
-| `npm run selftest` | **PASS** — **219** 条断言（P1-1 后为 163） |
+| `npm run selftest` | **PASS** — **224** 条断言（P1-1 后为 163；P1-2 首版 219，补重复守卫后 +5） |
 | `npm test` | **PASS** — 33 files / 237 tests |
 | `npm run build`（`tsc -b && vite build`） | **PASS** — 4.19s |
 | `cargo test --target x86_64-pc-windows-gnu` | **PASS** — 110（6 个 test binary 全部 ok；Rust 零改动） |
@@ -159,7 +179,7 @@ FAIL  T4: 暂停前的起音在恢复后仍可准入 — count 2（应为 1）
 
 1. `admission` 账本只在内存与 Trace 中；报告只带计数与段列表，不带每条 decision。若需要跨进程重放"当时的决策"，应从 Trace 的 `admission` 字段读取，而不是重新推导。
 2. 迟到但被准入的事件（T4 的正例）会以**早于当前引擎时间**的 atMs 送入实时 matcher；若此前已有更晚的命中，`HitMatcher` 会因乱序返回错误，仍可能失败该 Take。这是既有 matcher 的顺序约束，不属于本次暂停语义。
-3. `duplicateEventIds` 当前无真实触发用例（CaptureRouter 通常会先隔离序号回退），仅作为守卫与计数。
+3. 重复 eventId 已 fail-closed 并有 T9 覆盖；但这条路径主要发生在 `captureEpoch` 缺失时，带 epoch 的输入仍由 CaptureRouter 先隔离，两种来源分开统计（`captureQuarantinedPackets` vs `duplicateEventIds`）。
 4. T1 等使用 2 个目标时 `scoreStatus` 为 `INSUFFICIENT_DATA`（`min_rhythm_samples=4`），因此测试断言的是 pitch/事件结果与实时一致性，不是 `AVAILABLE`。
 5. 未做真机验证；以上均为 synthetic/mock 路径。
 

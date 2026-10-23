@@ -483,7 +483,8 @@ function admissionInvariants(label, admission) {
     admission && admission.noteOns === admission.admittedNoteOns
       + admission.suppressedNoteOns.countIn
       + admission.suppressedNoteOns.paused
-      + admission.suppressedNoteOns.clock,
+      + admission.suppressedNoteOns.clock
+      + admission.suppressedNoteOns.duplicate,
     JSON.stringify(admission && { noteOns: admission.noteOns, admitted: admission.admittedNoteOns, ...admission.suppressedNoteOns }));
   check(`${label}: 不存在重复 decision ID`, admission && admission.duplicateEventIds === 0, String(admission && admission.duplicateEventIds));
   check(`${label}: 实时准入数 == pushHit 调用数`,
@@ -500,16 +501,21 @@ async function admissionTake(client, label, { bpm = 60, atoms = quarterAtoms(2, 
   const started = await client.next('started');
   const origin = performance.now();
   let seq = 0;
-  const send = (sessionMs, bytes) => {
-    seq += 1;
+  const send = (sessionMs, bytes, options = {}) => {
+    seq = options.seq ?? seq + 1;
+    const packet = {
+      sourceId: label, sourceSeq: seq, clockDomainId: 'mock-clock',
+      capturedAtMs: origin + (sessionMs ?? 0), rawBytes: bytes, transport: 'mock',
+    };
+    // Omitting captureEpoch is a legitimate client shape and bypasses the
+    // CaptureRouter; the admission ledger must stay unique on its own.
+    if (options.withEpoch !== false && started.captureEpoch != null) {
+      packet.captureEpoch = started.captureEpoch;
+    }
     client.send({
       type: 'raw-midi',
       ingest: {
-        packet: {
-          sourceId: label, sourceSeq: seq, clockDomainId: 'mock-clock',
-          capturedAtMs: origin + (sessionMs ?? 0), rawBytes: bytes, transport: 'mock',
-          captureEpoch: started.captureEpoch,
-        },
+        packet,
         sessionTimeMs: sessionMs,
         clockMappingId: 'selftest',
         clockUncertaintyMs: 0,
@@ -725,6 +731,30 @@ async function scenarioPauseAdmissionLedger() {
     check('T8: 最终评分与实时一致（1 命中 / 1 漏）', message.scoreV1
       && message.scoreV1.pitch.correct === 1 && message.scoreV1.pitch.missed === 1,
       JSON.stringify(message.scoreV1 && message.scoreV1.pitch));
+  }
+
+  // T9 — duplicate event id without captureEpoch (no CaptureRouter): the second
+  // packet must not produce a second realtime hit or a second scored lifecycle.
+  {
+    const take = await admissionTake(client, 'adm-dup');
+    const t0 = take.targets[0].atMs;
+    take.send(t0 + 8, [0x90, 60, 90], { seq: 1, withEpoch: false });
+    take.send(t0 + 8, [0x90, 60, 90], { seq: 1, withEpoch: false });
+    take.send(t0 + 260, [0x80, 60, 40], { seq: 2, withEpoch: false });
+    const message = await closeTake(client, t0 + 1600);
+    const admission = message.captureDiagnostics?.admission;
+    check('T9: 重复 eventId 被单独计数', admission?.duplicateEventIds === 1,
+      JSON.stringify(admission));
+    check('T9: 重复 Note On 记为 duplicate 抑制', admission?.suppressedNoteOns.duplicate === 1,
+      JSON.stringify(admission?.suppressedNoteOns));
+    check('T9: 重复包不产生第二次实时命中', admission?.admittedNoteOns === 1
+      && admission?.pushHitCount === 1 && message.report.stats.perfectCount === 1,
+      JSON.stringify({ admitted: admission?.admittedNoteOns, pushHit: admission?.pushHitCount, stats: message.report.stats }));
+    check('T9: 重复包不产生第二条评分生命周期', message.scoreInputNoteCount === 1
+      && message.scoreV1 && message.scoreV1.pitch.correct === 1 && message.scoreV1.pitch.extra === 0,
+      JSON.stringify({ count: message.scoreInputNoteCount, pitch: message.scoreV1 && message.scoreV1.pitch }));
+    check('T9: packet 层计数仍守衡', admission?.packets === admission?.noteOns + admission?.nonOnsets,
+      JSON.stringify(admission));
   }
 
   client.send({ type: 'midi-disconnect' });

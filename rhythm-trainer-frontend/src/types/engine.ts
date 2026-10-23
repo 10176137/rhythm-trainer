@@ -368,7 +368,8 @@ export interface EngineCaptureDiagnostics {
     pushHitCount: number;
     finalPerformedNotes: number;
     finalSkippedByAdmission: number;
-    suppressedNoteOns: { countIn: number; paused: number; clock: number };
+    finalDuplicateLifecycles: number;
+    suppressedNoteOns: { countIn: number; paused: number; clock: number; duplicate: number };
     captureQuarantinedPackets: number;
     duplicateEventIds: number;
     pauseSegments: { segmentId: string; startSession: number; endSession: number | null }[];
