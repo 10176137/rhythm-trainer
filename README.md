@@ -8,7 +8,7 @@
 
 ## 当前状态
 
-- B2.1 真机验收**部分通过**：已有干净 `AVAILABLE` 基线（SP-A500），但受控错误 Take、成功的 P09 前后比较、实体断连/旧 epoch 边界仍未完成。
+**G0 真机验收已通过（2026-10-23）**：受控错音（A）、P09 前后比较（B）、暂停边界（C）、断连/重连（D）全部在实体 SP-A500 上完成并记录；证据与过程中发现并修复的缺陷（未松键 releaseMs、拔线进程崩溃）见 [G0_HARDWARE_EVIDENCE.md](G0_HARDWARE_EVIDENCE.md)。
 - R1 审计已完成，等待审核；R2/R3 尚未开始实现。
 - 测试基线：前端 30 文件 / 175 项；引擎 selftest 155 条断言；Rust 110 项（GNU target）；`tsc -b && vite build` 通过。
 

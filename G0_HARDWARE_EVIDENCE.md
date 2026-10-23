@@ -230,3 +230,54 @@ MidiInWinMM::openPort: error closing Windows MM MIDI input port (midiInUnprepare
 | G0-D 断连/重连 | **PASS** |
 
 G0 整体仍为 **PARTIAL**，只差 G0-B。
+
+---
+
+## 10. 2026-10-23T21:20Z 第六批：G0-B P09 前后比较——通过
+
+复练 Take `s-1792790453046-11`（take-1，40 BPM / 右手 / 第 1 小节）：
+
+- 来源引用完整：`sourceReportId = s-1792780945501-2`、`sourceTakeId = take-2`、`prescriptionId = rx-s-1792780945501-2-PITCH_ERRORS_V1-1-1`、指纹一致（`ee4fe0a9…`）。
+- `scoreStatus = AVAILABLE`、`confidence = high`、`dataDegraded = false`。
+- 演奏：4/4 `MATCH`（0 错 0 漏 0 额外），Overall **86.2**（未重归一化），onset MAE 74.0 ms。
+- 处方针对的错音（第 3 个音 G4 弹成 F4）本次为 `MATCH`。
+- 来源报告未被改写（仍为 AVAILABLE / 73.4 / retryComparison=null）。
+
+### retryComparison（comparable = true）
+
+| 指标 | 来源 | 复练 | 变化 |
+|---|---|---|---|
+| 音高正确率 | 0.75 | **1.00** | +0.25 |
+| 音高精确率 | 0.75 | **1.00** | +0.25 |
+| onset MAE | 90.9 ms | **74.0 ms** | −16.9 ms |
+| 节奏抖动 MAD | 0.0427 | 0.0402 | −0.0025 |
+| 时值偏长比例 | 0.25 | 0.25 | 0 |
+| 覆盖率 | 1.00 | 1.00 | 0 |
+
+比较带 limitation："范围可能不同，不能把差异全部归因于进步"——诚实标注。
+
+### 过程记录（同样重要）
+
+前三次尝试都未带上处方引用（`sourceReportId=null`），原因是确认处方后的"待发射任务"只保存在当前页面内存中，刷新/导航/中间多开一轮都会丢失或被顶掉：
+
+| 尝试 | 结果 |
+|---|---|
+| 1（21:01） | 带上了引用但演奏超窗（渐快 −268/−310ms）→ INSUFFICIENT_DATA，比较被正确阻断 |
+| 2（21:04–05） | 两轮普通 Take，第一轮顶掉了准备态 → 无引用 |
+| 3（21:13） | 普通 Take（MAE 18.3ms、全对）→ 无引用 |
+| **4（21:20）** | **带引用 + AVAILABLE + comparable=true** |
+
+过程中验证的诚实门禁：
+- "只有两份报告均为 AVAILABLE 才比较"（尝试 1 被正确阻断）；
+- 指纹不一致时禁止创建（"哪有 73.4"事件：当前曲谱是《晓之车》而报告来自内置 C 大调谱）。
+
+### G0 总结
+
+| 项 | 状态 |
+|---|---|
+| G0-A 受控错音 | **PASS**（s-1792780945501-2） |
+| G0-B P09 前后比较 | **PASS**（s-1792790453046-11） |
+| G0-C 暂停边界 | **PASS**（s-1792781424508-6） |
+| G0-D 断连/重连 | **PASS**（s-1792788012876-5；第一次失败暴露并修复了进程崩溃） |
+
+**G0 通过。** 所有证据均为 REAL_HARDWARE（SP-A500，node-midi），无 synthetic 混入。
