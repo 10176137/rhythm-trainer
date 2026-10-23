@@ -186,3 +186,47 @@ MidiInWinMM::openPort: error closing Windows MM MIDI input port (midiInUnprepare
 | G0-B P09 比较 | NOT RUN |
 
 修复已部署到新进程（PID 17184），设备重新连接（generation 1、healthy）。G0 整体仍为 **PARTIAL**。
+
+---
+
+## 9. 2026-10-23T20:40Z 第五批：G0-D 重测（断开 + 重连）——通过
+
+设备操作改为在琴边**关机/开机**（等价于 USB 设备消失/重现），不需要走到 PC。
+
+### 9.1 逐轮
+
+| # | sessionId | 操作 | 结果 |
+|---|---|---|---|
+| 4 | `s-1792787986066-4` | 重连后正常弹 3 个音 | 对照轮：health healthy、gen 5、3 个 Note On 全准入 |
+| 5 | `s-1792788012876-5` | 开始 → 弹 2 个音 → 关琴 → 等 → 开琴 → 重连 → 再弹 1 个音 → 结束 | **G0-D 通过轮** |
+
+### 9.2 G0-D 验收（take-5）
+
+| 检查 | 实际 |
+|---|---|
+| 断开期间服务 | 未崩溃；8788 持续可用（PID 17184），err 日志无 `midiInUnprepareHeader` |
+| 断开后继续 | 同一 Take 未失败；第 3 个音在 24167 ms 被接受 |
+| 重连证据 | 第 3 个音的 `sourceSeq = 1`（新连接从 1 重新计数），结束时 `adapterGeneration = 7` |
+| 旧 generation | `staleGenerationEvents = 0`、`unmappedEvents = 0`（旧端口已 detach，未再产生事件） |
+| 输入健康 | 结束时 `inputHealth = disconnected`，`scoreStatus = DEGRADED` |
+| 准入门 | 6 包 / 3 Note On / 3 准入 / 3 pushHit；outOfOrder、duplicate、quarantined 均为 0 |
+| 持久化 | 报告、Trace、Journal 全部落盘；`interrupted = false`（浏览器 socket 未断） |
+
+> `report.trustworthy = true` 在这里是既有设计：该字段表示"核心判定结果可信"，输入降级由 `scoreStatus=DEGRADED`、`inputHealth` 和掌握度门禁承担（`selftest.mjs:298` 明确断言了这一语义）。不是缺陷。
+
+### 9.3 结论
+
+**G0-D 通过**（断开不崩 + 重连后新 generation 被接受 + 报告诚实降级 + 证据完整）。
+
+这两轮是设备边界操作，演奏内容本身不干净（take-5：0 correct / 1 wrong / 3 missed / 2 extra），不能当作音乐性证据；G0-A 仍以第二批 take-2 为准。
+
+### 9.4 状态
+
+| 项 | 状态 |
+|---|---|
+| G0-A 受控错音 | PASS |
+| G0-B P09 前后比较 | **NOT RUN** |
+| G0-C 暂停边界 | PASS |
+| G0-D 断连/重连 | **PASS** |
+
+G0 整体仍为 **PARTIAL**，只差 G0-B。
