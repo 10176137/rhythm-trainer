@@ -797,6 +797,12 @@ wss.on('connection', (socket) => {
   let pausedAtMs = null;
   let pausedSourceMs = null;      // performance-timeline timestamp at Pause
   let pauseIntervalsSourceMs = []; // flat [start, end, ...] pairs for duration policy
+  // Flat [start, end, ...] session-time pairs. Realtime and final scoring must
+  // agree on which inputs happened while paused, so the same intervals feed the
+  // ingest guard and the final-score input filter.
+  let pauseIntervalsSessionMs = [];
+  let pauseSuppressed = 0;        // packets observed while paused (kept in trace, never scored)
+  let pauseExcludedFromScore = 0; // performed notes dropped because their onset is in a pause interval
   let rawNotes = [];   // v0.3 legacy path
   let ingests = [];    // v0.6 raw packets (authoritative input)
   // Transport sequence and scoring sequence are different streams. sourceSeq
@@ -904,6 +910,11 @@ wss.on('connection', (socket) => {
     const decodedList = addon.decodeMidiPackets([ingest]);
     const decoded = decodedList[0];
     ingests.push(ingest);
+    // Pause-period input is captured for the trace but must never reach the
+    // realtime engine: SessionEngine::push_event rejects anything that is not
+    // Running, and that rejection currently fails the whole Take. A player who
+    // touches a key while paused must be able to resume the same practice.
+    const duringPause = isInPauseWindow(atMs);
     traceRecorder?.append({
       seq: ingests.length,
       practiceSessionId: activeTake?.practiceSessionId ?? null,
@@ -917,8 +928,20 @@ wss.on('connection', (socket) => {
       rawBytes: ingest.packet.rawBytes,
       messageType: decoded?.kind ?? 'unknown',
       clockQuality: ingest.clockQuality ?? null,
-      countdownSuppressed: !!(decoded && decoded.kind === 'note-on' && atMs < meta.scoringStartMs),
+      duringPause,
+      countdownSuppressed: !duringPause && !!(decoded && decoded.kind === 'note-on' && atMs < meta.scoringStartMs),
     });
+    if (duringPause) {
+      pauseSuppressed += 1;
+      if (decoded && decoded.kind === 'note-on') {
+        takeJournal?.append('input_during_pause', {
+          atSessionMs: atMs,
+          noteNumber: decoded.noteNumber ?? null,
+          sourceSeq: Number(ingest.packet.sourceSeq),
+        });
+      }
+      return;
+    }
     if (decoded && decoded.kind === 'note-on' && decoded.complete) {
       if (atMs < meta.scoringStartMs) {
         countdownSuppressed += 1;
@@ -934,6 +957,18 @@ wss.on('connection', (socket) => {
       }
       send({ type: 'judgments', items: native.processPending() });
     }
+  }
+
+  /** True while paused, or for late events whose onset falls inside a closed pause interval. */
+  function isInPauseWindow(atMs) {
+    if (pausedAtMs !== null) return true;
+    for (let index = 0; index < pauseIntervalsSessionMs.length; index += 2) {
+      const start = pauseIntervalsSessionMs[index];
+      const end = pauseIntervalsSessionMs[index + 1];
+      if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+      if (atMs >= start && atMs < end) return true;
+    }
+    return false;
   }
 
   function handleNodeMidiEvent(event) {
@@ -1130,6 +1165,9 @@ wss.on('connection', (socket) => {
         pausedAtMs = null;
         pausedSourceMs = null;
         pauseIntervalsSourceMs = [];
+        pauseIntervalsSessionMs = [];
+        pauseSuppressed = 0;
+        pauseExcludedFromScore = 0;
         lastNowMs = 0;
         const bpm = Number(msg.bpm);
         if (!Number.isFinite(bpm) || bpm < 20 || bpm > 300) throw new Error('BPM 需在 20–300 之间');
@@ -1491,6 +1529,7 @@ wss.on('connection', (socket) => {
         if (coordinator && activeTake) coordinator.resume(activeTake.takeId, nowMs);
         native.resume(nowMs);
         const deltaMs = pausedAtMs === null ? 0 : nowMs - pausedAtMs;
+        if (pausedAtMs !== null) pauseIntervalsSessionMs.push(pausedAtMs, nowMs);
         const resumeSourceMs = Number(msg.atSourceMs);
         if (pausedSourceMs !== null && Number.isFinite(resumeSourceMs) && resumeSourceMs >= pausedSourceMs) {
           pauseIntervalsSourceMs.push(pausedSourceMs, resumeSourceMs);
@@ -1587,6 +1626,12 @@ wss.on('connection', (socket) => {
     if (pausedSourceMs !== null) {
       pauseIntervalsSourceMs.push(pausedSourceMs, Number.MAX_SAFE_INTEGER);
       pausedSourceMs = null;
+    }
+    if (pausedAtMs !== null) {
+      // The Take ended while paused: keep the open interval so any late event
+      // that was captured during the pause can still be excluded from scoring.
+      pauseIntervalsSessionMs.push(pausedAtMs, Number.MAX_SAFE_INTEGER);
+      pausedAtMs = null;
     }
 
     let analysis = null;
@@ -1695,6 +1740,23 @@ wss.on('connection', (socket) => {
           'ambiguous-pairing': 'ambiguous',
           'invalid-time': 'invalid-time',
         };
+        // Realtime and final scoring must agree on pause semantics, so both use
+        // the intervals recorded at pause/resume (session time), never a second
+        // derivation from source timestamps.
+        const pauseIntervalsSession = [];
+        for (let index = 0; index + 1 < pauseIntervalsSessionMs.length; index += 2) {
+          const startSession = Number(pauseIntervalsSessionMs[index]);
+          const endSession = Number(pauseIntervalsSessionMs[index + 1]);
+          if (!Number.isFinite(startSession) || !Number.isFinite(endSession)) continue;
+          if (endSession <= startSession) continue;
+          pauseIntervalsSession.push({ startSession, endSession });
+        }
+        // A Take that ended while still paused has an open interval: it excludes
+        // input but must not shift targets that will never be played.
+        const closedPauseIntervals = pauseIntervalsSession
+          .filter((pause) => pause.endSession < Number.MAX_SAFE_INTEGER / 2);
+        const isPausedAt = (sessionMs) => pauseIntervalsSession
+          .some((pause) => sessionMs >= pause.startSession && sessionMs < pause.endSession);
         const performedNotes = [];
         for (const observation of observations) {
           const onsetMs = sessionTimeByEventId.get(observation.noteOnEventId);
@@ -1706,6 +1768,12 @@ wss.on('connection', (socket) => {
           // matcher already suppresses them; scoring_v1 must not turn them
           // into extra notes just because they reached the key-lifecycle log.
           if (onsetMs < meta.scoringStartMs) continue;
+          // Safety net: any input whose onset falls inside a pause interval is
+          // not performance evidence, even if it slipped past the ingest guard.
+          if (isPausedAt(onsetMs)) {
+            pauseExcludedFromScore += 1;
+            continue;
+          }
           const releaseCandidate = observation.noteOffEventId
             ? sessionTimeByEventId.get(observation.noteOffEventId)
             : null;
@@ -1723,22 +1791,9 @@ wss.on('connection', (socket) => {
         }
         scoreInputNoteCount = performedNotes.length;
 
-        const pauseIntervalsSession = [];
-        if (Number.isFinite(sessionOriginClientPerfMs)) {
-          for (let index = 0; index + 1 < pauseIntervalsSourceMs.length; index += 2) {
-            const start = Number(pauseIntervalsSourceMs[index]);
-            const end = Number(pauseIntervalsSourceMs[index + 1]);
-            if (!Number.isFinite(start) || !Number.isFinite(end) || end >= Number.MAX_SAFE_INTEGER / 2) continue;
-            const startSession = start - sessionOriginClientPerfMs;
-            const endSession = end - sessionOriginClientPerfMs;
-            if (endSession > startSession && startSession >= 0) {
-              pauseIntervalsSession.push({ startSession, endSession });
-            }
-          }
-        }
         const adjustedScoreEvents = meta.scoreEvents.map((event) => {
           let shift = 0;
-          for (const pause of pauseIntervalsSession) {
+          for (const pause of closedPauseIntervals) {
             // The engine shifts unresolved targets at pause time. A target
             // whose planned onset is at/after the pause boundary belongs to the
             // shifted segment; already-played targets do not get double-shifted.
@@ -1748,7 +1803,7 @@ wss.on('connection', (socket) => {
           }
           return shift === 0 ? event : { ...event, targetOnsetMs: event.targetOnsetMs + shift };
         });
-        pauseAdjusted = pauseIntervalsSession.length > 0;
+        pauseAdjusted = closedPauseIntervals.length > 0;
 
         scoreV1 = addon.scorePerformance(adjustedScoreEvents, performedNotes);
         scoreConfigVersion = scoreV1.configVersion ?? null;
@@ -1795,6 +1850,8 @@ wss.on('connection', (socket) => {
       scoreInputNoteCount,
       scoreUnmappedNoteCount,
       pauseAdjusted,
+      pauseSuppressed,
+      pauseExcludedFromScore,
       connectionClosed: interrupted,
       node: {
         backend: adapterStatus.backend,

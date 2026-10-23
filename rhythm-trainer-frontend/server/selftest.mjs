@@ -355,6 +355,120 @@ async function scenarioPauseScoring() {
   client.close();
 }
 
+async function scenarioPauseWithMidiInput() {
+  console.log('scenario: 暂停期间 MIDI 输入 → 保留证据、不失败、不计分、不丢 Take');
+  const client = new TestClient();
+  await client.open();
+  await client.next('midi-status');
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // The injected note must travel the real Node MIDI path (adapter → clock map
+  // → ingest), which is the path that used to call pushHit while paused.
+  client.send({ type: 'midi-refresh' });
+  await client.next('midi-devices', (m) => Array.isArray(m.items) && m.items.some((d) => d.id === 'mock:0'));
+  client.send({ type: 'midi-connect', deviceId: 'mock:0' });
+  await client.next('midi-status', (m) => m.connected === true);
+  for (let i = 0; i < 6; i += 1) {
+    const id = `pause-input-clock-${i}`;
+    client.send({ type: 'clock-ping', id, clientSendPerfMs: performance.now() });
+    await client.next('clock-pong', (m) => m.id === id);
+    client.send({ type: 'clock-sample', id, clientReceivePerfMs: performance.now() });
+    await client.next('clock-status');
+  }
+
+  // 5 targets so scoring_v1 has enough matched pairs for high confidence.
+  const atoms = quarterAtoms(5, 1);
+  const scoreEvents = scoreEventsForAtoms(atoms, { bpm: 120 });
+  client.send({
+    type: 'start', modeId: 'score', bpm: 120, profile: 'standard', countInBeats: 4,
+    ticksPerQuarter: 960, atoms, assisted: false, durationPolicy: 'strict-keydown', scoreEvents,
+  });
+  const started = await client.next('started');
+  const origin = performance.now();
+  client.send({ type: 'session-origin', clientPerfMs: origin });
+  const targets = started.targets;
+  const epoch = started.captureEpoch;
+  let seq = 0;
+  const sendPacket = (sessionMs, bytes) => {
+    seq += 1;
+    client.send({
+      type: 'raw-midi',
+      ingest: {
+        packet: {
+          sourceId: 'pause-input', sourceSeq: seq, clockDomainId: 'mock-clock',
+          capturedAtMs: origin + sessionMs, rawBytes: bytes, transport: 'mock', captureEpoch: epoch,
+        },
+        sessionTimeMs: sessionMs, clockMappingId: 'selftest', clockUncertaintyMs: 0, clockQuality: 'good',
+      },
+    });
+  };
+
+  // Target 0 is played correctly before the pause.
+  sendPacket(targets[0].atMs + 8, [0x90, 60, 90]);
+  sendPacket(targets[0].atMs + 300, [0x80, 60, 40]);
+
+  // Wait past the count-in so a paused note cannot be explained by count-in
+  // suppression, then pause on the real session clock like the browser does.
+  await sleep(targets[0].atMs + 120);
+  const pauseNow = performance.now() - origin;
+  client.send({ type: 'pause', nowMs: pauseNow, atSourceMs: origin + pauseNow });
+  await client.next('paused');
+
+  // (a) real Node MIDI path while paused
+  client.send({ type: 'midi-test-note', bytes: [0x90, 64, 90] });
+  await sleep(60);
+  client.send({ type: 'midi-test-note', bytes: [0x80, 64, 40] });
+  // (b) raw packet while paused
+  sendPacket(pauseNow + 120, [0x90, 65, 90]);
+  sendPacket(pauseNow + 200, [0x80, 65, 40]);
+
+  const pauseError = await client.next('error', () => true, 400).then(() => true).catch(() => false);
+  check('暂停期间收到 MIDI 不产生引擎错误', pauseError === false);
+
+  const resumeNow = pauseNow + 2000;
+  client.send({ type: 'resume', nowMs: resumeNow, atSourceMs: origin + resumeNow });
+  const resumed = await client.next('resumed');
+  check('暂停后仍可恢复，Take 未丢失', resumed.deltaMs === 2000, String(resumed.deltaMs));
+
+  // (c) a late packet whose onset belongs to the pause window, delivered after
+  // resume. It must be quarantined by the recorded interval, not judged.
+  sendPacket(pauseNow + 300, [0x90, 67, 90]);
+  sendPacket(pauseNow + 380, [0x80, 67, 40]);
+
+  // Remaining targets were planned from 2500ms on and shifted by +2000ms.
+  for (const target of targets.slice(1)) {
+    sendPacket(target.atMs + 2000 + 8, [0x90, 60, 90]);
+    sendPacket(target.atMs + 2000 + 300, [0x80, 60, 40]);
+  }
+
+  client.send({ type: 'tick', nowMs: targets[targets.length - 1].atMs + 2600 });
+  client.send({ type: 'finish' });
+  const message = await client.next('report');
+  const { scoreV1, scoreStatus, scoreInputNoteCount, captureDiagnostics, traceId, journalId } = message;
+
+  check('暂停期间的输入全部被抑制', captureDiagnostics?.pauseSuppressed >= 3,
+    JSON.stringify(captureDiagnostics));
+  check('暂停输入未进入评分输入', scoreInputNoteCount === 5, String(scoreInputNoteCount));
+  check('暂停输入在最终评分中被扣除', captureDiagnostics?.pauseExcludedFromScore === 3,
+    String(captureDiagnostics?.pauseExcludedFromScore));
+  check('Take 仍可评分且结果正确', scoreStatus === 'AVAILABLE' && scoreV1 && !scoreV1.error
+    && scoreV1.pitch.correct === 5 && scoreV1.pitch.extra === 0 && scoreV1.pitch.missed === 0,
+    JSON.stringify({ scoreStatus, pitch: scoreV1 && scoreV1.pitch }));
+
+  const trace = await (await fetch(`http://127.0.0.1:${PORT}/api/traces/${traceId}`)).json();
+  const pausedNodeEvent = trace.events.find((event) => event.transport === 'node-midi' && event.duringPause === true);
+  check('Trace 保留暂停期间的 Node MIDI 事件并标记 duringPause', !!pausedNodeEvent,
+    JSON.stringify(trace.events.filter((event) => event.transport === 'node-midi').map((event) => ({
+      seq: event.sourceSeq, at: event.sessionTimeMs, duringPause: event.duringPause,
+    }))));
+
+  const journal = await (await fetch(`http://127.0.0.1:${PORT}/api/journals/${journalId}`)).json();
+  check('Journal 记录暂停期间的输入边界',
+    journal.entries.some((entry) => entry.kind === 'input_during_pause'),
+    JSON.stringify(journal.entries.map((entry) => entry.kind)));
+  client.close();
+}
+
 async function scenarioPauseCrossingKey() {
   console.log('scenario: 跨暂停的按键标记 crossed_pause_boundary、不做严格时值评分');
   const client = new TestClient();
@@ -1380,6 +1494,7 @@ async function main() {
     await scenarioMixedOutcomes();
     await scenarioPauseResume();
     await scenarioPauseScoring();
+    await scenarioPauseWithMidiInput();
     await scenarioPauseCrossingKey();
     await scenarioScoreChain();
     await scenarioDisconnectFinalizesTake();

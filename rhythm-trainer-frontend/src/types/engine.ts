@@ -354,6 +354,10 @@ export interface EngineCaptureDiagnostics {
   scoringEvents: number;
   /** Count-in notes that were traced but deliberately not scored. */
   countdownSuppressed: number;
+  /** Packets captured while paused: kept in the trace, never scored. */
+  pauseSuppressed?: number;
+  /** Performed notes dropped at final scoring because their onset was in a pause interval. */
+  pauseExcludedFromScore?: number;
   /** Packets rejected because their captureEpoch did not match the active take. */
   epochMismatch: number;
   /** Adapter-reported health at finalization (healthy/degraded/disconnected). */
