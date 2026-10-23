@@ -48,6 +48,7 @@ import {
 } from './features/score/scoreLibrary';
 import ledgerDemoXml from './features/score/fixtures/ledger-lines-demo.musicxml?raw';
 import { getUnsupportedNotes } from './features/score/staffMapping';
+import { assessPracticeScope, buildUserHandMapping, handByScoreEventIdFromMapping, suggestClefHeuristicMapping, type PracticeHand, type HandMappingV1 } from './score-engine/scope/practice-scope';
 import {
   loadScoreHintOverrides,
   resolveScoreHints,
@@ -87,6 +88,38 @@ function engineModeFor(config: PracticeConfig): PracticeModeId {
 
 export default function App() {
   const [initialSettings] = useState(loadPracticeSettings);
+  const [staffMappingOverrides, setStaffMappingOverrides] = useState<Record<number, 'left' | 'right'>>({});
+  const [handMappings, setHandMappings] = useState<Record<string, HandMappingV1>>(() => {
+    const raw = initialSettings.handMappings ?? {};
+    const out: Record<string, HandMappingV1> = {};
+    for (const [fingerprint, parts] of Object.entries(raw)) {
+      if (!Array.isArray(parts)) continue;
+      out[fingerprint] = { schemaVersion: 1, mappingVersion: 'hand-mapping-1', source: 'user', parts: parts as HandMappingV1['parts'] };
+    }
+    return out;
+  });
+  const rememberHandMapping = (fingerprint: string, mapping: HandMappingV1) => {
+    setHandMappings((prev) => {
+      const next = { ...prev, [fingerprint]: mapping };
+      // Merge into the persisted file without touching live config/metronome
+      // refs (they are declared later); settings saves elsewhere write both.
+      try {
+        const persisted = loadPracticeSettings();
+        savePracticeSettings({
+          config: persisted.config,
+          metronomeOn: persisted.metronomeOn,
+          handMappings: next as unknown as Record<string, unknown[]>,
+        });
+      } catch { /* best effort */ }
+      return next;
+    });
+  };
+  /** Explicit user mapping for the given score, or null. Never guesses. */
+  const userHandMappingFor = (fingerprint: string, partId: string): HandMappingV1 | null => {
+    const stored = handMappings[fingerprint];
+    if (stored && stored.source === 'user' && stored.parts.some((part) => part.partId === partId)) return stored;
+    return null;
+  };
   const [config, setConfig] = useState<PracticeConfig>(initialSettings.config);
   const [scoreDoc, setScoreDoc] = useState<ScoreDocument>(practiceScoreDocument);
   const [hintOverrides, setHintOverrides] = useState<ScoreHintOverrides>(() => loadScoreHintOverrides());
@@ -876,6 +909,7 @@ export default function App() {
       setSettingsDraft(null);
       setShowSettings(false);
     }
+    let handByScoreEventId: Map<string, 'left' | 'right'> = new Map();
     if (config.modeId !== 'free') {
       const report = scoreDoc.importReport;
       if (report && !report.strictAllowed) {
@@ -883,6 +917,54 @@ export default function App() {
         addFeedback('该乐谱不能严格评分', `${blocking.slice(0, 3).join('；') || '导入报告标记为非严格就绪'}。可以浏览谱面，但不能开始严格计时练习。`, 'warning');
         return false;
       }
+      // P1-4: hand/multi-part gate. The hand comes from an explicit user
+      // mapping per score fingerprint; clef heuristics are never accepted for
+      // strict practice, and a multi-part score must select its part.
+      const engineFingerprint = scoreDoc.engine?.fingerprint ?? null;
+      const partId = scoreDoc.engine?.parts[0]?.id ?? 'P1';
+      if (!engineFingerprint) {
+        setStarting(false);
+        addFeedback('无法确定练习范围', '当前乐谱缺少语义引擎数据，无法安全确定手别与练习范围。', 'warning');
+        return false;
+      }
+      const storedMapping = userHandMappingFor(engineFingerprint, partId);
+      if (!storedMapping) {
+        setStarting(false);
+        const partHint = (scoreDoc.engine?.parts.length ?? 1) > 1 ? '该乐谱包含多个 Part，需要选择练习的 Part。' : '';
+        addFeedback(
+          '需要先指定手别映射',
+          `严格计分需要显式的谱表→手别映射；谱号推断只用于显示，不再作为默认。${partHint}请在练习设置中确认手别后重试。`,
+          'warning',
+        );
+        return false;
+      }
+      const scopeRange = {
+        startMeasureOrdinal: loopActive ? config.loopStartBar : 1,
+        endMeasureOrdinal: loopActive ? config.loopEndBar : scoreDoc.meta.barCount,
+      };
+      const scopeForLaunch = {
+        schemaVersion: 1 as const,
+        partId,
+        range: scopeRange,
+        hand: config.hand as PracticeHand,
+        handMapping: storedMapping,
+      };
+      const engineDoc = scoreDoc.engine!; // narrowed above via engineFingerprint
+      const scopeAssessment = assessPracticeScope(engineDoc, scopeForLaunch);
+      if (!scopeAssessment.ok) {
+        setStarting(false);
+        const codeText = scopeAssessment.codes.join('；');
+        const missingText = scopeAssessment.missingStaffs
+          .map((staff) => `part ${staff.partId} 谱表 ${staff.staffNumber}（${staff.eventCount} 个音）`)
+          .join('；');
+        addFeedback(
+          '练习范围无法确定',
+          `手别/Part 映射不满足严格计分要求（${codeText}）${missingText ? '：' + missingText : ''}。请在设置中完成手别映射。`,
+          'warning',
+        );
+        return false;
+      }
+      handByScoreEventId = handByScoreEventIdFromMapping(engineDoc, scopeForLaunch);
       const launchNotes = scoreDoc.notes.filter((note) => (
         config.hand === 'both' || note.hand === config.hand
       )).filter((note) => (
@@ -933,7 +1015,8 @@ export default function App() {
           addFeedback('无法开始跟手练习', `${blocking.slice(0, 3).join('；') || 'PlaybackPlan 被阻断'}。请先处理乐谱导入提示。`, 'warning');
           return false;
         }
-        const handByScoreEventId = new Map(scoreDoc.notes.map((note) => [note.id, note.hand] as const));
+        // P1-4: the follow path uses the same explicit mapping (the gate above
+        // already verified completeness); no clef inference here either.
         const scoped = filterPlaybackPlanByHand(semantics.plan, config.hand, handByScoreEventId);
         if (scoped.missingEventIds.length) {
           setStarting(false);
@@ -983,7 +1066,7 @@ export default function App() {
           addFeedback('无法生成严格目标', `${blocking.slice(0, 3).join('；') || 'PlaybackPlan 被阻断'}。请先处理乐谱导入提示。`, 'warning');
           return false;
         }
-        const handByScoreEventId = new Map(scoreDoc.notes.map((note) => [note.id, note.hand] as const));
+        // P1-4: reuse the explicit mapping from the scope gate above.
         const reference = buildReferencePlaybackPlan(semantics.plan, {
           bpm: config.tempo,
           countInBeats,
@@ -1895,6 +1978,38 @@ export default function App() {
     || followStatus === 'running'
     || followStatus === 'paused';
   const settingsView: PersistedPracticeSettings = settingsDraft ?? { config, metronomeOn };
+
+  // P1-4: staff -> hand mapping editor. The draft starts from the user's saved
+  // mapping or, if none, from the clef heuristic as a DISPLAY suggestion with
+  // that origin marked; only "确认手别映射" persists it as source='user'.
+  const engineFingerprintForMapping = scoreDoc.engine?.fingerprint ?? null;
+  const mappingPartId = scoreDoc.engine?.parts[0]?.id ?? 'P1';
+  const savedMappingForScore = engineFingerprintForMapping
+    ? userHandMappingFor(engineFingerprintForMapping, mappingPartId)
+    : null;
+  const staffMappingDraft: Array<{ staffNumber: number; hand: 'left' | 'right' }> = (() => {
+    if (savedMappingForScore) {
+      const entry = savedMappingForScore.parts.find((part) => part.partId === mappingPartId);
+      if (entry) return entry.staves.map((staff) => ({ ...staff }));
+    }
+    if (!scoreDoc.engine) return [];
+    const suggested = suggestClefHeuristicMapping(scoreDoc.engine, mappingPartId);
+    const entry = suggested.parts[0];
+    return entry ? entry.staves.map((staff) => ({ ...staff })) : [];
+  })();
+  const updateStaffMappingDraft = (staffNumber: number, hand: 'left' | 'right') => {
+    setStaffMappingOverrides((prev) => ({ ...prev, [staffNumber]: hand }));
+  };
+  const confirmStaffMapping = () => {
+    if (!engineFingerprintForMapping) return;
+    const staves = staffMappingDraft.map((entry) => ({
+      staffNumber: entry.staffNumber,
+      hand: staffMappingOverrides[entry.staffNumber] ?? entry.hand,
+    }));
+    if (staves.length === 0) return;
+    rememberHandMapping(engineFingerprintForMapping, buildUserHandMapping(mappingPartId, staves));
+    addFeedback('手别映射已确认', '严格计分将使用这套谱表→手别映射；多 Part 乐谱按当前所选 Part。', 'success');
+  };
   const selectedLibraryEntry = scoreLibrary.find(entry => entry.id === selectedLibraryId) ?? null;
   const activeLibraryEntry = scoreLibrary.find(entry => entry.id === activeLibraryId) ?? null;
   const settingsDirty = !!settingsDraft && (
@@ -2169,6 +2284,32 @@ export default function App() {
                   <button type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={loadLedgerDemo}>谱表外示例</button>
                   <button type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={restoreDefaultScore}>恢复默认乐谱</button>
                 </div><small className="settings-note">当前：{scoreDoc.meta.title} · {scoreDoc.notes.length} 个音符 · {scoreDoc.meta.staves === 1 ? '单谱表' : '双谱表'}</small></div>
+                <div className="field field-wide" aria-label="谱表手别映射">
+                  <span>谱表 → 手别映射（严格计分必需）</span>
+                  <div className="hint-toggle-row">
+                    {staffMappingDraft.map((entry) => (
+                      <label key={entry.staffNumber} className="staff-hand-mapping">
+                        谱表 {entry.staffNumber}
+                        <select
+                          aria-label={`谱表${entry.staffNumber} 手别`}
+                          value={entry.hand}
+                          disabled={settingsLocked}
+                          onChange={(e) => updateStaffMappingDraft(entry.staffNumber, e.target.value as 'left' | 'right')}
+                        >
+                          <option value="right">右手</option>
+                          <option value="left">左手</option>
+                        </select>
+                      </label>
+                    ))}
+                    <button
+                      type="button"
+                      className="button button-outline button-small"
+                      disabled={settingsLocked || staffMappingDraft.length === 0}
+                      onClick={confirmStaffMapping}
+                    >确认手别映射</button>
+                  </div>
+                  <small className="settings-note">手别只来自你在这里的确认；谱号推断仅用于初始建议，不参与严格计分。多 Part 乐谱按所选 Part 的谱表映射。</small>
+                </div>
                 <div className="field field-full score-library-field" aria-busy={scoreLibraryBusy}>
                   <span>乐谱库 <b className="score-library-count">{scoreLibrary.length}</b></span>
                   <div className="score-library-row">

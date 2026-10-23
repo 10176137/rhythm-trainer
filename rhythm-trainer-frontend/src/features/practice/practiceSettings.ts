@@ -8,6 +8,9 @@ import type { DurationEvaluationPolicy, FeedbackMode, HandSelection, JudgmentPro
 export interface PersistedPracticeSettings {
   config: PracticeConfig;
   metronomeOn: boolean;
+  /** Explicit staff->hand mappings per score fingerprint (P1-4). Display-only
+   * clef suggestions are never persisted here. */
+  handMappings?: Record<string, unknown[]>;
 }
 
 export interface PracticeSettingsStorage {
@@ -19,6 +22,7 @@ export const PRACTICE_SETTINGS_STORAGE_KEY = 'rhythm-trainer.practice-settings.v
 const STORAGE_VERSION = 1;
 
 export const defaultPracticeSettings: PersistedPracticeSettings = {
+  handMappings: {},
   config: {
     modeId: 'score',
     tempo: 72,
@@ -66,12 +70,12 @@ function parseTimeSignature(value: unknown, fallback: [number, number]): [number
 /** Validates untrusted localStorage content without throwing. */
 export function parsePracticeSettings(raw: string | null): PersistedPracticeSettings {
   const fallback = defaultPracticeSettings;
-  if (!raw) return { config: { ...fallback.config }, metronomeOn: fallback.metronomeOn };
+  if (!raw) return { config: { ...fallback.config }, metronomeOn: fallback.metronomeOn, handMappings: {} };
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return { config: { ...fallback.config }, metronomeOn: fallback.metronomeOn };
+    if (!parsed || typeof parsed !== 'object') return { config: { ...fallback.config }, metronomeOn: fallback.metronomeOn, handMappings: {} };
     const record = parsed as Record<string, unknown>;
-    if (record.version !== STORAGE_VERSION) return { config: { ...fallback.config }, metronomeOn: fallback.metronomeOn };
+    if (record.version !== STORAGE_VERSION) return { config: { ...fallback.config }, metronomeOn: fallback.metronomeOn, handMappings: {} };
     const saved = record.config && typeof record.config === 'object'
       ? record.config as Record<string, unknown>
       : {};
@@ -92,9 +96,12 @@ export function parsePracticeSettings(raw: string | null): PersistedPracticeSett
         loopEndBar,
       },
       metronomeOn: typeof record.metronomeOn === 'boolean' ? record.metronomeOn : fallback.metronomeOn,
+      handMappings: record.handMappings && typeof record.handMappings === 'object' && !Array.isArray(record.handMappings)
+        ? record.handMappings as Record<string, unknown[]>
+        : {},
     };
   } catch {
-    return { config: { ...fallback.config }, metronomeOn: fallback.metronomeOn };
+    return { config: { ...fallback.config }, metronomeOn: fallback.metronomeOn, handMappings: {} };
   }
 }
 

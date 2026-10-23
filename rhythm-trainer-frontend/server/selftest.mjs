@@ -1392,6 +1392,35 @@ async function scenarioErrors() {
   const err3 = await client.next('error');
   check('scoreEvents 与 atoms 时间线不一致被拒绝', typeof err3.message === 'string'
     && err3.message.includes('时间线'), String(err3.message));
+  // P1-3 negatives: each tampered plan variant must be rejected by name.
+  const bpm240 = { type: 'start', modeId: 'score', bpm: 240, profile: 'standard', countInBeats: 4, ticksPerQuarter: 960 };
+  const goodEvents = quarterAtoms(2, 1).map((atom, index) => ({
+    scoreEventId: `ev-${index}`, measure: atom.bar, beatPosition: atom.beat, pitch: 60,
+    targetOnsetMs: 1000 + atom.startTick * (60_000 / 240 / 960),
+    targetDurationMs: atom.durationTicks * (60_000 / 240 / 960),
+    partId: 'P1',
+  }));
+  client.send({ ...bpm240, atoms: quarterAtoms(2, 1), scoreEvents: [
+    { ...goodEvents[0] }, { ...goodEvents[1], scoreEventId: goodEvents[0].scoreEventId },
+  ] });
+  const dupId = await client.next('error');
+  check('重复 scoreEventId 被拒绝', dupId.message.includes('ID 重复'), String(dupId.message));
+  client.send({ ...bpm240, atoms: quarterAtoms(2, 1), scoreEvents: [
+    { ...goodEvents[0] }, { ...goodEvents[1], targetDurationMs: 1 },
+  ] });
+  const badDur = await client.next('error');
+  check('非法时值被拒绝', badDur.message.includes('时值'), String(badDur.message));
+  client.send({ ...bpm240, atoms: quarterAtoms(2, 1), scoreEvents: [goodEvents[0]] });
+  const missingEvent = await client.next('error');
+  check('缺失事件（onset 覆盖不全）被拒绝', missingEvent.message.includes('不一致'), String(missingEvent.message));
+  const extraEvents = [...goodEvents, { ...goodEvents[0], scoreEventId: 'ev-fake', targetOnsetMs: goodEvents[0].targetOnsetMs + 0.2, scoreEventId2: undefined }];
+  client.send({ ...bpm240, atoms: quarterAtoms(2, 1), scoreEvents: extraEvents.map((e, i) => ({ ...e, scoreEventId: i === 2 ? 'ev-fake' : e.scoreEventId })) });
+  const fabricated = await client.next('error');
+  check('伪造同 onset 事件被拒绝', fabricated.message.includes('数量不一致'), String(fabricated.message));
+  const twoBarAtoms = quarterAtoms(2, 1).map((atom) => ({ ...atom, bar: atom.bar + 5 }));
+  client.send({ ...bpm240, atoms: twoBarAtoms, scoreEvents: goodEvents });
+  const wrongBars = await client.next('error');
+  check('小节覆盖不一致被拒绝', wrongBars.message.includes('小节覆盖'), String(wrongBars.message));
   client.send({
     type: 'start', modeId: 'score', bpm: 240, profile: 'standard', countInBeats: 4,
     ticksPerQuarter: 960, atoms: quarterAtoms(1, 1),
