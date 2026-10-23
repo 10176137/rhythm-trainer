@@ -354,10 +354,25 @@ export interface EngineCaptureDiagnostics {
   scoringEvents: number;
   /** Count-in notes that were traced but deliberately not scored. */
   countdownSuppressed: number;
-  /** Packets captured while paused: kept in the trace, never scored. */
+  /** Packets suppressed by the pause policy. Packet unit, not notes. */
   pauseSuppressed?: number;
-  /** Performed notes dropped at final scoring because their onset was in a pause interval. */
+  /** Performed notes skipped because their Note On admission decision was suppressed. */
   pauseExcludedFromScore?: number;
+  /** Admission ledger (policy B): one immutable decision per packet. */
+  admission?: {
+    version: string;
+    packets: number;
+    noteOns: number;
+    nonOnsets: number;
+    admittedNoteOns: number;
+    pushHitCount: number;
+    finalPerformedNotes: number;
+    finalSkippedByAdmission: number;
+    suppressedNoteOns: { countIn: number; paused: number; clock: number };
+    captureQuarantinedPackets: number;
+    duplicateEventIds: number;
+    pauseSegments: { segmentId: string; startSession: number; endSession: number | null }[];
+  };
   /** Packets rejected because their captureEpoch did not match the active take. */
   epochMismatch: number;
   /** Adapter-reported health at finalization (healthy/degraded/disconnected). */

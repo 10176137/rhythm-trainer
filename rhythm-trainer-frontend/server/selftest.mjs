@@ -428,7 +428,7 @@ async function scenarioPauseWithMidiInput() {
   const resumeNow = pauseNow + 2000;
   client.send({ type: 'resume', nowMs: resumeNow, atSourceMs: origin + resumeNow });
   const resumed = await client.next('resumed');
-  check('暂停后仍可恢复，Take 未丢失', resumed.deltaMs === 2000, String(resumed.deltaMs));
+  check('暂停后仍可恢复，Take 未丢失', Math.abs(resumed.deltaMs - 2000) < 1e-6, String(resumed.deltaMs));
 
   // (c) a late packet whose onset belongs to the pause window, delivered after
   // resume. It must be quarantined by the recorded interval, not judged.
@@ -466,6 +466,269 @@ async function scenarioPauseWithMidiInput() {
   check('Journal 记录暂停期间的输入边界',
     journal.entries.some((entry) => entry.kind === 'input_during_pause'),
     JSON.stringify(journal.entries.map((entry) => entry.kind)));
+  client.close();
+}
+
+// --- P1-2 admission ledger: policy B ---------------------------------------
+// The ingress decision is authoritative. Every case asserts that final scoring
+// consumed that decision instead of re-deriving it from onset time.
+
+function admissionInvariants(label, admission) {
+  check(`${label}: packet 层计数守衡`,
+    admission && admission.packets === admission.noteOns + admission.nonOnsets,
+    JSON.stringify(admission && {
+      packets: admission.packets, noteOns: admission.noteOns, nonOnsets: admission.nonOnsets,
+    }));
+  check(`${label}: 每个 Note On 恰有一个决策`,
+    admission && admission.noteOns === admission.admittedNoteOns
+      + admission.suppressedNoteOns.countIn
+      + admission.suppressedNoteOns.paused
+      + admission.suppressedNoteOns.clock,
+    JSON.stringify(admission && { noteOns: admission.noteOns, admitted: admission.admittedNoteOns, ...admission.suppressedNoteOns }));
+  check(`${label}: 不存在重复 decision ID`, admission && admission.duplicateEventIds === 0, String(admission && admission.duplicateEventIds));
+  check(`${label}: 实时准入数 == pushHit 调用数`,
+    admission && admission.admittedNoteOns === admission.pushHitCount,
+    JSON.stringify(admission && { admitted: admission.admittedNoteOns, pushHit: admission.pushHitCount }));
+}
+
+async function admissionTake(client, label, { bpm = 60, atoms = quarterAtoms(2, 1) } = {}) {
+  const scoreEvents = scoreEventsForAtoms(atoms, { bpm });
+  client.send({
+    type: 'start', modeId: 'score', bpm, profile: 'standard', countInBeats: 4,
+    ticksPerQuarter: 960, atoms, assisted: false, durationPolicy: 'strict-keydown', scoreEvents,
+  });
+  const started = await client.next('started');
+  const origin = performance.now();
+  let seq = 0;
+  const send = (sessionMs, bytes) => {
+    seq += 1;
+    client.send({
+      type: 'raw-midi',
+      ingest: {
+        packet: {
+          sourceId: label, sourceSeq: seq, clockDomainId: 'mock-clock',
+          capturedAtMs: origin + (sessionMs ?? 0), rawBytes: bytes, transport: 'mock',
+          captureEpoch: started.captureEpoch,
+        },
+        sessionTimeMs: sessionMs,
+        clockMappingId: 'selftest',
+        clockUncertaintyMs: 0,
+        clockQuality: 'good',
+      },
+    });
+  };
+  return { started, origin, send, targets: started.targets };
+}
+
+async function closeTake(client, nowMs) {
+  client.send({ type: 'tick', nowMs });
+  client.send({ type: 'finish' });
+  return client.next('report');
+}
+
+async function scenarioPauseAdmissionLedger() {
+  console.log('scenario: P1-2 输入准入账本 → 实时与最终评分对同一 Note On 只有一个结论');
+  const client = new TestClient();
+  await client.open();
+  await client.next('midi-status');
+  client.send({ type: 'midi-refresh' });
+  await client.next('midi-devices', (m) => Array.isArray(m.items) && m.items.some((d) => d.id === 'mock:0'));
+  client.send({ type: 'midi-connect', deviceId: 'mock:0' });
+  await client.next('midi-status', (m) => m.connected === true);
+
+  // T1 — exact reproduction: pause at target+20ms, onset target+8ms, delivered
+  // while paused. The realtime path suppresses it; final scoring must agree.
+  {
+    const take = await admissionTake(client, 'adm-probe');
+    const t0 = take.targets[0].atMs;
+    client.send({ type: 'pause', nowMs: t0 + 20, atSourceMs: take.origin + t0 + 20 });
+    await client.next('paused');
+    take.send(t0 + 8, [0x90, 60, 90]);
+    take.send(t0 + 300, [0x80, 60, 40]);
+    const pauseError = await client.next('error', () => true, 300).then(() => true).catch(() => false);
+    check('T1: 暂停中的准入被拒绝且不报错', pauseError === false);
+    client.send({ type: 'resume', nowMs: t0 + 1020, atSourceMs: take.origin + t0 + 1020 });
+    await client.next('resumed');
+    const message = await closeTake(client, t0 + 2200);
+    const admission = message.captureDiagnostics?.admission;
+    admissionInvariants('T1', admission);
+    check('T1: 该 Note On 记为 paused 抑制', admission?.suppressedNoteOns.paused === 1,
+      JSON.stringify(admission?.suppressedNoteOns));
+    check('T1: 被抑制起音不进入最终评分输入', message.scoreInputNoteCount === 0,
+      String(message.scoreInputNoteCount));
+    check('T1: 最终评分不把暂停起音判为命中', message.scoreV1
+      && message.scoreV1.pitch.correct === 0 && message.scoreV1.pitch.extra === 0
+      && message.scoreV1.pitch.missed === 2,
+      JSON.stringify(message.scoreV1 && message.scoreV1.pitch));
+    check('T1: 实时与最终都是 2 miss / 0 extra',
+      message.report.stats.missCount === 2 && message.report.stats.extraCount === 0,
+      JSON.stringify(message.report.stats));
+    check('T1: 最终评分侧同步扣除该起音', message.captureDiagnostics?.pauseExcludedFromScore === 1,
+      String(message.captureDiagnostics?.pauseExcludedFromScore));
+    const trace = await (await fetch(`http://127.0.0.1:${PORT}/api/traces/${message.traceId}`)).json();
+    const pausedAdmission = trace.events.find((event) => event.admission?.reason === 'paused'
+      && typeof event.admission?.decisionId === 'string');
+    check('T1: Trace 保存决策 ID、原因与段 ID', !!pausedAdmission
+      && typeof pausedAdmission.admission.segmentId === 'string',
+      JSON.stringify(trace.events.map((event) => event.admission)));
+  }
+
+  // T2 — admitted before the pause, released during it: the onset stays valid
+  // evidence, the key-down duration must be marked as crossing the pause.
+  {
+    const take = await admissionTake(client, 'adm-cross');
+    const t0 = take.targets[0].atMs;
+    take.send(t0 + 8, [0x90, 60, 90]);
+    client.send({ type: 'pause', nowMs: t0 + 60, atSourceMs: take.origin + t0 + 60 });
+    await client.next('paused');
+    take.send(t0 + 400, [0x80, 60, 40]);
+    client.send({ type: 'resume', nowMs: t0 + 1060, atSourceMs: take.origin + t0 + 1060 });
+    await client.next('resumed');
+    const message = await closeTake(client, t0 + 2200);
+    const admission = message.captureDiagnostics?.admission;
+    admissionInvariants('T2', admission);
+    check('T2: 跨暂停的 Note Off 不算一次新的 Note On 抑制',
+      admission?.suppressedNoteOns.paused === 0, JSON.stringify(admission?.suppressedNoteOns));
+    check('T2: 已准入起音仍计入最终评分', message.scoreInputNoteCount === 1
+      && message.scoreV1 && message.scoreV1.pitch.correct === 1,
+      JSON.stringify({ count: message.scoreInputNoteCount, pitch: message.scoreV1 && message.scoreV1.pitch }));
+    const assessment = message.durations && Array.isArray(message.durations.assessments)
+      ? message.durations.assessments[0] : null;
+    check('T2: 跨暂停释放的时值不按严格成绩处理',
+      assessment && assessment.quality === 'crossed_pause_boundary',
+      JSON.stringify(assessment));
+  }
+
+  // T3 — onset before the pause but the packet arrives during it, release after
+  // resume: the whole lifecycle stays out of scoring (no late EXTRA).
+  {
+    const take = await admissionTake(client, 'adm-late-release');
+    const t0 = take.targets[0].atMs;
+    client.send({ type: 'pause', nowMs: t0 - 100, atSourceMs: take.origin + t0 - 100 });
+    await client.next('paused');
+    take.send(t0 - 192, [0x90, 60, 90]);
+    client.send({ type: 'resume', nowMs: t0 + 900, atSourceMs: take.origin + t0 + 900 });
+    await client.next('resumed');
+    take.send(t0 + 1000, [0x80, 60, 40]);
+    const message = await closeTake(client, t0 + 2400);
+    const admission = message.captureDiagnostics?.admission;
+    admissionInvariants('T3', admission);
+    check('T3: 起音在暂停前但送达在暂停中 → paused 抑制', admission?.suppressedNoteOns.paused === 1,
+      JSON.stringify(admission?.suppressedNoteOns));
+    check('T3: 恢复后到达的 Note Off 不复活该生命周期',
+      message.scoreInputNoteCount === 0 && message.scoreV1
+      && message.scoreV1.pitch.correct === 0 && message.scoreV1.pitch.extra === 0
+      && message.scoreV1.pitch.missed === 2,
+      JSON.stringify({ count: message.scoreInputNoteCount, pitch: message.scoreV1 && message.scoreV1.pitch }));
+  }
+
+  // T4 — onset inside a closed pause segment, delivered after resume: the
+  // closed-segment rule must reject it even though the arrival is not paused.
+  {
+    const take = await admissionTake(client, 'adm-closed-seg');
+    const t0 = take.targets[0].atMs;
+    client.send({ type: 'pause', nowMs: t0 + 20, atSourceMs: take.origin + t0 + 20 });
+    await client.next('paused');
+    client.send({ type: 'resume', nowMs: t0 + 520, atSourceMs: take.origin + t0 + 520 });
+    await client.next('resumed');
+    take.send(t0 + 300, [0x90, 62, 90]);
+    take.send(t0 + 360, [0x80, 62, 40]);
+    // An onset before the pause, delivered after resume, is still admitted.
+    take.send(t0 + 8, [0x90, 60, 90]);
+    take.send(t0 + 260, [0x80, 60, 40]);
+    const message = await closeTake(client, t0 + 2200);
+    const admission = message.captureDiagnostics?.admission;
+    admissionInvariants('T4', admission);
+    check('T4: 已闭合暂停段内的事件被抑制', admission?.suppressedNoteOns.paused === 1,
+      JSON.stringify(admission?.suppressedNoteOns));
+    check('T4: 暂停前的起音在恢复后仍可准入', message.scoreInputNoteCount === 1
+      && message.scoreV1 && message.scoreV1.pitch.correct === 1 && message.scoreV1.pitch.extra === 0,
+      JSON.stringify({ count: message.scoreInputNoteCount, pitch: message.scoreV1 && message.scoreV1.pitch }));
+  }
+
+  // T5 — count-in boundary: before scoring starts => count-in; after => admitted.
+  {
+    const take = await admissionTake(client, 'adm-count-in');
+    const t0 = take.targets[0].atMs;
+    take.send(t0 - 200, [0x90, 66, 90]);
+    take.send(t0 - 140, [0x80, 66, 40]);
+    take.send(t0 + 8, [0x90, 60, 90]);
+    take.send(t0 + 260, [0x80, 60, 40]);
+    const message = await closeTake(client, t0 + 1600);
+    const admission = message.captureDiagnostics?.admission;
+    admissionInvariants('T5', admission);
+    check('T5: 计分开始前的 Note On 记为 count-in', admission?.suppressedNoteOns.countIn === 1,
+      JSON.stringify(admission?.suppressedNoteOns));
+    check('T5: count-in 抑制与准入互不覆盖', message.scoreInputNoteCount === 1
+      && message.scoreV1 && message.scoreV1.pitch.correct === 1 && message.scoreV1.pitch.extra === 0,
+      JSON.stringify({ count: message.scoreInputNoteCount, pitch: message.scoreV1 && message.scoreV1.pitch }));
+  }
+
+  // T6 — Take ends while paused: open segment is kept, nothing is scored.
+  {
+    const take = await admissionTake(client, 'adm-end-paused');
+    const t0 = take.targets[0].atMs;
+    client.send({ type: 'pause', nowMs: t0 - 100, atSourceMs: take.origin + t0 - 100 });
+    await client.next('paused');
+    take.send(t0 - 50, [0x90, 65, 90]);
+    take.send(t0 + 100, [0x80, 65, 40]);
+    const message = await closeTake(client, t0 + 300);
+    const admission = message.captureDiagnostics?.admission;
+    admissionInvariants('T6', admission);
+    check('T6: 暂停中结束仍保留开放暂停段',
+      Array.isArray(admission?.pauseSegments) && admission.pauseSegments.some((segment) => segment.endSession === null),
+      JSON.stringify(admission?.pauseSegments));
+    check('T6: 暂停中的输入不进入最终评分', message.scoreInputNoteCount === 0
+      && message.scoreV1 && message.scoreV1.pitch.correct === 0 && message.scoreV1.pitch.extra === 0,
+      JSON.stringify({ count: message.scoreInputNoteCount, pitch: message.scoreV1 && message.scoreV1.pitch }));
+    check('T6: 暂停中结束后任务仍完成', typeof message.takeId === 'string' && message.scoreStatus !== 'INVALID',
+      JSON.stringify({ takeId: message.takeId, scoreStatus: message.scoreStatus }));
+  }
+
+  // T7 — clock: a Node MIDI event without a usable mapping gets a 'clock'
+  // decision, no fabricated session time, and never reaches scoring.
+  {
+    const take = await admissionTake(client, 'adm-clock');
+    const t0 = take.targets[0].atMs;
+    // Deliberately no session-origin: Node events cannot be mapped.
+    client.send({ type: 'midi-test-note', bytes: [0x90, 64, 90] });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    client.send({ type: 'midi-test-note', bytes: [0x80, 64, 40] });
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    const message = await closeTake(client, t0 + 1200);
+    const admission = message.captureDiagnostics?.admission;
+    admissionInvariants('T7', admission);
+    check('T7: 不可映射的 Node 事件记录 clock 决策', (admission?.suppressedNoteOns.clock ?? 0) >= 1, JSON.stringify(admission));
+    check('T7: 未映射事件同时计入 nodeEventsUnmapped',
+      (message.captureDiagnostics?.node?.unmappedEvents ?? 0) >= 1,
+      JSON.stringify(message.captureDiagnostics?.node));
+    check('T7: clock 抑制不进入最终评分', message.scoreInputNoteCount === 0,
+      String(message.scoreInputNoteCount));
+  }
+
+  // T8 — pause after the target window closed: live and final must still agree.
+  {
+    const take = await admissionTake(client, 'adm-after-window');
+    const t0 = take.targets[0].atMs;
+    client.send({ type: 'pause', nowMs: t0 + 400, atSourceMs: take.origin + t0 + 400 });
+    await client.next('paused');
+    client.send({ type: 'resume', nowMs: t0 + 1400, atSourceMs: take.origin + t0 + 1400 });
+    await client.next('resumed');
+    take.send(take.targets[1].atMs + 1000 + 8, [0x90, 60, 90]);
+    take.send(take.targets[1].atMs + 1000 + 260, [0x80, 60, 40]);
+    const message = await closeTake(client, take.targets[1].atMs + 2000);
+    const admission = message.captureDiagnostics?.admission;
+    admissionInvariants('T8', admission);
+    check('T8: 窗口后暂停不影响已判定结果', message.report.stats.missCount === 1
+      && message.report.stats.extraCount === 0,
+      JSON.stringify(message.report.stats));
+    check('T8: 最终评分与实时一致（1 命中 / 1 漏）', message.scoreV1
+      && message.scoreV1.pitch.correct === 1 && message.scoreV1.pitch.missed === 1,
+      JSON.stringify(message.scoreV1 && message.scoreV1.pitch));
+  }
+
+  client.send({ type: 'midi-disconnect' });
+  await client.next('midi-status', (m) => m.connected === false);
   client.close();
 }
 
@@ -1495,6 +1758,7 @@ async function main() {
     await scenarioPauseResume();
     await scenarioPauseScoring();
     await scenarioPauseWithMidiInput();
+    await scenarioPauseAdmissionLedger();
     await scenarioPauseCrossingKey();
     await scenarioScoreChain();
     await scenarioDisconnectFinalizesTake();

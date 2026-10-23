@@ -1,0 +1,170 @@
+# P1-2 实施报告：统一暂停边界的输入决策与最终评分（Policy B）
+
+**日期：** 2026-10-23
+**基线：** `main` @ `e33f529`（保留 `c6f6d49`，未回滚）
+**语义选择：** **B — 入口决策为准；实时路径抑制的起音永不进入最终评分**
+**范围：** Node 输入入口、准入决策账本、最终 `scoreV1` 输入筛选、诊断与回归测试。
+**未改动：** `scoring_v1` 算法、NAPI 评分接口、MusicXML/PlaybackPlan 语义、UI、参考播放、P1-3/P1-4、R2。
+
+---
+
+## 1. 结论
+
+- 复现向量（`pauseAt = target+20ms`、`onset = target+8ms`、暂停中送达）现在得到**唯一结论**：实时抑制、最终评分也拒绝，`scoreInputNoteCount = 0`，`scoreV1` 不把它判为命中。
+- 每个输入包在入口产生**一条不可变 admission decision**；最终评分只消费该决策，**不再按 onset 重新判断暂停/count-in**。
+- 三层计数分别定义并可断言守衡：packet、Note On、performed-note lifecycle。
+- 真实 Node MIDI、raw packet、迟到事件、暂停中结束 Take、count-in 边界、clock 不可映射均有回归测试。
+- mutation check 证明测试有效：绕过最终评分端的准入过滤后 T1/T3/T4 立刻变红（13 项断言失败）。
+
+---
+
+## 2. 决策优先级（实现即契约）
+
+```
+CaptureRouter quarantine（epoch/序号/quarantine，独立于评分准入，不产生 admission）
+  → 当前处于暂停（到达时）                         reason = paused
+  → session 时间不可用                              reason = clock
+  → 事件时间落在已闭合暂停段                        reason = paused
+  → Note On 早于 scoringStart                      reason = count-in
+  → admitted
+```
+
+实现位置：`rhythm-trainer-frontend/server/engine-server.mjs` 的 `recordAdmission()`。
+与任务卡建议顺序一致；未调整。所有判定都在**同一个 ingress 函数**（`ingestRawPacket`）内完成，Web/模拟 raw packet 与 Node MIDI 共用。
+
+---
+
+## 3. 决策结构与关联键
+
+```ts
+{
+  decisionId: 'adm-<n>',          // Take 内递增，稳定
+  eventId: '<sourceId>#<sourceSeq>',  // 与 Rust 解码一致，用于关联生命周期
+  sourceId, sourceSeq, kind,
+  decisionSegmentId,              // 'active-N' 或 'pause-N'
+  capturedAtMs,                   // 源/单调时钟，原样保留
+  handlerAtMs,                    // 入口时间（可用时）
+  sessionTimeMs,                  // 仅当映射有效，否则 null，不回填
+  clockDomainId,
+  suppressionReason: 'count-in' | 'paused' | 'clock' | null,
+  eligibleForRealtime: boolean,
+  eligibleForFinalOnsetScore: boolean,
+}
+```
+
+**关联键**：Rust `decode_ingest_packet` 生成 `event_id = "{sourceId}#{sourceSeq}"`（`crates/rhythm-core/src/midi.rs:545`），`KeyPressObservation.noteOnEventId` 引用同一个值。因此最终评分用 `admissionByEventId.get(observation.noteOnEventId)` 关联，**不使用数组下标、音高或时间近似**。
+
+**暂停段**：`pauseSegments = [{ segmentId, startSession, endSession|null }]`。暂停时创建 `pause-N`，恢复时关闭并切到 `active-N`；Take 在暂停中结束时保留开放段 `endSession = null`。决策记录当时的 `decisionSegmentId`。
+
+---
+
+## 4. 生命周期语义
+
+| 情形 | 行为 |
+|---|---|
+| Note On 被抑制 | 该生命周期不进入 `scorePerformance`；Note Off 只用于关闭/诊断；不会变成 MATCH 或 EXTRA |
+| Note On 获准、Note Off 在暂停中 | 起音保留并参与评分；时值按既有 `crossed_pause_boundary` 处理，不作为严格时值成绩 |
+| Note On 在暂停中、Note Off 在恢复后 | 整个生命周期排除；恢复后不会产生迟到的 EXTRA |
+| 原始证据 | 所有包（含被抑制）仍进入 `ingests`、Trace、Journal；抑制表示不进入评分维度，不删除数据 |
+
+T2 断言了 `crossed_pause_boundary`；T3 断言了"恢复后 Note Off 不复活生命周期"。
+
+---
+
+## 5. 计数单位与不变量
+
+不允许跨单位加减。三层分别统计（`captureDiagnostics.admission`）：
+
+| 层 | 字段 | 单位 |
+|---|---|---|
+| Packet | `packets`, `nonOnsets`, `captureQuarantinedPackets`, `duplicateEventIds` | 包 |
+| Note On | `noteOns`, `admittedNoteOns`, `pushHitCount`, `suppressedNoteOns{countIn,paused,clock}` | Note On |
+| Performed | `finalPerformedNotes`, `finalSkippedByAdmission` | 生命周期 |
+| 兼容 | `pauseSuppressed`（包）、`pauseExcludedFromScore`（生命周期） | 各自单位已注明 |
+
+每个 Take 的测试都断言：
+
+1. `packets === noteOns + nonOnsets`
+2. `noteOns === admittedNoteOns + suppressedNoteOns.countIn + paused + clock`
+3. `admittedNoteOns === pushHitCount`
+4. `duplicateEventIds === 0`
+
+另：被 CaptureRouter 隔离的包**不进入** admission（不参与 1–2），单独计数，保持既有 quarantine 语义。
+
+---
+
+## 6. 测试矩阵（`server/selftest.mjs` → `scenarioPauseAdmissionLedger`）
+
+| # | 场景 | 关键断言 | 结果 |
+|---|---|---|---|
+| T1 | **精确探针**：pause = target+20，onset = target+8，暂停中送达 | `paused=1`、`scoreInputNoteCount=0`、`scoreV1 0 命中/2 漏/0 extra`、实时同样 2 miss/0 extra、Trace 有 decisionId+segmentId | PASS |
+| T2 | 起音在暂停前获准、Note Off 在暂停中 | 起音仍计分、`crossed_pause_boundary`、不额外抑制 Note On | PASS |
+| T3 | 起音在暂停前、送达在暂停中、释放恢复后 | 整段排除，`0 命中/0 extra` | PASS |
+| T4 | 已闭合暂停段内的起音恢复后送达 | 被抑制；同时验证"暂停前起音恢复后仍可准入" | PASS |
+| T5 | count-in 边界 | `countIn=1`；边界后的 Note On 正常准入 | PASS |
+| T6 | 暂停中结束 Take | 保留开放暂停段、0 输入、任务仍完成 | PASS |
+| T7 | clock 不可映射的 Node MIDI | `clock≥1`、`nodeEventsUnmapped≥1`、不进入评分、不报崩溃 | PASS |
+| T8 | 目标窗口关闭后暂停 | 实时 1 miss/0 extra，最终 1 命中/1 漏，一致 | PASS |
+
+### 6.1 Mutation check（实测）
+
+把最终评分的准入判断临时改为 `if (false && !admission.eligibleForFinalOnsetScore)`：
+
+```
+FAIL  T1: 被抑制起音不进入最终评分输入 — 1
+FAIL  T1: 最终评分不把暂停起音判为命中 — correct 1（应为 0）
+FAIL  T3: 恢复后到达的 Note Off 不复活该生命周期 — extra 1
+FAIL  T4: 暂停前的起音在恢复后仍可准入 — count 2（应为 1）
+13 项断言失败
+```
+
+恢复实现后全绿。证明 T1/T3/T4 不是恒真测试。
+
+---
+
+## 7. 全量测试结果（本次实跑）
+
+| 命令 | 结果 |
+|---|---|
+| `npm run selftest` | **PASS** — **219** 条断言（P1-1 后为 163） |
+| `npm test` | **PASS** — 33 files / 237 tests |
+| `npm run build`（`tsc -b && vite build`） | **PASS** — 4.19s |
+| `cargo test --target x86_64-pc-windows-gnu` | **PASS** — 110（6 个 test binary 全部 ok；Rust 零改动） |
+
+---
+
+## 8. 改动文件
+
+| 文件 | 改动 |
+|---|---|
+| `rhythm-trainer-frontend/server/engine-server.mjs` | admission ledger、决策优先级、暂停段、clock 决策、最终评分消费决策、诊断字段；删除 onset 重新推导 |
+| `rhythm-trainer-frontend/server/selftest.mjs` | 新增 `scenarioPauseAdmissionLedger`（T1–T8）与不变量断言；`deltaMs` 断言改浮点容差 |
+| `rhythm-trainer-frontend/src/types/engine.ts` | `EngineCaptureDiagnostics.admission` |
+
+未改 Rust / scoring / importer / UI。
+
+---
+
+## 9. 未完成与残余风险
+
+**仍未修（按任务卡范围）：**
+
+- P1-3 服务端计划完整性校验（pitch/时值/数量/唯一 ID/measure 覆盖/planFingerprint）。
+- P1-4 多 part 严格评分阻断（当前只有契约）。
+- P2 后半段练习的小节统计、真实 OSMD 映射测试（后者上一轮已完成）。
+- 时钟分段化与 uncertainty → timing 降级门禁。
+- G0 真机项（受控错音、P09 比较、暂停/断连边界）全部 **NOT RUN**。
+
+**残余风险（本任务未消除）：**
+
+1. `admission` 账本只在内存与 Trace 中；报告只带计数与段列表，不带每条 decision。若需要跨进程重放"当时的决策"，应从 Trace 的 `admission` 字段读取，而不是重新推导。
+2. 迟到但被准入的事件（T4 的正例）会以**早于当前引擎时间**的 atMs 送入实时 matcher；若此前已有更晚的命中，`HitMatcher` 会因乱序返回错误，仍可能失败该 Take。这是既有 matcher 的顺序约束，不属于本次暂停语义。
+3. `duplicateEventIds` 当前无真实触发用例（CaptureRouter 通常会先隔离序号回退），仅作为守卫与计数。
+4. T1 等使用 2 个目标时 `scoreStatus` 为 `INSUFFICIENT_DATA`（`min_rhythm_samples=4`），因此测试断言的是 pitch/事件结果与实时一致性，不是 `AVAILABLE`。
+5. 未做真机验证；以上均为 synthetic/mock 路径。
+
+---
+
+## 10. 声明
+
+**R2 仍未开始。** 本次没有 Rust planner/importer 迁移，没有修改评分算法或权重，没有实时 matcher，没有 UI 改动。

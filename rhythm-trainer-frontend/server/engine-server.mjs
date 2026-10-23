@@ -797,12 +797,31 @@ wss.on('connection', (socket) => {
   let pausedAtMs = null;
   let pausedSourceMs = null;      // performance-timeline timestamp at Pause
   let pauseIntervalsSourceMs = []; // flat [start, end, ...] pairs for duration policy
-  // Flat [start, end, ...] session-time pairs. Realtime and final scoring must
-  // agree on which inputs happened while paused, so the same intervals feed the
-  // ingest guard and the final-score input filter.
-  let pauseIntervalsSessionMs = [];
-  let pauseSuppressed = 0;        // packets observed while paused (kept in trace, never scored)
-  let pauseExcludedFromScore = 0; // performed notes dropped because their onset is in a pause interval
+  // Pause segments in session time. Every admission decision references the
+  // segment that was active when it was made; a Take that ends while paused
+  // keeps an open segment instead of pretending the pause was active practice.
+  let pauseSegments = [];          // [{ segmentId, startSession, endSession|null }]
+  let pauseSegmentSeq = 0;
+  let activePauseSegmentId = 'active-0';
+  // Admission ledger: exactly one immutable decision per packet. Policy B: the
+  // decision made at ingress is the only authority for whether an onset may be
+  // scored. Final scoring consumes it and never re-derives it from onset time.
+  const admissionByEventId = new Map();
+  let admissionSeq = 0;
+  const admissionCounters = {
+    packets: 0,
+    noteOns: 0,
+    nonOnsets: 0,
+    admittedNoteOns: 0,
+    pushHitCount: 0,
+    finalPerformedNotes: 0,
+    finalSkippedByAdmission: 0,
+    suppressedNoteOns: { 'count-in': 0, paused: 0, clock: 0 },
+    captureQuarantinedPackets: 0,
+    duplicateEventIds: 0,
+  };
+  let pauseSuppressed = 0;        // compat: packets suppressed by the pause policy (packet unit)
+  let pauseExcludedFromScore = 0; // compat: observations skipped because the onset was suppressed
   let rawNotes = [];   // v0.3 legacy path
   let ingests = [];    // v0.6 raw packets (authoritative input)
   // Transport sequence and scoring sequence are different streams. sourceSeq
@@ -886,69 +905,87 @@ wss.on('connection', (socket) => {
   };
 
   // Shared by browser/mock raw-midi messages and Node MIDI adapter events.
-  // Attribution, count-in suppression, scoring sequence and judgments stay in
-  // this one path so the two transports cannot diverge.
+  // Attribution, admission, scoring sequence and judgments stay in this one path
+  // so the two transports cannot diverge.
   function ingestRawPacket(ingest) {
     if (!native || !meta) return;
     if (!ingest || !ingest.packet) throw new Error('raw-midi 缺少 ingest.packet');
-    const atMs = ingest.sessionTimeMs != null
-      ? Number(ingest.sessionTimeMs)
-      : Number(ingest.packet.capturedAtMs);
-    if (!Number.isFinite(atMs)) throw new Error('raw-midi 时间非法');
-    const packetEpoch = ingest.packet.captureEpoch;
+    const packet = ingest.packet;
+    const atMs = ingest.sessionTimeMs == null ? null : Number(ingest.sessionTimeMs);
+    if (atMs !== null && !Number.isFinite(atMs)) throw new Error('raw-midi 时间非法');
+    const packetEpoch = packet.captureEpoch;
     if (packetEpoch != null) {
       if (!coordinator || !activeTake) throw new Error('没有活动中的练习轮次');
-      const decision = coordinator.routePacket(
+      // CaptureRouter quarantine is independent of scoring admission: a packet
+      // from another epoch never becomes evidence for this Take.
+      const routed = coordinator.routePacket(
         Number(packetEpoch),
-        String(ingest.packet.sourceId),
-        Number(ingest.packet.sourceSeq),
-        atMs,
+        String(packet.sourceId),
+        Number(packet.sourceSeq),
+        atMs ?? Number(packet.capturedAtMs),
       );
-      if (!decision.accepted) return;
-      if (decision.takeId !== activeTake.takeId) return;
+      if (!routed.accepted || routed.takeId !== activeTake.takeId) {
+        admissionCounters.captureQuarantinedPackets += 1;
+        return;
+      }
     }
     const decodedList = addon.decodeMidiPackets([ingest]);
     const decoded = decodedList[0];
+    const admission = recordAdmission(decoded, packet, atMs);
+    // Raw evidence is retained for every packet, including suppressed ones.
     ingests.push(ingest);
-    // Pause-period input is captured for the trace but must never reach the
-    // realtime engine: SessionEngine::push_event rejects anything that is not
-    // Running, and that rejection currently fails the whole Take. A player who
-    // touches a key while paused must be able to resume the same practice.
-    const duringPause = isInPauseWindow(atMs);
     traceRecorder?.append({
       seq: ingests.length,
       practiceSessionId: activeTake?.practiceSessionId ?? null,
       takeId: activeTake?.takeId ?? null,
-      sourceId: ingest.packet.sourceId,
-      sourceSeq: ingest.packet.sourceSeq,
-      transport: ingest.packet.transport,
-      captureEpoch: ingest.packet.captureEpoch ?? null,
-      capturedAtMs: ingest.packet.capturedAtMs,
-      sessionTimeMs: atMs,
-      rawBytes: ingest.packet.rawBytes,
+      sourceId: packet.sourceId,
+      sourceSeq: packet.sourceSeq,
+      transport: packet.transport,
+      captureEpoch: packet.captureEpoch ?? null,
+      capturedAtMs: packet.capturedAtMs,
+      handlerAtMs: Number.isFinite(Number(packet.handlerAtMs)) ? Number(packet.handlerAtMs) : null,
+      sessionTimeMs: admission.sessionTimeMs,
+      rawBytes: packet.rawBytes,
       messageType: decoded?.kind ?? 'unknown',
       clockQuality: ingest.clockQuality ?? null,
-      duringPause,
-      countdownSuppressed: !duringPause && !!(decoded && decoded.kind === 'note-on' && atMs < meta.scoringStartMs),
+      // Compat diagnostic: the decision itself is authoritative.
+      duringPause: admission.suppressionReason === 'paused',
+      admission: {
+        decisionId: admission.decisionId,
+        reason: admission.suppressionReason,
+        segmentId: admission.decisionSegmentId,
+        realtime: admission.eligibleForRealtime,
+        finalOnset: admission.eligibleForFinalOnsetScore,
+      },
+      countdownSuppressed: admission.suppressionReason === 'count-in',
     });
-    if (duringPause) {
-      pauseSuppressed += 1;
+    if (admission.suppressionReason === 'paused') pauseSuppressed += 1;
+    if (admission.suppressionReason) {
+      if (admission.suppressionReason === 'count-in') countdownSuppressed += 1;
       if (decoded && decoded.kind === 'note-on') {
-        takeJournal?.append('input_during_pause', {
-          atSessionMs: atMs,
+        takeJournal?.append('input_suppressed', {
+          decisionId: admission.decisionId,
+          reason: admission.suppressionReason,
+          atSessionMs: admission.sessionTimeMs,
           noteNumber: decoded.noteNumber ?? null,
-          sourceSeq: Number(ingest.packet.sourceSeq),
+          sourceSeq: Number(packet.sourceSeq),
         });
+        // Compat with the previous take shape; the reason above is authoritative.
+        if (admission.suppressionReason === 'paused') {
+          takeJournal?.append('input_during_pause', {
+            decisionId: admission.decisionId,
+            atSessionMs: admission.sessionTimeMs,
+            noteNumber: decoded.noteNumber ?? null,
+            sourceSeq: Number(packet.sourceSeq),
+          });
+        }
       }
       return;
     }
     if (decoded && decoded.kind === 'note-on' && decoded.complete) {
-      if (atMs < meta.scoringStartMs) {
-        countdownSuppressed += 1;
-        return;
-      }
+      admissionCounters.pushHitCount += 1;
       scoringSeq += 1;
-      scoringSeqToSourceSeq.set(scoringSeq, Number(ingest.packet.sourceSeq));
+      scoringSeqToSourceSeq.set(scoringSeq, Number(packet.sourceSeq));
       try {
         native.pushHit({ seq: scoringSeq, atMs, source: 'keyboard', notes: [decoded.noteNumber] });
       } catch (err) {
@@ -959,16 +996,80 @@ wss.on('connection', (socket) => {
     }
   }
 
-  /** True while paused, or for late events whose onset falls inside a closed pause interval. */
-  function isInPauseWindow(atMs) {
-    if (pausedAtMs !== null) return true;
-    for (let index = 0; index < pauseIntervalsSessionMs.length; index += 2) {
-      const start = pauseIntervalsSessionMs[index];
-      const end = pauseIntervalsSessionMs[index + 1];
-      if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
-      if (atMs >= start && atMs < end) return true;
+  /**
+   * Policy B: one immutable decision per packet, made at ingress.
+   * Priority: paused arrival -> clock availability -> closed pause segment ->
+   * count-in -> admitted. A note-on is only scoring evidence when admitted.
+   */
+  function recordAdmission(decoded, packet, atMs) {
+    const isNoteOn = decoded?.kind === 'note-on';
+    let reason = null;
+    if (pausedAtMs !== null) {
+      reason = 'paused';
+    } else if (isNoteOn) {
+      if (atMs === null || !Number.isFinite(atMs)) reason = 'clock';
+      else if (isInClosedPauseSegment(atMs)) reason = 'paused';
+      else if (atMs < meta.scoringStartMs) reason = 'count-in';
     }
-    return false;
+    const complete = decoded?.complete !== false;
+    const admitted = isNoteOn && complete && reason === null;
+    const decision = {
+      decisionId: `adm-${++admissionSeq}`,
+      eventId: decoded?.eventId ?? null,
+      sourceId: String(packet.sourceId),
+      sourceSeq: Number(packet.sourceSeq),
+      kind: decoded?.kind ?? 'unknown',
+      decisionSegmentId: activePauseSegmentId,
+      capturedAtMs: Number(packet.capturedAtMs),
+      handlerAtMs: Number.isFinite(Number(packet.handlerAtMs)) ? Number(packet.handlerAtMs) : null,
+      sessionTimeMs: atMs === null || !Number.isFinite(atMs) ? null : atMs,
+      clockDomainId: packet.clockDomainId ?? null,
+      suppressionReason: reason,
+      eligibleForRealtime: admitted,
+      eligibleForFinalOnsetScore: admitted,
+    };
+    admissionCounters.packets += 1;
+    if (isNoteOn) {
+      admissionCounters.noteOns += 1;
+      if (admitted) admissionCounters.admittedNoteOns += 1;
+      else if (reason) admissionCounters.suppressedNoteOns[reason] += 1;
+    } else {
+      admissionCounters.nonOnsets += 1;
+    }
+    if (decision.eventId) {
+      if (admissionByEventId.has(decision.eventId)) admissionCounters.duplicateEventIds += 1;
+      else admissionByEventId.set(decision.eventId, decision);
+    }
+    return decision;
+  }
+
+  /** True for event times inside a pause segment that has already been closed. */
+  function isInClosedPauseSegment(atMs) {
+    return pauseSegments.some((segment) => segment.endSession !== null
+      && atMs >= segment.startSession && atMs < segment.endSession);
+  }
+
+  /** Resets the admission ledger and pause segments for a new Take. */
+  function resetAdmissionState() {
+    admissionByEventId.clear();
+    admissionSeq = 0;
+    admissionCounters.packets = 0;
+    admissionCounters.noteOns = 0;
+    admissionCounters.nonOnsets = 0;
+    admissionCounters.admittedNoteOns = 0;
+    admissionCounters.pushHitCount = 0;
+    admissionCounters.finalPerformedNotes = 0;
+    admissionCounters.finalSkippedByAdmission = 0;
+    admissionCounters.captureQuarantinedPackets = 0;
+    admissionCounters.duplicateEventIds = 0;
+    admissionCounters.suppressedNoteOns['count-in'] = 0;
+    admissionCounters.suppressedNoteOns.paused = 0;
+    admissionCounters.suppressedNoteOns.clock = 0;
+    pauseSegments = [];
+    pauseSegmentSeq = 0;
+    activePauseSegmentId = 'active-0';
+    pauseSuppressed = 0;
+    pauseExcludedFromScore = 0;
   }
 
   function handleNodeMidiEvent(event) {
@@ -985,6 +1086,29 @@ wss.on('connection', (socket) => {
     });
     if (!mapped || mapped.atSessionMs < 0) {
       nodeEventsUnmapped += 1;
+      // Policy B: an unmappable event still gets an explicit admission decision
+      // (reason 'clock'). No session time is fabricated from the capture time.
+      try {
+        ingestRawPacket({
+          packet: {
+            sourceId: event.sourceId,
+            sourceSeq: event.sourceSeq,
+            clockDomainId: 'node-midi-monotonic',
+            capturedAtMs: event.capturedAtMonotonicMs,
+            handlerAtMs: event.capturedAtMonotonicMs,
+            rawBytes: event.rawData,
+            transport: 'node-midi',
+            captureEpoch: activeTake.captureEpoch,
+          },
+          // napi-rs Option<f64> rejects null; omit the field to mean "no value".
+          clockQuality: clockQuality === 'good' || clockQuality === 'estimated' || clockQuality === 'unstable'
+            ? clockQuality
+            : 'unknown',
+        });
+      } catch (error) {
+        console.error('[engine] clock admission failed:', String((error && error.message) || error));
+        send({ type: 'error', message: String((error && error.message) || error) });
+      }
       return;
     }
     nodeEventsMapped += 1;
@@ -1165,9 +1289,7 @@ wss.on('connection', (socket) => {
         pausedAtMs = null;
         pausedSourceMs = null;
         pauseIntervalsSourceMs = [];
-        pauseIntervalsSessionMs = [];
-        pauseSuppressed = 0;
-        pauseExcludedFromScore = 0;
+        resetAdmissionState();
         lastNowMs = 0;
         const bpm = Number(msg.bpm);
         if (!Number.isFinite(bpm) || bpm < 20 || bpm > 300) throw new Error('BPM 需在 20–300 之间');
@@ -1514,10 +1636,18 @@ wss.on('connection', (socket) => {
         if (coordinator && activeTake) coordinator.pause(activeTake.takeId, nowMs);
         const judgments = native.pause(nowMs);
         pausedAtMs = nowMs;
+        pauseSegmentSeq += 1;
+        const pauseSegment = { segmentId: `pause-${pauseSegmentSeq}`, startSession: nowMs, endSession: null };
+        pauseSegments.push(pauseSegment);
+        activePauseSegmentId = pauseSegment.segmentId;
         const pauseSourceMs = Number(msg.atSourceMs);
         pausedSourceMs = Number.isFinite(pauseSourceMs) ? pauseSourceMs : null;
         lastNowMs = nowMs;
-        takeJournal?.append('pause_boundary', { atSessionMs: nowMs, atSourceMs: pausedSourceMs });
+        takeJournal?.append('pause_boundary', {
+          atSessionMs: nowMs,
+          atSourceMs: pausedSourceMs,
+          segmentId: pauseSegment.segmentId,
+        });
         send({ type: 'judgments', items: judgments });
         send({ type: 'paused' });
         break;
@@ -1529,7 +1659,10 @@ wss.on('connection', (socket) => {
         if (coordinator && activeTake) coordinator.resume(activeTake.takeId, nowMs);
         native.resume(nowMs);
         const deltaMs = pausedAtMs === null ? 0 : nowMs - pausedAtMs;
-        if (pausedAtMs !== null) pauseIntervalsSessionMs.push(pausedAtMs, nowMs);
+        const openSegment = pauseSegments.find((segment) => segment.endSession === null);
+        if (openSegment) openSegment.endSession = nowMs;
+        pauseSegmentSeq += 1;
+        activePauseSegmentId = `active-${pauseSegmentSeq}`;
         const resumeSourceMs = Number(msg.atSourceMs);
         if (pausedSourceMs !== null && Number.isFinite(resumeSourceMs) && resumeSourceMs >= pausedSourceMs) {
           pauseIntervalsSourceMs.push(pausedSourceMs, resumeSourceMs);
@@ -1628,9 +1761,8 @@ wss.on('connection', (socket) => {
       pausedSourceMs = null;
     }
     if (pausedAtMs !== null) {
-      // The Take ended while paused: keep the open interval so any late event
-      // that was captured during the pause can still be excluded from scoring.
-      pauseIntervalsSessionMs.push(pausedAtMs, Number.MAX_SAFE_INTEGER);
+      // The Take ended while paused. The segment stays open on purpose: it is
+      // evidence that this tail of the Take was not active practice.
       pausedAtMs = null;
     }
 
@@ -1740,38 +1872,29 @@ wss.on('connection', (socket) => {
           'ambiguous-pairing': 'ambiguous',
           'invalid-time': 'invalid-time',
         };
-        // Realtime and final scoring must agree on pause semantics, so both use
-        // the intervals recorded at pause/resume (session time), never a second
-        // derivation from source timestamps.
-        const pauseIntervalsSession = [];
-        for (let index = 0; index + 1 < pauseIntervalsSessionMs.length; index += 2) {
-          const startSession = Number(pauseIntervalsSessionMs[index]);
-          const endSession = Number(pauseIntervalsSessionMs[index + 1]);
-          if (!Number.isFinite(startSession) || !Number.isFinite(endSession)) continue;
-          if (endSession <= startSession) continue;
-          pauseIntervalsSession.push({ startSession, endSession });
-        }
-        // A Take that ended while still paused has an open interval: it excludes
-        // input but must not shift targets that will never be played.
-        const closedPauseIntervals = pauseIntervalsSession
-          .filter((pause) => pause.endSession < Number.MAX_SAFE_INTEGER / 2);
-        const isPausedAt = (sessionMs) => pauseIntervalsSession
-          .some((pause) => sessionMs >= pause.startSession && sessionMs < pause.endSession);
+        // Policy B: final scoring consumes the ingress admission decision. It
+        // never re-derives "was this paused?" from the onset time, so a note the
+        // realtime path suppressed can never reappear here.
+        const closedPauseSegments = pauseSegments.filter((segment) => segment.endSession !== null);
         const performedNotes = [];
         for (const observation of observations) {
-          const onsetMs = sessionTimeByEventId.get(observation.noteOnEventId);
-          if (!Number.isFinite(onsetMs)) {
+          const admission = admissionByEventId.get(observation.noteOnEventId);
+          if (!admission) {
+            // A lifecycle without an admission decision is a structural gap, not
+            // a scoring opportunity; fail closed and count it.
             scoreUnmappedNoteCount += 1;
+            admissionCounters.finalSkippedByAdmission += 1;
             continue;
           }
-          // Count-in notes are trace evidence, not score input. The legacy
-          // matcher already suppresses them; scoring_v1 must not turn them
-          // into extra notes just because they reached the key-lifecycle log.
-          if (onsetMs < meta.scoringStartMs) continue;
-          // Safety net: any input whose onset falls inside a pause interval is
-          // not performance evidence, even if it slipped past the ingest guard.
-          if (isPausedAt(onsetMs)) {
-            pauseExcludedFromScore += 1;
+          if (!admission.eligibleForFinalOnsetScore) {
+            admissionCounters.finalSkippedByAdmission += 1;
+            if (admission.suppressionReason === 'paused') pauseExcludedFromScore += 1;
+            continue;
+          }
+          const onsetMs = admission.sessionTimeMs;
+          if (!Number.isFinite(onsetMs)) {
+            scoreUnmappedNoteCount += 1;
+            admissionCounters.finalSkippedByAdmission += 1;
             continue;
           }
           const releaseCandidate = observation.noteOffEventId
@@ -1790,10 +1913,11 @@ wss.on('connection', (socket) => {
           });
         }
         scoreInputNoteCount = performedNotes.length;
+        admissionCounters.finalPerformedNotes = performedNotes.length;
 
         const adjustedScoreEvents = meta.scoreEvents.map((event) => {
           let shift = 0;
-          for (const pause of closedPauseIntervals) {
+          for (const pause of closedPauseSegments) {
             // The engine shifts unresolved targets at pause time. A target
             // whose planned onset is at/after the pause boundary belongs to the
             // shifted segment; already-played targets do not get double-shifted.
@@ -1803,7 +1927,7 @@ wss.on('connection', (socket) => {
           }
           return shift === 0 ? event : { ...event, targetOnsetMs: event.targetOnsetMs + shift };
         });
-        pauseAdjusted = closedPauseIntervals.length > 0;
+        pauseAdjusted = closedPauseSegments.length > 0;
 
         scoreV1 = addon.scorePerformance(adjustedScoreEvents, performedNotes);
         scoreConfigVersion = scoreV1.configVersion ?? null;
@@ -1852,6 +1976,24 @@ wss.on('connection', (socket) => {
       pauseAdjusted,
       pauseSuppressed,
       pauseExcludedFromScore,
+      admission: {
+        version: 'admission-1',
+        packets: admissionCounters.packets,
+        noteOns: admissionCounters.noteOns,
+        nonOnsets: admissionCounters.nonOnsets,
+        admittedNoteOns: admissionCounters.admittedNoteOns,
+        pushHitCount: admissionCounters.pushHitCount,
+        finalPerformedNotes: admissionCounters.finalPerformedNotes,
+        finalSkippedByAdmission: admissionCounters.finalSkippedByAdmission,
+        suppressedNoteOns: {
+          countIn: admissionCounters.suppressedNoteOns['count-in'],
+          paused: admissionCounters.suppressedNoteOns.paused,
+          clock: admissionCounters.suppressedNoteOns.clock,
+        },
+        captureQuarantinedPackets: admissionCounters.captureQuarantinedPackets,
+        duplicateEventIds: admissionCounters.duplicateEventIds,
+        pauseSegments: pauseSegments.map((segment) => ({ ...segment })),
+      },
       connectionClosed: interrupted,
       node: {
         backend: adapterStatus.backend,
