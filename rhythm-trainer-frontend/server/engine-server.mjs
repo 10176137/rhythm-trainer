@@ -1940,13 +1940,17 @@ wss.on('connection', (socket) => {
           const pairingStatus = releaseMs == null && statusMap[observation.status] === 'complete'
             ? 'missing-release'
             : (statusMap[observation.status] ?? 'invalid-time');
-          performedNotes.push({
+          const performedNote = {
             performedNoteId: observation.pressId,
             pitch: Number(observation.noteNumber),
             onsetMs: Number(onsetMs),
-            releaseMs,
             pairingStatus,
-          });
+          };
+          // napi-rs Option<f64> rejects null. A key that never released (Take
+          // ended while held, device unplugged) must omit the field so Rust sees
+          // None, instead of turning the whole report INVALID.
+          if (releaseMs != null) performedNote.releaseMs = releaseMs;
+          performedNotes.push(performedNote);
         }
         scoreInputNoteCount = performedNotes.length;
         admissionCounters.finalPerformedNotes = performedNotes.length;

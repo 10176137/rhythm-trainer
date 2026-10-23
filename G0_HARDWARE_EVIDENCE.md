@@ -91,3 +91,57 @@ duplicateEventIds            = 0
 | 音频输出延迟校准 | 未校准（C2） |
 
 G0 整体仍是 **PARTIAL**，不能标记完成。
+
+---
+
+## 7. 2026-10-23T18:50Z 第三批：暂停边界（G0-C）
+
+三轮：`s-1792781374038-4` / `s-1792781396550-5` / `s-1792781424508-6`（同一 PracticeSession，40 BPM / 1 小节 / count-in 3 s）。
+
+### 7.1 逐轮
+
+| # | sessionId | 操作 | 结果 |
+|---|---|---|---|
+| 1 | `…-4` | 启动后在 4765 ms 暂停，未弹任何音就结束 | 0 输入、4 Miss；开放暂停段；`INSUFFICIENT_DATA` |
+| 2 | `…-5` | 按下一个音（4833 ms）后未松手就结束 | **`INVALID`**：`releaseMs: null` 被 napi-rs 拒收 |
+| 3 | `…-6` | 3154 ms 弹首音并按住 → 7222 ms 暂停 → 暂停中按 13 个音 → 15984 ms 恢复 → 20369 ms 再次暂停并结束 | 暂停链路通过 |
+
+### 7.2 G0-C 判定：PASS（take-3）
+
+| 检查 | 实际 |
+|---|---|
+| Take 是否失败 | 否；报告生成，`scoreStatus = INSUFFICIENT_DATA`（仅 1 个匹配），不是 `INVALID` |
+| 暂停中的 Note On | `admission.suppressedNoteOns.paused = 13`，其余原因均为 0 |
+| 包级抑制 | `pauseSuppressed = 26`（13 Note On + 13 Note Off） |
+| 最终评分扣除 | `pauseExcludedFromScore = 13` |
+| 暂停段 | `pause-1 [7222 → 15984]`（已闭合）+ `pause-3 [20369 → null]`（Take 在暂停中结束） |
+| 跨暂停按键 | `durations` 14 条均为 `crossed_pause_boundary` / `unknown` |
+| 已准入起音 | 3154 ms 的首音保留并计分（`correct = 1`） |
+| 暂停输入 | 未进入 `scoreInputNoteCount`（=1），未产生 Extra |
+| out-of-order / duplicate / quarantined | 0 / 0 / 0 |
+
+**G0-C 通过**：暂停期间的输入被完整隔离、保留证据，跨暂停的起音保留但时值不作严格成绩，Take 未失败。
+
+### 7.3 本轮发现的真实缺陷（已修）
+
+- **现象**：take-2 `scoreStatus = INVALID`，`scoreV1.error = "Failed to convert napi value Null into rust type f64 on JsPerformedNoteInput.releaseMs"`。
+- **触发**：Take 在按键未释放时结束（或设备断连导致缺 Note Off）→ `releaseMs` 为 `null` → napi-rs `Option<f64>` 拒收。
+- **影响**：整轮评分不可用，且现有合成测试没有任何用例覆盖"未松键就结束"。
+- **修复**：`releaseMs` 为空时**省略该字段**，Rust 侧得到 `None`（`missing-release`），而不是让它变成 `INVALID`。
+- **回归**：新增 selftest 场景"未松键结束 Take → 不因 releaseMs=null 变成 INVALID"，断言报告非 INVALID、起音仍计分、时值为 `open_note_interrupted / unknown`。selftest 由 232 增至 **236**。
+
+### 7.4 实时 vs 最终（take-3）
+
+实时 0 Perfect / 4 Miss / 1 Extra，最终 1 MATCH / 3 MISSING / 0 EXTRA。首音 3154 ms 比目标 3000 ms 晚 153.8 ms：实时窗口外判 Extra + 目标 Miss，批量 250 ms 内配成 MATCH。与第二批同类差异，最终报告权威。
+
+### 7.5 状态更新
+
+| 项 | 状态 |
+|---|---|
+| G0-A 受控错音 | PASS（take 2，第二批） |
+| G0-B 成功 P09 比较 | **NOT RUN** |
+| G0-C 暂停边界 | **PASS**（take-3，第三批） |
+| G0-D 断连/重连 | **NOT RUN** |
+| 未松键结束 Take | 缺陷已修 + 回归测试 |
+
+G0 整体仍为 **PARTIAL**。

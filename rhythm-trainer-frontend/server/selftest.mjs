@@ -820,6 +820,55 @@ async function scenarioPauseAdmissionLedger() {
   client.close();
 }
 
+async function scenarioUnreleasedKeyStillScores() {
+  console.log('scenario: 未松键结束 Take → 不因 releaseMs=null 变成 INVALID');
+  const client = new TestClient();
+  await client.open();
+  const atoms = quarterAtoms(2, 1);
+  const scoreEvents = scoreEventsForAtoms(atoms, { bpm: 60 });
+  client.send({
+    type: 'start', modeId: 'score', bpm: 60, profile: 'standard', countInBeats: 4,
+    ticksPerQuarter: 960, atoms, assisted: false, durationPolicy: 'strict-keydown', scoreEvents,
+  });
+  const started = await client.next('started');
+  const origin = performance.now();
+  let seq = 0;
+  const send = (sessionMs, bytes) => {
+    seq += 1;
+    client.send({
+      type: 'raw-midi',
+      ingest: {
+        packet: {
+          sourceId: 'open-key', sourceSeq: seq, clockDomainId: 'mock-clock',
+          capturedAtMs: origin + sessionMs, rawBytes: bytes, transport: 'mock',
+          captureEpoch: started.captureEpoch,
+        },
+        sessionTimeMs: sessionMs,
+        clockMappingId: 'selftest',
+        clockUncertaintyMs: 0,
+        clockQuality: 'good',
+      },
+    });
+  };
+  // Note On only: the Take ends while the key is still held.
+  send(started.targets[0].atMs + 8, [0x90, 60, 90]);
+  client.send({ type: 'tick', nowMs: started.targets[1].atMs + 900 });
+  client.send({ type: 'finish' });
+  const message = await client.next('report');
+
+  check('未松键：报告不是 INVALID', message.scoreStatus !== 'INVALID', String(message.scoreStatus));
+  check('未松键：scoreV1 不返回错误', !!message.scoreV1 && !message.scoreV1.error,
+    JSON.stringify(message.scoreV1 && message.scoreV1.error));
+  check('未松键：起音仍被评分', message.scoreV1 && message.scoreV1.pitch.correct === 1,
+    JSON.stringify(message.scoreV1 && message.scoreV1.pitch));
+  const assessment = message.durations && Array.isArray(message.durations.assessments)
+    ? message.durations.assessments[0] : null;
+  check('未松键：时值标为 open_note_interrupted / unknown',
+    !!assessment && assessment.quality === 'open_note_interrupted' && assessment.result === 'unknown',
+    JSON.stringify(assessment));
+  client.close();
+}
+
 async function scenarioPauseCrossingKey() {
   console.log('scenario: 跨暂停的按键标记 crossed_pause_boundary、不做严格时值评分');
   const client = new TestClient();
@@ -1847,6 +1896,7 @@ async function main() {
     await scenarioPauseScoring();
     await scenarioPauseWithMidiInput();
     await scenarioPauseAdmissionLedger();
+    await scenarioUnreleasedKeyStillScores();
     await scenarioPauseCrossingKey();
     await scenarioScoreChain();
     await scenarioDisconnectFinalizesTake();
