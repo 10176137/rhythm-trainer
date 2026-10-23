@@ -32,6 +32,7 @@ export type ImportIssueCode =
   | 'unsupported_cue'
   | 'unrepresentable_pitch'
   | 'multiple_parts'
+  | 'duplicate_xml_id'
   | 'mid_measure_attributes'
   | 'measure_underfull'
   | 'xml_external_entity_disabled'

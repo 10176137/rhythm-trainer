@@ -648,7 +648,7 @@ function parsePart(
         printedMeasureNumber: printedNumber,
         voiceId,
         staffNumber,
-        xmlId: attr(node, 'id') || undefined,
+        xmlId: attr(node, 'id').trim() || undefined,
         sourceOrdinal,
       };
 
@@ -913,6 +913,31 @@ export function importMusicXml(xmlText: string, options: ImportOptions = {}): Im
         `检测到 ${partNodes.length} 个 part；当前产品界面仍以钢琴双谱表为主，请确认手别映射`,
         'info', false, { measureOrdinal: 1 },
       ));
+    }
+
+    // A MusicXML note@id is an optional, document-wide identifier. It is the
+    // only source-level anchor we can preserve, so a duplicate makes the anchor
+    // ambiguous for every occurrence after the first. Fail closed instead of
+    // picking one silently; scores without ids stay fully usable.
+    const seenXmlIds = new Map<string, { partId: string; measureOrdinal: number }>();
+    for (const part of parts) {
+      for (const measure of part.measures) {
+        for (const event of measure.events) {
+          const xmlId = event.source.xmlId;
+          if (!xmlId) continue;
+          const first = seenXmlIds.get(xmlId);
+          if (!first) {
+            seenXmlIds.set(xmlId, { partId: part.id, measureOrdinal: measure.ordinal });
+            continue;
+          }
+          issues.push(createIssue(
+            'duplicate_xml_id',
+            `note@id "${xmlId}" 重复（首次出现：part ${first.partId} 第 ${first.measureOrdinal} 小节；再次出现：part ${part.id} 第 ${measure.ordinal} 小节）；来源 ID 不再唯一，禁止严格计时`,
+            'warning', true,
+            { measureOrdinal: measure.ordinal, eventId: event.id, xmlId },
+          ));
+        }
+      }
     }
 
     const playableNotes = parts.flatMap((part) => part.measures.flatMap((measure) => measure.events))

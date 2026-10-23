@@ -17,13 +17,25 @@ const TYPES = {
 };
 
 const server = createServer(async (req, res) => {
+  // The anchor-contract harness runs on the Vite dev server (5173) and posts its
+  // result here; both are loopback-only audit tooling.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
   try {
     const url = new URL(req.url, 'http://127.0.0.1');
     if (req.method === 'POST' && url.pathname === '/result') {
+      const requested = url.searchParams.get('file') ?? 'osmd-anchor-spike.json';
+      const safeName = /^[a-z0-9._-]+$/i.test(requested) ? requested : 'osmd-anchor-spike.json';
       const chunks = [];
       for await (const chunk of req) chunks.push(chunk);
       await mkdir('D:/123/audit-r1/spike/out', { recursive: true });
-      await writeFile('D:/123/audit-r1/spike/out/osmd-anchor-spike.json', Buffer.concat(chunks));
+      await writeFile(`D:/123/audit-r1/spike/out/${safeName}`, Buffer.concat(chunks));
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end('{"saved":true}');
       return;

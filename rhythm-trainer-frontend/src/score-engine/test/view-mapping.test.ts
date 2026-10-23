@@ -9,15 +9,33 @@ const xml = readFileSync(new URL('./fixtures/triad-chord.musicxml', import.meta.
 
 function fakeRenderer() {
   const colors: string[] = [];
-  // OSMD 2.2.1 halfTone is one octave below MIDI (C4=48), like the real
-  // source objects observed in the mapping spike.
-  const sourceNotes = [
-    { halfTone: 48, isRest: () => false },
-    { halfTone: 52, isRest: () => false },
-    { halfTone: 55, isRest: () => false },
-    { halfTone: 50, isRest: () => false },
-    { halfTone: 52, isRest: () => false },
+  // OSMD 2.2.1 halfTone is one octave below MIDI (C4=48), and VoiceEntry
+  // Timestamp is a measure-relative whole-note fraction: beat b => b/4.
+  const makeVoiceEntry = (beat: number, halfTones: number[]) => {
+    const voiceEntry: {
+      ParentVoice: { VoiceId: number };
+      Timestamp: { Numerator: number; Denominator: number };
+      Notes: { halfTone: number; isRest: () => boolean; ParentVoiceEntry?: unknown }[];
+    } = {
+      ParentVoice: { VoiceId: 1 },
+      Timestamp: { Numerator: beat, Denominator: 4 },
+      Notes: [],
+    };
+    voiceEntry.Notes = halfTones.map((halfTone) => ({
+      halfTone,
+      isRest: () => false,
+      ParentVoiceEntry: voiceEntry,
+    }));
+    return voiceEntry;
+  };
+  // Fixture order: chord C4/E4/G4 at beat 0, D4 at beat 1, E4 at beat 2.
+  const containers = [
+    { StaffEntries: [{ VoiceEntries: [makeVoiceEntry(0, [48, 52, 55])] }] },
+    { StaffEntries: [{ VoiceEntries: [makeVoiceEntry(1, [50])] }] },
+    { StaffEntries: [{ VoiceEntries: [makeVoiceEntry(2, [52])] }] },
   ];
+  const sourceNotes = containers.flatMap((container) =>
+    container.StaffEntries.flatMap((staffEntry) => staffEntry.VoiceEntries.flatMap((voiceEntry) => voiceEntry.Notes)));
   const graphical = sourceNotes.map((note) => ({
     sourceNote: note,
     setColor: (color: string) => colors.push(color),
@@ -26,14 +44,7 @@ function fakeRenderer() {
   const renderer = {
     Sheet: {
       SourceMeasures: [{
-        VerticalSourceStaffEntryContainers: [{
-          StaffEntries: [{
-            VoiceEntries: [{
-              ParentVoice: { VoiceId: 1 },
-              Notes: sourceNotes,
-            }],
-          }],
-        }],
+        VerticalSourceStaffEntryContainers: containers,
       }],
     },
     rules: {
@@ -62,7 +73,11 @@ describe('ScoreViewAdapter mapping', () => {
     expect(summary.mappedEventCount).toBe(5);
     expect(summary.unmapped).toBe(0);
     expect(summary.duplicates).toBe(0);
-    adapter.highlightScoreEvent(doc.parts[0].measures[0].events[0].id, 'current');
+    expect(summary.conflicts).toBe(0);
+    expect(summary.anchorStatus).toBe('COMPLETE');
+    expect(summary.mappingVersion).toBe('osmd-structural-2');
+    expect(summary.ok).toBe(true);
+    expect(adapter.highlightScoreEvent(doc.parts[0].measures[0].events[0].id, 'current')).toBe(true);
     expect(colors).toContain('#1d9b72');
     adapter.highlightScoreEvent(doc.parts[0].measures[0].events[0].id, 'system');
     expect(colors).toContain('#c34b58');

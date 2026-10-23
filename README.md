@@ -29,6 +29,8 @@
 - [时钟域契约](audit-r1/docs/CLOCK_DOMAIN_CONTRACT.md)
 - [R2/R3 路线决策](audit-r1/docs/R2_R3_ROUTE_DECISION.md)
 - [Golden Fixtures 真值规则](audit-r1/docs/GOLDEN_FIXTURES.md)
+- [Hand 与多 Part 契约](audit-r1/docs/HAND_AND_MULTIPART_CONTRACT.md)
+- [R1 收尾实施报告](R1_CLOSEOUT_IMPLEMENTATION_REPORT.md)
 
 原始证据：`audit-r1/fixtures/`（G1–G8 极简 MusicXML）、`audit-r1/spike/out/`（importer dump、OSMD 10-case JSON、真实谱跑通结果、18 组 TS/Rust 时间线交叉验证）。
 

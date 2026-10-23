@@ -1,0 +1,297 @@
+{
+  "generatedBy": "audit-r1/spike/generate-legacy-reference.mjs",
+  "generatorVersion": 1,
+  "gitSha": "2a2d0140af5179261123f0d4a4e98c69c3b66b33",
+  "generatedAtIso": "2026-10-23T17:10:04.000Z",
+  "note": "Produced by the TypeScript implementation at the commit above. Differential object only; never a source of truth. Compare against audit-r1/fixtures/golden/g*.expected.json.",
+  "cases": {
+    "G1": {
+      "fixture": "g1_single_voice.musicxml",
+      "scoreEvents": [
+        {
+          "pitch": 60,
+          "onsetUs": 3000000,
+          "durationUs": 750000
+        },
+        {
+          "pitch": 62,
+          "onsetUs": 3750000,
+          "durationUs": 750000
+        },
+        {
+          "pitch": 64,
+          "onsetUs": 4500000,
+          "durationUs": 750000
+        },
+        {
+          "pitch": 65,
+          "onsetUs": 5250000,
+          "durationUs": 750000
+        },
+        {
+          "pitch": 67,
+          "onsetUs": 6000000,
+          "durationUs": 1500000
+        }
+      ],
+      "occurrenceCount": 5,
+      "groupCount": 5,
+      "atomCount": 5,
+      "atoms": [
+        {
+          "startTick": 0,
+          "durationTicks": 960,
+          "bar": 1,
+          "beat": 1
+        },
+        {
+          "startTick": 960,
+          "durationTicks": 960,
+          "bar": 1,
+          "beat": 2
+        },
+        {
+          "startTick": 1920,
+          "durationTicks": 960,
+          "bar": 1,
+          "beat": 3
+        },
+        {
+          "startTick": 2880,
+          "durationTicks": 960,
+          "bar": 1,
+          "beat": 4
+        },
+        {
+          "startTick": 3840,
+          "durationTicks": 1920,
+          "bar": 2,
+          "beat": 1
+        }
+      ],
+      "occurrenceBeats": [
+        "0/1",
+        "1/1",
+        "2/1",
+        "3/1",
+        "4/1"
+      ]
+    },
+    "G2": {
+      "fixture": "g2_chord.musicxml",
+      "scoreEvents": [
+        {
+          "pitch": 60,
+          "onsetUs": 2400000,
+          "durationUs": 600000
+        },
+        {
+          "pitch": 64,
+          "onsetUs": 2400000,
+          "durationUs": 600000
+        },
+        {
+          "pitch": 67,
+          "onsetUs": 2400000,
+          "durationUs": 600000
+        },
+        {
+          "pitch": 60,
+          "onsetUs": 3000000,
+          "durationUs": 600000
+        }
+      ],
+      "occurrenceCount": 4,
+      "groupCount": 2,
+      "atomCount": 2,
+      "atoms": [
+        {
+          "startTick": 0,
+          "durationTicks": 960,
+          "bar": 1,
+          "beat": 1
+        },
+        {
+          "startTick": 960,
+          "durationTicks": 960,
+          "bar": 1,
+          "beat": 2
+        }
+      ],
+      "occurrenceBeats": [
+        "0/1",
+        "0/1",
+        "0/1",
+        "1/1"
+      ]
+    },
+    "G3": {
+      "fixture": "g3_tie_across_bar.musicxml",
+      "scoreEvents": [
+        {
+          "pitch": 60,
+          "onsetUs": 2000000,
+          "durationUs": 2000000
+        }
+      ],
+      "occurrenceCount": 1,
+      "groupCount": 1,
+      "atomCount": 1,
+      "atoms": [
+        {
+          "startTick": 0,
+          "durationTicks": 3840,
+          "bar": 1,
+          "beat": 1
+        }
+      ],
+      "occurrenceBeats": [
+        "0/1"
+      ]
+    },
+    "G4": {
+      "fixture": "g4_triplet.musicxml",
+      "scoreEvents": [
+        {
+          "pitch": 60,
+          "onsetUs": 4000000,
+          "durationUs": 333333
+        },
+        {
+          "pitch": 62,
+          "onsetUs": 4333333,
+          "durationUs": 333333
+        },
+        {
+          "pitch": 64,
+          "onsetUs": 4666667,
+          "durationUs": 333333
+        },
+        {
+          "pitch": 67,
+          "onsetUs": 5000000,
+          "durationUs": 1000000
+        }
+      ],
+      "occurrenceCount": 4,
+      "groupCount": 4,
+      "atomCount": 4,
+      "atoms": [
+        {
+          "startTick": 0,
+          "durationTicks": 320,
+          "bar": 1,
+          "beat": 1
+        },
+        {
+          "startTick": 320,
+          "durationTicks": 320,
+          "bar": 1,
+          "beat": 1.3333333333333333
+        },
+        {
+          "startTick": 640,
+          "durationTicks": 320,
+          "bar": 1,
+          "beat": 1.6666666666666665
+        },
+        {
+          "startTick": 960,
+          "durationTicks": 960,
+          "bar": 1,
+          "beat": 2
+        }
+      ],
+      "occurrenceBeats": [
+        "0/1",
+        "1/3",
+        "2/3",
+        "1/1"
+      ]
+    },
+    "G5": {
+      "fixture": "g5_three_four.musicxml",
+      "scoreEvents": [
+        {
+          "pitch": 60,
+          "onsetUs": 2666667,
+          "durationUs": 666667
+        },
+        {
+          "pitch": 62,
+          "onsetUs": 3333333,
+          "durationUs": 666667
+        },
+        {
+          "pitch": 64,
+          "onsetUs": 4000000,
+          "durationUs": 666667
+        },
+        {
+          "pitch": 65,
+          "onsetUs": 4666667,
+          "durationUs": 666667
+        },
+        {
+          "pitch": 67,
+          "onsetUs": 5333333,
+          "durationUs": 666667
+        },
+        {
+          "pitch": 69,
+          "onsetUs": 6000000,
+          "durationUs": 666667
+        }
+      ],
+      "occurrenceCount": 6,
+      "groupCount": 6,
+      "atomCount": 6,
+      "atoms": [
+        {
+          "startTick": 0,
+          "durationTicks": 960,
+          "bar": 1,
+          "beat": 1
+        },
+        {
+          "startTick": 960,
+          "durationTicks": 960,
+          "bar": 1,
+          "beat": 2
+        },
+        {
+          "startTick": 1920,
+          "durationTicks": 960,
+          "bar": 1,
+          "beat": 3
+        },
+        {
+          "startTick": 2880,
+          "durationTicks": 960,
+          "bar": 2,
+          "beat": 1
+        },
+        {
+          "startTick": 3840,
+          "durationTicks": 960,
+          "bar": 2,
+          "beat": 2
+        },
+        {
+          "startTick": 4800,
+          "durationTicks": 960,
+          "bar": 2,
+          "beat": 3
+        }
+      ],
+      "occurrenceBeats": [
+        "0/1",
+        "1/1",
+        "2/1",
+        "3/1",
+        "4/1",
+        "5/1"
+      ]
+    }
+  }
+}

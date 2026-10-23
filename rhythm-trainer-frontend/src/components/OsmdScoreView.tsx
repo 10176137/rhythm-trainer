@@ -108,6 +108,11 @@ export default function OsmdScoreView({
         host.dataset.osmdMapped = String(mapping.mappedEventCount);
         host.dataset.osmdTotal = String(mapping.noteEventCount);
         host.dataset.osmdDuplicates = String(mapping.duplicateGraphicalRefs.length);
+        // Ambiguous anchors are never highlighted; expose the state for
+        // diagnostics instead of guessing which notehead to colour.
+        host.dataset.osmdConflicts = String(mapping.conflicts.length);
+        host.dataset.osmdAnchorStatus = mapping.anchorStatus;
+        host.dataset.osmdMappingVersion = mapping.mappingVersion;
 
         for (const [eventId, ref] of mapping.byEventId) {
           const graphical = ref.graphicalNotes[0] as unknown as { getSVGGElement?: () => SVGGElement };

@@ -1,0 +1,196 @@
+{
+  "complete": true,
+  "osmdVersionPinnedInPackageJson": "2.2.1",
+  "mappingVersion": "osmd-structural-2",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ZCode/3.16.3 Chrome/146.0.7680.80 Electron/41.0.3 Safari/537.36",
+  "cases": [
+    {
+      "name": "g1-single-voice",
+      "fixture": "g1_single_voice.musicxml",
+      "osmdNotes": 6,
+      "noteEventCount": 5,
+      "mappedEventCount": 5,
+      "unmapped": 0,
+      "conflicts": 0,
+      "anchorStatus": "COMPLETE",
+      "expectedAnchorStatus": "COMPLETE",
+      "ok": true,
+      "mappingVersion": "osmd-structural-2",
+      "conflictReasons": [],
+      "conflictSamples": [],
+      "chordPrecisionEvents": 0,
+      "highlight": {
+        "mappedTarget": true,
+        "conflictedTargetsBlocked": true
+      },
+      "warnings": []
+    },
+    {
+      "name": "g2-chord-repeat",
+      "fixture": "g2_chord.musicxml",
+      "osmdNotes": 5,
+      "noteEventCount": 4,
+      "mappedEventCount": 4,
+      "unmapped": 0,
+      "conflicts": 0,
+      "anchorStatus": "COMPLETE",
+      "expectedAnchorStatus": "COMPLETE",
+      "ok": true,
+      "mappingVersion": "osmd-structural-2",
+      "conflictReasons": [],
+      "conflictSamples": [],
+      "chordPrecisionEvents": 3,
+      "highlight": {
+        "mappedTarget": true,
+        "conflictedTargetsBlocked": true
+      },
+      "warnings": []
+    },
+    {
+      "name": "g3-tie",
+      "fixture": "g3_tie_across_bar.musicxml",
+      "osmdNotes": 2,
+      "noteEventCount": 2,
+      "mappedEventCount": 2,
+      "unmapped": 0,
+      "conflicts": 0,
+      "anchorStatus": "COMPLETE",
+      "expectedAnchorStatus": "COMPLETE",
+      "ok": true,
+      "mappingVersion": "osmd-structural-2",
+      "conflictReasons": [],
+      "conflictSamples": [],
+      "chordPrecisionEvents": 0,
+      "highlight": {
+        "mappedTarget": true,
+        "conflictedTargetsBlocked": true
+      },
+      "warnings": []
+    },
+    {
+      "name": "g4-triplet",
+      "fixture": "g4_triplet.musicxml",
+      "osmdNotes": 5,
+      "noteEventCount": 4,
+      "mappedEventCount": 4,
+      "unmapped": 0,
+      "conflicts": 0,
+      "anchorStatus": "COMPLETE",
+      "expectedAnchorStatus": "COMPLETE",
+      "ok": true,
+      "mappingVersion": "osmd-structural-2",
+      "conflictReasons": [],
+      "conflictSamples": [],
+      "chordPrecisionEvents": 0,
+      "highlight": {
+        "mappedTarget": true,
+        "conflictedTargetsBlocked": true
+      },
+      "warnings": []
+    },
+    {
+      "name": "g6-unison-two-staves",
+      "fixture": "g6_unison_two_staves.musicxml",
+      "osmdNotes": 2,
+      "noteEventCount": 2,
+      "mappedEventCount": 2,
+      "unmapped": 0,
+      "conflicts": 0,
+      "anchorStatus": "COMPLETE",
+      "expectedAnchorStatus": "COMPLETE",
+      "ok": true,
+      "mappingVersion": "osmd-structural-2",
+      "conflictReasons": [],
+      "conflictSamples": [],
+      "chordPrecisionEvents": 0,
+      "highlight": {
+        "mappedTarget": true,
+        "conflictedTargetsBlocked": true
+      },
+      "warnings": []
+    },
+    {
+      "name": "g7-hidden-grace",
+      "fixture": "g7_hidden_grace.musicxml",
+      "osmdNotes": 5,
+      "noteEventCount": 5,
+      "mappedEventCount": 5,
+      "unmapped": 0,
+      "conflicts": 0,
+      "anchorStatus": "COMPLETE",
+      "expectedAnchorStatus": "COMPLETE",
+      "ok": true,
+      "mappingVersion": "osmd-structural-2",
+      "conflictReasons": [],
+      "conflictSamples": [],
+      "chordPrecisionEvents": 0,
+      "highlight": {
+        "mappedTarget": true,
+        "conflictedTargetsBlocked": true
+      },
+      "warnings": []
+    },
+    {
+      "name": "g8-key-alter",
+      "fixture": "g8_key_alter.musicxml",
+      "osmdNotes": 4,
+      "noteEventCount": 3,
+      "mappedEventCount": 3,
+      "unmapped": 0,
+      "conflicts": 0,
+      "anchorStatus": "COMPLETE",
+      "expectedAnchorStatus": "COMPLETE",
+      "ok": true,
+      "mappingVersion": "osmd-structural-2",
+      "conflictReasons": [],
+      "conflictSamples": [],
+      "chordPrecisionEvents": 0,
+      "highlight": {
+        "mappedTarget": true,
+        "conflictedTargetsBlocked": true
+      },
+      "warnings": []
+    },
+    {
+      "name": "g9-grace-same-pitch",
+      "fixture": "g9_grace_same_pitch.musicxml",
+      "osmdNotes": 2,
+      "noteEventCount": 2,
+      "mappedEventCount": 0,
+      "unmapped": 2,
+      "conflicts": 2,
+      "anchorStatus": "UNAVAILABLE",
+      "expectedAnchorStatus": "UNAVAILABLE",
+      "ok": false,
+      "mappingVersion": "osmd-structural-2",
+      "conflictReasons": [
+        "duplicate-osmd-note"
+      ],
+      "conflictSamples": [
+        {
+          "eventSuffix": "701:P1:m1:e1",
+          "key": "0:0:1:0/1:60",
+          "reason": "duplicate-osmd-note",
+          "candidates": 2
+        },
+        {
+          "eventSuffix": "701:P1:m1:e2",
+          "key": "0:0:1:0/1:60",
+          "reason": "duplicate-osmd-note",
+          "candidates": 2
+        }
+      ],
+      "chordPrecisionEvents": 0,
+      "highlight": {
+        "mappedTarget": false,
+        "conflictedTargetsBlocked": true
+      },
+      "warnings": [
+        "2 个 OSMD 源音符没有对应领域事件",
+        "2 个领域音符事件未能映射到 OSMD 图形对象",
+        "2 个锚点冲突已按 fail-closed 处理，不做音符级高亮"
+      ]
+    }
+  ],
+  "error": null
+}
