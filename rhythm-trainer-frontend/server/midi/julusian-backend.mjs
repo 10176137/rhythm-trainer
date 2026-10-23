@@ -72,6 +72,17 @@ export function createJulusianBackend() {
             try { input.closePort(); } catch { /* ignore */ }
             try { input.destroy(); } catch { /* ignore */ }
           },
+          /**
+           * Used when the OS already removed the device. RtMidi's closePort()
+           * (and its destructor) throw on an invalid WinMM handle; that C++
+           * exception escapes napi and terminates the process, so a vanished
+           * device must never reach close/closePort/destroy. Only the JS
+           * listener is dropped here; the native object stays referenced by the
+           * caller for the lifetime of the service.
+           */
+          detach() {
+            try { input.removeAllListeners('message'); } catch { /* ignore */ }
+          },
         };
       } catch (error) {
         try { input?.destroy(); } catch { /* ignore */ }

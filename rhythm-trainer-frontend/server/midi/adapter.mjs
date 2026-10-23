@@ -43,6 +43,10 @@ export class NodeMidiAdapter {
     this.handlers = { event: new Set(), status: new Set(), diagnostic: new Set() };
     this.health = 'unknown';
     this.lastDevice = null;
+    // Handles for devices that disappeared while open. They are intentionally
+    // kept referenced: finalizing the native object would call closePort() on an
+    // invalid WinMM handle and terminate the process.
+    this.zombieHandles = [];
   }
 
   onEvent(handler) {
@@ -127,12 +131,14 @@ export class NodeMidiAdapter {
   }
 
   openInput(deviceId) {
-    // Switching devices always closes the old port and increments generation
-    // before any new callback can be registered.
-    if (this.connection) this.close('switch', { silentDiagnostic: true });
-
+    // List first: if the previous device vanished, closing its native port
+    // would throw inside RtMidi and terminate the process.
     let devices;
     try { devices = this.listInputs(); } catch (error) { throw error; }
+    if (this.connection) {
+      const previousMissing = !devices.some((device) => device.id === this.connection.device.id);
+      this.close('switch', { silentDiagnostic: true, detachNative: previousMissing });
+    }
     const device = devices.find((item) => item.id === deviceId)
       ?? devices.find((item) => item.name === deviceId)
       ?? (/^\d+$/.test(String(deviceId)) ? devices[Number(deviceId)] : undefined);
@@ -179,7 +185,15 @@ export class NodeMidiAdapter {
     const connection = this.connection;
     this.connection = null;
     if (connection) {
-      try { connection.handle.close(); } catch { /* best effort */ }
+      if (options.detachNative) {
+        // The device is already gone. RtMidi's closePort/destructor throw on an
+        // invalid WinMM handle and that exception terminates the process, so we
+        // only drop the JS listener and keep the native handle referenced.
+        try { connection.handle.detach?.(); } catch { /* best effort */ }
+        this.zombieHandles.push(connection.handle);
+      } else {
+        try { connection.handle.close(); } catch { /* best effort */ }
+      }
       this.generation += 1;
       this.lastDevice = connection.device;
       this.staleGenerationDropped += this.queue.length;
@@ -187,7 +201,11 @@ export class NodeMidiAdapter {
     }
     this.health = 'disconnected';
     if (!options.silentDiagnostic && connection) {
-      this.emitDiagnostic('MIDI_DEVICE_DISCONNECTED', `MIDI 输入已断开 (${reason})`, { reason });
+      this.emitDiagnostic(
+        'MIDI_DEVICE_DISCONNECTED',
+        `MIDI 输入已断开 (${reason})`,
+        { reason, nativeDetached: Boolean(options.detachNative) },
+      );
     }
     return this.emitStatus();
   }
@@ -195,7 +213,7 @@ export class NodeMidiAdapter {
   refreshDevices() {
     const devices = this.listInputs();
     if (this.connection && !devices.some((device) => device.id === this.connection.device.id)) {
-      this.close('device_missing');
+      this.close('device_missing', { detachNative: true });
     }
     return devices;
   }

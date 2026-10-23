@@ -8,6 +8,7 @@ export function createMockBackend(options = {}) {
   let current = null;
   let openCount = 0;
   let closeCount = 0;
+  let detachCount = 0;
 
   return {
     name: 'mock-midi',
@@ -28,6 +29,10 @@ export function createMockBackend(options = {}) {
           closeCount += 1;
           current = null;
         },
+        detach() {
+          detachCount += 1;
+          current = null;
+        },
       };
     },
     emit(bytes) {
@@ -36,7 +41,7 @@ export function createMockBackend(options = {}) {
       return true;
     },
     getStats() {
-      return { openCount, closeCount, listening: current !== null };
+      return { openCount, closeCount, detachCount, listening: current !== null };
     },
   };
 }

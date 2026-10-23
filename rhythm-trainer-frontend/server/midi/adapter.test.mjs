@@ -63,6 +63,26 @@ describe('NodeMidiAdapter', () => {
     expect(events).toHaveLength(1);
   });
 
+  it('detaches a vanished device instead of closing a dead native port', () => {
+    const devices = [{ id: 'mock:0', name: 'Mock Piano', state: 'available' }];
+    const { adapter, backend } = setup({ backend: { devices } });
+    adapter.openInput('mock:0');
+
+    devices.length = 0;
+    expect(adapter.refreshDevices()).toEqual([]);
+
+    // close()/closePort() must not run for a missing device: RtMidi throws on an
+    // invalid WinMM handle and terminates the process.
+    expect(backend.getStats()).toMatchObject({ closeCount: 0, detachCount: 1, listening: false });
+    expect(adapter.getStatus().inputHealth).toBe('disconnected');
+    expect(adapter.zombieHandles).toHaveLength(1);
+
+    // A replugged device can be opened again.
+    devices.push({ id: 'mock:0', name: 'Mock Piano', state: 'available' });
+    adapter.openInput('mock:0');
+    expect(adapter.getStatus().inputHealth).toBe('healthy');
+  });
+
   it('drops queued events from an old connection generation', async () => {
     const { adapter, backend, events } = setup();
     adapter.openInput('mock:0');

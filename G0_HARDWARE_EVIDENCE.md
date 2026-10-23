@@ -145,3 +145,44 @@ G0 整体仍是 **PARTIAL**，不能标记完成。
 | 未松键结束 Take | 缺陷已修 + 回归测试 |
 
 G0 整体仍为 **PARTIAL**。
+
+---
+
+## 8. 2026-10-23T20:05Z 第四批：断连测试（G0-D）——失败，进程崩溃（已修）
+
+### 8.1 现象
+
+操作：开始 → 弹 2–3 个音 → 拔掉 SP-A500 的 USB → 等待 → 插回 → 结束。
+
+结果：拔线后 **8788 端口消失，引擎进程退出**；`sessions/traces/journals` 没有新增文件，这一轮 Take **未落盘**。stderr：
+
+```
+MidiInWinMM::initialize: no MIDI input devices currently available.
+MidiInWinMM::openPort: error closing Windows MM MIDI input port (midiInUnprepareHeader).
+```
+
+### 8.2 根因
+
+1. 2 秒一次的 hotplug 轮询调用 `adapter.refreshDevices()`；
+2. 设备消失 → `adapter.close('device_missing')`；
+3. 后端 `handle.close()` → `input.closePort()`；
+4. RtMidi 的 `MidiInWinMM::closePort()` 在无效句柄上 `midiInUnprepareHeader` 失败，抛 `RtMidiError::DRIVER_ERROR`（C++ 异常跨 napi 边界）；
+5. 随后的 `destroy()`/析构再次进入 close，进程被终止。JS 的 `try/catch` 无法拦截。
+
+### 8.3 修复
+
+- 设备消失时**不调用**原生 `closePort()/destroy()`：只移除 JS 监听并 `detach()`；adapter 用 `zombieHandles` 保留句柄引用，避免 GC 触发析构。
+- `openInput` 改为**先列举设备再关闭旧端口**；若旧设备已消失，同样走 detach。
+- 诊断事件携带 `nativeDetached`。
+- 回归测试：`adapter.test.mjs` 新增 "detaches a vanished device instead of closing a dead native port"（mock backend 记录 `detachCount`，断言 `closeCount=0`、健康降级、可重新打开）。vitest 237 → **238**。
+
+### 8.4 状态
+
+| 项 | 状态 |
+|---|---|
+| G0-D 断连/重连 | **本轮 FAIL**（崩溃 + Take 丢失）；修复后需重测 |
+| G0-A 受控错音 | PASS |
+| G0-C 暂停边界 | PASS |
+| G0-B P09 比较 | NOT RUN |
+
+修复已部署到新进程（PID 17184），设备重新连接（generation 1、healthy）。G0 整体仍为 **PARTIAL**。
