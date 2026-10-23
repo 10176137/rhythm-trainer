@@ -484,7 +484,8 @@ function admissionInvariants(label, admission) {
       + admission.suppressedNoteOns.countIn
       + admission.suppressedNoteOns.paused
       + admission.suppressedNoteOns.clock
-      + admission.suppressedNoteOns.duplicate,
+      + admission.suppressedNoteOns.duplicate
+      + admission.suppressedNoteOns.outOfOrder,
     JSON.stringify(admission && { noteOns: admission.noteOns, admitted: admission.admittedNoteOns, ...admission.suppressedNoteOns }));
   check(`${label}: 不存在重复 decision ID`, admission && admission.duplicateEventIds === 0, String(admission && admission.duplicateEventIds));
   check(`${label}: 实时准入数 == pushHit 调用数`,
@@ -755,6 +756,63 @@ async function scenarioPauseAdmissionLedger() {
       JSON.stringify({ count: message.scoreInputNoteCount, pitch: message.scoreV1 && message.scoreV1.pitch }));
     check('T9: packet 层计数仍守衡', admission?.packets === admission?.noteOns + admission?.nonOnsets,
       JSON.stringify(admission));
+  }
+
+  // T10 — out-of-order Note On: a later onset is admitted first, then an earlier
+  // one arrives. It must be isolated instead of invalidating the Take.
+  {
+    const take = await admissionTake(client, 'adm-ooo');
+    const t0 = take.targets[0].atMs;
+    const t1 = take.targets[1].atMs;
+    take.send(t1 + 8, [0x90, 60, 90]);        // admitted; baseline = 5008
+    take.send(9000, [0x80, 60, 40]);          // Note Off must not advance the baseline
+    take.send(t1 + 1008, [0x90, 62, 90]);     // 6008 > 5008 => admitted (extra live)
+    take.send(6200, [0x80, 62, 40]);
+    take.send(t0 + 8, [0x90, 64, 90]);        // 4008 < 5008 => out-of-order
+    take.send(t0 + 300, [0x80, 64, 40]);
+    const message = await closeTake(client, 7000);
+    const admission = message.captureDiagnostics?.admission;
+    check('T10: 乱序 Note On 记为 out-of-order', admission?.suppressedNoteOns.outOfOrder === 1,
+      JSON.stringify(admission?.suppressedNoteOns));
+    check('T10: 乱序事件不进入实时引擎', admission?.admittedNoteOns === 2
+      && admission?.pushHitCount === 2,
+      JSON.stringify({ admitted: admission?.admittedNoteOns, pushHit: admission?.pushHitCount }));
+    check('T10: Take 未因 OutOfOrderEvent 失败', typeof message.takeId === 'string'
+      && message.scoreStatus !== 'INVALID' && !!message.scoreV1 && !message.scoreV1.error,
+      JSON.stringify({ takeId: message.takeId, scoreStatus: message.scoreStatus }));
+    check('T10: 实时结果只含已准入起音', message.report.stats.perfectCount === 1
+      && message.report.stats.missCount === 1 && message.report.stats.extraCount === 1,
+      JSON.stringify(message.report.stats));
+    check('T10: 最终评分与实时一致，乱序起音不复活', message.scoreInputNoteCount === 2
+      && message.scoreV1 && message.scoreV1.pitch.correct === 1
+      && message.scoreV1.pitch.missed === 1 && message.scoreV1.pitch.extra === 1,
+      JSON.stringify({ count: message.scoreInputNoteCount, pitch: message.scoreV1 && message.scoreV1.pitch }));
+    const trace = await (await fetch(`http://127.0.0.1:${PORT}/api/traces/${message.traceId}`)).json();
+    const outOfOrder = trace.events.find((event) => event.admission?.reason === 'out-of-order');
+    check('T10: Trace 保留乱序事件的时间、决策与原因',
+      !!outOfOrder && Math.abs(outOfOrder.sessionTimeMs - (t0 + 8)) < 1e-6
+      && typeof outOfOrder.admission.decisionId === 'string',
+      JSON.stringify(outOfOrder && { sessionTimeMs: outOfOrder.sessionTimeMs, admission: outOfOrder.admission }));
+  }
+
+  // T11 — equal timestamps are not regressions under the Rust `<` rule.
+  {
+    const take = await admissionTake(client, 'adm-equal');
+    const t0 = take.targets[0].atMs;
+    take.send(t0 + 8, [0x90, 60, 90]);
+    take.send(t0 + 8, [0x90, 62, 90]);
+    take.send(t0 + 300, [0x80, 60, 40]);
+    take.send(t0 + 320, [0x80, 62, 40]);
+    const message = await closeTake(client, t0 + 1600);
+    const admission = message.captureDiagnostics?.admission;
+    check('T11: 相同时间戳不因乱序规则被拒绝', admission?.suppressedNoteOns.outOfOrder === 0
+      && admission?.admittedNoteOns === 2 && admission?.pushHitCount === 2,
+      JSON.stringify(admission));
+    check('T11: 相等时间戳的第二个音按既有规则计为 Extra',
+      message.report.stats.extraCount === 1 && message.scoreV1
+      && message.scoreV1.pitch.correct === 1 && message.scoreV1.pitch.missed === 1
+      && message.scoreV1.pitch.extra === 1,
+      JSON.stringify({ stats: message.report.stats, pitch: message.scoreV1 && message.scoreV1.pitch }));
   }
 
   client.send({ type: 'midi-disconnect' });

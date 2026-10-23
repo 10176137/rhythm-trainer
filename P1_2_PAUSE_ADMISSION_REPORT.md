@@ -13,6 +13,7 @@
 - 复现向量（`pauseAt = target+20ms`、`onset = target+8ms`、暂停中送达）现在得到**唯一结论**：实时抑制、最终评分也拒绝，`scoreInputNoteCount = 0`，`scoreV1` 不把它判为命中。
 - 每个输入包在入口产生**一条不可变 admission decision**；最终评分只消费该决策，**不再按 onset 重新判断暂停/count-in**。
 - **重复 eventId 现在 fail-closed**：第二个同 ID 包被标记 `duplicate`，不进入实时引擎、不覆盖账本；最终评分另有"一个 Note On 至多一条生命周期"的消费守卫。
+- **乱序 Note On 在入口隔离**：早于最近一次成功 `pushHit` 的起音标记 `out-of-order`，不进入实时/最终评分，也不再让 Take 变成 `Invalid`。
 - 三层计数分别定义并可断言守衡：packet、Note On、performed-note lifecycle。
 - 真实 Node MIDI、raw packet、迟到事件、暂停中结束 Take、count-in 边界、clock 不可映射均有回归测试。
 - mutation check 证明测试有效：绕过最终评分端的准入过滤后 T1/T3/T4 立刻变红（13 项断言失败）。
@@ -28,6 +29,7 @@ CaptureRouter quarantine（epoch/序号/quarantine，独立于评分准入，不
   → session 时间不可用                              reason = clock（对所有包，不只 Note On）
   → 事件时间落在已闭合暂停段                        reason = paused
   → Note On 早于 scoringStart                      reason = count-in
+  → 完整 Note On 时间早于最近一次成功 pushHit 的起音  reason = out-of-order
   → admitted
 ```
 
@@ -50,7 +52,7 @@ CaptureRouter quarantine（epoch/序号/quarantine，独立于评分准入，不
   handlerAtMs,                    // 入口时间（可用时）
   sessionTimeMs,                  // 仅当映射有效，否则 null，不回填
   clockDomainId,
-  suppressionReason: 'count-in' | 'paused' | 'clock' | 'duplicate' | null,
+  suppressionReason: 'count-in' | 'paused' | 'clock' | 'duplicate' | 'out-of-order' | null,
   duplicateOf: string | null,     // 重复包指向首次决策
   eligibleForRealtime: boolean,
   eligibleForFinalOnsetScore: boolean,
@@ -83,20 +85,20 @@ T2 断言了 `crossed_pause_boundary`；T3 断言了"恢复后 Note Off 不复�
 | 层 | 字段 | 单位 |
 |---|---|---|
 | Packet | `packets`, `nonOnsets`, `captureQuarantinedPackets`, `duplicateEventIds` | 包 |
-| Note On | `noteOns`, `admittedNoteOns`, `pushHitCount`, `suppressedNoteOns{countIn,paused,clock,duplicate}` | Note On |
+| Note On | `noteOns`, `admittedNoteOns`, `pushHitCount`, `suppressedNoteOns{countIn,paused,clock,duplicate,outOfOrder}` | Note On |
 | Performed | `finalPerformedNotes`, `finalSkippedByAdmission`, `finalDuplicateLifecycles` | 生命周期 |
 | 兼容 | `pauseSuppressed`（包）、`pauseExcludedFromScore`（生命周期） | 各自单位已注明 |
 
 每个 Take 的测试都断言：
 
 1. `packets === noteOns + nonOnsets`
-2. `noteOns === admittedNoteOns + suppressedNoteOns.countIn + paused + clock + duplicate`
+2. `noteOns === admittedNoteOns + suppressedNoteOns.countIn + paused + clock + duplicate + outOfOrder`
 3. `admittedNoteOns === pushHitCount`
 4. 普通 Take `duplicateEventIds === 0`；T9 专门断言重复时为 1 且仍守衡 1–3
 
 另：被 CaptureRouter 隔离的包**不进入** admission（不参与 1–2），单独计数，保持既有 quarantine 语义。
 
-**clock 原因的口径**：现在对所有包生效——任何 session 时间不可用的包都会记录 `clock`（包括 Note Off）。`suppressedNoteOns.clock` 仍只统计 Note On；Note Off 的 `clock` 只用于诊断，不改变起音准入（起音是否可评分由该 Note On 自己的决策决定）。
+**clock 原因的口径**：对不在暂停中到达、且 session 时间不可用的包生效（包括 Note Off）；暂停中到达仍优先标记 `paused`（与优先级一致）。`suppressedNoteOns.clock` 仍只统计 Note On；Note Off 的 `clock` 只用于诊断，不改变起音准入（起音是否可评分由该 Note On 自己的决策决定）。
 
 ---
 
@@ -113,6 +115,8 @@ T2 断言了 `crossed_pause_boundary`；T3 断言了"恢复后 Note Off 不复�
 | T7 | clock 不可映射的 Node MIDI | `clock≥1`、`nodeEventsUnmapped≥1`、不进入评分、不报崩溃 | PASS |
 | T8 | 目标窗口关闭后暂停 | 实时 1 miss/0 extra，最终 1 命中/1 漏，一致 | PASS |
 | T9 | **重复 eventId 且无 captureEpoch**（绕过 CaptureRouter） | `duplicateEventIds=1`、`duplicate 抑制=1`、`pushHit=1`、实时仅 1 次命中、最终仅 1 条生命周期 | PASS |
+| T10 | **乱序 Note On**：先送 5008，再送 4008 | `outOfOrder=1`、`admitted=2`、`pushHit=2`、Take 未失败、实时/最终一致（1 命中/1 漏/1 extra）、Trace 保留乱序时间与决策 | PASS |
+| T11 | 相同时间戳的两个 Note On | `outOfOrder=0`、两者均准入；第二个按既有规则成为 Extra | PASS |
 
 ### 6.1 Mutation check（实测）
 
@@ -140,13 +144,17 @@ FAIL  T9: 重复包不产生第二次实时命中 — admitted 2 / pushHit 2 / l
 
 注意当时最终评分仍只有 1 条生命周期（消费守卫生效），这正好复现了"实时两次命中、最终一次"的不一致；补上入口拒付后两者都只剩一次。
 
+### 6.3 Mutation check：乱序准入
+
+把 `out-of-order` 分支临时短路为 `false && ...` 后重跑：场景以 `timeout waiting for report` 中止——乱序 Note On 进入 `pushHit`，Rust 返回 `OutOfOrderEvent`，`failActiveTake('invalid_input')` 清空 Take，因此不再产生报告。这正是本任务要消除的失败模式；恢复实现后 T10/T11 全绿。
+
 ---
 
 ## 7. 全量测试结果（本次实跑）
 
 | 命令 | 结果 |
 |---|---|
-| `npm run selftest` | **PASS** — **224** 条断言（P1-1 后为 163；P1-2 首版 219，补重复守卫后 +5） |
+| `npm run selftest` | **PASS** — **232** 条断言（P1-1 后 163；P1-2 首版 219；补重复守卫 +5；补乱序隔离 +8） |
 | `npm test` | **PASS** — 33 files / 237 tests |
 | `npm run build`（`tsc -b && vite build`） | **PASS** — 4.19s |
 | `cargo test --target x86_64-pc-windows-gnu` | **PASS** — 110（6 个 test binary 全部 ok；Rust 零改动） |
@@ -178,7 +186,7 @@ FAIL  T9: 重复包不产生第二次实时命中 — admitted 2 / pushHit 2 / l
 **残余风险（本任务未消除）：**
 
 1. `admission` 账本只在内存与 Trace 中；报告只带计数与段列表，不带每条 decision。若需要跨进程重放"当时的决策"，应从 Trace 的 `admission` 字段读取，而不是重新推导。
-2. 迟到但被准入的事件（T4 的正例）会以**早于当前引擎时间**的 atMs 送入实时 matcher；若此前已有更晚的命中，`HitMatcher` 会因乱序返回错误，仍可能失败该 Take。这是既有 matcher 的顺序约束，不属于本次暂停语义。
+2. 乱序 Note On 已由 `out-of-order` 规则在入口隔离，不会再以倒退的 atMs 进入 matcher，也不会让 Take 失败。但这意味着"时间更早、送达更晚"的起音会被丢弃（Policy B）；若要接受它们，需要缓冲/重排，本任务明确不做。
 3. 重复 eventId 已 fail-closed 并有 T9 覆盖；但这条路径主要发生在 `captureEpoch` 缺失时，带 epoch 的输入仍由 CaptureRouter 先隔离，两种来源分开统计（`captureQuarantinedPackets` vs `duplicateEventIds`）。
 4. T1 等使用 2 个目标时 `scoreStatus` 为 `INSUFFICIENT_DATA`（`min_rhythm_samples=4`），因此测试断言的是 pitch/事件结果与实时一致性，不是 `AVAILABLE`。
 5. 未做真机验证；以上均为 synthetic/mock 路径。

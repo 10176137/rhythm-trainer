@@ -808,6 +808,10 @@ wss.on('connection', (socket) => {
   // scored. Final scoring consumes it and never re-derives it from onset time.
   const admissionByEventId = new Map();
   let admissionSeq = 0;
+  // Session time of the last Note On that was successfully handed to pushHit.
+  // The Rust matcher requires non-decreasing input times; comparing against this
+  // (instead of wall/now time) isolates only genuine timestamp regressions.
+  let lastAdmittedRealtimeOnsetMs = null;
   const admissionCounters = {
     packets: 0,
     noteOns: 0,
@@ -817,7 +821,7 @@ wss.on('connection', (socket) => {
     finalPerformedNotes: 0,
     finalSkippedByAdmission: 0,
     finalDuplicateLifecycles: 0,
-    suppressedNoteOns: { 'count-in': 0, paused: 0, clock: 0, duplicate: 0 },
+    suppressedNoteOns: { 'count-in': 0, paused: 0, clock: 0, duplicate: 0, 'out-of-order': 0 },
     captureQuarantinedPackets: 0,
     duplicateEventIds: 0,
   };
@@ -990,6 +994,8 @@ wss.on('connection', (socket) => {
       scoringSeqToSourceSeq.set(scoringSeq, Number(packet.sourceSeq));
       try {
         native.pushHit({ seq: scoringSeq, atMs, source: 'keyboard', notes: [decoded.noteNumber] });
+        // Only a successfully delivered onset becomes the monotonic baseline.
+        lastAdmittedRealtimeOnsetMs = atMs;
       } catch (err) {
         failActiveTake('invalid_input');
         throw err;
@@ -1009,6 +1015,7 @@ wss.on('connection', (socket) => {
     // Identity first: a packet whose event id was already admitted/rejected is a
     // duplicate and can never produce a second hit or a second lifecycle.
     const existing = eventId ? admissionByEventId.get(eventId) : undefined;
+    const complete = decoded?.complete !== false;
     let reason = null;
     if (existing) {
       reason = 'duplicate';
@@ -1021,8 +1028,12 @@ wss.on('connection', (socket) => {
       reason = 'paused';
     } else if (isNoteOn && atMs < meta.scoringStartMs) {
       reason = 'count-in';
+    } else if (isNoteOn && complete && lastAdmittedRealtimeOnsetMs !== null
+      && atMs < lastAdmittedRealtimeOnsetMs) {
+      // The Rust matcher rejects non-monotonic onset times and invalidates the
+      // whole session. Isolate the regression here; equal timestamps still pass.
+      reason = 'out-of-order';
     }
-    const complete = decoded?.complete !== false;
     const admitted = isNoteOn && complete && reason === null && !existing;
     const decision = {
       decisionId: `adm-${++admissionSeq}`,
@@ -1080,6 +1091,8 @@ wss.on('connection', (socket) => {
     admissionCounters.suppressedNoteOns.paused = 0;
     admissionCounters.suppressedNoteOns.clock = 0;
     admissionCounters.suppressedNoteOns.duplicate = 0;
+    admissionCounters.suppressedNoteOns['out-of-order'] = 0;
+    lastAdmittedRealtimeOnsetMs = null;
     pauseSegments = [];
     pauseSegmentSeq = 0;
     activePauseSegmentId = 'active-0';
@@ -2014,6 +2027,7 @@ wss.on('connection', (socket) => {
           paused: admissionCounters.suppressedNoteOns.paused,
           clock: admissionCounters.suppressedNoteOns.clock,
           duplicate: admissionCounters.suppressedNoteOns.duplicate,
+          outOfOrder: admissionCounters.suppressedNoteOns['out-of-order'],
         },
         captureQuarantinedPackets: admissionCounters.captureQuarantinedPackets,
         duplicateEventIds: admissionCounters.duplicateEventIds,
