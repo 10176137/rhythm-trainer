@@ -1,0 +1,45 @@
+# Dependencies and build output
+node_modules/
+target/
+dist/
+build/
+
+# Native build artifacts (rebuild with the GNU toolchain, see audit report)
+*.node
+*.dll
+*.dylib
+*.so
+*.bak
+*.bak-*
+
+# Audit spike bundles (regenerable with esbuild; the JSON evidence is committed)
+audit-r1/spike/out/*.bundle.mjs
+
+# Local engine data (real user data lives in %APPDATA%/rhythm-trainer-frontend)
+data/
+sessions/
+traces/
+journals/
+take-templates/
+profile.json
+
+# Third-party score used only for local OMR testing (not required by the audit).
+# Remove these lines if you intentionally want it in a private repository.
+score-latest.musicxml
+tmp-compare/
+crop.png
+crop2.png
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+
+# Logs and temp
+*.log
+npm-debug.log*
+.tmp/
+tmp/

@@ -1,0 +1,8 @@
+{
+  "name": "rhythm-trainer-demo",
+  "private": true,
+  "description": "Local spacebar closed-loop demo for the Rhythm Trainer core",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

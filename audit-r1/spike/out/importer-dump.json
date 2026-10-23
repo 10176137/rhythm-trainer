@@ -1,0 +1,3403 @@
+{
+  "g1_single_voice.musicxml": {
+    "file": "g1_single_voice.musicxml",
+    "bpm": 80,
+    "countInBeats": 4,
+    "importStatus": "READY",
+    "strictAllowed": true,
+    "counts": {
+      "partCount": 1,
+      "measureCount": 2,
+      "noteCount": 5,
+      "restCount": 1,
+      "chordNoteCount": 0,
+      "tieSpanCount": 0,
+      "graceCount": 0,
+      "cueCount": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "issues": [],
+    "capabilities": [],
+    "fingerprint": "44a959429fe07921e744f87721b7442c4ec34dbfa3c2e3260bdc467090af4692",
+    "measures": [
+      {
+        "part": "P1",
+        "ordinal": 1,
+        "printedNumber": "1",
+        "startBeat": "0/1",
+        "durationBeat": "4/1",
+        "time": {
+          "beats": 4,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "44a959429fe07921:P1:m1:e1",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "44a959429fe07921:P1:m1:e2",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "1/1",
+            "onsetAbsNum": 1,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "D",
+              "alter": 0,
+              "octave": 4,
+              "midi": 62,
+              "spelling": "D4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 2,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "44a959429fe07921:P1:m1:e3",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "2/1",
+            "onsetAbsNum": 2,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "E",
+              "alter": 0,
+              "octave": 4,
+              "midi": 64,
+              "spelling": "E4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 3,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "44a959429fe07921:P1:m1:e4",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "3/1",
+            "onsetAbsNum": 3,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "F",
+              "alter": 0,
+              "octave": 4,
+              "midi": 65,
+              "spelling": "F4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 4,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      },
+      {
+        "part": "P1",
+        "ordinal": 2,
+        "printedNumber": "2",
+        "startBeat": "4/1",
+        "durationBeat": "4/1",
+        "time": {
+          "beats": 4,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "44a959429fe07921:P1:m2:e1",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "4/1",
+            "onsetAbsNum": 4,
+            "onsetAbsDen": 1,
+            "duration": "2/1",
+            "pitch": {
+              "step": "G",
+              "alter": 0,
+              "octave": 4,
+              "midi": 67,
+              "spelling": "G4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "44a959429fe07921:P1:m2:e2",
+            "xmlId": null,
+            "kind": "rest",
+            "onset": "6/1",
+            "onsetAbsNum": 6,
+            "onsetAbsDen": 1,
+            "duration": "2/1",
+            "pitch": null,
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 2,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      }
+    ],
+    "tieSpans": [],
+    "plan": {
+      "planId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0",
+      "strictAllowed": true,
+      "rangeStartBeat": "0/1",
+      "rangeDurationBeat": "8/1",
+      "occurrenceCount": 5,
+      "groupCount": 5,
+      "occurrences": [
+        {
+          "occurrenceId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e1",
+          "scoreEventId": "44a959429fe07921:P1:m1:e1",
+          "playbackIndex": 0,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e2",
+          "scoreEventId": "44a959429fe07921:P1:m1:e2",
+          "playbackIndex": 1,
+          "measureOrdinal": 1,
+          "playbackBeat": "1/1",
+          "beatInMeasure": "1/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 62,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e3",
+          "scoreEventId": "44a959429fe07921:P1:m1:e3",
+          "playbackIndex": 2,
+          "measureOrdinal": 1,
+          "playbackBeat": "2/1",
+          "beatInMeasure": "2/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 64,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e4",
+          "scoreEventId": "44a959429fe07921:P1:m1:e4",
+          "playbackIndex": 3,
+          "measureOrdinal": 1,
+          "playbackBeat": "3/1",
+          "beatInMeasure": "3/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 65,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m2:e1",
+          "scoreEventId": "44a959429fe07921:P1:m2:e1",
+          "playbackIndex": 4,
+          "measureOrdinal": 2,
+          "playbackBeat": "4/1",
+          "beatInMeasure": "0/1",
+          "bar": 2,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 67,
+          "durationBeat": "2/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        }
+      ],
+      "groups": [
+        {
+          "groupId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:g0:0/1",
+          "playbackBeat": "0/1",
+          "occurrenceIds": [
+            "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e1"
+          ],
+          "scoreEventIds": [
+            "44a959429fe07921:P1:m1:e1"
+          ],
+          "pitches": [
+            "C4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:g0:1/1",
+          "playbackBeat": "1/1",
+          "occurrenceIds": [
+            "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e2"
+          ],
+          "scoreEventIds": [
+            "44a959429fe07921:P1:m1:e2"
+          ],
+          "pitches": [
+            "D4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:g0:2/1",
+          "playbackBeat": "2/1",
+          "occurrenceIds": [
+            "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e3"
+          ],
+          "scoreEventIds": [
+            "44a959429fe07921:P1:m1:e3"
+          ],
+          "pitches": [
+            "E4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:g0:3/1",
+          "playbackBeat": "3/1",
+          "occurrenceIds": [
+            "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e4"
+          ],
+          "scoreEventIds": [
+            "44a959429fe07921:P1:m1:e4"
+          ],
+          "pitches": [
+            "F4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:g0:4/1",
+          "playbackBeat": "4/1",
+          "occurrenceIds": [
+            "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m2:e1"
+          ],
+          "scoreEventIds": [
+            "44a959429fe07921:P1:m2:e1"
+          ],
+          "pitches": [
+            "G4"
+          ],
+          "bar": 2,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "2/1"
+        }
+      ],
+      "issues": []
+    },
+    "scoreEvents": [
+      {
+        "scoreEventId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e1",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 60,
+        "targetOnsetMs": 3000,
+        "targetDurationMs": 750,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e2",
+        "measure": 1,
+        "beatPosition": 1,
+        "pitch": 62,
+        "targetOnsetMs": 3750,
+        "targetDurationMs": 750,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e3",
+        "measure": 1,
+        "beatPosition": 2,
+        "pitch": 64,
+        "targetOnsetMs": 4500,
+        "targetDurationMs": 750,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e4",
+        "measure": 1,
+        "beatPosition": 3,
+        "pitch": 65,
+        "targetOnsetMs": 5250,
+        "targetDurationMs": 750,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m2:e1",
+        "measure": 2,
+        "beatPosition": 4,
+        "pitch": 67,
+        "targetOnsetMs": 6000,
+        "targetDurationMs": 1500,
+        "partId": "staff-1:voice-1"
+      }
+    ],
+    "atoms": [
+      {
+        "startTick": 0,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1
+      },
+      {
+        "startTick": 960,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 2
+      },
+      {
+        "startTick": 1920,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 3
+      },
+      {
+        "startTick": 2880,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 4
+      },
+      {
+        "startTick": 3840,
+        "durationTicks": 1920,
+        "kind": "note",
+        "bar": 2,
+        "beat": 1
+      }
+    ],
+    "atomIssues": []
+  },
+  "g1_single_voice.ids.musicxml": {
+    "file": "g1_single_voice.ids.musicxml",
+    "bpm": 80,
+    "countInBeats": 4,
+    "importStatus": "READY",
+    "strictAllowed": true,
+    "counts": {
+      "partCount": 1,
+      "measureCount": 2,
+      "noteCount": 5,
+      "restCount": 1,
+      "chordNoteCount": 0,
+      "tieSpanCount": 0,
+      "graceCount": 0,
+      "cueCount": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "issues": [],
+    "capabilities": [],
+    "fingerprint": "cd7d26712ca4c1c88c6929d62931e26451365a475f7db5218ce94bedf40f3786",
+    "measures": [
+      {
+        "part": "P1",
+        "ordinal": 1,
+        "printedNumber": "1",
+        "startBeat": "0/1",
+        "durationBeat": "4/1",
+        "time": {
+          "beats": 4,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "cd7d26712ca4c1c8:P1:m1:e1",
+            "xmlId": "n1",
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "cd7d26712ca4c1c8:P1:m1:e2",
+            "xmlId": "n2",
+            "kind": "note",
+            "onset": "1/1",
+            "onsetAbsNum": 1,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "D",
+              "alter": 0,
+              "octave": 4,
+              "midi": 62,
+              "spelling": "D4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 2,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "cd7d26712ca4c1c8:P1:m1:e3",
+            "xmlId": "n3",
+            "kind": "note",
+            "onset": "2/1",
+            "onsetAbsNum": 2,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "E",
+              "alter": 0,
+              "octave": 4,
+              "midi": 64,
+              "spelling": "E4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 3,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "cd7d26712ca4c1c8:P1:m1:e4",
+            "xmlId": "n4",
+            "kind": "note",
+            "onset": "3/1",
+            "onsetAbsNum": 3,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "F",
+              "alter": 0,
+              "octave": 4,
+              "midi": 65,
+              "spelling": "F4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 4,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      },
+      {
+        "part": "P1",
+        "ordinal": 2,
+        "printedNumber": "2",
+        "startBeat": "4/1",
+        "durationBeat": "4/1",
+        "time": {
+          "beats": 4,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "cd7d26712ca4c1c8:P1:m2:e1",
+            "xmlId": "n5",
+            "kind": "note",
+            "onset": "4/1",
+            "onsetAbsNum": 4,
+            "onsetAbsDen": 1,
+            "duration": "2/1",
+            "pitch": {
+              "step": "G",
+              "alter": 0,
+              "octave": 4,
+              "midi": 67,
+              "spelling": "G4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "cd7d26712ca4c1c8:P1:m2:e2",
+            "xmlId": "n6",
+            "kind": "rest",
+            "onset": "6/1",
+            "onsetAbsNum": 6,
+            "onsetAbsDen": 1,
+            "duration": "2/1",
+            "pitch": null,
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 2,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      }
+    ],
+    "tieSpans": [],
+    "plan": {
+      "planId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0",
+      "strictAllowed": true,
+      "rangeStartBeat": "0/1",
+      "rangeDurationBeat": "8/1",
+      "occurrenceCount": 5,
+      "groupCount": 5,
+      "occurrences": [
+        {
+          "occurrenceId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e1",
+          "scoreEventId": "cd7d26712ca4c1c8:P1:m1:e1",
+          "playbackIndex": 0,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e2",
+          "scoreEventId": "cd7d26712ca4c1c8:P1:m1:e2",
+          "playbackIndex": 1,
+          "measureOrdinal": 1,
+          "playbackBeat": "1/1",
+          "beatInMeasure": "1/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 62,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e3",
+          "scoreEventId": "cd7d26712ca4c1c8:P1:m1:e3",
+          "playbackIndex": 2,
+          "measureOrdinal": 1,
+          "playbackBeat": "2/1",
+          "beatInMeasure": "2/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 64,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e4",
+          "scoreEventId": "cd7d26712ca4c1c8:P1:m1:e4",
+          "playbackIndex": 3,
+          "measureOrdinal": 1,
+          "playbackBeat": "3/1",
+          "beatInMeasure": "3/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 65,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m2:e1",
+          "scoreEventId": "cd7d26712ca4c1c8:P1:m2:e1",
+          "playbackIndex": 4,
+          "measureOrdinal": 2,
+          "playbackBeat": "4/1",
+          "beatInMeasure": "0/1",
+          "bar": 2,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 67,
+          "durationBeat": "2/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        }
+      ],
+      "groups": [
+        {
+          "groupId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:g0:0/1",
+          "playbackBeat": "0/1",
+          "occurrenceIds": [
+            "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e1"
+          ],
+          "scoreEventIds": [
+            "cd7d26712ca4c1c8:P1:m1:e1"
+          ],
+          "pitches": [
+            "C4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:g0:1/1",
+          "playbackBeat": "1/1",
+          "occurrenceIds": [
+            "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e2"
+          ],
+          "scoreEventIds": [
+            "cd7d26712ca4c1c8:P1:m1:e2"
+          ],
+          "pitches": [
+            "D4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:g0:2/1",
+          "playbackBeat": "2/1",
+          "occurrenceIds": [
+            "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e3"
+          ],
+          "scoreEventIds": [
+            "cd7d26712ca4c1c8:P1:m1:e3"
+          ],
+          "pitches": [
+            "E4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:g0:3/1",
+          "playbackBeat": "3/1",
+          "occurrenceIds": [
+            "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e4"
+          ],
+          "scoreEventIds": [
+            "cd7d26712ca4c1c8:P1:m1:e4"
+          ],
+          "pitches": [
+            "F4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:g0:4/1",
+          "playbackBeat": "4/1",
+          "occurrenceIds": [
+            "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m2:e1"
+          ],
+          "scoreEventIds": [
+            "cd7d26712ca4c1c8:P1:m2:e1"
+          ],
+          "pitches": [
+            "G4"
+          ],
+          "bar": 2,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "2/1"
+        }
+      ],
+      "issues": []
+    },
+    "scoreEvents": [
+      {
+        "scoreEventId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e1",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 60,
+        "targetOnsetMs": 3000,
+        "targetDurationMs": 750,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e2",
+        "measure": 1,
+        "beatPosition": 1,
+        "pitch": 62,
+        "targetOnsetMs": 3750,
+        "targetDurationMs": 750,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e3",
+        "measure": 1,
+        "beatPosition": 2,
+        "pitch": 64,
+        "targetOnsetMs": 4500,
+        "targetDurationMs": 750,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m1:e4",
+        "measure": 1,
+        "beatPosition": 3,
+        "pitch": 65,
+        "targetOnsetMs": 5250,
+        "targetDurationMs": 750,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:cd7d26712ca4c1c8:m1-2:once:playback-planner-1.0.0:p0:cd7d26712ca4c1c8:P1:m2:e1",
+        "measure": 2,
+        "beatPosition": 4,
+        "pitch": 67,
+        "targetOnsetMs": 6000,
+        "targetDurationMs": 1500,
+        "partId": "staff-1:voice-1"
+      }
+    ],
+    "atoms": [
+      {
+        "startTick": 0,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1
+      },
+      {
+        "startTick": 960,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 2
+      },
+      {
+        "startTick": 1920,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 3
+      },
+      {
+        "startTick": 2880,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 4
+      },
+      {
+        "startTick": 3840,
+        "durationTicks": 1920,
+        "kind": "note",
+        "bar": 2,
+        "beat": 1
+      }
+    ],
+    "atomIssues": []
+  },
+  "g2_chord.musicxml": {
+    "file": "g2_chord.musicxml",
+    "bpm": 100,
+    "countInBeats": 4,
+    "importStatus": "READY",
+    "strictAllowed": true,
+    "counts": {
+      "partCount": 1,
+      "measureCount": 1,
+      "noteCount": 4,
+      "restCount": 1,
+      "chordNoteCount": 2,
+      "tieSpanCount": 0,
+      "graceCount": 0,
+      "cueCount": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "issues": [],
+    "capabilities": [
+      "chords"
+    ],
+    "fingerprint": "60ce9316750df57bbeed5305f3220024e118d3d26ea7795bebf3a7f25bbcd413",
+    "measures": [
+      {
+        "part": "P1",
+        "ordinal": 1,
+        "printedNumber": "1",
+        "startBeat": "0/1",
+        "durationBeat": "4/1",
+        "time": {
+          "beats": 4,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "60ce9316750df57b:P1:m1:e1",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": "chord:60ce9316750df57b:P1:m1:e1",
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "60ce9316750df57b:P1:m1:e2",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "E",
+              "alter": 0,
+              "octave": 4,
+              "midi": 64,
+              "spelling": "E4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 2,
+            "chordGroupId": "chord:60ce9316750df57b:P1:m1:e1",
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "60ce9316750df57b:P1:m1:e3",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "G",
+              "alter": 0,
+              "octave": 4,
+              "midi": 67,
+              "spelling": "G4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 3,
+            "chordGroupId": "chord:60ce9316750df57b:P1:m1:e1",
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "60ce9316750df57b:P1:m1:e4",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "1/1",
+            "onsetAbsNum": 1,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 4,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "60ce9316750df57b:P1:m1:e5",
+            "xmlId": null,
+            "kind": "rest",
+            "onset": "2/1",
+            "onsetAbsNum": 2,
+            "onsetAbsDen": 1,
+            "duration": "2/1",
+            "pitch": null,
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 5,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      }
+    ],
+    "tieSpans": [],
+    "plan": {
+      "planId": "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0",
+      "strictAllowed": true,
+      "rangeStartBeat": "0/1",
+      "rangeDurationBeat": "4/1",
+      "occurrenceCount": 4,
+      "groupCount": 2,
+      "occurrences": [
+        {
+          "occurrenceId": "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e1",
+          "scoreEventId": "60ce9316750df57b:P1:m1:e1",
+          "playbackIndex": 0,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "1/1",
+          "chordGroupId": "chord:60ce9316750df57b:P1:m1:e1",
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e2",
+          "scoreEventId": "60ce9316750df57b:P1:m1:e2",
+          "playbackIndex": 1,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 64,
+          "durationBeat": "1/1",
+          "chordGroupId": "chord:60ce9316750df57b:P1:m1:e1",
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e3",
+          "scoreEventId": "60ce9316750df57b:P1:m1:e3",
+          "playbackIndex": 2,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 67,
+          "durationBeat": "1/1",
+          "chordGroupId": "chord:60ce9316750df57b:P1:m1:e1",
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e4",
+          "scoreEventId": "60ce9316750df57b:P1:m1:e4",
+          "playbackIndex": 3,
+          "measureOrdinal": 1,
+          "playbackBeat": "1/1",
+          "beatInMeasure": "1/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        }
+      ],
+      "groups": [
+        {
+          "groupId": "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:g0:0/1",
+          "playbackBeat": "0/1",
+          "occurrenceIds": [
+            "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e1",
+            "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e2",
+            "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e3"
+          ],
+          "scoreEventIds": [
+            "60ce9316750df57b:P1:m1:e1",
+            "60ce9316750df57b:P1:m1:e2",
+            "60ce9316750df57b:P1:m1:e3"
+          ],
+          "pitches": [
+            "C4",
+            "E4",
+            "G4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:g0:1/1",
+          "playbackBeat": "1/1",
+          "occurrenceIds": [
+            "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e4"
+          ],
+          "scoreEventIds": [
+            "60ce9316750df57b:P1:m1:e4"
+          ],
+          "pitches": [
+            "C4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        }
+      ],
+      "issues": []
+    },
+    "scoreEvents": [
+      {
+        "scoreEventId": "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e1",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 60,
+        "targetOnsetMs": 2400,
+        "targetDurationMs": 600,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e2",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 64,
+        "targetOnsetMs": 2400,
+        "targetDurationMs": 600,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e3",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 67,
+        "targetOnsetMs": 2400,
+        "targetDurationMs": 600,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:60ce9316750df57b:m1-1:once:playback-planner-1.0.0:p0:60ce9316750df57b:P1:m1:e4",
+        "measure": 1,
+        "beatPosition": 1,
+        "pitch": 60,
+        "targetOnsetMs": 3000,
+        "targetDurationMs": 600,
+        "partId": "staff-1:voice-1"
+      }
+    ],
+    "atoms": [
+      {
+        "startTick": 0,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1
+      },
+      {
+        "startTick": 960,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 2
+      }
+    ],
+    "atomIssues": []
+  },
+  "g2_chord.ids.musicxml": {
+    "file": "g2_chord.ids.musicxml",
+    "bpm": 100,
+    "countInBeats": 4,
+    "importStatus": "READY",
+    "strictAllowed": true,
+    "counts": {
+      "partCount": 1,
+      "measureCount": 1,
+      "noteCount": 4,
+      "restCount": 1,
+      "chordNoteCount": 2,
+      "tieSpanCount": 0,
+      "graceCount": 0,
+      "cueCount": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "issues": [],
+    "capabilities": [
+      "chords"
+    ],
+    "fingerprint": "033138adee34a5955529a4b40abc77b2e0256dd447a5df12228b13923b4ed4b0",
+    "measures": [
+      {
+        "part": "P1",
+        "ordinal": 1,
+        "printedNumber": "1",
+        "startBeat": "0/1",
+        "durationBeat": "4/1",
+        "time": {
+          "beats": 4,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "033138adee34a595:P1:m1:e1",
+            "xmlId": "n1",
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": "chord:033138adee34a595:P1:m1:e1",
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "033138adee34a595:P1:m1:e2",
+            "xmlId": "n2",
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "E",
+              "alter": 0,
+              "octave": 4,
+              "midi": 64,
+              "spelling": "E4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 2,
+            "chordGroupId": "chord:033138adee34a595:P1:m1:e1",
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "033138adee34a595:P1:m1:e3",
+            "xmlId": "n3",
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "G",
+              "alter": 0,
+              "octave": 4,
+              "midi": 67,
+              "spelling": "G4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 3,
+            "chordGroupId": "chord:033138adee34a595:P1:m1:e1",
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "033138adee34a595:P1:m1:e4",
+            "xmlId": "n4",
+            "kind": "note",
+            "onset": "1/1",
+            "onsetAbsNum": 1,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 4,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "033138adee34a595:P1:m1:e5",
+            "xmlId": "n5",
+            "kind": "rest",
+            "onset": "2/1",
+            "onsetAbsNum": 2,
+            "onsetAbsDen": 1,
+            "duration": "2/1",
+            "pitch": null,
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 5,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      }
+    ],
+    "tieSpans": [],
+    "plan": {
+      "planId": "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0",
+      "strictAllowed": true,
+      "rangeStartBeat": "0/1",
+      "rangeDurationBeat": "4/1",
+      "occurrenceCount": 4,
+      "groupCount": 2,
+      "occurrences": [
+        {
+          "occurrenceId": "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e1",
+          "scoreEventId": "033138adee34a595:P1:m1:e1",
+          "playbackIndex": 0,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "1/1",
+          "chordGroupId": "chord:033138adee34a595:P1:m1:e1",
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e2",
+          "scoreEventId": "033138adee34a595:P1:m1:e2",
+          "playbackIndex": 1,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 64,
+          "durationBeat": "1/1",
+          "chordGroupId": "chord:033138adee34a595:P1:m1:e1",
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e3",
+          "scoreEventId": "033138adee34a595:P1:m1:e3",
+          "playbackIndex": 2,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 67,
+          "durationBeat": "1/1",
+          "chordGroupId": "chord:033138adee34a595:P1:m1:e1",
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e4",
+          "scoreEventId": "033138adee34a595:P1:m1:e4",
+          "playbackIndex": 3,
+          "measureOrdinal": 1,
+          "playbackBeat": "1/1",
+          "beatInMeasure": "1/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        }
+      ],
+      "groups": [
+        {
+          "groupId": "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:g0:0/1",
+          "playbackBeat": "0/1",
+          "occurrenceIds": [
+            "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e1",
+            "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e2",
+            "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e3"
+          ],
+          "scoreEventIds": [
+            "033138adee34a595:P1:m1:e1",
+            "033138adee34a595:P1:m1:e2",
+            "033138adee34a595:P1:m1:e3"
+          ],
+          "pitches": [
+            "C4",
+            "E4",
+            "G4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:g0:1/1",
+          "playbackBeat": "1/1",
+          "occurrenceIds": [
+            "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e4"
+          ],
+          "scoreEventIds": [
+            "033138adee34a595:P1:m1:e4"
+          ],
+          "pitches": [
+            "C4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        }
+      ],
+      "issues": []
+    },
+    "scoreEvents": [
+      {
+        "scoreEventId": "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e1",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 60,
+        "targetOnsetMs": 2400,
+        "targetDurationMs": 600,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e2",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 64,
+        "targetOnsetMs": 2400,
+        "targetDurationMs": 600,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e3",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 67,
+        "targetOnsetMs": 2400,
+        "targetDurationMs": 600,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:033138adee34a595:m1-1:once:playback-planner-1.0.0:p0:033138adee34a595:P1:m1:e4",
+        "measure": 1,
+        "beatPosition": 1,
+        "pitch": 60,
+        "targetOnsetMs": 3000,
+        "targetDurationMs": 600,
+        "partId": "staff-1:voice-1"
+      }
+    ],
+    "atoms": [
+      {
+        "startTick": 0,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1
+      },
+      {
+        "startTick": 960,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 2
+      }
+    ],
+    "atomIssues": []
+  },
+  "g3_tie_across_bar.musicxml": {
+    "file": "g3_tie_across_bar.musicxml",
+    "bpm": 120,
+    "countInBeats": 4,
+    "importStatus": "READY",
+    "strictAllowed": true,
+    "counts": {
+      "partCount": 1,
+      "measureCount": 2,
+      "noteCount": 2,
+      "restCount": 0,
+      "chordNoteCount": 0,
+      "tieSpanCount": 1,
+      "graceCount": 0,
+      "cueCount": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "issues": [],
+    "capabilities": [
+      "ties"
+    ],
+    "fingerprint": "86b9560aac48c47e80934ae5a10763784a40487b663356e85bef16bfabb61c2f",
+    "measures": [
+      {
+        "part": "P1",
+        "ordinal": 1,
+        "printedNumber": "1",
+        "startBeat": "0/1",
+        "durationBeat": "2/1",
+        "time": {
+          "beats": 2,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "86b9560aac48c47e:P1:m1:e1",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "2/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": true,
+            "tieStop": false,
+            "tieSpanId": "tie:86b9560aac48:P1:1:1",
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      },
+      {
+        "part": "P1",
+        "ordinal": 2,
+        "printedNumber": "2",
+        "startBeat": "2/1",
+        "durationBeat": "2/1",
+        "time": {
+          "beats": 2,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "86b9560aac48c47e:P1:m2:e1",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "2/1",
+            "onsetAbsNum": 2,
+            "onsetAbsDen": 1,
+            "duration": "2/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": true,
+            "tieSpanId": "tie:86b9560aac48:P1:1:1",
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      }
+    ],
+    "tieSpans": [
+      {
+        "id": "tie:86b9560aac48:P1:1:1",
+        "eventIds": [
+          "86b9560aac48c47e:P1:m1:e1",
+          "86b9560aac48c47e:P1:m2:e1"
+        ],
+        "startBeat": "0/1",
+        "endBeat": "4/1"
+      }
+    ],
+    "plan": {
+      "planId": "plan:86b9560aac48c47e:m1-2:once:playback-planner-1.0.0",
+      "strictAllowed": true,
+      "rangeStartBeat": "0/1",
+      "rangeDurationBeat": "4/1",
+      "occurrenceCount": 1,
+      "groupCount": 1,
+      "occurrences": [
+        {
+          "occurrenceId": "plan:86b9560aac48c47e:m1-2:once:playback-planner-1.0.0:p0:86b9560aac48c47e:P1:m1:e1",
+          "scoreEventId": "86b9560aac48c47e:P1:m1:e1",
+          "playbackIndex": 0,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "4/1",
+          "chordGroupId": null,
+          "isTieOnset": true
+        }
+      ],
+      "groups": [
+        {
+          "groupId": "plan:86b9560aac48c47e:m1-2:once:playback-planner-1.0.0:g0:0/1",
+          "playbackBeat": "0/1",
+          "occurrenceIds": [
+            "plan:86b9560aac48c47e:m1-2:once:playback-planner-1.0.0:p0:86b9560aac48c47e:P1:m1:e1"
+          ],
+          "scoreEventIds": [
+            "86b9560aac48c47e:P1:m1:e1"
+          ],
+          "pitches": [
+            "C4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "4/1"
+        }
+      ],
+      "issues": []
+    },
+    "scoreEvents": [
+      {
+        "scoreEventId": "plan:86b9560aac48c47e:m1-2:once:playback-planner-1.0.0:p0:86b9560aac48c47e:P1:m1:e1",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 60,
+        "targetOnsetMs": 2000,
+        "targetDurationMs": 2000,
+        "partId": "staff-1:voice-1"
+      }
+    ],
+    "atoms": [
+      {
+        "startTick": 0,
+        "durationTicks": 3840,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1
+      }
+    ],
+    "atomIssues": []
+  },
+  "g3_tie_across_bar.ids.musicxml": {
+    "file": "g3_tie_across_bar.ids.musicxml",
+    "bpm": 120,
+    "countInBeats": 4,
+    "importStatus": "READY",
+    "strictAllowed": true,
+    "counts": {
+      "partCount": 1,
+      "measureCount": 2,
+      "noteCount": 2,
+      "restCount": 0,
+      "chordNoteCount": 0,
+      "tieSpanCount": 1,
+      "graceCount": 0,
+      "cueCount": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "issues": [],
+    "capabilities": [
+      "ties"
+    ],
+    "fingerprint": "24b27b1b2b4b731797417ab03ac83421aad5aa0a3df00caa27d0ac66bb9e2fe7",
+    "measures": [
+      {
+        "part": "P1",
+        "ordinal": 1,
+        "printedNumber": "1",
+        "startBeat": "0/1",
+        "durationBeat": "2/1",
+        "time": {
+          "beats": 2,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "24b27b1b2b4b7317:P1:m1:e1",
+            "xmlId": "n1",
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "2/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": true,
+            "tieStop": false,
+            "tieSpanId": "tie:24b27b1b2b4b:P1:1:1",
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      },
+      {
+        "part": "P1",
+        "ordinal": 2,
+        "printedNumber": "2",
+        "startBeat": "2/1",
+        "durationBeat": "2/1",
+        "time": {
+          "beats": 2,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "24b27b1b2b4b7317:P1:m2:e1",
+            "xmlId": "n2",
+            "kind": "note",
+            "onset": "2/1",
+            "onsetAbsNum": 2,
+            "onsetAbsDen": 1,
+            "duration": "2/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": true,
+            "tieSpanId": "tie:24b27b1b2b4b:P1:1:1",
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      }
+    ],
+    "tieSpans": [
+      {
+        "id": "tie:24b27b1b2b4b:P1:1:1",
+        "eventIds": [
+          "24b27b1b2b4b7317:P1:m1:e1",
+          "24b27b1b2b4b7317:P1:m2:e1"
+        ],
+        "startBeat": "0/1",
+        "endBeat": "4/1"
+      }
+    ],
+    "plan": {
+      "planId": "plan:24b27b1b2b4b7317:m1-2:once:playback-planner-1.0.0",
+      "strictAllowed": true,
+      "rangeStartBeat": "0/1",
+      "rangeDurationBeat": "4/1",
+      "occurrenceCount": 1,
+      "groupCount": 1,
+      "occurrences": [
+        {
+          "occurrenceId": "plan:24b27b1b2b4b7317:m1-2:once:playback-planner-1.0.0:p0:24b27b1b2b4b7317:P1:m1:e1",
+          "scoreEventId": "24b27b1b2b4b7317:P1:m1:e1",
+          "playbackIndex": 0,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "4/1",
+          "chordGroupId": null,
+          "isTieOnset": true
+        }
+      ],
+      "groups": [
+        {
+          "groupId": "plan:24b27b1b2b4b7317:m1-2:once:playback-planner-1.0.0:g0:0/1",
+          "playbackBeat": "0/1",
+          "occurrenceIds": [
+            "plan:24b27b1b2b4b7317:m1-2:once:playback-planner-1.0.0:p0:24b27b1b2b4b7317:P1:m1:e1"
+          ],
+          "scoreEventIds": [
+            "24b27b1b2b4b7317:P1:m1:e1"
+          ],
+          "pitches": [
+            "C4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "4/1"
+        }
+      ],
+      "issues": []
+    },
+    "scoreEvents": [
+      {
+        "scoreEventId": "plan:24b27b1b2b4b7317:m1-2:once:playback-planner-1.0.0:p0:24b27b1b2b4b7317:P1:m1:e1",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 60,
+        "targetOnsetMs": 2000,
+        "targetDurationMs": 2000,
+        "partId": "staff-1:voice-1"
+      }
+    ],
+    "atoms": [
+      {
+        "startTick": 0,
+        "durationTicks": 3840,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1
+      }
+    ],
+    "atomIssues": []
+  },
+  "g4_triplet.musicxml": {
+    "file": "g4_triplet.musicxml",
+    "bpm": 60,
+    "countInBeats": 4,
+    "importStatus": "READY",
+    "strictAllowed": true,
+    "counts": {
+      "partCount": 1,
+      "measureCount": 1,
+      "noteCount": 4,
+      "restCount": 1,
+      "chordNoteCount": 0,
+      "tieSpanCount": 0,
+      "graceCount": 0,
+      "cueCount": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "issues": [],
+    "capabilities": [
+      "tuplets"
+    ],
+    "fingerprint": "e084ca4e9e14e7f872b0b259e26c805273280137906a255e332ae53b2ed06ea9",
+    "measures": [
+      {
+        "part": "P1",
+        "ordinal": 1,
+        "printedNumber": "1",
+        "startBeat": "0/1",
+        "durationBeat": "4/1",
+        "time": {
+          "beats": 4,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "e084ca4e9e14e7f8:P1:m1:e1",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "1/3",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": {
+              "actualNotes": 3,
+              "normalNotes": 2
+            }
+          },
+          {
+            "id": "e084ca4e9e14e7f8:P1:m1:e2",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "1/3",
+            "onsetAbsNum": 1,
+            "onsetAbsDen": 3,
+            "duration": "1/3",
+            "pitch": {
+              "step": "D",
+              "alter": 0,
+              "octave": 4,
+              "midi": 62,
+              "spelling": "D4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 2,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": {
+              "actualNotes": 3,
+              "normalNotes": 2
+            }
+          },
+          {
+            "id": "e084ca4e9e14e7f8:P1:m1:e3",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "2/3",
+            "onsetAbsNum": 2,
+            "onsetAbsDen": 3,
+            "duration": "1/3",
+            "pitch": {
+              "step": "E",
+              "alter": 0,
+              "octave": 4,
+              "midi": 64,
+              "spelling": "E4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 3,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": {
+              "actualNotes": 3,
+              "normalNotes": 2
+            }
+          },
+          {
+            "id": "e084ca4e9e14e7f8:P1:m1:e4",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "1/1",
+            "onsetAbsNum": 1,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "G",
+              "alter": 0,
+              "octave": 4,
+              "midi": 67,
+              "spelling": "G4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 4,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "e084ca4e9e14e7f8:P1:m1:e5",
+            "xmlId": null,
+            "kind": "rest",
+            "onset": "2/1",
+            "onsetAbsNum": 2,
+            "onsetAbsDen": 1,
+            "duration": "2/1",
+            "pitch": null,
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 5,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      }
+    ],
+    "tieSpans": [],
+    "plan": {
+      "planId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0",
+      "strictAllowed": true,
+      "rangeStartBeat": "0/1",
+      "rangeDurationBeat": "4/1",
+      "occurrenceCount": 4,
+      "groupCount": 4,
+      "occurrences": [
+        {
+          "occurrenceId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e1",
+          "scoreEventId": "e084ca4e9e14e7f8:P1:m1:e1",
+          "playbackIndex": 0,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "1/3",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e2",
+          "scoreEventId": "e084ca4e9e14e7f8:P1:m1:e2",
+          "playbackIndex": 1,
+          "measureOrdinal": 1,
+          "playbackBeat": "1/3",
+          "beatInMeasure": "1/3",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 62,
+          "durationBeat": "1/3",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e3",
+          "scoreEventId": "e084ca4e9e14e7f8:P1:m1:e3",
+          "playbackIndex": 2,
+          "measureOrdinal": 1,
+          "playbackBeat": "2/3",
+          "beatInMeasure": "2/3",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 64,
+          "durationBeat": "1/3",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e4",
+          "scoreEventId": "e084ca4e9e14e7f8:P1:m1:e4",
+          "playbackIndex": 3,
+          "measureOrdinal": 1,
+          "playbackBeat": "1/1",
+          "beatInMeasure": "1/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 67,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        }
+      ],
+      "groups": [
+        {
+          "groupId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:g0:0/1",
+          "playbackBeat": "0/1",
+          "occurrenceIds": [
+            "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e1"
+          ],
+          "scoreEventIds": [
+            "e084ca4e9e14e7f8:P1:m1:e1"
+          ],
+          "pitches": [
+            "C4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/3"
+        },
+        {
+          "groupId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:g0:1/3",
+          "playbackBeat": "1/3",
+          "occurrenceIds": [
+            "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e2"
+          ],
+          "scoreEventIds": [
+            "e084ca4e9e14e7f8:P1:m1:e2"
+          ],
+          "pitches": [
+            "D4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/3"
+        },
+        {
+          "groupId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:g0:2/3",
+          "playbackBeat": "2/3",
+          "occurrenceIds": [
+            "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e3"
+          ],
+          "scoreEventIds": [
+            "e084ca4e9e14e7f8:P1:m1:e3"
+          ],
+          "pitches": [
+            "E4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/3"
+        },
+        {
+          "groupId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:g0:1/1",
+          "playbackBeat": "1/1",
+          "occurrenceIds": [
+            "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e4"
+          ],
+          "scoreEventIds": [
+            "e084ca4e9e14e7f8:P1:m1:e4"
+          ],
+          "pitches": [
+            "G4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        }
+      ],
+      "issues": []
+    },
+    "scoreEvents": [
+      {
+        "scoreEventId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e1",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 60,
+        "targetOnsetMs": 4000,
+        "targetDurationMs": 333.3333333333333,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e2",
+        "measure": 1,
+        "beatPosition": 0.3333333333333333,
+        "pitch": 62,
+        "targetOnsetMs": 4333.333333333333,
+        "targetDurationMs": 333.3333333333333,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e3",
+        "measure": 1,
+        "beatPosition": 0.6666666666666666,
+        "pitch": 64,
+        "targetOnsetMs": 4666.666666666667,
+        "targetDurationMs": 333.3333333333333,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:e084ca4e9e14e7f8:m1-1:once:playback-planner-1.0.0:p0:e084ca4e9e14e7f8:P1:m1:e4",
+        "measure": 1,
+        "beatPosition": 1,
+        "pitch": 67,
+        "targetOnsetMs": 5000,
+        "targetDurationMs": 1000,
+        "partId": "staff-1:voice-1"
+      }
+    ],
+    "atoms": [
+      {
+        "startTick": 0,
+        "durationTicks": 320,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1
+      },
+      {
+        "startTick": 320,
+        "durationTicks": 320,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1.3333333333333333
+      },
+      {
+        "startTick": 640,
+        "durationTicks": 320,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1.6666666666666665
+      },
+      {
+        "startTick": 960,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 2
+      }
+    ],
+    "atomIssues": []
+  },
+  "g5_three_four.musicxml": {
+    "file": "g5_three_four.musicxml",
+    "bpm": 90,
+    "countInBeats": 4,
+    "importStatus": "READY",
+    "strictAllowed": true,
+    "counts": {
+      "partCount": 1,
+      "measureCount": 2,
+      "noteCount": 6,
+      "restCount": 0,
+      "chordNoteCount": 0,
+      "tieSpanCount": 0,
+      "graceCount": 0,
+      "cueCount": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "issues": [],
+    "capabilities": [],
+    "fingerprint": "7cf95a8868824099d4454136f3d53104c4e714953532fb64da83d74e836c2ec7",
+    "measures": [
+      {
+        "part": "P1",
+        "ordinal": 1,
+        "printedNumber": "1",
+        "startBeat": "0/1",
+        "durationBeat": "3/1",
+        "time": {
+          "beats": 3,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "7cf95a8868824099:P1:m1:e1",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "7cf95a8868824099:P1:m1:e2",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "1/1",
+            "onsetAbsNum": 1,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "D",
+              "alter": 0,
+              "octave": 4,
+              "midi": 62,
+              "spelling": "D4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 2,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "7cf95a8868824099:P1:m1:e3",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "2/1",
+            "onsetAbsNum": 2,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "E",
+              "alter": 0,
+              "octave": 4,
+              "midi": 64,
+              "spelling": "E4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 3,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      },
+      {
+        "part": "P1",
+        "ordinal": 2,
+        "printedNumber": "2",
+        "startBeat": "3/1",
+        "durationBeat": "3/1",
+        "time": {
+          "beats": 3,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "7cf95a8868824099:P1:m2:e1",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "3/1",
+            "onsetAbsNum": 3,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "F",
+              "alter": 0,
+              "octave": 4,
+              "midi": 65,
+              "spelling": "F4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "7cf95a8868824099:P1:m2:e2",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "4/1",
+            "onsetAbsNum": 4,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "G",
+              "alter": 0,
+              "octave": 4,
+              "midi": 67,
+              "spelling": "G4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 2,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "7cf95a8868824099:P1:m2:e3",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "5/1",
+            "onsetAbsNum": 5,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "A",
+              "alter": 0,
+              "octave": 4,
+              "midi": 69,
+              "spelling": "A4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 3,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      }
+    ],
+    "tieSpans": [],
+    "plan": {
+      "planId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0",
+      "strictAllowed": true,
+      "rangeStartBeat": "0/1",
+      "rangeDurationBeat": "6/1",
+      "occurrenceCount": 6,
+      "groupCount": 6,
+      "occurrences": [
+        {
+          "occurrenceId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m1:e1",
+          "scoreEventId": "7cf95a8868824099:P1:m1:e1",
+          "playbackIndex": 0,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m1:e2",
+          "scoreEventId": "7cf95a8868824099:P1:m1:e2",
+          "playbackIndex": 1,
+          "measureOrdinal": 1,
+          "playbackBeat": "1/1",
+          "beatInMeasure": "1/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 62,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m1:e3",
+          "scoreEventId": "7cf95a8868824099:P1:m1:e3",
+          "playbackIndex": 2,
+          "measureOrdinal": 1,
+          "playbackBeat": "2/1",
+          "beatInMeasure": "2/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 64,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m2:e1",
+          "scoreEventId": "7cf95a8868824099:P1:m2:e1",
+          "playbackIndex": 3,
+          "measureOrdinal": 2,
+          "playbackBeat": "3/1",
+          "beatInMeasure": "0/1",
+          "bar": 2,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 65,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m2:e2",
+          "scoreEventId": "7cf95a8868824099:P1:m2:e2",
+          "playbackIndex": 4,
+          "measureOrdinal": 2,
+          "playbackBeat": "4/1",
+          "beatInMeasure": "1/1",
+          "bar": 2,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 67,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m2:e3",
+          "scoreEventId": "7cf95a8868824099:P1:m2:e3",
+          "playbackIndex": 5,
+          "measureOrdinal": 2,
+          "playbackBeat": "5/1",
+          "beatInMeasure": "2/1",
+          "bar": 2,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 69,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        }
+      ],
+      "groups": [
+        {
+          "groupId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:g0:0/1",
+          "playbackBeat": "0/1",
+          "occurrenceIds": [
+            "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m1:e1"
+          ],
+          "scoreEventIds": [
+            "7cf95a8868824099:P1:m1:e1"
+          ],
+          "pitches": [
+            "C4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:g0:1/1",
+          "playbackBeat": "1/1",
+          "occurrenceIds": [
+            "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m1:e2"
+          ],
+          "scoreEventIds": [
+            "7cf95a8868824099:P1:m1:e2"
+          ],
+          "pitches": [
+            "D4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:g0:2/1",
+          "playbackBeat": "2/1",
+          "occurrenceIds": [
+            "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m1:e3"
+          ],
+          "scoreEventIds": [
+            "7cf95a8868824099:P1:m1:e3"
+          ],
+          "pitches": [
+            "E4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:g0:3/1",
+          "playbackBeat": "3/1",
+          "occurrenceIds": [
+            "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m2:e1"
+          ],
+          "scoreEventIds": [
+            "7cf95a8868824099:P1:m2:e1"
+          ],
+          "pitches": [
+            "F4"
+          ],
+          "bar": 2,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:g0:4/1",
+          "playbackBeat": "4/1",
+          "occurrenceIds": [
+            "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m2:e2"
+          ],
+          "scoreEventIds": [
+            "7cf95a8868824099:P1:m2:e2"
+          ],
+          "pitches": [
+            "G4"
+          ],
+          "bar": 2,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:g0:5/1",
+          "playbackBeat": "5/1",
+          "occurrenceIds": [
+            "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m2:e3"
+          ],
+          "scoreEventIds": [
+            "7cf95a8868824099:P1:m2:e3"
+          ],
+          "pitches": [
+            "A4"
+          ],
+          "bar": 2,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        }
+      ],
+      "issues": []
+    },
+    "scoreEvents": [
+      {
+        "scoreEventId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m1:e1",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 60,
+        "targetOnsetMs": 2666.6666666666665,
+        "targetDurationMs": 666.6666666666666,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m1:e2",
+        "measure": 1,
+        "beatPosition": 1,
+        "pitch": 62,
+        "targetOnsetMs": 3333.333333333333,
+        "targetDurationMs": 666.6666666666666,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m1:e3",
+        "measure": 1,
+        "beatPosition": 2,
+        "pitch": 64,
+        "targetOnsetMs": 4000,
+        "targetDurationMs": 666.6666666666666,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m2:e1",
+        "measure": 2,
+        "beatPosition": 3,
+        "pitch": 65,
+        "targetOnsetMs": 4666.666666666666,
+        "targetDurationMs": 666.6666666666666,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m2:e2",
+        "measure": 2,
+        "beatPosition": 4,
+        "pitch": 67,
+        "targetOnsetMs": 5333.333333333333,
+        "targetDurationMs": 666.6666666666666,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:7cf95a8868824099:m1-2:once:playback-planner-1.0.0:p0:7cf95a8868824099:P1:m2:e3",
+        "measure": 2,
+        "beatPosition": 5,
+        "pitch": 69,
+        "targetOnsetMs": 6000,
+        "targetDurationMs": 666.6666666666666,
+        "partId": "staff-1:voice-1"
+      }
+    ],
+    "atoms": [
+      {
+        "startTick": 0,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1
+      },
+      {
+        "startTick": 960,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 2
+      },
+      {
+        "startTick": 1920,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 3
+      },
+      {
+        "startTick": 2880,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 2,
+        "beat": 1
+      },
+      {
+        "startTick": 3840,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 2,
+        "beat": 2
+      },
+      {
+        "startTick": 4800,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 2,
+        "beat": 3
+      }
+    ],
+    "atomIssues": []
+  },
+  "g6_unison_two_staves.musicxml": {
+    "file": "g6_unison_two_staves.musicxml",
+    "bpm": 80,
+    "countInBeats": 4,
+    "importStatus": "READY",
+    "strictAllowed": true,
+    "counts": {
+      "partCount": 1,
+      "measureCount": 1,
+      "noteCount": 2,
+      "restCount": 0,
+      "chordNoteCount": 0,
+      "tieSpanCount": 0,
+      "graceCount": 0,
+      "cueCount": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "issues": [],
+    "capabilities": [
+      "multi_staff"
+    ],
+    "fingerprint": "9fae445ebcbd727f4c0b13e0ec4b86715073a9f13f5e955e165ea0f8cd546bf0",
+    "measures": [
+      {
+        "part": "P1",
+        "ordinal": 1,
+        "printedNumber": "1",
+        "startBeat": "0/1",
+        "durationBeat": "4/1",
+        "time": {
+          "beats": 4,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "9fae445ebcbd727f:P1:m1:e1",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "4/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "9fae445ebcbd727f:P1:m1:e2",
+            "xmlId": null,
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "4/1",
+            "pitch": {
+              "step": "C",
+              "alter": 0,
+              "octave": 4,
+              "midi": 60,
+              "spelling": "C4"
+            },
+            "staff": 2,
+            "voice": "1",
+            "sourceOrdinal": 2,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      }
+    ],
+    "tieSpans": [],
+    "plan": {
+      "planId": "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0",
+      "strictAllowed": true,
+      "rangeStartBeat": "0/1",
+      "rangeDurationBeat": "4/1",
+      "occurrenceCount": 2,
+      "groupCount": 1,
+      "occurrences": [
+        {
+          "occurrenceId": "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e1",
+          "scoreEventId": "9fae445ebcbd727f:P1:m1:e1",
+          "playbackIndex": 0,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "4/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e2",
+          "scoreEventId": "9fae445ebcbd727f:P1:m1:e2",
+          "playbackIndex": 1,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 2,
+          "voiceId": "1",
+          "midi": 60,
+          "durationBeat": "4/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        }
+      ],
+      "groups": [
+        {
+          "groupId": "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:g0:0/1",
+          "playbackBeat": "0/1",
+          "occurrenceIds": [
+            "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e1",
+            "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e2"
+          ],
+          "scoreEventIds": [
+            "9fae445ebcbd727f:P1:m1:e1",
+            "9fae445ebcbd727f:P1:m1:e2"
+          ],
+          "pitches": [
+            "C4",
+            "C4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1,
+            2
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "4/1"
+        }
+      ],
+      "issues": []
+    },
+    "scoreEvents": [
+      {
+        "scoreEventId": "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e1",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 60,
+        "targetOnsetMs": 3000,
+        "targetDurationMs": 3000,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e2",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 60,
+        "targetOnsetMs": 3000,
+        "targetDurationMs": 3000,
+        "partId": "staff-2:voice-1"
+      }
+    ],
+    "atoms": [
+      {
+        "startTick": 0,
+        "durationTicks": 3840,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1
+      }
+    ],
+    "atomIssues": []
+  },
+  "g8_key_alter.musicxml": {
+    "file": "g8_key_alter.musicxml",
+    "bpm": 80,
+    "countInBeats": 4,
+    "importStatus": "READY",
+    "strictAllowed": true,
+    "counts": {
+      "partCount": 1,
+      "measureCount": 1,
+      "noteCount": 3,
+      "restCount": 1,
+      "chordNoteCount": 0,
+      "tieSpanCount": 0,
+      "graceCount": 0,
+      "cueCount": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "issues": [],
+    "capabilities": [],
+    "fingerprint": "2819d990ef323e52505e8396925084f18758fad1dd9bd00f5ad4caaba2d0fb63",
+    "measures": [
+      {
+        "part": "P1",
+        "ordinal": 1,
+        "printedNumber": "1",
+        "startBeat": "0/1",
+        "durationBeat": "4/1",
+        "time": {
+          "beats": 4,
+          "beatType": 4
+        },
+        "events": [
+          {
+            "id": "2819d990ef323e52:P1:m1:e1",
+            "xmlId": "k1",
+            "kind": "note",
+            "onset": "0/1",
+            "onsetAbsNum": 0,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "F",
+              "alter": 0,
+              "octave": 4,
+              "midi": 65,
+              "spelling": "F4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 1,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "2819d990ef323e52:P1:m1:e2",
+            "xmlId": "k2",
+            "kind": "note",
+            "onset": "1/1",
+            "onsetAbsNum": 1,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "F",
+              "alter": 1,
+              "octave": 4,
+              "midi": 66,
+              "spelling": "F#4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 2,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "2819d990ef323e52:P1:m1:e3",
+            "xmlId": "k3",
+            "kind": "note",
+            "onset": "2/1",
+            "onsetAbsNum": 2,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": {
+              "step": "F",
+              "alter": 0,
+              "octave": 4,
+              "midi": 65,
+              "spelling": "F4"
+            },
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 3,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          },
+          {
+            "id": "2819d990ef323e52:P1:m1:e4",
+            "xmlId": "k4",
+            "kind": "rest",
+            "onset": "3/1",
+            "onsetAbsNum": 3,
+            "onsetAbsDen": 1,
+            "duration": "1/1",
+            "pitch": null,
+            "staff": 1,
+            "voice": "1",
+            "sourceOrdinal": 4,
+            "chordGroupId": null,
+            "tieStart": false,
+            "tieStop": false,
+            "tieSpanId": null,
+            "isGrace": false,
+            "timeModification": null
+          }
+        ]
+      }
+    ],
+    "tieSpans": [],
+    "plan": {
+      "planId": "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0",
+      "strictAllowed": true,
+      "rangeStartBeat": "0/1",
+      "rangeDurationBeat": "4/1",
+      "occurrenceCount": 3,
+      "groupCount": 3,
+      "occurrences": [
+        {
+          "occurrenceId": "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:p0:2819d990ef323e52:P1:m1:e1",
+          "scoreEventId": "2819d990ef323e52:P1:m1:e1",
+          "playbackIndex": 0,
+          "measureOrdinal": 1,
+          "playbackBeat": "0/1",
+          "beatInMeasure": "0/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 65,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:p0:2819d990ef323e52:P1:m1:e2",
+          "scoreEventId": "2819d990ef323e52:P1:m1:e2",
+          "playbackIndex": 1,
+          "measureOrdinal": 1,
+          "playbackBeat": "1/1",
+          "beatInMeasure": "1/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 66,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        },
+        {
+          "occurrenceId": "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:p0:2819d990ef323e52:P1:m1:e3",
+          "scoreEventId": "2819d990ef323e52:P1:m1:e3",
+          "playbackIndex": 2,
+          "measureOrdinal": 1,
+          "playbackBeat": "2/1",
+          "beatInMeasure": "2/1",
+          "bar": 1,
+          "staffNumber": 1,
+          "voiceId": "1",
+          "midi": 65,
+          "durationBeat": "1/1",
+          "chordGroupId": null,
+          "isTieOnset": false
+        }
+      ],
+      "groups": [
+        {
+          "groupId": "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:g0:0/1",
+          "playbackBeat": "0/1",
+          "occurrenceIds": [
+            "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:p0:2819d990ef323e52:P1:m1:e1"
+          ],
+          "scoreEventIds": [
+            "2819d990ef323e52:P1:m1:e1"
+          ],
+          "pitches": [
+            "F4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:g0:1/1",
+          "playbackBeat": "1/1",
+          "occurrenceIds": [
+            "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:p0:2819d990ef323e52:P1:m1:e2"
+          ],
+          "scoreEventIds": [
+            "2819d990ef323e52:P1:m1:e2"
+          ],
+          "pitches": [
+            "F#4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        },
+        {
+          "groupId": "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:g0:2/1",
+          "playbackBeat": "2/1",
+          "occurrenceIds": [
+            "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:p0:2819d990ef323e52:P1:m1:e3"
+          ],
+          "scoreEventIds": [
+            "2819d990ef323e52:P1:m1:e3"
+          ],
+          "pitches": [
+            "F4"
+          ],
+          "bar": 1,
+          "staffNumbers": [
+            1
+          ],
+          "voiceIds": [
+            "1"
+          ],
+          "durationBeat": "1/1"
+        }
+      ],
+      "issues": []
+    },
+    "scoreEvents": [
+      {
+        "scoreEventId": "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:p0:2819d990ef323e52:P1:m1:e1",
+        "measure": 1,
+        "beatPosition": 0,
+        "pitch": 65,
+        "targetOnsetMs": 3000,
+        "targetDurationMs": 750,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:p0:2819d990ef323e52:P1:m1:e2",
+        "measure": 1,
+        "beatPosition": 1,
+        "pitch": 66,
+        "targetOnsetMs": 3750,
+        "targetDurationMs": 750,
+        "partId": "staff-1:voice-1"
+      },
+      {
+        "scoreEventId": "plan:2819d990ef323e52:m1-1:once:playback-planner-1.0.0:p0:2819d990ef323e52:P1:m1:e3",
+        "measure": 1,
+        "beatPosition": 2,
+        "pitch": 65,
+        "targetOnsetMs": 4500,
+        "targetDurationMs": 750,
+        "partId": "staff-1:voice-1"
+      }
+    ],
+    "atoms": [
+      {
+        "startTick": 0,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 1
+      },
+      {
+        "startTick": 960,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 2
+      },
+      {
+        "startTick": 1920,
+        "durationTicks": 960,
+        "kind": "note",
+        "bar": 1,
+        "beat": 3
+      }
+    ],
+    "atomIssues": []
+  }
+}

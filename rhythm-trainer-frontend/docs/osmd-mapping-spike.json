@@ -1,0 +1,429 @@
+{
+  "osmdVersion": "2.2.1",
+  "capturedAt": "2026-10-21",
+  "spike": {
+    "complete": true,
+    "results": [
+      {
+        "debugSample": {
+          "eventKeys": [
+            "0:0:1:60",
+            "0:0:1:62",
+            "0:0:1:64",
+            "0:0:1:65",
+            "0:0:1:67"
+          ],
+          "sourceKeys": [
+            "0:0:1:60",
+            "0:0:1:62",
+            "0:0:1:64",
+            "0:0:1:65",
+            "0:0:1:67"
+          ],
+          "sourcePitches": [
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 60,
+              "octave": 1,
+              "short": "C1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 2,
+              "halfTone": 62,
+              "octave": 1,
+              "short": "D1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 4,
+              "halfTone": 64,
+              "octave": 1,
+              "short": "E1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 5,
+              "halfTone": 65,
+              "octave": 1,
+              "short": "F1"
+            }
+          ]
+        },
+        "duplicates": 0,
+        "firstHighlighted": "221b4f9f334a1eaf:P1:m1:e1",
+        "fixture": "single-melody-quarter-eighth.musicxml",
+        "importStatus": "READY",
+        "mapped": 5,
+        "mappingWarnings": [],
+        "noteEvents": 5,
+        "planGroups": 5,
+        "strictAllowed": true,
+        "unmapped": 0
+      },
+      {
+        "debugSample": {
+          "eventKeys": [
+            "0:0:1:60",
+            "0:0:1:62",
+            "0:0:1:64",
+            "0:0:1:67",
+            "0:1:2:48",
+            "0:1:2:43",
+            "1:0:1:67",
+            "1:0:1:64"
+          ],
+          "sourceKeys": [
+            "0:0:1:60",
+            "0:1:2:48",
+            "0:0:1:62",
+            "0:0:1:64",
+            "0:1:2:43",
+            "0:0:1:67",
+            "1:0:1:67",
+            "1:1:2:48"
+          ],
+          "sourcePitches": [
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 60,
+              "octave": 1,
+              "short": "C1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 48,
+              "octave": 0,
+              "short": "C0"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 2,
+              "halfTone": 62,
+              "octave": 1,
+              "short": "D1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 4,
+              "halfTone": 64,
+              "octave": 1,
+              "short": "E1"
+            }
+          ]
+        },
+        "duplicates": 0,
+        "firstHighlighted": "da6e1fbe9ccc714d:P1:m1:e1",
+        "fixture": "piano-two-staff-basic.musicxml",
+        "importStatus": "READY",
+        "mapped": 12,
+        "mappingWarnings": [],
+        "noteEvents": 12,
+        "planGroups": 8,
+        "strictAllowed": true,
+        "unmapped": 0
+      },
+      {
+        "debugSample": {
+          "eventKeys": [
+            "0:0:1:60",
+            "0:0:1:64",
+            "0:0:1:67",
+            "0:0:1:62",
+            "0:0:1:64"
+          ],
+          "sourceKeys": [
+            "0:0:1:60",
+            "0:0:1:64",
+            "0:0:1:67",
+            "0:0:1:62"
+          ],
+          "sourcePitches": [
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 60,
+              "octave": 1,
+              "short": "C1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 4,
+              "halfTone": 64,
+              "octave": 1,
+              "short": "E1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 7,
+              "halfTone": 67,
+              "octave": 1,
+              "short": "G1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 2,
+              "halfTone": 62,
+              "octave": 1,
+              "short": "D1"
+            }
+          ]
+        },
+        "duplicates": 0,
+        "firstHighlighted": "d4b64e9ab3f13fe9:P1:m1:e1",
+        "fixture": "triad-chord.musicxml",
+        "importStatus": "READY",
+        "mapped": 5,
+        "mappingWarnings": [],
+        "noteEvents": 5,
+        "planGroups": 3,
+        "strictAllowed": true,
+        "unmapped": 0
+      },
+      {
+        "debugSample": {
+          "eventKeys": [
+            "0:0:1:60",
+            "0:0:1:62",
+            "0:0:1:64",
+            "0:0:1:65",
+            "0:0:2:55"
+          ],
+          "sourceKeys": [
+            "0:0:1:60",
+            "0:0:1:62",
+            "0:0:2:55",
+            "0:0:1:64",
+            "0:0:1:65"
+          ],
+          "sourcePitches": [
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 60,
+              "octave": 1,
+              "short": "C1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 2,
+              "halfTone": 62,
+              "octave": 1,
+              "short": "D1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 7,
+              "halfTone": 55,
+              "octave": 0,
+              "short": "G0"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 4,
+              "halfTone": 64,
+              "octave": 1,
+              "short": "E1"
+            }
+          ]
+        },
+        "duplicates": 0,
+        "firstHighlighted": "dcc812940d6f62f9:P1:m1:e1",
+        "fixture": "multi-voice-backup-forward.musicxml",
+        "importStatus": "READY",
+        "mapped": 5,
+        "mappingWarnings": [],
+        "noteEvents": 5,
+        "planGroups": 4,
+        "strictAllowed": true,
+        "unmapped": 0
+      },
+      {
+        "debugSample": {
+          "eventKeys": [
+            "0:0:1:60",
+            "0:0:1:60",
+            "1:0:1:60",
+            "1:0:1:62"
+          ],
+          "sourceKeys": [
+            "0:0:1:12",
+            "0:0:1:60",
+            "1:0:1:60",
+            "1:0:1:62",
+            "1:0:1:12"
+          ],
+          "sourcePitches": [
+            {
+              "halfTone": 12
+            },
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 60,
+              "octave": 1,
+              "short": "C1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 60,
+              "octave": 1,
+              "short": "C1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 60,
+              "octave": 1,
+              "short": "C1"
+            }
+          ]
+        },
+        "duplicates": 0,
+        "firstHighlighted": "7096b5198c6c7ea6:P1:m1:e2",
+        "fixture": "tie-across-measure.musicxml",
+        "importStatus": "READY",
+        "mapped": 4,
+        "mappingWarnings": [
+          "2 个 OSMD 源音符没有对应领域事件"
+        ],
+        "noteEvents": 4,
+        "planGroups": 3,
+        "strictAllowed": true,
+        "unmapped": 0
+      },
+      {
+        "debugSample": {
+          "eventKeys": [
+            "0:0:1:60",
+            "0:0:1:64",
+            "0:0:1:67",
+            "0:0:1:72",
+            "0:1:2:48",
+            "0:1:2:55",
+            "1:0:1:62",
+            "1:0:1:65"
+          ],
+          "sourceKeys": [
+            "0:0:1:60",
+            "0:1:2:48",
+            "0:0:1:64",
+            "0:0:1:67",
+            "0:1:2:55",
+            "0:0:1:72",
+            "1:0:1:62",
+            "1:1:2:43"
+          ],
+          "sourcePitches": [
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 60,
+              "octave": 1,
+              "short": "C1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 48,
+              "octave": 0,
+              "short": "C0"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 4,
+              "halfTone": 64,
+              "octave": 1,
+              "short": "E1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 7,
+              "halfTone": 67,
+              "octave": 1,
+              "short": "G1"
+            }
+          ]
+        },
+        "duplicates": 0,
+        "firstHighlighted": "ee4fe0a948ac6fcf:P1:m1:e1",
+        "fixture": "c-major-practice.musicxml",
+        "importStatus": "READY",
+        "mapped": 24,
+        "mappingWarnings": [],
+        "noteEvents": 24,
+        "planGroups": 16,
+        "strictAllowed": true,
+        "unmapped": 0
+      },
+      {
+        "debugSample": {
+          "eventKeys": [
+            "0:0:1:60",
+            "0:0:1:64",
+            "0:0:1:67",
+            "0:0:1:72",
+            "0:1:2:48",
+            "0:1:2:55",
+            "1:0:1:62",
+            "1:0:1:65"
+          ],
+          "sourceKeys": [
+            "0:0:1:60",
+            "0:1:2:48",
+            "0:0:1:64",
+            "0:0:1:67",
+            "0:1:2:55",
+            "0:0:1:72",
+            "1:0:1:62",
+            "1:1:2:43"
+          ],
+          "sourcePitches": [
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 60,
+              "octave": 1,
+              "short": "C1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 0,
+              "halfTone": 48,
+              "octave": 0,
+              "short": "C0"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 4,
+              "halfTone": 64,
+              "octave": 1,
+              "short": "E1"
+            },
+            {
+              "accidental": 2,
+              "fundamental": 7,
+              "halfTone": 67,
+              "octave": 1,
+              "short": "G1"
+            }
+          ]
+        },
+        "duplicates": 0,
+        "firstHighlighted": "aebe721ea4c96aae:P1:m1:e1",
+        "fixture": "cross-system-layout.musicxml",
+        "importStatus": "READY",
+        "mapped": 24,
+        "mappingWarnings": [],
+        "noteEvents": 24,
+        "planGroups": 16,
+        "strictAllowed": true,
+        "unmapped": 0
+      }
+    ]
+  }
+}

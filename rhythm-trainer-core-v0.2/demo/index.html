@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rhythm Trainer · 空格键节拍训练</title>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#171a21; --line:#262b36; --text:#e8eaf0; --muted:#8b93a5;
+    --perfect:#4ade80; --good:#60a5fa; --extra:#fbbf24; --miss:#f87171; --accent:#7c9cff;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 20px 60px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .controls label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:4px; }
+  select, input, button { font: inherit; background:#0d0f13; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  input#bpm { width:90px; }
+  button.primary { background:var(--accent); border-color:transparent; color:#0b1020; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.4; cursor:default; }
+  .stage { margin-top:16px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; text-align:center; }
+  #bigNumber { font-size:72px; font-weight:700; line-height:1.1; min-height:84px; }
+  #beatInfo { color:var(--muted); font-size:13px; min-height:18px; }
+  .hint { color:var(--muted); font-size:13px; margin-top:8px; }
+  .timeline { position:relative; height:56px; margin-top:14px; background:#0d0f13; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .dot { position:absolute; top:50%; width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%; background:#3a4152; }
+  .dot.perfect{background:var(--perfect)} .dot.good{background:var(--good)} .dot.miss{background:var(--miss)}
+  .dot.rest-lead { outline:2px solid #69738a; outline-offset:2px; }
+  #cursor { position:absolute; top:0; bottom:0; width:2px; background:#ffffffb0; left:-2px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; min-height:30px; justify-content:center; }
+  .chip { font-size:12px; padding:4px 9px; border-radius:999px; background:#0d0f13; border:1px solid var(--line); }
+  .chip b { font-weight:600; }
+  .chip.perfect b{color:var(--perfect)} .chip.good b{color:var(--good)}
+  .chip.extra b{color:var(--extra)} .chip.miss b{color:var(--miss)}
+  .report { margin-top:16px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; display:none; }
+  .report h2 { font-size:16px; margin:0 0 4px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-top:10px; }
+  .cell { background:#0d0f13; border:1px solid var(--line); border-radius:8px; padding:10px; }
+  .cell .v { font-size:20px; font-weight:700; }
+  .cell .k { font-size:12px; color:var(--muted); margin-top:2px; }
+  .coach { margin-top:14px; border-top:1px dashed var(--line); padding-top:12px; font-size:14px; line-height:1.8; }
+  .coach .ev { color:var(--muted); font-size:13px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; vertical-align:middle; }
+  .badge.ok { background:#12331f; color:var(--perfect); }
+  .badge.bad { background:#3a1717; color:var(--miss); }
+  .error { margin-top:12px; color:var(--miss); font-size:13px; min-height:16px; }
+  kbd { background:#262b36; border-radius:6px; padding:2px 10px; font-family:inherit; border-bottom:2px solid #3a4152; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Rhythm Trainer · 空格键节拍训练</h1>
+  <div class="sub">评分由本机 Node 服务里的 Rust 内核完成;浏览器只负责节拍器回放与时间戳采集,不参与判分。</div>
+
+  <div class="controls">
+    <label>节奏型
+      <select id="pattern">
+        <option value="quarters">四分音符 · 稳定拍感</option>
+        <option value="eighths">八分连击 · 细分稳定</option>
+        <option value="rests">休止后重进</option>
+      </select>
+    </label>
+    <label>BPM <input id="bpm" type="number" min="40" max="220" step="1" value="70"></label>
+    <label>判定档位
+      <select id="profile">
+        <option value="relaxed">宽松 (±50/100ms)</option>
+        <option value="standard" selected>标准 (±30/60ms)</option>
+        <option value="strict">严格 (±15/30ms)</option>
+      </select>
+    </label>
+    <button id="startBtn" class="primary">开始训练</button>
+    <button id="finishBtn" disabled>提前结束</button>
+  </div>
+  <div class="error" id="error"></div>
+
+  <div class="stage">
+    <div id="bigNumber">Ready</div>
+    <div id="beatInfo"></div>
+    <div class="timeline" id="timeline"><div id="cursor"></div></div>
+    <div class="chips" id="chips"></div>
+    <div class="hint">听到倒数后,跟着节拍按 <kbd>空格</kbd>;带圈的目标点表示它紧跟在休止符之后。倒数期间不用打。</div>
+  </div>
+
+  <div class="report" id="report">
+    <h2>训练报告 <span id="trustBadge"></span></h2>
+    <div class="grid" id="statsGrid"></div>
+    <div class="coach" id="coach"></div>
+  </div>
+</main>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const GRADE_CN = { perfect: '准', good: '良', extra: '多', miss: '漏' };
+const ISSUE_CN = {
+  global_late_bias: '整体偏晚', global_early_bias: '整体偏早', unstable_timing: '节奏不稳',
+  tempo_drift: '速度漂移', frequent_misses: '漏击偏多', frequent_extras: '多击偏多',
+  rest_reentry_timing: '休止后重进不稳', offbeat_timing: '弱拍偏差',
+  measurement_untrusted: '测量不可信', insufficient_evidence: '样本不足',
+};
+const EXERCISE_CN = {
+  verify_input_measurement: '先检查输入与测量链路', collect_more_evidence: '再收集一段干净样本',
+  slow_loop_with_metronome: '慢速循环 + 每拍节拍器', count_subdivision: '出声数细分拍',
+  rest_reentry_drill: '休止符重进专项循环', offbeat_subdivision_drill: '弱拍细分专项',
+  controlled_attack_drill: '控制多余击打练习', review_event_alignment: '检查事件对齐',
+};
+
+let ws = null;
+let S = null;            // 当前会话状态
+let dots = [];
+let audioCtx = null;
+
+function showError(text) { $('error').textContent = text || ''; }
+
+function connect() {
+  return new Promise((resolve, reject) => {
+    if (ws && ws.readyState === WebSocket.OPEN) return resolve();
+    ws = new WebSocket(`ws://${location.host}`);
+    ws.onopen = resolve;
+    ws.onerror = () => reject(new Error('无法连接本机服务,请确认 node demo/server.js 正在运行'));
+    ws.onclose = () => {
+      if (S && S.active) endSessionUi();
+      showError('连接已断开,请刷新页面重试。');
+    };
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'started') onStarted(msg);
+      else if (msg.type === 'judgments') msg.items.forEach(onJudgment);
+      else if (msg.type === 'report') onReport(msg);
+      else if (msg.type === 'error') showError(msg.message);
+    };
+  });
+}
+
+$('startBtn').addEventListener('click', async () => {
+  showError('');
+  try {
+    await connect();
+    ws.send(JSON.stringify({
+      type: 'start',
+      pattern: $('pattern').value,
+      bpm: Number($('bpm').value),
+      profile: $('profile').value,
+    }));
+  } catch (err) { showError(err.message); }
+});
+$('finishBtn').addEventListener('click', () => { if (S && S.active) sendFinish(); });
+
+function sendFinish() {
+  if (!S || S.finishing) return;
+  S.finishing = true;
+  ws.send(JSON.stringify({ type: 'finish' }));
+}
+
+function onStarted(msg) {
+  S = {
+    active: true, finishing: false,
+    origin: performance.now(),
+    seq: 0,
+    bpm: msg.bpm, profile: msg.profile,
+    targets: msg.targets,
+    countInBeats: msg.countInBeats,
+    quarterMs: 60_000 / msg.bpm,
+    lastAtMs: msg.targets[msg.targets.length - 1].atMs,
+  };
+  S.countInMs = S.countInBeats * S.quarterMs;
+  S.maxMs = S.lastAtMs + 600;
+
+  $('startBtn').disabled = true;
+  $('finishBtn').disabled = false;
+  $('report').style.display = 'none';
+  $('chips').innerHTML = '';
+  buildTimeline(msg);
+
+  startAudio(msg);
+  S.tickTimer = setInterval(() => {
+    if (!S || !S.active) return;
+    const nowMs = performance.now() - S.origin;
+    ws.send(JSON.stringify({ type: 'tick', nowMs }));
+    if (nowMs > S.maxMs + 800 && !S.finishing) sendFinish();
+  }, 50);
+  requestAnimationFrame(frame);
+}
+
+function buildTimeline(started) {
+  const timeline = $('timeline');
+  timeline.querySelectorAll('.dot').forEach((d) => d.remove());
+  dots = [];
+  const restFollow = new Set(started.restFollowTargetIds);
+  for (const t of S.targets) {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (restFollow.has(t.id) ? ' rest-lead' : '');
+    dot.style.left = `${(t.atMs / S.maxMs) * 100}%`;
+    timeline.appendChild(dot);
+    dots.push(dot);
+  }
+  const windows = S.targets[0];
+  $('beatInfo').textContent =
+    `${S.bpm} BPM · 档位 ${S.profile} · 实际窗口 Perfect ±${Math.round(windows.perfectWindowMs)}ms / Good ±${Math.round(windows.goodWindowMs)}ms`;
+}
+
+function startAudio(msg) {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const clickAt = (perfMs, freq, vol) => {
+    const ctxTime = audioCtx.currentTime + (perfMs - performance.now()) / 1000;
+    if (ctxTime < audioCtx.currentTime) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, ctxTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctxTime + 0.09);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(ctxTime);
+    osc.stop(ctxTime + 0.12);
+  };
+  for (let i = 0; i < S.countInBeats; i++) {
+    clickAt(S.origin + i * S.quarterMs, i === 0 ? 880 : 660, 0.22);
+  }
+  for (let t = S.countInMs, beat = 0; t <= S.lastAtMs + 1; t += S.quarterMs, beat++) {
+    clickAt(S.origin + t, beat % 4 === 0 ? 880 : 550, beat % 4 === 0 ? 0.2 : 0.13);
+  }
+}
+
+function frame() {
+  if (!S || !S.active) return;
+  const nowMs = performance.now() - S.origin;
+  $('cursor').style.left = `${Math.min(nowMs / S.maxMs, 1) * 100}%`;
+  if (nowMs < S.countInMs) {
+    $('bigNumber').textContent = S.countInBeats - Math.floor(nowMs / S.quarterMs);
+  } else {
+    const beat = Math.floor((nowMs - S.countInMs) / S.quarterMs) + 1;
+    $('bigNumber').textContent = beat > 0 && nowMs <= S.lastAtMs + S.quarterMs ? beat : '·';
+  }
+  requestAnimationFrame(frame);
+}
+
+window.addEventListener('keydown', (event) => {
+  if (event.code !== 'Space' || event.repeat) return;
+  if (!S || !S.active || S.finishing) return;
+  event.preventDefault();
+  const atMs = performance.now() - S.origin;
+  ws.send(JSON.stringify({ type: 'hit', seq: ++S.seq, atMs }));
+});
+
+function onJudgment(item) {
+  const chip = document.createElement('span');
+  chip.className = `chip ${item.grade}`;
+  const detail = item.errorMs == null ? '' : ` ${item.errorMs > 0 ? '+' : ''}${Math.round(item.errorMs)}ms`;
+  chip.innerHTML = `<b>${GRADE_CN[item.grade] || item.grade}</b>${detail}`;
+  $('chips').appendChild(chip);
+  while ($('chips').children.length > 64) $('chips').firstChild.remove();
+  if (item.targetIndex != null && dots[item.targetIndex]) {
+    dots[item.targetIndex].classList.add(item.grade);
+  }
+}
+
+function endSessionUi() {
+  if (S) S.active = false;
+  clearInterval(S && S.tickTimer);
+  $('startBtn').disabled = false;
+  $('finishBtn').disabled = true;
+  $('bigNumber').textContent = 'Ready';
+}
+
+function onReport(msg) {
+  endSessionUi();
+  const r = msg.report;
+  const stats = r.stats;
+  const cells = [
+    ['目标数', stats.targetCount],
+    ['Perfect', stats.perfectCount],
+    ['Good', stats.goodCount],
+    ['Miss', stats.missCount],
+    ['Extra', stats.extraCount],
+    ['命中率', `${Math.round(stats.targetHitRate * 100)}%`],
+    ['平均偏差', stats.meanSignedMs == null ? '—' : `${stats.meanSignedMs.toFixed(1)}ms (正=晚)`],
+    ['平均绝对偏差', stats.meanAbsoluteMs == null ? '—' : `${stats.meanAbsoluteMs.toFixed(1)}ms`],
+    ['标准差', stats.standardDeviationMs == null ? '—' : `${stats.standardDeviationMs.toFixed(1)}ms`],
+  ];
+  $('statsGrid').innerHTML = cells
+    .map(([k, v]) => `<div class="cell"><div class="v">${v}</div><div class="k">${k}</div></div>`)
+    .join('');
+  $('trustBadge').className = `badge ${r.trustworthy ? 'ok' : 'bad'}`;
+  $('trustBadge').textContent = r.trustworthy ? '数据可信' : '数据不可信';
+
+  const coach = $('coach');
+  if (!msg.analysis || msg.analysis.error) {
+    coach.innerHTML = `<div>教学分析暂不可用:${msg.analysis ? msg.analysis.error : '未知原因'}</div>`;
+  } else {
+    const parts = [];
+    for (const d of msg.analysis.report.diagnostics) {
+      parts.push(
+        `<div><b>我观察到(${ISSUE_CN[d.issue] || d.issue},${d.severity}):</b> ` +
+        `<span class="ev">${d.evidence}</span></div>`,
+      );
+    }
+    const p = msg.analysis.prescription;
+    if (p) {
+      const bpmPart = p.suggestedBpm ? `建议 BPM ${p.suggestedBpm}` : '保持当前 BPM';
+      parts.push(
+        `<div><b>这次先练:${EXERCISE_CN[p.exercise] || p.exercise}</b>(${bpmPart},` +
+        `每组 ${p.loopsPerSet} 遍,连续 ${p.requiredConsecutivePasses} 遍达标再提速)` +
+        `<br><span class="ev">${p.rationale}</span></div>`,
+      );
+      parts.push('<div><b>接下来验证:</b>按处方练习后,再做一次同样的训练复测对比。</div>');
+    }
+    coach.innerHTML = parts.join('');
+  }
+  $('report').style.display = 'block';
+  $('report').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+{
+ "atoms": 1018,
+ "results": [
+  {
+   "bpm": 40,
+   "countIn": "beats",
+   "countInBeats": 4,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 40,
+   "countIn": "threeSeconds",
+   "countInBeats": 2,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 60,
+   "countIn": "beats",
+   "countInBeats": 4,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 60,
+   "countIn": "threeSeconds",
+   "countInBeats": 3,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 70,
+   "countIn": "beats",
+   "countInBeats": 4,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 70,
+   "countIn": "threeSeconds",
+   "countInBeats": 3.5,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 80,
+   "countIn": "beats",
+   "countInBeats": 4,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 80,
+   "countIn": "threeSeconds",
+   "countInBeats": 4,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 90,
+   "countIn": "beats",
+   "countInBeats": 4,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 90,
+   "countIn": "threeSeconds",
+   "countInBeats": 4.5,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 100,
+   "countIn": "beats",
+   "countInBeats": 4,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 100,
+   "countIn": "threeSeconds",
+   "countInBeats": 5,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 120,
+   "countIn": "beats",
+   "countInBeats": 4,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 120,
+   "countIn": "threeSeconds",
+   "countInBeats": 6,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 133,
+   "countIn": "beats",
+   "countInBeats": 4,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 133,
+   "countIn": "threeSeconds",
+   "countInBeats": 6.6499999999999995,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 177,
+   "countIn": "beats",
+   "countInBeats": 4,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  },
+  {
+   "bpm": 177,
+   "countIn": "threeSeconds",
+   "countInBeats": 8.850000000000001,
+   "rustTargets": 1018,
+   "tsScoreEvents": 1579,
+   "offPlan": 0,
+   "maxGapMs": 0
+  }
+ ]
+}

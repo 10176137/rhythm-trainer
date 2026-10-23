@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "description": "Golden packet traces for decoder/tracker tests. These are synthetic fixtures, not SP-A500 hardware captures.",
+  "clockMapping": {
+    "clockMappingId": "fixture-clock-01",
+    "clockDomainId": "mock-clock-01",
+    "sourceAnchorMs": 0,
+    "sessionAnchorMs": 0,
+    "slope": 1,
+    "uncertaintyMs": 0,
+    "quality": "good"
+  },
+  "cases": [
+    {
+      "name": "normal-note-duration-375ms",
+      "packets": [
+        { "sourceId": "mock-a", "sourceSeq": 1, "clockDomainId": "mock-clock-01", "capturedAtMs": 1000, "sessionTimeMs": 1000, "rawBytes": [144, 60, 90], "transport": "mock" },
+        { "sourceId": "mock-a", "sourceSeq": 2, "clockDomainId": "mock-clock-01", "capturedAtMs": 1375, "sessionTimeMs": 1375, "rawBytes": [128, 60, 40], "transport": "mock" }
+      ],
+      "expected": {
+        "decodedKinds": ["note-on", "note-off"],
+        "keyPresses": [{ "sourceId": "mock-a", "channel": 0, "noteNumber": 60, "velocityOn": 90, "keyDownDurationMs": 375, "status": "complete" }],
+        "diagnosticCodes": []
+      }
+    },
+    {
+      "name": "velocity-zero-note-on-is-note-off",
+      "packets": [
+        { "sourceId": "mock-a", "sourceSeq": 1, "clockDomainId": "mock-clock-01", "capturedAtMs": 2000, "sessionTimeMs": 2000, "rawBytes": [144, 64, 70], "transport": "mock" },
+        { "sourceId": "mock-a", "sourceSeq": 2, "clockDomainId": "mock-clock-01", "capturedAtMs": 2250, "sessionTimeMs": 2250, "rawBytes": [144, 64, 0], "transport": "mock" }
+      ],
+      "expected": {
+        "decodedKinds": ["note-on", "note-off"],
+        "keyPresses": [{ "sourceId": "mock-a", "channel": 0, "noteNumber": 64, "keyDownDurationMs": 250, "status": "complete" }],
+        "diagnosticCodes": []
+      }
+    },
+    {
+      "name": "same-pitch-different-channels-do-not-cross-pair",
+      "packets": [
+        { "sourceId": "mock-a", "sourceSeq": 1, "clockDomainId": "mock-clock-01", "capturedAtMs": 3000, "sessionTimeMs": 3000, "rawBytes": [144, 60, 85], "transport": "mock" },
+        { "sourceId": "mock-a", "sourceSeq": 2, "clockDomainId": "mock-clock-01", "capturedAtMs": 3010, "sessionTimeMs": 3010, "rawBytes": [145, 60, 75], "transport": "mock" },
+        { "sourceId": "mock-a", "sourceSeq": 3, "clockDomainId": "mock-clock-01", "capturedAtMs": 3300, "sessionTimeMs": 3300, "rawBytes": [128, 60, 0], "transport": "mock" },
+        { "sourceId": "mock-a", "sourceSeq": 4, "clockDomainId": "mock-clock-01", "capturedAtMs": 3400, "sessionTimeMs": 3400, "rawBytes": [129, 60, 0], "transport": "mock" }
+      ],
+      "expected": {
+        "keyPresses": [
+          { "sourceId": "mock-a", "channel": 0, "noteNumber": 60, "keyDownDurationMs": 300, "status": "complete" },
+          { "sourceId": "mock-a", "channel": 1, "noteNumber": 60, "keyDownDurationMs": 390, "status": "complete" }
+        ],
+        "diagnosticCodes": []
+      }
+    },
+    {
+      "name": "sustain-pedal-does-not-extend-keydown-duration",
+      "packets": [
+        { "sourceId": "mock-a", "sourceSeq": 1, "clockDomainId": "mock-clock-01", "capturedAtMs": 4000, "sessionTimeMs": 4000, "rawBytes": [176, 64, 127], "transport": "mock" },
+        { "sourceId": "mock-a", "sourceSeq": 2, "clockDomainId": "mock-clock-01", "capturedAtMs": 4010, "sessionTimeMs": 4010, "rawBytes": [144, 67, 95], "transport": "mock" },
+        { "sourceId": "mock-a", "sourceSeq": 3, "clockDomainId": "mock-clock-01", "capturedAtMs": 4250, "sessionTimeMs": 4250, "rawBytes": [128, 67, 0], "transport": "mock" },
+        { "sourceId": "mock-a", "sourceSeq": 4, "clockDomainId": "mock-clock-01", "capturedAtMs": 4500, "sessionTimeMs": 4500, "rawBytes": [176, 64, 0], "transport": "mock" }
+      ],
+      "expected": {
+        "keyPresses": [{ "sourceId": "mock-a", "channel": 0, "noteNumber": 67, "keyDownDurationMs": 240, "status": "complete" }],
+        "diagnosticCodes": []
+      }
+    },
+    {
+      "name": "orphan-note-off",
+      "packets": [
+        { "sourceId": "mock-a", "sourceSeq": 1, "clockDomainId": "mock-clock-01", "capturedAtMs": 5000, "sessionTimeMs": 5000, "rawBytes": [128, 60, 0], "transport": "mock" }
+      ],
+      "expected": {
+        "keyPresses": [],
+        "diagnosticCodes": ["ORPHAN_NOTE_OFF"]
+      }
+    },
+    {
+      "name": "missing-note-off-on-session-finish",
+      "packets": [
+        { "sourceId": "mock-a", "sourceSeq": 1, "clockDomainId": "mock-clock-01", "capturedAtMs": 6000, "sessionTimeMs": 6000, "rawBytes": [144, 72, 100], "transport": "mock" }
+      ],
+      "expectedAfterFinish": {
+        "keyPresses": [{ "sourceId": "mock-a", "channel": 0, "noteNumber": 72, "status": "missing-note-off", "keyDownDurationMs": null }],
+        "diagnosticCodes": ["MISSING_NOTE_OFF"]
+      }
+    },
+    {
+      "name": "same-key-overlap-is-ambiguous-not-silently-overwritten",
+      "packets": [
+        { "sourceId": "mock-a", "sourceSeq": 1, "clockDomainId": "mock-clock-01", "capturedAtMs": 7000, "sessionTimeMs": 7000, "rawBytes": [144, 60, 80], "transport": "mock" },
+        { "sourceId": "mock-a", "sourceSeq": 2, "clockDomainId": "mock-clock-01", "capturedAtMs": 7050, "sessionTimeMs": 7050, "rawBytes": [144, 60, 90], "transport": "mock" },
+        { "sourceId": "mock-a", "sourceSeq": 3, "clockDomainId": "mock-clock-01", "capturedAtMs": 7300, "sessionTimeMs": 7300, "rawBytes": [128, 60, 0], "transport": "mock" },
+        { "sourceId": "mock-a", "sourceSeq": 4, "clockDomainId": "mock-clock-01", "capturedAtMs": 7400, "sessionTimeMs": 7400, "rawBytes": [128, 60, 0], "transport": "mock" }
+      ],
+      "expected": {
+        "keyPressStatuses": ["ambiguous-pairing", "ambiguous-pairing"],
+        "strictDurationGradingAllowed": false,
+        "diagnosticCodes": ["AMBIGUOUS_SAME_KEY_OVERLAP"]
+      }
+    }
+  ]
+}

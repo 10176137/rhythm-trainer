@@ -1,0 +1,61 @@
+{
+ "importMs": 117,
+ "status": "READY_WITH_WARNINGS",
+ "strictAllowed": true,
+ "counts": {
+  "partCount": 1,
+  "measureCount": 113,
+  "noteCount": 1610,
+  "restCount": 12,
+  "chordNoteCount": 301,
+  "tieSpanCount": 31,
+  "graceCount": 0,
+  "cueCount": 0,
+  "warningCount": 1,
+  "errorCount": 0
+ },
+ "capabilityList": [
+  "chords",
+  "multi_staff",
+  "multi_voice",
+  "ties",
+  "tuplets"
+ ],
+ "issueCodes": [
+  "measure_underfull"
+ ],
+ "issueCount": 1,
+ "blockingIssues": 0,
+ "issueSamples": [
+  {
+   "code": "measure_underfull",
+   "severity": "warning",
+   "measureOrdinal": 36,
+   "blocksStrict": false
+  }
+ ],
+ "measureCount": 113,
+ "parts": [
+  {
+   "id": "P1",
+   "staves": 2,
+   "measures": 113
+  }
+ ],
+ "planMs": 16,
+ "plan": {
+  "planId": "plan:2654f28396448762:m1-113:once:playback-planner-1.0.0",
+  "strictAllowed": true,
+  "occurrenceCount": 1579,
+  "groupCount": 1018,
+  "rangeDurationBeat": "452/1"
+ },
+ "scoreEvents": 1579,
+ "firstOnsetMs": 3000,
+ "lastOnsetMs": 341625,
+ "uniqueIds": 1579,
+ "pitchRange": [
+  36,
+  87
+ ]
+}

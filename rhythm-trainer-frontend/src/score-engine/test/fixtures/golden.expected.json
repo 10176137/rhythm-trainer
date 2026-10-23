@@ -1,0 +1,210 @@
+{
+  "single-melody-quarter-eighth.musicxml": {
+    "status": "READY",
+    "strictAllowed": true,
+    "counts": { "noteCount": 5, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0 },
+    "measures": [{ "ordinal": 1, "start": "0/1", "duration": "4/1" }],
+    "notes": [
+      { "xmlId": "n1", "pitch": "C4", "onset": "0/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "xmlId": "n2", "pitch": "D4", "onset": "1/1", "duration": "1/2", "voice": "1", "staff": 1 },
+      { "xmlId": "n3", "pitch": "E4", "onset": "3/2", "duration": "1/2", "voice": "1", "staff": 1 },
+      { "xmlId": "n4", "pitch": "F4", "onset": "2/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "xmlId": "n5", "pitch": "G4", "onset": "3/1", "duration": "1/1", "voice": "1", "staff": 1 }
+    ],
+    "timeline": [
+      { "beat": "0/1", "atMs": 0 },
+      { "beat": "1/1", "atMs": 750 },
+      { "beat": "3/2", "atMs": 1125 },
+      { "beat": "2/1", "atMs": 1500 },
+      { "beat": "3/1", "atMs": 2250 }
+    ]
+  },
+  "piano-two-staff-basic.musicxml": {
+    "status": "READY",
+    "strictAllowed": true,
+    "expectedFile": "piano-two-staff-basic.expected.json",
+    "counts": { "noteCount": 12, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0 },
+    "measures": [
+      { "ordinal": 1, "start": "0/1", "duration": "4/1" },
+      { "ordinal": 2, "start": "4/1", "duration": "4/1" }
+    ],
+    "timeline": [
+      { "beat": "0/1", "atMs": 0, "pitches": ["C4", "C3"] },
+      { "beat": "1/1", "atMs": 750, "pitches": ["D4"] },
+      { "beat": "2/1", "atMs": 1500, "pitches": ["E4", "G2"] },
+      { "beat": "3/1", "atMs": 2250, "pitches": ["G4"] },
+      { "beat": "4/1", "atMs": 3000, "pitches": ["G4", "C3"] },
+      { "beat": "5/1", "atMs": 3750, "pitches": ["E4"] },
+      { "beat": "6/1", "atMs": 4500, "pitches": ["D4", "G2"] },
+      { "beat": "7/1", "atMs": 5250, "pitches": ["C4"] }
+    ]
+  },
+  "triad-chord.musicxml": {
+    "status": "READY",
+    "strictAllowed": true,
+    "counts": { "noteCount": 5, "restCount": 0, "chordNoteCount": 2, "tieSpanCount": 0 },
+    "measures": [{ "ordinal": 1, "start": "0/1", "duration": "4/1" }],
+    "notes": [
+      { "xmlId": "c4", "pitch": "C4", "onset": "0/1", "duration": "1/1", "voice": "1", "staff": 1, "chordGroup": true },
+      { "xmlId": "e4", "pitch": "E4", "onset": "0/1", "duration": "1/1", "voice": "1", "staff": 1, "chordGroup": true },
+      { "xmlId": "g4", "pitch": "G4", "onset": "0/1", "duration": "1/1", "voice": "1", "staff": 1, "chordGroup": true },
+      { "pitch": "D4", "onset": "1/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "E4", "onset": "2/1", "duration": "2/1", "voice": "1", "staff": 1 }
+    ],
+    "timeline": [
+      { "beat": "0/1", "atMs": 0, "pitches": ["C4", "E4", "G4"] },
+      { "beat": "1/1", "atMs": 750, "pitches": ["D4"] },
+      { "beat": "2/1", "atMs": 1500, "pitches": ["E4"] }
+    ]
+  },
+  "multi-voice-backup-forward.musicxml": {
+    "status": "READY",
+    "strictAllowed": true,
+    "counts": { "noteCount": 5, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0 },
+    "measures": [{ "ordinal": 1, "start": "0/1", "duration": "4/1" }],
+    "notes": [
+      { "pitch": "C4", "onset": "0/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "D4", "onset": "1/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "E4", "onset": "2/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "F4", "onset": "3/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "G3", "onset": "1/1", "duration": "2/1", "voice": "2", "staff": 1 }
+    ],
+    "timeline": [
+      { "beat": "0/1", "atMs": 0, "pitches": ["C4"] },
+      { "beat": "1/1", "atMs": 750, "pitches": ["D4", "G3"] },
+      { "beat": "2/1", "atMs": 1500, "pitches": ["E4"] },
+      { "beat": "3/1", "atMs": 2250, "pitches": ["F4"] }
+    ]
+  },
+  "rests.musicxml": {
+    "status": "READY",
+    "strictAllowed": true,
+    "counts": { "noteCount": 1, "restCount": 2, "chordNoteCount": 0, "tieSpanCount": 0 },
+    "measures": [{ "ordinal": 1, "start": "0/1", "duration": "4/1" }],
+    "notes": [{ "xmlId": "n1", "pitch": "C4", "onset": "2/1", "duration": "1/1", "voice": "1", "staff": 1 }],
+    "timeline": [{ "beat": "2/1", "atMs": 1500, "pitches": ["C4"] }]
+  },
+  "dotted-triplet.musicxml": {
+    "status": "READY",
+    "strictAllowed": true,
+    "counts": { "noteCount": 5, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0 },
+    "measures": [{ "ordinal": 1, "start": "0/1", "duration": "4/1" }],
+    "notes": [
+      { "xmlId": "dotted-c", "pitch": "C4", "onset": "0/1", "duration": "3/2", "voice": "1", "staff": 1 },
+      { "xmlId": "tri-d", "pitch": "D4", "onset": "3/2", "duration": "1/6", "voice": "1", "staff": 1 },
+      { "xmlId": "tri-e", "pitch": "E4", "onset": "5/3", "duration": "1/6", "voice": "1", "staff": 1 },
+      { "xmlId": "tri-f", "pitch": "F4", "onset": "11/6", "duration": "1/6", "voice": "1", "staff": 1 },
+      { "xmlId": "g-half", "pitch": "G4", "onset": "2/1", "duration": "2/1", "voice": "1", "staff": 1 }
+    ],
+    "timeline": [
+      { "beat": "0/1", "atMs": 0 },
+      { "beat": "3/2", "atMs": 1125 },
+      { "beat": "5/3", "atMs": 1250 },
+      { "beat": "11/6", "atMs": 1375 },
+      { "beat": "2/1", "atMs": 1500 }
+    ]
+  },
+  "tie-across-measure.musicxml": {
+    "status": "READY",
+    "strictAllowed": true,
+    "counts": { "noteCount": 4, "restCount": 2, "chordNoteCount": 0, "tieSpanCount": 1 },
+    "measures": [
+      { "ordinal": 1, "start": "0/1", "duration": "4/1" },
+      { "ordinal": 2, "start": "4/1", "duration": "4/1" }
+    ],
+    "notes": [
+      { "pitch": "C4", "onset": "2/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "xmlId": "tie-start", "pitch": "C4", "onset": "3/1", "duration": "1/1", "voice": "1", "staff": 1, "tieStart": true },
+      { "xmlId": "tie-stop", "pitch": "C4", "onset": "4/1", "duration": "1/1", "voice": "1", "staff": 1, "tieStop": true },
+      { "pitch": "D4", "onset": "5/1", "duration": "2/1", "voice": "1", "staff": 1 }
+    ],
+    "tieSpans": [
+      { "pitchKey": "C4|1|1", "startBeat": "3/1", "endBeat": "5/1", "eventCount": 2 }
+    ],
+    "timeline": [
+      { "beat": "2/1", "atMs": 1500, "pitches": ["C4"] },
+      { "beat": "3/1", "atMs": 2250, "pitches": ["C4"], "durationMs": 1500 },
+      { "beat": "5/1", "atMs": 3750, "pitches": ["D4"] }
+    ]
+  },
+  "time-key-change.musicxml": {
+    "status": "READY",
+    "strictAllowed": true,
+    "counts": { "noteCount": 7, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0 },
+    "measures": [
+      { "ordinal": 1, "start": "0/1", "duration": "4/1", "time": "4/4", "fifths": 0 },
+      { "ordinal": 2, "start": "4/1", "duration": "3/1", "time": "3/4", "fifths": 1 }
+    ],
+    "notes": [
+      { "pitch": "C4", "onset": "0/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "D4", "onset": "1/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "E4", "onset": "2/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "F4", "onset": "3/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "G4", "onset": "4/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "A4", "onset": "5/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "B4", "onset": "6/1", "duration": "1/1", "voice": "1", "staff": 1 }
+    ],
+    "timeline": [
+      { "beat": "0/1", "atMs": 0 },
+      { "beat": "1/1", "atMs": 750 },
+      { "beat": "2/1", "atMs": 1500 },
+      { "beat": "3/1", "atMs": 2250 },
+      { "beat": "4/1", "atMs": 3000 },
+      { "beat": "5/1", "atMs": 3750 },
+      { "beat": "6/1", "atMs": 4500 }
+    ]
+  },
+  "pickup-implicit.musicxml": {
+    "status": "READY",
+    "strictAllowed": true,
+    "counts": { "noteCount": 5, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0 },
+    "measures": [
+      { "ordinal": 1, "start": "0/1", "duration": "1/1", "implicit": true },
+      { "ordinal": 2, "start": "1/1", "duration": "4/1", "implicit": false }
+    ],
+    "notes": [
+      { "xmlId": "pickup", "pitch": "C4", "onset": "0/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "D4", "onset": "1/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "E4", "onset": "2/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "F4", "onset": "3/1", "duration": "1/1", "voice": "1", "staff": 1 },
+      { "pitch": "G4", "onset": "4/1", "duration": "1/1", "voice": "1", "staff": 1 }
+    ],
+    "timeline": [
+      { "beat": "0/1", "atMs": 0 },
+      { "beat": "1/1", "atMs": 750 },
+      { "beat": "2/1", "atMs": 1500 },
+      { "beat": "3/1", "atMs": 2250 },
+      { "beat": "4/1", "atMs": 3000 }
+    ]
+  },
+  "unsupported-repeat-tempo-curve.musicxml": {
+    "status": "DISPLAY_ONLY",
+    "strictAllowed": false,
+    "issueCodes": ["unsupported_tempo_curve", "unsupported_repeat_structure"],
+    "counts": { "noteCount": 4, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0 }
+  },
+  "malformed.musicxml": {
+    "status": "REJECTED",
+    "strictAllowed": false,
+    "issueCodes": ["invalid_xml"],
+    "counts": { "noteCount": 0, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0 }
+  },
+  "missing-divisions.musicxml": {
+    "status": "REJECTED",
+    "strictAllowed": false,
+    "issueCodes": ["missing_divisions"],
+    "counts": { "noteCount": 0, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0 }
+  },
+  "invalid-chord-anchor.musicxml": {
+    "status": "DISPLAY_ONLY",
+    "strictAllowed": false,
+    "issueCodes": ["invalid_chord_anchor"],
+    "counts": { "noteCount": 2, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0 }
+  },
+  "duration-overflow.musicxml": {
+    "status": "DISPLAY_ONLY",
+    "strictAllowed": false,
+    "issueCodes": ["duration_out_of_measure"],
+    "counts": { "noteCount": 1, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0 }
+  }
+}

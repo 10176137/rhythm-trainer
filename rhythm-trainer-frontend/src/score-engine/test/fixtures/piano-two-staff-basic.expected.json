@@ -1,0 +1,35 @@
+{
+  "fixtureId": "piano-two-staff-basic-v1",
+  "status": "illustrative-golden-contract-to-be-confirmed-by-implementation",
+  "score": {
+    "partCount": 1,
+    "measureCount": 2,
+    "staves": 2,
+    "timeSignature": "4/4",
+    "keySignatureFifths": 0,
+    "tempoBpm": 80,
+    "divisionsPerQuarter": 4
+  },
+  "expectedEvents": [
+    {"xmlId":"m1-rh-1","staff":1,"voice":"1","pitch":"C4","onsetBeat":"0/1","durationBeat":"1/1"},
+    {"xmlId":"m1-rh-2","staff":1,"voice":"1","pitch":"D4","onsetBeat":"1/1","durationBeat":"1/1"},
+    {"xmlId":"m1-rh-3","staff":1,"voice":"1","pitch":"E4","onsetBeat":"2/1","durationBeat":"1/1"},
+    {"xmlId":"m1-rh-4","staff":1,"voice":"1","pitch":"G4","onsetBeat":"3/1","durationBeat":"1/1"},
+    {"xmlId":"m1-lh-1","staff":2,"voice":"2","pitch":"C3","onsetBeat":"0/1","durationBeat":"2/1"},
+    {"xmlId":"m1-lh-2","staff":2,"voice":"2","pitch":"G2","onsetBeat":"2/1","durationBeat":"2/1"},
+    {"xmlId":"m2-rh-1","staff":1,"voice":"1","pitch":"G4","onsetBeat":"4/1","durationBeat":"1/1"},
+    {"xmlId":"m2-rh-2","staff":1,"voice":"1","pitch":"E4","onsetBeat":"5/1","durationBeat":"1/1"},
+    {"xmlId":"m2-rh-3","staff":1,"voice":"1","pitch":"D4","onsetBeat":"6/1","durationBeat":"1/1"},
+    {"xmlId":"m2-rh-4","staff":1,"voice":"1","pitch":"C4","onsetBeat":"7/1","durationBeat":"1/1"},
+    {"xmlId":"m2-lh-1","staff":2,"voice":"2","pitch":"C3","onsetBeat":"4/1","durationBeat":"2/1"},
+    {"xmlId":"m2-lh-2","staff":2,"voice":"2","pitch":"G2","onsetBeat":"6/1","durationBeat":"2/1"}
+  ],
+  "mustAssert": [
+    "backup returns the cursor to the start of the measure before parsing the left-hand voice",
+    "right-hand and left-hand events share the correct global measure origin",
+    "measure 2 starts at beat 4, not after the final XML event from measure 1",
+    "tempo 80 BPM maps one quarter beat to 750 ms (relative to the playback origin)",
+    "event IDs use XML IDs when usable but internal IDs remain namespaced by score fingerprint",
+    "the MusicXML input must be parsed in a no-external-entity mode; the external DOCTYPE above is fixture metadata and must not trigger a network fetch"
+  ]
+}

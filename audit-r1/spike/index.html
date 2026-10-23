@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>OSMD anchor spike</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; background: #fff; color: #111; }
+    .case { border: 1px solid #ccc; margin: 8px 0; padding: 6px; width: 820px; }
+    .case h2 { font-size: 12px; margin: 2px 0 6px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="/osmd.js"></script>
+  <script>
+    window.addEventListener('error', (event) => {
+      window.__SPIKE__ = { complete: true, cases: [], error: `window error: ${event.message} @ ${event.filename}:${event.lineno}` };
+      document.body.dataset.spike = 'error';
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      window.__SPIKE__ = { complete: true, cases: [], error: `unhandled rejection: ${event.reason && (event.reason.stack || event.reason.message || event.reason)}` };
+      document.body.dataset.spike = 'error';
+    });
+  </script>
+  <script type="module" src="/spike/spike.mjs"></script>
+</body>
+</html>

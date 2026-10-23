@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OSMD Mapping Spike</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 24px; color: #20252d; background: #fff; }
+      h1 { font-size: 20px; }
+      .spike-score { border: 1px solid #e3e6ee; margin: 12px 0; padding: 8px; width: 760px; max-width: 100%; background: #fff; }
+      .spike-label { font-size: 12px; color: #667; margin: 4px 0; }
+      .ok { color: #1d7f5f; }
+      .bad { color: #b23b48; }
+    </style>
+  </head>
+  <body>
+    <h1>OSMD mapping spike</h1>
+    <p id="status">Rendering fixtures…</p>
+    <div id="scores"></div>
+    <script type="module" src="/src/score-engine/dev/osmdSpike.ts"></script>
+  </body>
+</html>
