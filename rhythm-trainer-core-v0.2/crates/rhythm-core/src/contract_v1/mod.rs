@@ -4,11 +4,17 @@
 //! validation + the mandatory fingerprint gate (a3), planner semantics.
 
 pub mod canonical;
+pub mod config;
 pub mod error;
 pub mod fingerprint;
 pub mod payload;
+pub mod rational;
+pub mod time;
 
 pub use canonical::{nfc_normalize_value, serialize_jcs};
+pub use config::{parse_plan_request_config, PlanRequestConfig};
 pub use error::ContractError;
 pub use fingerprint::{canonical_bytes, compute_plan_fingerprint_v1, sha256_hex};
 pub use payload::PlanFingerprintPayloadV1;
+pub use rational::RationalV1;
+pub use time::{beat_to_microseconds, count_in_beats, target_onset_us};
