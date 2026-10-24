@@ -1,13 +1,13 @@
 # TS↔Rust Parity Gate V1（R2-1：Golden 语义差分与对照门槛——验收规则冻结）
 
-**日期：** 2026-10-24
-**基线：** `main` @ `9361f7c`
-**性质：** **验收规则设计冻结**。本卡不实现 Rust planner、不改 TS 语义、不切生产权威（Rust planner 未启动）。
+**日期：** 2026-10-24（同日按复审修整说明 RF-01–RF-04 修订）
+**复审基线：** `cff09d2`
+**性质：** **验收规则设计冻结——Design Frozen / Accepted**。本卡不实现 Rust planner、不改 TS 语义、不切生产权威（Rust planner 未启动）；这不代表迁移已通过，实施仍须满足 §8 全部证据门槛。
 **上位文档：** 卡定义见 `R2_0_CONTRACT_FREEZE_REPORT.md` §11、前置条件状态见 `R2_R3_ROUTE_DECISION.md` §5.1、真值纪律见 `GOLDEN_FIXTURES.md`。
 
 > **本卡要回答的四个问题**（完成标准）：任何开发者开始实现 Rust planner 前，能明确知道——
 > ① 输入是什么（§2）；② 输出比较哪些字段、怎么比（§3–§4）；③ 哪些差异允许、哪些必须阻断（§5）；
-> ④ 什么证据才能宣布迁移通过（§6 负例清单、§7 回归矩阵、§8 迁移证据）。
+> ④ 什么证据才能宣布迁移通过（§6 验收清单——指纹敏感性/故障注入/拒绝型三类、§7 回归矩阵、§8 迁移证据）。
 
 ---
 
@@ -40,8 +40,9 @@ MusicXML → importMusicXml() → ScoreDocument    →    ScoreDocumentV1（同�
 | `range` | start/end measure ordinal（1-based，end ≥ start，end ≤ measureCount） | playback-planner.ts:93 |
 | `repeatSelection` | `none` 或 `range-loop count`（1–32，:37/:97）；**练习循环，非乐谱反复** | GOLDEN_FIXTURES A10 |
 | `HandMappingV1` + `hand` | `source:'user'`；`clef-heuristic` 对 strict 拒绝 | practice-scope.ts:118 |
-| `bpm` / `ticksPerQuarter` | 20–300 / 默认 960 | tempo-map.ts:11-12 |
-| `CountInUs` | **整数 µs 输入**；`countInBeats = CountInUs × bpm / 60_000_000` 按精确有理推导（payload `tempo.countInBeats` 即此值，禁止 float 参与指纹） | GOLDEN_FIXTURES §1.3 |
+| `bpm` | **正的约分有理数** `BPM = bpmNumerator / bpmDenominator`（分子分母均 > 0；payload 校验正性 `invalid_tempo`，plan-fingerprint.ts:1051-1052；生产值域仍受 20–300 约束，tempo-map.ts:11-12）。差分向量必须至少覆盖**一个整数 BPM（分母 = 1）与一个非整数有理 BPM**（§7 向量行） | RFC-01；payload `tempo.bpm: RationalV1` |
+| `ticksPerQuarter` | 默认 960，正整数 | tempo-map.ts:19 |
+| `CountInUs` | **非负整数 µs 输入**（冻结的时间起点）。对应拍数 `CountInBeats = CountInUs × bpmNumerator / (60_000_000 × bpmDenominator)` **先化为约分有理数**再进入 payload（`tempo.countInBeats` 为显式有理入参，plan-fingerprint.ts:914/:1215）；全程禁止 JS `number`/浮点计算中间值 | RFC-01；GOLDEN_FIXTURES §1.3 |
 | `unsupportedNotationPolicy` | `reject-strict` \| `allow-display-only` | types.ts:260 |
 | **`plannerVersion`（差分公共值）** | payload 的**显式输入**（plan-fingerprint.ts:896、门禁 :1204），**双侧必须传同一冻结值**；各实现的生产 plannerVersion 字符串不参与差分比较 | R2-0 报告 §2.1 |
 | 规则版本 | `time-conversion-v1`、`fingerprintSchemaVersion=1`、`normalizer-1`、`musicxml-v1.0` | 冻结契约 |
@@ -53,6 +54,16 @@ MusicXML → importMusicXml() → ScoreDocument    →    ScoreDocumentV1（同�
 ## 3. 逐字段验收规则（映射与比较方法）
 
 比较规则四级：**【精确】**值完全相等（有理数用 BigInt 交叉相乘比较，契约 `isCanonicalRationalV1` 同规则）；**【结构】**按生成规则比较、不逐字节；**【显示】**serialization-only，不得作语义断言源；**【真值协议】**见 §3.5。
+
+### 3.0 ID 三层语义（唯一性范围冻结，RF-03）
+
+| 字段 | 语义 | 唯一性规则 |
+|---|---|---|
+| `ScoreEvent.id` / `PlaybackOccurrence.scoreEventId` | **原曲记谱事件身份** | 在语义文档内按其契约唯一；**跨 pass 合法重复引用**（range-loop 中同一原曲音符出现多次是正常现象） |
+| `PlaybackOccurrence.occurrenceId` | 某计划内的一次播放出现 | 每 pass、每目标唯一（`planId:p{pass}:{scoreEventId}`，playback-planner.ts:144） |
+| `EngineScoreEvent.scoreEventId` | 评分目标 wire ID；现有 TS 实现等于该播放目标的 `occurrenceId`（score-events.ts:29） | **单份评分目标数组内必须唯一**；唯一性检查对象是它，**不是**原曲事件 ID（见 N-ID-C1） |
+
+> 若未来把 wire 字段改名为显式 `occurrenceId`，属协议变更，另开审查；本轮不改 `EngineScoreEvent` wire 格式（§3.5、§9）。
 
 ### 3.1 occurrence 级（TS 来源 `types.ts:263-285`，填充 `playback-planner.ts:135-163`）
 
@@ -101,17 +112,48 @@ MusicXML → importMusicXml() → ScoreDocument    →    ScoreDocumentV1（同�
 | `scoreEventId` = occurrenceId | 【结构】 |
 | `measure` = bar（:31） | 【精确】 |
 | `pitch`（int 0–127） | 【精确】 |
-| `targetOnsetMs` / `targetDurationMs` | **【真值协议】**见 §3.5 |
+| `targetOnsetMs` / `targetDurationMs` | 【真值协议】差分经 §3.5 的 `CanonicalScoreEventV1`（整数 µs）进行；wire 毫秒字段本轮不改结构（§3.5 三种比较对象） |
 | `beatPosition` | 【显示】（GOLDEN_FIXTURES §5.5 已分类 serialization-only） |
 | `partId` = `staff-{staffNumber}:voice-{voiceId}`（:35） | 【结构·已知映射】确定性派生自 staffNumber+voiceId，**不是** sourcePartId；多 part 同 staff/voice 撞名被 P5 上游拒绝。Rust 侧输出真实 `sourcePartId`+staff+voice，差分按派生规则核对 wire 值 |
 | `parseConfidence` = 1（设计债 D13） | 【精确】常量 |
 
-### 3.5 时间真值协议（冻结，`time-conversion-v1`）
+### 3.5 时间真值协议（冻结；RFC-01/RFC-04，与 `beatToMicroseconds()` plan-fingerprint.ts:1229-1242 逐字一致）
 
-- **真值**：`PlanOffsetUs = sign·floor(|n×60_000_000|/(bpm·d) + 1/2)`（half away from zero，BigInt 精确，等价 `beatToMicroseconds`）；`TargetOnsetUs = CountInUs + PlanOffsetUs`——**只舍入一次**（GOLDEN_FIXTURES §1.2；G5 勘误为鉴）。
-- **Rust 侧**：输出整数 µs，**必须逐项 exact**，无任何舍入类容差。
-- **TS legacyReference 侧**：现状为 float ms（float 乘法链 tempo-map.ts:36-41、countInMs score-events.ts:16）。比对 `ms×1000` 与真值：每处偏差 ≤ 1 µs → 逐项归因为 `time-rounding`（引用具体公式与操作数）；**> 1 µs → semantic-defect，FAIL**。
-- **禁止**：`toBeCloseTo` 作时间断言；相邻 onset 相减推时值；float beat 参与比较（GOLDEN_FIXTURES §1.2/§9）。
+**BPM 为正的约分有理数**：`BPM = bpmNumerator / bpmDenominator`，`bpmNumerator > 0`、`bpmDenominator > 0`。
+
+**Count-in 拍数（精确有理）**：
+
+```text
+CountInBeats = CountInUs × bpmNumerator / (60_000_000 × bpmDenominator)
+```
+
+先化为约分有理数再进入 `PlanFingerprintPayloadV1.tempo.countInBeats`；禁止以 JS `number` 计算中间值。
+
+**目标时间**（拍位 `beat = n/d`，`n ≥ 0`、`d > 0`；时值 `duration = dn/dd`）：
+
+```text
+PlanOffsetUs     = roundHalfUp( n  × 60_000_000 × bpmDenominator / (d  × bpmNumerator) )
+TargetDurationUs = roundHalfUp( dn × 60_000_000 × bpmDenominator / (dd × bpmNumerator) )
+TargetOnsetUs    = CountInUs + PlanOffsetUs        ← 相对拍位只舍入这一次
+```
+
+`roundHalfUp` = 最接近整数、恰半向上（`floor((num + den/2) / den)`，仅非负域）；全部中间乘法用 BigInt/等价精确整数运算，结果受安全整数域检查（`TIME_OUT_OF_RANGE`）。该公式与参考实现逐字一致：`beatToMicroseconds()` 以 **`bpm.denominator` 进分子**（plan-fingerprint.ts:1234-1235）——整数 BPM 与有理 BPM 走同一条公式，不得分叉实现（GOLDEN_FIXTURES §1.2；G5 勘误为鉴）。
+
+**三种比较对象（RF-04，边界冻结）：**
+
+| 对象 | 内容 | 用途 |
+|---|---|---|
+| 语义权威 | `PlaybackPlanV1` 的有理拍位/时值 + 冻结 CountIn/BPM 配置 | L1/L2 的比较源 |
+| **差分规范化 `CanonicalScoreEventV1`**（仅离线验收；**不代表现有 wire 已有该字段**） | occurrence/source locator、pitch、measure/pass、整数 `targetOnsetUs`/`targetDurationUs`（按上式从精确语义导出） | 双侧语义比较：**逐项 exact，无容差** |
+| 现有 wire `EngineScoreEvent` | `targetOnsetMs`/`targetDurationMs` 毫秒字段 | **本轮不改字段结构**；兼容核查 = wire 字段与语义不变，harness 不得借新对象偷改生产协议 |
+
+**三路比较：**
+
+1. **语义比较**：双侧 canonical 整数 µs 逐项 exact（Rust 无舍入类容差）。
+2. **legacy TS 表示比较**：现有 `targetOnsetMs`/`targetDurationMs` 按冻结规则映射到 µs；`|ms×1000 − Us| ≤ 1` 逐项记录公式、输入值并归因 `time-rounding`（float 乘法链：tempo-map.ts:36-41、countInMs score-events.ts:16）；**> 1 µs = `semantic-defect` FAIL**。
+3. **wire 兼容比较**：对外字段与语义同现状（§3.4 映射规则）；任何协议变更另开审查。
+
+**禁止**：`toBeCloseTo` 作时间断言；相邻 onset 相减推时值；`targetDurationUs` 从已舍入 onset 反推——必须来自对应目标**自身**的精确 duration 语义；float beat 参与比较（GOLDEN_FIXTURES §1.2/§9）。
 
 ---
 
@@ -121,7 +163,7 @@ MusicXML → importMusicXml() → ScoreDocument    →    ScoreDocumentV1（同�
 |---|---|---|
 | **L1 指纹层** | 双侧对同一 bundle 各自实现 `planFingerprintV1`（NFC + JCS(RFC 8785) + SHA-256，**Rust 独立实现，禁止 FFI 调 TS**），哈希相等 | 相等；且文档必须过强制门禁（R2-0B `planFingerprintV1` 入口） |
 | **L2 结构层** | §3.1–§3.2 全字段 diff（覆盖指纹**不**见证的字段） | 零未分类差异 |
-| **L3 派生层** | atoms（§3.3 tick 精确规则）+ scoreEvents（§3.5 真值协议）+ server P1-3 不变量离线复算（onset 组↔target 组一一、组时值=最长成员、小节覆盖；engine-server.mjs:1497-1557） | 全绿 |
+| **L3 派生层** | atoms（§3.3 tick 精确规则）+ scoreEvents canonical µs 三路比较（§3.5）+ server P1-3 不变量离线复算（onset 组↔target 组一一、组时值=最长成员、小节覆盖；engine-server.mjs:1497-1557） | 全绿 |
 
 **L1 见证范围**（payload 字段，`plan-fingerprint.ts:721-756`）：scope（partId/range/hand/handMapping）、repeat、tempo（bpm/PPQ/countInBeats）、group 序列（groupIndex/passIndex/bar/onsetBeat/durationBeat/beatInMeasure/staffNumbers/voiceIds）、成员（locator/pitch{midiNote,spelling}/durationBeat/isTieOnset）。
 
@@ -146,52 +188,53 @@ MusicXML → importMusicXml() → ScoreDocument    →    ScoreDocumentV1（同�
 
 ---
 
-## 6. P8 负例验收清单（目标校验加固——逐条冻结，替代泛化的"非法计划必须拒绝"）
+## 6. P8 验收测试清单（RF-02：指纹敏感性 / 故障注入 / 拒绝型三类，替代泛化的"非法计划必须拒绝"）
 
-以下负例须在 **TS 与 Rust 两侧**分别落地并通过，错误码一致（Rust 侧映射到同一码表）。
+**每项测试只验证一种性质**，三类的输入变更范围与通过判据不同：
 
-### N-PITCH 音高
+| 类 | 名称 | 输入变更范围 | 通过判据 |
+|---|---|---|---|
+| **A** | 指纹敏感性 / 不变性 | 合法基线 payload `P`，每次只改**一个指定字段**得合法 `P'`（或仅重编码 ID） | 敏感性：`F(P') ≠ F(P)`；不变性：`F(P') = F(P)`。**不要求抛错、无错误码**——只验证指纹字段覆盖性 |
+| **B** | 候选输出故障注入 | **冻结 case bundle 与独立 golden，不得修改**；只篡改一侧候选输出的指定字段 | L2/L3 差分报告定位到正确**字段路径**并归类 `semantic-defect`，进程**非零退出**。被篡改输出不得回填为输入，不得同步修改 golden |
+| **C** | 拒绝型（fail-closed） | 注入非法输入 / 非法计划 | 在**指明层级**（Schema / 文档门禁 / planner 输入校验 / 服务端与候选输出校验）被拒绝，断言**具体错误码**；**仅此类要求 TS/Rust 码表一致**。不得以返回空计划、静默丢弃问题事件或仅记 warning 代替拒绝 |
+
+**独立 golden 原则**：任意一侧单独引入错误（另一侧正确）时差分必须失败；"两侧共享同一错误且彼此一致"**不能**替代独立 golden 验证（权威层级见 §10）。
+
+### A 类——指纹敏感性 / 不变性（无错误码）
 | ID | 操作 | 期望 |
 |---|---|---|
-| N-PITCH-1 | 某 member `midiNote` +1 | L1 哈希变化 + L2 semantic-diff 被捕获（FAIL） |
-| N-PITCH-2 | `spelling` 改变、midiNote 不变（同音异名） | L1 哈希变化（payload 含 spelling，plan-fingerprint.ts:751） |
-| N-PITCH-3 | scoreEvent pitch 越界（<0 或 >127）或非整数 | 双侧拒绝（server 同款检查 engine-server.mjs:1458-1460） |
-| N-PITCH-4 | 非整数 alter / 不可表示音高进入 plan | `unrepresentable_pitch` 阻断（上游，双侧一致） |
+| N-PITCH-S1 | 基线 payload 某 member `midiNote` 改变 | `F(P') ≠ F(P)` |
+| N-PITCH-S2 | `spelling` 改变、`midiNote` 不变（同音异名） | `F(P') ≠ F(P)`（spelling 参与身份：payload `pitch.spelling`，plan-fingerprint.ts:751） |
+| N-FP-S1 | 9 项配置篡改（scope/hand/repeat/bpm/PPQ/count-in/plannerVersion/scoreRevisionId/normalizerVersion）各**单项** | 每项 `F(P') ≠ F(P)`（R2-0 §4 篡改矩阵复用） |
+| N-FP-S2 | 全部内部 ID（occurrenceId/scoreEventId/groupId/planId）一致重命名、语义不动 | `F(P') = F(P)`（R2-0A 编码不变性正向复用） |
+| N-FP-S3 | Rust 独立实现重算 5 个固定向量（NFC/JCS/SHA-256 自研，禁 FFI 调 TS） | 与 `test-vectors/plan-fingerprint-v1.json` 逐字节相等 |
 
-### N-COUNT 目标数量
+### B 类——候选输出故障注入（冻结 bundle + 独立 golden；断言字段路径 + 分类 + 非零退出）
 | ID | 操作 | 期望 |
 |---|---|---|
-| N-COUNT-1 | tie 续接事件被当作独立 occurrence 输出 | G3 真值失败（occurrences 2≠1、duration 2≠4，GOLDEN_FIXTURES §4.4） |
-| N-COUNT-2 | rest 进入 occurrences/groups/atoms/scoreEvents | 计数与 atom 数与真值不符（A1） |
-| N-COUNT-3 | grace/cue 进入目标 | 计数不符（collectEvents 过滤 :52-53 语义保持） |
-| N-COUNT-4 | 任意 occurrence 被静默丢弃（含 hand 过滤误删） | occurrence/group/scoreEvent 三层计数同步暴露差异 |
-| N-COUNT-5 | 同 onset 同 staff 异 voice 被拆成两组 | groups 计数不符（A4：group 键不含 voice） |
+| N-PITCH-F1 | 只篡改一侧候选 occurrence 的 `midiNote` 为相邻音高 | 报告定位到该成员音高字段 + `semantic-defect` + 非零退出 |
+| N-COUNT-F1 | tie 续接事件被当作独立 occurrence（GOLDEN_FIXTURES §4.4 反例） | occurrences/duration 差异被捕获（2≠1、2 拍≠4 拍）+ 非零退出 |
+| N-COUNT-F2 | rest / grace / cue 进入目标（A1） | 计数与 atom 数差异被捕获 + 非零退出（过滤语义 playback-planner.ts:52-53） |
+| N-COUNT-F3 | 任意 occurrence 被静默丢弃（含 hand 过滤误删） | occurrence/group/scoreEvent 三层计数同步差异被捕获 + 非零退出 |
+| N-COUNT-F4 | 同 onset 同 staff 异 voice 被拆成两组（A4 反例） | groups 计数差异被捕获 + 非零退出（group 键不含 voice） |
+| N-COV-F1 | 一侧候选丢失整小节目标 | L2 计数/覆盖差异 + 非零退出 |
 
-### N-ID ID 唯一性
-| ID | 操作 | 期望 |
-|---|---|---|
-| N-ID-1 | scoreEventId 重复 | 双侧拒绝（server engine-server.mjs:1464-1469 同款） |
-| N-ID-2 | 同一 score event 跨 pass 的 occurrenceId 相同 | 拒绝（occurrenceId 每 pass 唯一，A10/R2-0B） |
-| N-ID-3 | 全部内部 ID 一致重命名、语义不动 | **指纹逐字节不变**（R2-0A 不变性正测反向复用） |
-| N-ID-4 | 重复 partId / 文档级重复 source locator / 重复 xmlId | 文档校验 fail-closed（R2-0B：`DUPLICATE_PART_ID`/`duplicate_source_locator`/`duplicate_xml_id`） |
+### C 类——拒绝型（指明层级 + 错误码；仅此类要求 TS/Rust 码表一致）
+| ID | 拒绝层级 | 操作 | 期望码 |
+|---|---|---|---|
+| N-ID-C1 | 服务端 / 候选输出目标校验 | **`EngineScoreEvent.scoreEventId` 在单份评分目标数组内重复**（§3.0：检查对象是评分目标 wire ID，不是原曲事件 ID；range-loop 中原曲 `scoreEventId` 跨 pass 合法重复，不得误拒） | 沿用非法目标拒绝（engine-server.mjs:1464-1469 同款）；Rust 侧映射同一码 |
+| N-ID-C2 | 候选输出校验 | 候选 occurrenceId 跨 pass 重复 | 双侧同码拒绝（occurrenceId 每 pass 唯一，A10/R2-0B） |
+| N-ID-C3 | 文档门禁 | 重复 partId / 文档级重复 source locator / 重复 xmlId | `DUPLICATE_PART_ID` / `duplicate_source_locator` / `duplicate_xml_id`（R2-0B fail-closed） |
+| N-PITCH-C1 | 服务端 / 候选输出目标校验 | 候选 `EngineScoreEvent.pitch` 越界（<0 / >127）或非整数 | 非法目标拒绝（engine-server.mjs:1458-1460 同款） |
+| N-PITCH-C2 | 上游 importer/planner | 非整数 alter / 不可表示音高 | `unrepresentable_pitch` + `blocksStrict`——报告必须写明拒绝在**上游层级**，不得笼统写成"差分失败" |
+| N-COV-C1 | 服务端派生目标校验 | scoreEvents 的 measure 集合 ≠ note atoms 的 bar 集合 | 拒绝（engine-server.mjs:1553-1557 同款） |
+| N-COV-C2 | 服务端处方校验 | scoreEvents 超出处方 range | 拒绝（:1477-1480 同款） |
+| N-FP-C1 | 强制门禁 | plan↔document、document↔report 指纹错配 | `PLAN_DOCUMENT_MISMATCH` / `DOCUMENT_REPORT_MISMATCH` |
+| N-FP-C2 | 强制门禁 | 未经校验的非法文档尝试进入指纹 | `DOCUMENT_VALIDATION_FAILED`，无旁路 |
+| N-FP-C3 | payload 校验 | handMapping 冲突（重复 part / 同 staff 列两次 / 同 staff 双手） | `hand_mapping_conflict` |
+| N-FP-C4 | planner 输入校验 | 空目标 / 非法 range / 非法 loop count（0、33） | `EMPTY_PLAN` / `invalid_range` / `invalid_repeat_count` |
 
-### N-COV 小节覆盖
-| ID | 操作 | 期望 |
-|---|---|---|
-| N-COV-1 | scoreEvents 的 measure 集合 ≠ note atoms 的 bar 集合 | 双侧拒绝（engine-server.mjs:1553-1557 同款） |
-| N-COV-2 | scoreEvents 超出处方 range | 拒绝（:1477-1480 同款） |
-| N-COV-3 | Rust plan 丢失整小节目标 | L2 计数/覆盖差异 FAIL |
-| N-COV-4 | range 边界：tie 起点在 range 外 | 冻结现有语义：range 内的续接事件不生成 occurrence、**不重定锚**（:138）——双侧一致即通过，写入 expected |
-
-### N-FP 指纹一致性
-| ID | 操作 | 期望 |
-|---|---|---|
-| N-FP-1 | Rust 重算 5 个固定向量 | 与 `test-vectors/plan-fingerprint-v1.json` 逐字节相等 |
-| N-FP-2 | 9 项篡改（scope/hand/repeat/bpm/PPQ/count-in/plannerVersion/scoreRevisionId/normalizerVersion） | 每项哈希必变（R2-0 §4 篡改矩阵复用） |
-| N-FP-3 | plan↔document、document↔report 指纹错配 | `PLAN_DOCUMENT_MISMATCH` / `DOCUMENT_REPORT_MISMATCH` 拒绝 |
-| N-FP-4 | 未经校验的非法文档尝试进入指纹 | 强制门禁入口拒绝（`DOCUMENT_VALIDATION_FAILED`），无旁路 |
-| N-FP-5 | handMapping 冲突（重复 part/同 staff 列两次/同 staff 双手） | `hand_mapping_conflict` 拒绝 |
-| N-FP-6 | 空目标 / 非法 range / 非法 loop count（0、33） | `EMPTY_PLAN` / `invalid_range` / `invalid_repeat_count` 双侧同码拒绝 |
+> 原 N-COV-4（tie 起点在 range 外）是**冻结语义的正向 parity case**，不是负例——已移入 §7 回归矩阵。
 
 ---
 
@@ -203,9 +246,10 @@ MusicXML → importMusicXml() → ScoreDocument    →    ScoreDocumentV1（同�
 | 扩展 parity | G1+A5：range m2、hand right/left/both | range 相对 beat 重定基、hand 过滤后 group 成员/时值缩减 | A5 手工期望 + 本文件 §3 |
 | 扩展 parity | G1+A10：range-loop ×2、×3 | passIndex、第二遍 playbackBeat 偏移、occurrenceId 每 pass 唯一、bar 不平移 | A10 手工期望 |
 | 扩展 parity | G2 和弦 × hand 混合组 | 组缩减规则（reference-playback-plan.ts:137-153） | §3.2 + A5 |
-| 扩展 parity | G3 tie × range 边界 | N-COV-4 冻结语义 | 本文件 §6 |
+| 扩展 parity | G3 tie × range 边界（tie 起点在 range 外：续接事件不生成 occurrence、**不重定锚**，playback-planner.ts:138） | §3.1 冻结语义（原 N-COV-4，正向 case） | §3.1 |
 | 扩展 parity | G5 非 4/4、A3 backup 双谱表、A4 多 voice、A9 同 onset 异时值 | 各 A-case 期望 | GOLDEN_FIXTURES §8 |
-| 负例 | A8 全表 + §6 N-* 清单 | ImportIssue/错误码 + 拒绝行为 | 双侧一致 |
+| 负例 | A8 全表 + §6 验收清单（A/B/C 三类按各自判据） | A：指纹变化；B：字段路径 + `semantic-defect` + 非零退出；C：层级 + 错误码 | §6 |
+| 向量 | 5 个固定指纹向量（整数 BPM）；实施卡须补**至少一个非整数有理 BPM 向量**（若产品决定只支持整数 BPM，则在输入校验层拒绝分母 ≠ 1 并同步 Schema/文档，不留模糊空间） | RFC-01 验收条件 | 契约向量 |
 | 真实谱 | 113 小节 OMR | 结构计数（1579 occurrence/1018 group，路线决策 §3.2 实测值）、capabilities 恰 5 枚举、指纹跨运行稳定、TS↔Rust 分类后零未解释差异 | 结构不变量；**互相一致 ≠ 正确** |
 
 ---
@@ -215,7 +259,7 @@ MusicXML → importMusicXml() → ScoreDocument    →    ScoreDocumentV1（同�
 1. G1–G5：Rust 输出 vs 手工真值逐字段 `exact`（Rust µs 无 time-rounding 项）。
 2. §7 扩展矩阵每个 case：L1 相等 ∧ L2 零未分类 ∧ L3 全绿。
 3. 5 个固定指纹向量在 **Rust 独立实现**下逐字节复现（NFC/JCS/SHA-256 全自研，禁止绑定 TS）。
-4. §6 P8 负例清单双侧通过、错误码一致。
+4. §6 P8 验收清单全部通过：A 类（敏感性/不变性）与 B 类（故障捕获）按各自判据；C 类（拒绝型）双侧错误码一致。
 5. 真实谱回归：结构计数匹配、指纹稳定、零未分类差异。
 6. **证据落档并提交仓库**：逐 case diff 报告（JSON：字段×分类×归因）、双侧 gitSha/plannerVersion/schemaVersion/time-conversion 版本。
 7. 以上全部满足后，方允许按路线决策 §8 的 `RHYTHM_PLANNER=rts|rust` 运行时开关切换生产权威；回滚 = 关开关，不重写数据。
@@ -228,9 +272,9 @@ MusicXML → importMusicXml() → ScoreDocument    →    ScoreDocumentV1（同�
 
 - 本卡只冻结验收规则；Rust planner 实现、count-in 接口变更（`countInBeats` float 输入 → `CountInUs` 整数 µs，GOLDEN_FIXTURES §1.3）、`pattern.id=Date.now()` 由 planFingerprint 取代（D11）——均属 **R2 planner 实施卡**。
 - `scoring_v1` 对齐算法不动（R5）；OSMD/anchor 不动；`EngineScoreEvent` wire 格式不动（改格式属路线决策 §8"不可回滚决策"，需先审）。
-- 差分 harness 形态（供实施卡落地）：离线 CLI，输入 case bundle → 双跑 → 输出 JSON 分类报告 → 任何未分类/semantic 差异非零退出；TS 侧 legacyReference 由脚本生成、只读、带 `generatedBy`/`gitSha`/`date`（GOLDEN_FIXTURES §9.3-9.4）。
+- 差分 harness 形态（供实施卡落地）：离线 CLI，输入 case bundle → 双跑 → 输出 JSON 分类报告 → 任何未分类/semantic 差异非零退出；TS 侧 legacyReference 由脚本生成、只读、带 `generatedBy`/`gitSha`/`date`（GOLDEN_FIXTURES §9.3-9.4）。harness 的差分对象是 §3.5 的 `CanonicalScoreEventV1`（离线验收专用）；对外生产 wire（`EngineScoreEvent` 毫秒字段）保持不变，wire 兼容核查纳入 §8 证据。
 
 ## 10. 真值纪律（引用强化）
 
 - legacyReference **永不**自动升级为 expected；修改真值必须记录原因、审批、schema/time 规则版本（GOLDEN_FIXTURES §7.1-5、§9.5）。
-- 行为保持层级：① G1–G5/A-case 手工真值 → ② 本文件冻结的映射规则与冻结语义（如 N-COV-4）→ ③ 其余字段以 TS 现行为 legacyReference 基准；任何故意偏离 ③ 的 Rust 行为 = 语义修订，必须走真值修订审批，不得静默。
+- 行为保持层级：① G1–G5/A-case 手工真值 → ② 本文件冻结的映射规则与冻结语义（如 §3.1/§7 的 tie-range 语义）→ ③ 其余字段以 TS 现行为 legacyReference 基准；任何故意偏离 ③ 的 Rust 行为 = 语义修订，必须走真值修订审批，不得静默。
