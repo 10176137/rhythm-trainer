@@ -295,3 +295,9 @@ vitest **35 files / 280 tests**（契约测试 28→34：+科学计数法、+Big
 - 未开始 Rust planner；未改 playback planner 生产语义（occurrence 新字段是上轮 R2-0A 已交付的向前兼容扩展）；未改 `scoring_v1`、生产评分权威、UI、importer 行为；未放宽 Schema、未删负例、未覆盖黄金值（重生成验证哈希不变）。
 
 **R2 Rust planner 继续保持未启动。** 申请关闭 R2-0，等待复审。
+
+---
+
+## 10. 架构文档同步（审查后补）
+
+审查指出开发者架构文档基于 f9ab52fe、落后于 R2-0B。已新增 [audit-r1/docs/DEVELOPER_ARCHITECTURE.md](DEVELOPER_ARCHITECTURE.md)（同步至 1b48e8e），内容与当前代码一致：仓库布局、语义链（含 R2-0B 的 occurrence 语义 locator）、契约层四交付物、强制校验门（§3.1）、循环轮次语义（§3.2）、不变量 file:line 对照表（§3.3）、评分/输入链（标注"未因 R2-0 变化"）、测试矩阵与迁移状态（Rust planner 未启动）。已列入 README 文档索引。

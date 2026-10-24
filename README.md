@@ -33,6 +33,7 @@
 - [R1 收尾实施报告](R1_CLOSEOUT_IMPLEMENTATION_REPORT.md)
 - [G0 真机验证执行手册](G0_HARDWARE_VERIFICATION_RUNBOOK.md)
 - [G0 真机证据记录](G0_HARDWARE_EVIDENCE.md)
+- [开发者架构（同步至 1b48e8e）](audit-r1/docs/DEVELOPER_ARCHITECTURE.md)
 - [ScoreDocumentV1 契约](audit-r1/docs/SCOREDOCUMENT_V1_CONTRACT.md) · [planFingerprintV1 契约](audit-r1/docs/PLAN_FINGERPRINT_V1.md) · [R2-0 实施报告](R2_0_CONTRACT_FREEZE_REPORT.md)
 
 原始证据：`audit-r1/fixtures/`（G1–G8 极简 MusicXML）、`audit-r1/spike/out/`（importer dump、OSMD 10-case JSON、真实谱跑通结果、18 组 TS/Rust 时间线交叉验证）。
