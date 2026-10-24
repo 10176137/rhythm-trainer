@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/10176137/rhythm-trainer/audit-r1/contracts/parity-diff-report-v1.schema.json",
+  "title": "ParityDiffReportV1",
+  "description": "Deterministic classified parity differential report per TS_RUST_PARITY_GATE_V1.md §5/§6. Diffs are ordered by path; generatedAt lives only in meta and never feeds comparisons.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "fixture": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      },
+      "required": ["path", "sha256"],
+      "additionalProperties": false
+    },
+    "configSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "sides": {
+      "type": "object",
+      "properties": {
+        "expected": {
+          "type": "object",
+          "properties": {
+            "kind": { "type": "string" },
+            "source": { "type": "string" }
+          },
+          "required": ["kind", "source"],
+          "additionalProperties": false
+        },
+        "candidate": {
+          "type": "object",
+          "properties": {
+            "kind": { "type": "string" },
+            "gitSha": { "type": ["string", "null"] },
+            "plannerVersion": { "type": "string" },
+            "engineVersion": { "type": "string" }
+          },
+          "required": ["kind", "gitSha", "plannerVersion", "engineVersion"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["expected", "candidate"],
+      "additionalProperties": false
+    },
+    "rustSide": { "const": "not-implemented / not-run" },
+    "l1": {
+      "type": "object",
+      "properties": {
+        "status": { "enum": ["pass", "fail", "not-applicable"] },
+        "fingerprint": { "type": ["string", "null"] },
+        "fingerprintErrorCode": { "type": ["string", "null"] },
+        "stableAcrossRuns": { "type": "boolean" },
+        "note": { "type": "string" }
+      },
+      "required": ["status", "fingerprint", "fingerprintErrorCode", "stableAcrossRuns", "note"],
+      "additionalProperties": false
+    },
+    "l2": {
+      "type": "object",
+      "properties": {
+        "status": { "enum": ["pass", "fail"] },
+        "occurrenceCount": { "type": "integer", "minimum": 0 },
+        "groupCount": { "type": "integer", "minimum": 0 },
+        "diffCount": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["status", "occurrenceCount", "groupCount", "diffCount"],
+      "additionalProperties": false
+    },
+    "l3": {
+      "type": "object",
+      "properties": {
+        "status": { "enum": ["pass", "fail"] },
+        "atomCount": { "type": "integer", "minimum": 0 },
+        "scoreEventCount": { "type": "integer", "minimum": 0 },
+        "wireCompatibility": { "enum": ["pass", "fail", "not-applicable"] },
+        "p1_3Invariants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "check": { "type": "string" },
+              "status": { "enum": ["pass", "fail"] },
+              "detail": { "type": "string" }
+            },
+            "required": ["check", "status"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["status", "atomCount", "scoreEventCount", "wireCompatibility", "p1_3Invariants"],
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "status": { "enum": ["pass", "fail"] },
+        "categories": {
+          "type": "object",
+          "properties": {
+            "identity-mapping": { "type": "integer", "minimum": 0 },
+            "serialization-only": { "type": "integer", "minimum": 0 },
+            "time-rounding": { "type": "integer", "minimum": 0 },
+            "semantic-defect": { "type": "integer", "minimum": 0 },
+            "unsupported-behavior": { "type": "integer", "minimum": 0 },
+            "unclassified": { "type": "integer", "minimum": 0 }
+          },
+          "required": [
+            "identity-mapping", "serialization-only", "time-rounding",
+            "semantic-defect", "unsupported-behavior", "unclassified"
+          ],
+          "additionalProperties": false
+        },
+        "pass": { "type": "boolean" }
+      },
+      "required": ["status", "categories", "pass"],
+      "additionalProperties": false
+    },
+    "diffs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "category": {
+            "enum": [
+              "identity-mapping", "serialization-only", "time-rounding",
+              "semantic-defect", "unsupported-behavior", "unclassified"
+            ]
+          },
+          "ruleRef": { "type": "string" },
+          "left": {},
+          "right": {},
+          "attribution": { "type": "string" }
+        },
+        "required": ["path", "category", "ruleRef", "left", "right"],
+        "additionalProperties": false
+      }
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "generatedAt": { "type": "string" },
+        "gitSha": { "type": ["string", "null"] },
+        "command": { "type": "string" },
+        "timeConversionVersion": { "type": "string" },
+        "fingerprintSchemaVersion": { "type": "integer" },
+        "parityGateDoc": { "type": "string" }
+      },
+      "required": [
+        "generatedAt", "gitSha", "command",
+        "timeConversionVersion", "fingerprintSchemaVersion", "parityGateDoc"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion", "caseId", "fixture", "configSha256", "sides", "rustSide",
+    "l1", "l2", "l3", "summary", "diffs", "meta"
+  ],
+  "additionalProperties": false
+}

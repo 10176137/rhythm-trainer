@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/10176137/rhythm-trainer/audit-r1/contracts/parity-case-bundle-v1.schema.json",
+  "title": "ParityCaseBundleV1",
+  "description": "Frozen parity differential case bundle per TS_RUST_PARITY_GATE_V1.md §2. Byte-frozen MusicXML input + explicit practice configuration + independent expected truth reference. schemaVersion changes only per the contract version policy.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "ruleVersions": {
+      "type": "object",
+      "properties": {
+        "timeConversion": { "const": "time-conversion-v1" },
+        "fingerprintSchemaVersion": { "const": 1 },
+        "parityGateDoc": { "type": "string", "minLength": 1 }
+      },
+      "required": ["timeConversion", "fingerprintSchemaVersion", "parityGateDoc"],
+      "additionalProperties": false
+    },
+    "fixture": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "pattern": "^audit-r1/fixtures/" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      },
+      "required": ["path", "sha256"],
+      "additionalProperties": false
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "partId": { "type": "string", "minLength": 1 },
+        "range": {
+          "type": "object",
+          "properties": {
+            "startMeasureOrdinal": { "type": "integer", "minimum": 1 },
+            "endMeasureOrdinal": { "type": "integer", "minimum": 1 }
+          },
+          "required": ["startMeasureOrdinal", "endMeasureOrdinal"],
+          "additionalProperties": false
+        },
+        "repeatSelection": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": { "kind": { "const": "none" } },
+              "required": ["kind"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": { "const": "range-loop" },
+                "count": { "type": "integer", "minimum": 1, "maximum": 32 }
+              },
+              "required": ["kind", "count"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "hand": { "enum": ["left", "right", "both"] },
+        "handMapping": { "$ref": "#/$defs/handMapping" },
+        "bpm": { "$ref": "#/$defs/reducedPositiveRational" },
+        "ticksPerQuarter": { "type": "integer", "minimum": 1 },
+        "countInUs": { "type": "integer", "minimum": 0 },
+        "unsupportedNotationPolicy": { "enum": ["reject-strict", "allow-display-only"] },
+        "plannerVersion": { "type": "string", "minLength": 1 }
+      },
+      "required": [
+        "partId", "range", "repeatSelection", "hand", "handMapping", "bpm",
+        "ticksPerQuarter", "countInUs", "unsupportedNotationPolicy", "plannerVersion"
+      ],
+      "additionalProperties": false
+    },
+    "expected": {
+      "type": "object",
+      "properties": {
+        "source": { "enum": ["golden-fixture", "hand-derived"] },
+        "ref": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string" }
+      },
+      "required": ["source", "ref"],
+      "additionalProperties": false
+    },
+    "expectedOutcome": {
+      "type": "object",
+      "properties": {
+        "planStatus": { "enum": ["strict", "blocked"] },
+        "issueCodes": { "type": "array", "items": { "type": "string" } },
+        "fingerprintErrorCode": { "type": "string" },
+        "scopeCodes": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["planStatus"],
+      "additionalProperties": false
+    },
+    "acceptanceTags": {
+      "type": "array",
+      "items": { "enum": ["L1", "L2", "L3"] }
+    }
+  },
+  "required": [
+    "schemaVersion", "caseId", "description", "ruleVersions", "fixture",
+    "config", "expected", "expectedOutcome", "acceptanceTags"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "handMapping": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "mappingVersion": { "const": "hand-mapping-1" },
+        "source": { "enum": ["user", "score-metadata"] },
+        "parts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "partId": { "type": "string", "minLength": 1 },
+              "staves": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "staffNumber": { "type": "integer", "minimum": 1 },
+                    "hand": { "enum": ["left", "right"] }
+                  },
+                  "required": ["staffNumber", "hand"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["partId", "staves"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["schemaVersion", "mappingVersion", "source", "parts"],
+      "additionalProperties": false
+    },
+    "reducedPositiveRational": {
+      "type": "object",
+      "properties": {
+        "numerator": { "type": "integer", "minimum": 1 },
+        "denominator": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["numerator", "denominator"],
+      "additionalProperties": false
+    }
+  }
+}
