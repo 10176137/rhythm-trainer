@@ -1,13 +1,13 @@
 # TS↔Rust Parity Gate V1（R2-1：Golden 语义差分与对照门槛——验收规则冻结）
 
-**日期：** 2026-10-24（同日按复审修整说明 RF-01–RF-04 修订）
-**复审基线：** `cff09d2`
-**性质：** **验收规则设计冻结——Design Frozen / Accepted**。本卡不实现 Rust planner、不改 TS 语义、不切生产权威（Rust planner 未启动）；这不代表迁移已通过，实施仍须满足 §8 全部证据门槛。
+**日期：** 2026-10-24（同日经三轮复审修订：RF-01–RF-04 全部通过；C 类规范错误码映射表补齐、固定向量一致性独立成类后**最终冻结**）
+**复审基线：** `36974d7`
+**性质：** **验收规则设计冻结——Design Frozen / Accepted（最终）**。本卡不实现 Rust planner、不改 TS 语义、不切生产权威（Rust planner 未启动）；这不代表迁移已通过，实施仍须满足 §8 全部证据门槛。
 **上位文档：** 卡定义见 `R2_0_CONTRACT_FREEZE_REPORT.md` §11、前置条件状态见 `R2_R3_ROUTE_DECISION.md` §5.1、真值纪律见 `GOLDEN_FIXTURES.md`。
 
 > **本卡要回答的四个问题**（完成标准）：任何开发者开始实现 Rust planner 前，能明确知道——
 > ① 输入是什么（§2）；② 输出比较哪些字段、怎么比（§3–§4）；③ 哪些差异允许、哪些必须阻断（§5）；
-> ④ 什么证据才能宣布迁移通过（§6 验收清单——指纹敏感性/故障注入/拒绝型三类、§7 回归矩阵、§8 迁移证据）。
+> ④ 什么证据才能宣布迁移通过（§6 验收清单——敏感性/不变性、故障注入、拒绝型、固定向量一致性四类、§7 回归矩阵、§8 迁移证据）。
 
 ---
 
@@ -188,15 +188,16 @@ TargetOnsetUs    = CountInUs + PlanOffsetUs        ← 相对拍位只舍入这�
 
 ---
 
-## 6. P8 验收测试清单（RF-02：指纹敏感性 / 故障注入 / 拒绝型三类，替代泛化的"非法计划必须拒绝"）
+## 6. P8 验收测试清单（敏感性 / 不变性 / 故障注入 / 拒绝型 / 固定向量一致性，替代泛化的"非法计划必须拒绝"）
 
-**每项测试只验证一种性质**，三类的输入变更范围与通过判据不同：
+**每项测试只验证一种性质**，各类的输入变更范围与通过判据不同：
 
 | 类 | 名称 | 输入变更范围 | 通过判据 |
 |---|---|---|---|
 | **A** | 指纹敏感性 / 不变性 | 合法基线 payload `P`，每次只改**一个指定字段**得合法 `P'`（或仅重编码 ID） | 敏感性：`F(P') ≠ F(P)`；不变性：`F(P') = F(P)`。**不要求抛错、无错误码**——只验证指纹字段覆盖性 |
 | **B** | 候选输出故障注入 | **冻结 case bundle 与独立 golden，不得修改**；只篡改一侧候选输出的指定字段 | L2/L3 差分报告定位到正确**字段路径**并归类 `semantic-defect`，进程**非零退出**。被篡改输出不得回填为输入，不得同步修改 golden |
-| **C** | 拒绝型（fail-closed） | 注入非法输入 / 非法计划 | 在**指明层级**（Schema / 文档门禁 / planner 输入校验 / 服务端与候选输出校验）被拒绝，断言**具体错误码**；**仅此类要求 TS/Rust 码表一致**。不得以返回空计划、静默丢弃问题事件或仅记 warning 代替拒绝 |
+| **C** | 拒绝型（fail-closed） | 注入非法输入 / 非法计划 | 在**指明层级**（Schema / 文档门禁 / planner 输入校验 / 服务端与候选输出校验）被拒绝，断言**规范错误码**（见下方映射表）；**仅此类要求 TS/Rust 码表一致**。不得以返回空计划、静默丢弃问题事件或仅记 warning 代替拒绝 |
+| **V** | 固定向量一致性 | **不改任何输入**：Rust 独立实现重算已提交的 test-vectors | 与提交的 canonical bytes + 期望哈希**逐字节相等**。非敏感性、非故障注入、非拒绝——验证的是跨语言契约复现本身（原 N-FP-S3，独立成类） |
 
 **独立 golden 原则**：任意一侧单独引入错误（另一侧正确）时差分必须失败；"两侧共享同一错误且彼此一致"**不能**替代独立 golden 验证（权威层级见 §10）。
 
@@ -207,7 +208,6 @@ TargetOnsetUs    = CountInUs + PlanOffsetUs        ← 相对拍位只舍入这�
 | N-PITCH-S2 | `spelling` 改变、`midiNote` 不变（同音异名） | `F(P') ≠ F(P)`（spelling 参与身份：payload `pitch.spelling`，plan-fingerprint.ts:751） |
 | N-FP-S1 | 9 项配置篡改（scope/hand/repeat/bpm/PPQ/count-in/plannerVersion/scoreRevisionId/normalizerVersion）各**单项** | 每项 `F(P') ≠ F(P)`（R2-0 §4 篡改矩阵复用） |
 | N-FP-S2 | 全部内部 ID（occurrenceId/scoreEventId/groupId/planId）一致重命名、语义不动 | `F(P') = F(P)`（R2-0A 编码不变性正向复用） |
-| N-FP-S3 | Rust 独立实现重算 5 个固定向量（NFC/JCS/SHA-256 自研，禁 FFI 调 TS） | 与 `test-vectors/plan-fingerprint-v1.json` 逐字节相等 |
 
 ### B 类——候选输出故障注入（冻结 bundle + 独立 golden；断言字段路径 + 分类 + 非零退出）
 | ID | 操作 | 期望 |
@@ -219,20 +219,43 @@ TargetOnsetUs    = CountInUs + PlanOffsetUs        ← 相对拍位只舍入这�
 | N-COUNT-F4 | 同 onset 同 staff 异 voice 被拆成两组（A4 反例） | groups 计数差异被捕获 + 非零退出（group 键不含 voice） |
 | N-COV-F1 | 一侧候选丢失整小节目标 | L2 计数/覆盖差异 + 非零退出 |
 
-### C 类——拒绝型（指明层级 + 错误码；仅此类要求 TS/Rust 码表一致）
-| ID | 拒绝层级 | 操作 | 期望码 |
+### C 类——拒绝型（指明层级 + 规范错误码；仅此类要求 TS/Rust 码表一致）
+
+**Parity Gate 规范错误码映射表**（复审补齐，2026-10-24）：现有 Node 服务端以普通 `Error` + 中文描述消息实现拒绝、无机器可读码（engine-server.mjs:1454-1480）——**本轮不改生产代码**。下表冻结语言无关的规范码，作为双侧断言的唯一权威：
+
+| 规范码 | 测试 | 语义 | TS 检测位置（现状） | TS 过渡断言锚点 |
+|---|---|---|---|---|
+| `duplicate_target_id` | N-ID-C1 | 单份评分目标数组内 `EngineScoreEvent.scoreEventId` 重复 | engine-server.mjs:1464-1469 | 抛错且消息含 `scoreEvents 目标 ID 重复` |
+| `invalid_target_pitch` | N-PITCH-C1 | 候选评分目标 pitch 非整数或越界 [0,127] | engine-server.mjs:1454-1461 | 抛错且消息含 `scoreEvents 含非法目标` |
+| `measure_coverage_mismatch` | N-COV-C1 | scoreEvents 的 measure 集合 ≠ note atoms 的 bar 集合 | engine-server.mjs:1551-1557 | 抛错且消息含 `小节覆盖与 atoms 不一致` |
+| `target_outside_prescription_range` | N-COV-C2 | scoreEvents 超出处方小节范围 | engine-server.mjs:1477-1480 | 抛错且消息含 `scoreEvents 超出处方小节范围` |
+
+**码表边界（冻结）**：
+
+- **Rust 侧从第一天起直接产生上述规范码**（候选输出校验/服务端同层）——C 类的 Rust 断言对象就是规范码本身；
+- **TS 侧过渡断言 = 拒绝行为 + 消息锚点**（上表末列，消息文本同样冻结不得改写）；把 TS 消息锚点归一化为规范码是**差分 harness 的职责**——harness 内置该映射表，输入"抛错消息/行为"→ 输出规范码 → 报告统一呈现；**除此之外 harness 不得 reinterpret 任何错误**；
+- 服务端这四类拒绝的**机器码化（结构化错误携带 code）是可选的生产改进，不属 R2-1**；若实施，必须采用上表规范码并另行审查（server 行为变更）；
+- 已有契约层机器码的条目（N-ID-C2/C3、N-PITCH-C2、N-FP-C1..C4）**维持原码**，不引入新码、不重复命名。
+
+### C 类用例
+| ID | 拒绝层级 | 操作 | 规范码 |
 |---|---|---|---|
-| N-ID-C1 | 服务端 / 候选输出目标校验 | **`EngineScoreEvent.scoreEventId` 在单份评分目标数组内重复**（§3.0：检查对象是评分目标 wire ID，不是原曲事件 ID；range-loop 中原曲 `scoreEventId` 跨 pass 合法重复，不得误拒） | 沿用非法目标拒绝（engine-server.mjs:1464-1469 同款）；Rust 侧映射同一码 |
-| N-ID-C2 | 候选输出校验 | 候选 occurrenceId 跨 pass 重复 | 双侧同码拒绝（occurrenceId 每 pass 唯一，A10/R2-0B） |
+| N-ID-C1 | 服务端 / 候选输出目标校验 | **`EngineScoreEvent.scoreEventId` 在单份评分目标数组内重复**（§3.0：检查对象是评分目标 wire ID，不是原曲事件 ID；range-loop 中原曲 `scoreEventId` 跨 pass 合法重复，不得误拒） | `duplicate_target_id`（服务端现状为普通 Error，见映射表） |
+| N-ID-C2 | 候选输出校验（指纹 payload 构建） | 候选 occurrenceId 跨 pass 重复 | `DUPLICATE_OCCURRENCE_ID`（契约层已有，R2-0B；occurrenceId 每 pass 唯一，A10） |
 | N-ID-C3 | 文档门禁 | 重复 partId / 文档级重复 source locator / 重复 xmlId | `DUPLICATE_PART_ID` / `duplicate_source_locator` / `duplicate_xml_id`（R2-0B fail-closed） |
-| N-PITCH-C1 | 服务端 / 候选输出目标校验 | 候选 `EngineScoreEvent.pitch` 越界（<0 / >127）或非整数 | 非法目标拒绝（engine-server.mjs:1458-1460 同款） |
+| N-PITCH-C1 | 服务端 / 候选输出目标校验 | 候选 `EngineScoreEvent.pitch` 越界（<0 / >127）或非整数 | `invalid_target_pitch`（服务端现状为普通 Error，见映射表） |
 | N-PITCH-C2 | 上游 importer/planner | 非整数 alter / 不可表示音高 | `unrepresentable_pitch` + `blocksStrict`——报告必须写明拒绝在**上游层级**，不得笼统写成"差分失败" |
-| N-COV-C1 | 服务端派生目标校验 | scoreEvents 的 measure 集合 ≠ note atoms 的 bar 集合 | 拒绝（engine-server.mjs:1553-1557 同款） |
-| N-COV-C2 | 服务端处方校验 | scoreEvents 超出处方 range | 拒绝（:1477-1480 同款） |
+| N-COV-C1 | 服务端派生目标校验 | scoreEvents 的 measure 集合 ≠ note atoms 的 bar 集合 | `measure_coverage_mismatch`（服务端现状为普通 Error，见映射表） |
+| N-COV-C2 | 服务端处方校验 | scoreEvents 超出处方 range | `target_outside_prescription_range`（服务端现状为普通 Error，见映射表） |
 | N-FP-C1 | 强制门禁 | plan↔document、document↔report 指纹错配 | `PLAN_DOCUMENT_MISMATCH` / `DOCUMENT_REPORT_MISMATCH` |
 | N-FP-C2 | 强制门禁 | 未经校验的非法文档尝试进入指纹 | `DOCUMENT_VALIDATION_FAILED`，无旁路 |
 | N-FP-C3 | payload 校验 | handMapping 冲突（重复 part / 同 staff 列两次 / 同 staff 双手） | `hand_mapping_conflict` |
 | N-FP-C4 | planner 输入校验 | 空目标 / 非法 range / 非法 loop count（0、33） | `EMPTY_PLAN` / `invalid_range` / `invalid_repeat_count` |
+
+### V 类——固定向量一致性（byte-exact；非敏感性、非故障注入、非拒绝）
+| ID | 操作 | 期望 |
+|---|---|---|
+| N-FP-V1 | Rust 独立实现重算 5 个固定向量（NFC/JCS/SHA-256 全自研，禁 FFI 调 TS），输入即提交的向量 payload | canonical bytes 与期望哈希同 `test-vectors/plan-fingerprint-v1.json` **逐字节相等**（原 N-FP-S3，按复审意见独立成类——它验证契约复现，不属于"改一个字段看哈希"的敏感性测试） |
 
 > 原 N-COV-4（tie 起点在 range 外）是**冻结语义的正向 parity case**，不是负例——已移入 §7 回归矩阵。
 
@@ -248,7 +271,7 @@ TargetOnsetUs    = CountInUs + PlanOffsetUs        ← 相对拍位只舍入这�
 | 扩展 parity | G2 和弦 × hand 混合组 | 组缩减规则（reference-playback-plan.ts:137-153） | §3.2 + A5 |
 | 扩展 parity | G3 tie × range 边界（tie 起点在 range 外：续接事件不生成 occurrence、**不重定锚**，playback-planner.ts:138） | §3.1 冻结语义（原 N-COV-4，正向 case） | §3.1 |
 | 扩展 parity | G5 非 4/4、A3 backup 双谱表、A4 多 voice、A9 同 onset 异时值 | 各 A-case 期望 | GOLDEN_FIXTURES §8 |
-| 负例 | A8 全表 + §6 验收清单（A/B/C 三类按各自判据） | A：指纹变化；B：字段路径 + `semantic-defect` + 非零退出；C：层级 + 错误码 | §6 |
+| 负例 | A8 全表 + §6 验收清单（A/B/C/V 各按其判据；C 类断言规范码） | A：指纹变化；B：字段路径 + `semantic-defect` + 非零退出；C：层级 + 规范码；V：逐字节 | §6 |
 | 向量 | 5 个固定指纹向量（整数 BPM）；实施卡须补**至少一个非整数有理 BPM 向量**（若产品决定只支持整数 BPM，则在输入校验层拒绝分母 ≠ 1 并同步 Schema/文档，不留模糊空间） | RFC-01 验收条件 | 契约向量 |
 | 真实谱 | 113 小节 OMR | 结构计数（1579 occurrence/1018 group，路线决策 §3.2 实测值）、capabilities 恰 5 枚举、指纹跨运行稳定、TS↔Rust 分类后零未解释差异 | 结构不变量；**互相一致 ≠ 正确** |
 
@@ -259,7 +282,7 @@ TargetOnsetUs    = CountInUs + PlanOffsetUs        ← 相对拍位只舍入这�
 1. G1–G5：Rust 输出 vs 手工真值逐字段 `exact`（Rust µs 无 time-rounding 项）。
 2. §7 扩展矩阵每个 case：L1 相等 ∧ L2 零未分类 ∧ L3 全绿。
 3. 5 个固定指纹向量在 **Rust 独立实现**下逐字节复现（NFC/JCS/SHA-256 全自研，禁止绑定 TS）。
-4. §6 P8 验收清单全部通过：A 类（敏感性/不变性）与 B 类（故障捕获）按各自判据；C 类（拒绝型）双侧错误码一致。
+4. §6 P8 验收清单全部通过：A 类（敏感性/不变性）与 B 类（故障捕获）按各自判据；C 类（拒绝型）双侧规范码一致（TS 侧经 harness 消息锚点映射过渡，§6 码表边界）；V 类逐字节一致。
 5. 真实谱回归：结构计数匹配、指纹稳定、零未分类差异。
 6. **证据落档并提交仓库**：逐 case diff 报告（JSON：字段×分类×归因）、双侧 gitSha/plannerVersion/schemaVersion/time-conversion 版本。
 7. 以上全部满足后，方允许按路线决策 §8 的 `RHYTHM_PLANNER=rts|rust` 运行时开关切换生产权威；回滚 = 关开关，不重写数据。
