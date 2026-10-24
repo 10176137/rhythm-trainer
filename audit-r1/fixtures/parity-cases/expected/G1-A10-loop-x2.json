@@ -1,0 +1,56 @@
+{
+  "caseId": "G1-A10-loop-x2",
+  "derivation": "Hand-derived (GOLDEN_FIXTURES §8 A10): g1 full range (rangeDurationBeat 8/1), practice loop x2. Pass 1 offsets every playbackBeat by +8/1; beatInMeasure and bar are NOT shifted; every occurrenceId is unique per pass (key locator+passIndex); playbackIndex runs 0..9 in (beat, pass, bar, id) order. BPM 80, CountInUs 3,000,000: onset = 3,000,000 + roundHalfUp(beat x 750,000); durations 750,000 x4 + 1,500,000. Ticks = beat x 960 (G4 duration 2 beats -> 1920).",
+  "expected": {
+    "side": "hand-derived",
+    "kind": "expected",
+    "occurrences": [
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 1, "voiceId": "1" }, "passIndex": 0, "playbackBeat": "0/1", "durationBeat": "1/1", "measureOrdinal": 1, "bar": 1, "beatInMeasure": "0/1", "staffNumber": 1, "voiceId": "1", "pitch": { "step": "C", "alter": 0, "octave": 4, "midiNote": 60, "spelling": "C4" }, "isTieOnset": false, "playbackIndex": 0 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 2, "voiceId": "1" }, "passIndex": 0, "playbackBeat": "1/1", "durationBeat": "1/1", "measureOrdinal": 1, "bar": 1, "beatInMeasure": "1/1", "staffNumber": 1, "voiceId": "1", "pitch": { "step": "D", "alter": 0, "octave": 4, "midiNote": 62, "spelling": "D4" }, "isTieOnset": false, "playbackIndex": 1 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 3, "voiceId": "1" }, "passIndex": 0, "playbackBeat": "2/1", "durationBeat": "1/1", "measureOrdinal": 1, "bar": 1, "beatInMeasure": "2/1", "staffNumber": 1, "voiceId": "1", "pitch": { "step": "E", "alter": 0, "octave": 4, "midiNote": 64, "spelling": "E4" }, "isTieOnset": false, "playbackIndex": 2 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 4, "voiceId": "1" }, "passIndex": 0, "playbackBeat": "3/1", "durationBeat": "1/1", "measureOrdinal": 1, "bar": 1, "beatInMeasure": "3/1", "staffNumber": 1, "voiceId": "1", "pitch": { "step": "F", "alter": 0, "octave": 4, "midiNote": 65, "spelling": "F4" }, "isTieOnset": false, "playbackIndex": 3 },
+      { "locator": { "partId": "P1", "measureOrdinal": 2, "sourceOrdinal": 1, "voiceId": "1" }, "passIndex": 0, "playbackBeat": "4/1", "durationBeat": "2/1", "measureOrdinal": 2, "bar": 2, "beatInMeasure": "0/1", "staffNumber": 1, "voiceId": "1", "pitch": { "step": "G", "alter": 0, "octave": 4, "midiNote": 67, "spelling": "G4" }, "isTieOnset": false, "playbackIndex": 4 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 1, "voiceId": "1" }, "passIndex": 1, "playbackBeat": "8/1", "durationBeat": "1/1", "measureOrdinal": 1, "bar": 1, "beatInMeasure": "0/1", "staffNumber": 1, "voiceId": "1", "pitch": { "step": "C", "alter": 0, "octave": 4, "midiNote": 60, "spelling": "C4" }, "isTieOnset": false, "playbackIndex": 5 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 2, "voiceId": "1" }, "passIndex": 1, "playbackBeat": "9/1", "durationBeat": "1/1", "measureOrdinal": 1, "bar": 1, "beatInMeasure": "1/1", "staffNumber": 1, "voiceId": "1", "pitch": { "step": "D", "alter": 0, "octave": 4, "midiNote": 62, "spelling": "D4" }, "isTieOnset": false, "playbackIndex": 6 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 3, "voiceId": "1" }, "passIndex": 1, "playbackBeat": "10/1", "durationBeat": "1/1", "measureOrdinal": 1, "bar": 1, "beatInMeasure": "2/1", "staffNumber": 1, "voiceId": "1", "pitch": { "step": "E", "alter": 0, "octave": 4, "midiNote": 64, "spelling": "E4" }, "isTieOnset": false, "playbackIndex": 7 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 4, "voiceId": "1" }, "passIndex": 1, "playbackBeat": "11/1", "durationBeat": "1/1", "measureOrdinal": 1, "bar": 1, "beatInMeasure": "3/1", "staffNumber": 1, "voiceId": "1", "pitch": { "step": "F", "alter": 0, "octave": 4, "midiNote": 65, "spelling": "F4" }, "isTieOnset": false, "playbackIndex": 8 },
+      { "locator": { "partId": "P1", "measureOrdinal": 2, "sourceOrdinal": 1, "voiceId": "1" }, "passIndex": 1, "playbackBeat": "12/1", "durationBeat": "2/1", "measureOrdinal": 2, "bar": 2, "beatInMeasure": "0/1", "staffNumber": 1, "voiceId": "1", "pitch": { "step": "G", "alter": 0, "octave": 4, "midiNote": 67, "spelling": "G4" }, "isTieOnset": false, "playbackIndex": 9 }
+    ],
+    "groups": [
+      { "passIndex": 0, "playbackBeat": "0/1", "members": [{ "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 1, "voiceId": "1" }], "pitches": ["C4"], "bar": 1, "beatInMeasure": "0/1", "staffNumbers": [1], "voiceIds": ["1"], "durationBeat": "1/1" },
+      { "passIndex": 0, "playbackBeat": "1/1", "members": [{ "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 2, "voiceId": "1" }], "pitches": ["D4"], "bar": 1, "beatInMeasure": "1/1", "staffNumbers": [1], "voiceIds": ["1"], "durationBeat": "1/1" },
+      { "passIndex": 0, "playbackBeat": "2/1", "members": [{ "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 3, "voiceId": "1" }], "pitches": ["E4"], "bar": 1, "beatInMeasure": "2/1", "staffNumbers": [1], "voiceIds": ["1"], "durationBeat": "1/1" },
+      { "passIndex": 0, "playbackBeat": "3/1", "members": [{ "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 4, "voiceId": "1" }], "pitches": ["F4"], "bar": 1, "beatInMeasure": "3/1", "staffNumbers": [1], "voiceIds": ["1"], "durationBeat": "1/1" },
+      { "passIndex": 0, "playbackBeat": "4/1", "members": [{ "partId": "P1", "measureOrdinal": 2, "sourceOrdinal": 1, "voiceId": "1" }], "pitches": ["G4"], "bar": 2, "beatInMeasure": "0/1", "staffNumbers": [1], "voiceIds": ["1"], "durationBeat": "2/1" },
+      { "passIndex": 1, "playbackBeat": "8/1", "members": [{ "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 1, "voiceId": "1" }], "pitches": ["C4"], "bar": 1, "beatInMeasure": "0/1", "staffNumbers": [1], "voiceIds": ["1"], "durationBeat": "1/1" },
+      { "passIndex": 1, "playbackBeat": "9/1", "members": [{ "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 2, "voiceId": "1" }], "pitches": ["D4"], "bar": 1, "beatInMeasure": "1/1", "staffNumbers": [1], "voiceIds": ["1"], "durationBeat": "1/1" },
+      { "passIndex": 1, "playbackBeat": "10/1", "members": [{ "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 3, "voiceId": "1" }], "pitches": ["E4"], "bar": 1, "beatInMeasure": "2/1", "staffNumbers": [1], "voiceIds": ["1"], "durationBeat": "1/1" },
+      { "passIndex": 1, "playbackBeat": "11/1", "members": [{ "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 4, "voiceId": "1" }], "pitches": ["F4"], "bar": 1, "beatInMeasure": "3/1", "staffNumbers": [1], "voiceIds": ["1"], "durationBeat": "1/1" },
+      { "passIndex": 1, "playbackBeat": "12/1", "members": [{ "partId": "P1", "measureOrdinal": 2, "sourceOrdinal": 1, "voiceId": "1" }], "pitches": ["G4"], "bar": 2, "beatInMeasure": "0/1", "staffNumbers": [1], "voiceIds": ["1"], "durationBeat": "2/1" }
+    ],
+    "atoms": [
+      { "startTick": 0, "durationTicks": 960, "bar": 1, "beat": 1 },
+      { "startTick": 960, "durationTicks": 960, "bar": 1, "beat": 2 },
+      { "startTick": 1920, "durationTicks": 960, "bar": 1, "beat": 3 },
+      { "startTick": 2880, "durationTicks": 960, "bar": 1, "beat": 4 },
+      { "startTick": 3840, "durationTicks": 1920, "bar": 2, "beat": 1 },
+      { "startTick": 7680, "durationTicks": 960, "bar": 1, "beat": 1 },
+      { "startTick": 8640, "durationTicks": 960, "bar": 1, "beat": 2 },
+      { "startTick": 9600, "durationTicks": 960, "bar": 1, "beat": 3 },
+      { "startTick": 10560, "durationTicks": 960, "bar": 1, "beat": 4 },
+      { "startTick": 11520, "durationTicks": 1920, "bar": 2, "beat": 1 }
+    ],
+    "scoreEvents": [
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 1, "voiceId": "1" }, "passIndex": 0, "measure": 1, "pitch": 60, "targetOnsetUs": 3000000, "targetDurationUs": 750000, "partId": "staff-1:voice-1", "parseConfidence": 1 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 2, "voiceId": "1" }, "passIndex": 0, "measure": 1, "pitch": 62, "targetOnsetUs": 3750000, "targetDurationUs": 750000, "partId": "staff-1:voice-1", "parseConfidence": 1 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 3, "voiceId": "1" }, "passIndex": 0, "measure": 1, "pitch": 64, "targetOnsetUs": 4500000, "targetDurationUs": 750000, "partId": "staff-1:voice-1", "parseConfidence": 1 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 4, "voiceId": "1" }, "passIndex": 0, "measure": 1, "pitch": 65, "targetOnsetUs": 5250000, "targetDurationUs": 750000, "partId": "staff-1:voice-1", "parseConfidence": 1 },
+      { "locator": { "partId": "P1", "measureOrdinal": 2, "sourceOrdinal": 1, "voiceId": "1" }, "passIndex": 0, "measure": 2, "pitch": 67, "targetOnsetUs": 6000000, "targetDurationUs": 1500000, "partId": "staff-1:voice-1", "parseConfidence": 1 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 1, "voiceId": "1" }, "passIndex": 1, "measure": 1, "pitch": 60, "targetOnsetUs": 9000000, "targetDurationUs": 750000, "partId": "staff-1:voice-1", "parseConfidence": 1 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 2, "voiceId": "1" }, "passIndex": 1, "measure": 1, "pitch": 62, "targetOnsetUs": 9750000, "targetDurationUs": 750000, "partId": "staff-1:voice-1", "parseConfidence": 1 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 3, "voiceId": "1" }, "passIndex": 1, "measure": 1, "pitch": 64, "targetOnsetUs": 10500000, "targetDurationUs": 750000, "partId": "staff-1:voice-1", "parseConfidence": 1 },
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 4, "voiceId": "1" }, "passIndex": 1, "measure": 1, "pitch": 65, "targetOnsetUs": 11250000, "targetDurationUs": 750000, "partId": "staff-1:voice-1", "parseConfidence": 1 },
+      { "locator": { "partId": "P1", "measureOrdinal": 2, "sourceOrdinal": 1, "voiceId": "1" }, "passIndex": 1, "measure": 2, "pitch": 67, "targetOnsetUs": 12000000, "targetDurationUs": 1500000, "partId": "staff-1:voice-1", "parseConfidence": 1 }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "caseId": "G6-A3-hand-left",
+  "derivation": "Hand-derived (A5 hand filter on G6/A3): mapping staff1=right, staff2=left; hand=left keeps only the staff-2 occurrence (document e2). Wire partId derives staff-2:voice-1. playbackIndex stays 1: hand filtering does NOT renumber playbackIndex (the planner sorted and assigned indices before the filter; existing behavior is the R2-1 §10③ legacyReference baseline).",
+  "expected": {
+    "side": "hand-derived",
+    "kind": "expected",
+    "occurrences": [
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 2, "voiceId": "1" }, "passIndex": 0, "playbackBeat": "0/1", "durationBeat": "4/1", "measureOrdinal": 1, "bar": 1, "beatInMeasure": "0/1", "staffNumber": 2, "voiceId": "1", "pitch": { "step": "C", "alter": 0, "octave": 4, "midiNote": 60, "spelling": "C4" }, "isTieOnset": false, "playbackIndex": 1 }
+    ],
+    "groups": [
+      { "passIndex": 0, "playbackBeat": "0/1", "members": [{ "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 2, "voiceId": "1" }], "pitches": ["C4"], "bar": 1, "beatInMeasure": "0/1", "staffNumbers": [2], "voiceIds": ["1"], "durationBeat": "4/1" }
+    ],
+    "atoms": [
+      { "startTick": 0, "durationTicks": 3840, "bar": 1, "beat": 1 }
+    ],
+    "scoreEvents": [
+      { "locator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 2, "voiceId": "1" }, "passIndex": 0, "measure": 1, "pitch": 60, "targetOnsetUs": 3000000, "targetDurationUs": 3000000, "partId": "staff-2:voice-1", "parseConfidence": 1 }
+    ]
+  }
+}

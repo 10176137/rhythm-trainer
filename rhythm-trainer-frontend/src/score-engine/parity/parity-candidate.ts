@@ -262,7 +262,13 @@ export function buildTsCandidate(xml: string, fileName: string, config: ParityCa
 export function fingerprintStable(xml: string, fileName: string, config: ParityCaseConfig): boolean {
   const first = buildTsCandidate(xml, fileName, config);
   const second = buildTsCandidate(xml, fileName, config);
-  return first.fingerprint !== null && first.fingerprint === second.fingerprint;
+  if (first.fingerprint !== null || second.fingerprint !== null) {
+    return first.fingerprint !== null && first.fingerprint === second.fingerprint;
+  }
+  // Blocked plans never reach a hash: stability = deterministic rejection
+  // with the SAME gate error code on both runs.
+  return first.fingerprintErrorCode !== null
+    && first.fingerprintErrorCode === second.fingerprintErrorCode;
 }
 
 // ---------------------------------------------------------------------------

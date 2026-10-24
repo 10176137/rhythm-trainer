@@ -452,25 +452,26 @@ function diffWireMs(candidate: ParityCandidate, diffs: ParityDiff[]): void {
 function checkRuntimeIdRules(candidate: ParityCandidate, diffs: ParityDiff[]): void {
   if (!candidate.runtimeIds) return;
   const rule = 'TS_RUST_PARITY_GATE_V1 §3.1 (runtime ID structural rules)';
-  const { planId, occurrenceIds, groupIds } = candidate.runtimeIds;
+  const { occurrenceIds, groupIds } = candidate.runtimeIds;
   if (new Set(occurrenceIds).size !== occurrenceIds.length) {
     semantic(diffs, 'runtimeIds.occurrenceIds.uniqueness', rule, 'unique', 'duplicates present');
   }
   if (new Set(groupIds).size !== groupIds.length) {
     semantic(diffs, 'runtimeIds.groupIds.uniqueness', rule, 'unique', 'duplicates present');
   }
-  // occurrenceId pattern: `${planId}:p${pass}:${scoreEventSuffix}` where the
-  // suffix is the notated event id. We verify the prefix/pass embedding and
-  // that the same locator+pass maps 1:1 onto one occurrenceId.
+  // occurrenceId pattern: `...:p{pass}:{notated event id}`. The pass segment
+  // must be embedded. We do NOT require the planId prefix: hand filtering
+  // appends `:hand=…` to plan.planId but keeps member occurrenceIds unchanged
+  // (existing behavior, R2-1 §10③ legacyReference baseline), so a strict
+  // prefix check would misreport legal filtered plans.
   candidate.occurrences.forEach((occurrence, index) => {
     const id = occurrenceIds[index];
     if (!id) {
       semantic(diffs, `runtimeIds.occurrenceIds[${index}]`, rule, 'defined', 'missing');
       return;
     }
-    const prefix = `${planId}:p${occurrence.passIndex}:`;
-    if (!id.startsWith(prefix)) {
-      semantic(diffs, `runtimeIds.occurrenceIds[${index}].pattern`, rule, prefix, id);
+    if (!id.includes(`:p${occurrence.passIndex}:`)) {
+      semantic(diffs, `runtimeIds.occurrenceIds[${index}].pattern`, rule, `:p${occurrence.passIndex}: segment`, id);
     }
   });
 }

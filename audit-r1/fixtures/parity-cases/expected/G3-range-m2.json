@@ -1,0 +1,12 @@
+{
+  "caseId": "G3-range-m2",
+  "derivation": "Hand-derived frozen positive semantics (R2-1 §3.1, planner playback-planner.ts:138): the tie SPAN starts in m1, outside range m2..m2. The m2 note is a tie CONTINUATION (span.eventIds[0] != its id) -> no occurrence, and the plan does NOT re-anchor the span into the range. Empty target plan -> no_playable_notes blocks strict, and the fingerprint gate rejects with EMPTY_PLAN.",
+  "expected": {
+    "side": "hand-derived",
+    "kind": "expected",
+    "occurrences": [],
+    "groups": [],
+    "atoms": [],
+    "scoreEvents": []
+  }
+}

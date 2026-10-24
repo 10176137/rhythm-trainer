@@ -1,0 +1,20 @@
+{
+  "caseId": "G1-A5-range-m2",
+  "derivation": "Hand-derived (GOLDEN_FIXTURES §8 A5): range m2..m2 of g1_single_voice. rangeStart = 4/1, so playbackBeat REBASES to range origin: G4 (m2 e1) plays at 0/1 with its full 2/1 duration; the rest (m2 e2) is not a target. bar stays 2 (bars are not rebased). BPM 80, CountInUs 3,000,000: onset = 3,000,000 + roundHalfUp(0) = 3,000,000; duration = roundHalfUp(2 x 60e6/80) = 1,500,000. Atom: 0/1 beat -> startTick 0, 2 beats -> 1920 ticks.",
+  "expected": {
+    "side": "hand-derived",
+    "kind": "expected",
+    "occurrences": [
+      { "locator": { "partId": "P1", "measureOrdinal": 2, "sourceOrdinal": 1, "voiceId": "1" }, "passIndex": 0, "playbackBeat": "0/1", "durationBeat": "2/1", "measureOrdinal": 2, "bar": 2, "beatInMeasure": "0/1", "staffNumber": 1, "voiceId": "1", "pitch": { "step": "G", "alter": 0, "octave": 4, "midiNote": 67, "spelling": "G4" }, "isTieOnset": false, "playbackIndex": 0 }
+    ],
+    "groups": [
+      { "passIndex": 0, "playbackBeat": "0/1", "members": [{ "partId": "P1", "measureOrdinal": 2, "sourceOrdinal": 1, "voiceId": "1" }], "pitches": ["G4"], "bar": 2, "beatInMeasure": "0/1", "staffNumbers": [1], "voiceIds": ["1"], "durationBeat": "2/1" }
+    ],
+    "atoms": [
+      { "startTick": 0, "durationTicks": 1920, "bar": 2, "beat": 1 }
+    ],
+    "scoreEvents": [
+      { "locator": { "partId": "P1", "measureOrdinal": 2, "sourceOrdinal": 1, "voiceId": "1" }, "passIndex": 0, "measure": 2, "pitch": 67, "targetOnsetUs": 3000000, "targetDurationUs": 1500000, "partId": "staff-1:voice-1", "parseConfidence": 1 }
+    ]
+  }
+}

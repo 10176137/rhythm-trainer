@@ -99,6 +99,8 @@ interface GoldenEvent {
   staff: number;
   voice: string;
   grace: boolean;
+  tieStart: boolean;
+  tieStop: boolean;
 }
 
 interface GoldenCase {
@@ -139,7 +141,9 @@ function beatTextToNumber(text: string): number {
 export function goldenToExpected(goldenRaw: unknown): ParityCandidate {
   const golden = goldenRaw as GoldenCase;
   // Walk the golden event list once: assign per-measure source ordinals and
-  // pick up the playable notes in document order.
+  // pick up the playable notes in document order. A tie CONTINUATION
+  // (tieStop without tieStart) emits no occurrence — same filter the planner
+  // applies — so occurrences align with the remaining onsets in order.
   const ordinalByMeasure = new Map<number, number>();
   const sourceOrdinalOf = new Map<GoldenEvent, number>();
   const noteEvents: GoldenEvent[] = [];
@@ -147,7 +151,9 @@ export function goldenToExpected(goldenRaw: unknown): ParityCandidate {
     const next = (ordinalByMeasure.get(event.measure) ?? 0) + 1;
     ordinalByMeasure.set(event.measure, next);
     sourceOrdinalOf.set(event, next);
-    if (event.kind === 'note' && !event.grace) noteEvents.push(event);
+    if (event.kind !== 'note' || event.grace) continue;
+    if (event.tieStop && !event.tieStart) continue;
+    noteEvents.push(event);
   }
   if (noteEvents.length !== golden.plan.occurrences.length) {
     throw new Error(`golden ${golden.case}: ${noteEvents.length} note events but ${golden.plan.occurrences.length} occurrences`);

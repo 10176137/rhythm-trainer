@@ -681,9 +681,14 @@ describe('R2-0B 4: mandatory gate and conflict rejection', () => {
 
 describe('committed golden vectors (frozen hashes)', () => {
   const names = Object.keys(GOLDEN.vectors);
+  // R2-0 froze five vectors; R2-2 appended V-rational-bpm (non-integer
+  // rational BPM, TS_RUST_PARITY_GATE_V1 §7). The five frozen names must all
+  // be present and every vector must carry the full triple.
+  const FROZEN_FIVE = ['V-single', 'V-rest-gap', 'V-chord', 'V-tie', 'V-hand'];
 
-  it('fixture carries five vectors with payload, canonical bytes and hash', () => {
-    expect(names.length).toBe(5);
+  it('fixture carries the frozen five plus V-rational-bpm, each with payload, canonical bytes and hash', () => {
+    for (const name of FROZEN_FIVE) expect(names).toContain(name);
+    expect(names).toContain('V-rational-bpm');
     for (const name of names) {
       const vector = GOLDEN.vectors[name];
       expect(vector.payload).toBeTruthy();
@@ -705,9 +710,9 @@ describe('committed golden vectors (frozen hashes)', () => {
     expect(fromBytes).toBe(vector.expectedFingerprint);
   });
 
-  it('the five vectors are pairwise distinct', () => {
+  it('all vectors are pairwise distinct', () => {
     const hashes = names.map((name) => GOLDEN.vectors[name].expectedFingerprint);
-    expect(new Set(hashes).size).toBe(5);
+    expect(new Set(hashes).size).toBe(names.length);
   });
 
   it('V-chord keeps member durations while the group takes the max', () => {

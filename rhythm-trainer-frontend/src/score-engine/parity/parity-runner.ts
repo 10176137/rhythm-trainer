@@ -41,7 +41,9 @@ export function runCase(bundle: ParityCaseBundle, meta: RunnerMeta): ParityRepor
   const config = bundle.config;
   const { xml, fileName } = loadFixtureXml(meta.root, bundle);
   const expected = loadExpected(meta.root, bundle);
-  const result = buildTsCandidate(xml, `${fileName ?? 'fixture.musicxml'} (${bundle.caseId})`, config);
+  // fileName keeps the real fixture extension — the importer's extension gate
+  // rejects decorated names (unsupported_extension).
+  const result = buildTsCandidate(xml, fileName, config);
   const diffs = diffCandidates(expected, result.candidate);
   // Expected-outcome agreement (blocked plans, scope codes) is part of L2.
   const outcomeDiffs: ParityDiff[] = checkExpectedOutcome(bundle, result);
