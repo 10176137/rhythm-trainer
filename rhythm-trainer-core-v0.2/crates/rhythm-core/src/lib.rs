@@ -1,5 +1,6 @@
 //! Deterministic rhythm-training core. No Node, browser, MIDI, audio, or UI dependencies.
 
+pub mod contract_v1;
 mod duration;
 mod error;
 mod events;
