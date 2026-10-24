@@ -1,11 +1,11 @@
 # R2-3 工程任务卡（v4——按三轮复审意见修订，提交于 `r2-3-rust-planner` 分支）
 
-**状态：** v4；**a1 已放行并实施**（交付见分支后续提交）；a2/a3 仍未放行（阻断项见 §4，v4 已按三轮意见补齐其中 scoreFingerprint 规则与 TargetOnsetUs 加法边界）。
+**状态：** v5；**a1 PASS（四轮复审）；a2 已放行并实施**（范围四项：time.rs 公式/num-bigint/config 边界/§3.5 加法——document.rs 完整校验移至 a3）；a3 未放行。
 **基线：** `main` @ `ba6d3c4`；本分支自该点创建。
 **上位约束：** R2-1 `TS_RUST_PARITY_GATE_V1.md`（Frozen @ 838cd9b）、R2-2 关闭报告 §11、路线决策 §5.1。
 **工作方式：** 全程在本分支提交。分支已推送远端供 GitHub 审查（用户确立的审查模式）；**main 不动、不合入**。
 
-**v4 变更摘要**（相对 v3/b6c2b9f，全部来自三轮复审意见）：
+**v5 变更摘要**（相对 v4；四轮复审批准 a1、同步 a2 范围）：§4.2 重写为四项范围（time.rs 公式/num-bigint 全程精确/config 输入边界/§3.5 最终加法），**document.rs 完整校验移至 a3**；a3 定义相应更新。原 v4 摘要：**v4 变更摘要**（相对 v3/b6c2b9f，全部来自三轮复审意见）：
 1. **§2.2/§2.3 `scoreFingerprint` 字段来源修正**（C-12，关键）：v3 写"从输入 document 的 fingerprint 字段携带"——**ScoreDocumentV1 顶层不存在 `fingerprint` 字段**（Schema `additionalProperties:false`）。正确规则（三轮复审 §二 五步）：源指纹在 **`document.source.sourceFingerprint`**（格式 `sha256:` + 64 位小写 hex）；`build_plan_v1` 读取它、**验证格式、去 `sha256:` 前缀**得 64hex，写入 `PlannerOutput.scoreFingerprint`；门禁比较 `plan.scoreFingerprint == report.fingerprint`（后者即裸 64hex，TS 投影 :178 同格式）；`project_score_document_v1` 的文档/报告绑定检查使用**同一规范化规则**（去前缀后比较），不比较不存在的 `document.fingerprint`。
 2. **§3.5 新增 `TargetOnsetUs` 最终加法边界**（三轮复审 §三）：`CountInUs + PlanOffsetUs` 各自合法、和仍可能超 safe-integer——最终加法必须精确整数并做范围检查，超限返回越界错误码，禁止截断/回绕（a2 阻断项 +1）。
 3. **§0.1 git 状态同步**：v3 实际已推送（`origin/r2-3-rust-planner == b6c2b9f`），v2→v3 diff 已由用户在 GitHub 完成审查——撤销 v3 文本中"未推送"的过时表述，避免本地/远端版本追溯混淆。
@@ -203,9 +203,21 @@ D = beat.den  × bpm.numerator
 **范围排除**：不实现 `time.rs`（a2 阻断）；不做 document 投影/校验（a2/a3）；不触碰 planner/NAPI。
 **纪律**：sha2 版本已更正（0.11.1）并 lock；实跑测试记录命令/输出/commit SHA；不声称未跑的测试。
 
-### 4.2 R2-3a2——**未放行**（前置阻断）
+### 4.2 R2-3a2——**已放行**（四轮复审批准；范围按四轮意见同步，v5 卡为准）
 
-阻断项：① 修正后的时间公式实现（§3.2，已写明）；② num-bigint 溢出策略落地（§3）；③ config 输入边界（§2.1 config JSON → `PlanRequestConfig` 强类型 + Schema 校验）。内容：`time.rs` + `rational.rs` + `document.rs`（validate 全清单）+ §3.4 边界测试。完成后复审放行。
+**范围（四项，严格按四轮复审清单；document.rs 完整文档校验不在本阶段——移至 a3）**：
+1. **`time.rs` 正确时间公式**：非负拍位 `n/d`、BPM `bpmNum/bpmDen`，`N = n × 60_000_000 × bpmDen`、`D = d × bpmNum`、`µs = roundHalfUp(N/D)`——**必须含 bpm.denominator**；锚点 175/2 BPM 一拍 = 685714 µs。
+2. **num-bigint 全程精确**：有理数交叉乘、GCD、µs 换算、count-in 转换、最终加法——**运算完成后**才做 safe-integer 域检查。
+3. **planner config 输入边界**：JSON → 强类型 `PlanRequestConfig`（serde `deny_unknown_fields`）+ 冻结契约校验：非法 range、非法 loop 次数、非法 BPM、未约分/非法有理数、未知字段、负 countInUs、clef-heuristic 来源一律**拒绝**，绝不返回看似成功的计划。
+4. **§3.5 最终加法越界**：`TargetOnsetUs = CountInUs + PlanOffsetUs` 精确整数相加，超 safe-integer → `TIME_OUT_OF_RANGE`，禁止截断/回绕。
+
+**验收覆盖（四轮清单）**：正确公式、有理 BPM、精确半入舍、最大安全整数附近、超大中间乘积、非法 config 全负例、两合法分项相加后越界。冻结向量与 golden 原样。
+
+**新增文件**：`contract_v1/rational.rs`（RationalV1 + BigInt 精确运算）、`contract_v1/time.rs`、`contract_v1/config.rs`；对应测试 `tests/contract_v1_time.rs` 或并入现有测试文件。既有 6 向量/117 项测试零回归。**依赖新增：`num-bigint 0.5.1`**（§1 已列）。
+
+### 4.3 R2-3a3——**未放行**（范围在 a2 完成复审后明确）
+
+内容：**`document.rs` 完整 ScoreDocumentV1 校验清单**（自 a2 范围移入）+ `project_score_document_v1`（含 C-12 规范化绑定检查）+ payload 全量校验 + 门禁 `plan_fingerprint_v1_gate`。
 
 ### 4.3 R2-3a3——**未放行**（前置阻断）
 
