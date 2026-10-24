@@ -1,7 +1,7 @@
 # TS↔Rust Parity Gate V1（R2-1：Golden 语义差分与对照门槛——验收规则冻结）
 
-**日期：** 2026-10-24（同日经三轮复审修订：RF-01–RF-04 全部通过；C 类规范错误码映射表补齐、固定向量一致性独立成类后**最终冻结**）
-**复审基线：** `36974d7`
+**日期：** 2026-10-24（同日经四轮复审修订：RF-01–RF-04 通过 → C 类规范错误码映射表 + V 类独立 → N-ID-C3 按**验证入口**拆分为 C3a/C3b/C3c 并澄清 xmlId 三层同名码——此后**最终冻结**）
+**复审基线：** `0550677`
 **性质：** **验收规则设计冻结——Design Frozen / Accepted（最终）**。本卡不实现 Rust planner、不改 TS 语义、不切生产权威（Rust planner 未启动）；这不代表迁移已通过，实施仍须满足 §8 全部证据门槛。
 **上位文档：** 卡定义见 `R2_0_CONTRACT_FREEZE_REPORT.md` §11、前置条件状态见 `R2_R3_ROUTE_DECISION.md` §5.1、真值纪律见 `GOLDEN_FIXTURES.md`。
 
@@ -235,14 +235,16 @@ TargetOnsetUs    = CountInUs + PlanOffsetUs        ← 相对拍位只舍入这�
 - **Rust 侧从第一天起直接产生上述规范码**（候选输出校验/服务端同层）——C 类的 Rust 断言对象就是规范码本身；
 - **TS 侧过渡断言 = 拒绝行为 + 消息锚点**（上表末列，消息文本同样冻结不得改写）；把 TS 消息锚点归一化为规范码是**差分 harness 的职责**——harness 内置该映射表，输入"抛错消息/行为"→ 输出规范码 → 报告统一呈现；**除此之外 harness 不得 reinterpret 任何错误**；
 - 服务端这四类拒绝的**机器码化（结构化错误携带 code）是可选的生产改进，不属 R2-1**；若实施，必须采用上表规范码并另行审查（server 行为变更）；
-- 已有契约层机器码的条目（N-ID-C2/C3、N-PITCH-C2、N-FP-C1..C4）**维持原码**，不引入新码、不重复命名。
+- 已有契约层机器码的条目（N-ID-C2/C3a-c、N-PITCH-C2、N-FP-C1..C4）**维持原码**，不引入新码、不重复命名。
 
 ### C 类用例
 | ID | 拒绝层级 | 操作 | 规范码 |
 |---|---|---|---|
 | N-ID-C1 | 服务端 / 候选输出目标校验 | **`EngineScoreEvent.scoreEventId` 在单份评分目标数组内重复**（§3.0：检查对象是评分目标 wire ID，不是原曲事件 ID；range-loop 中原曲 `scoreEventId` 跨 pass 合法重复，不得误拒） | `duplicate_target_id`（服务端现状为普通 Error，见映射表） |
 | N-ID-C2 | 候选输出校验（指纹 payload 构建） | 候选 occurrenceId 跨 pass 重复 | `DUPLICATE_OCCURRENCE_ID`（契约层已有，R2-0B；occurrenceId 每 pass 唯一，A10） |
-| N-ID-C3 | 文档门禁 | 重复 partId / 文档级重复 source locator / 重复 xmlId | `DUPLICATE_PART_ID` / `duplicate_source_locator` / `duplicate_xml_id`（R2-0B fail-closed） |
+| N-ID-C3a | 投影 `projectScoreDocumentV1`（fail-closed 抛错） | 重复 partId | `DUPLICATE_PART_ID`（plan-fingerprint.ts:211） |
+| N-ID-C3b | 文档校验 `validateScoreDocumentV1`（issue 汇入门禁 `DOCUMENT_VALIDATION_FAILED`） | 文档级重复 source locator（partId, measureOrdinal, sourceOrdinal） | `duplicate_source_locator`（plan-fingerprint.ts:702） |
+| N-ID-C3c | 投影 `projectScoreDocumentV1`（fail-closed 抛错） | 重复 `note@id`（xmlId） | `DUPLICATE_XML_ID`（plan-fingerprint.ts:299，**大写**——门禁入口的权威拒绝码）。同名码分层澄清：`validateScoreDocumentV1` 的防御性 issue `duplicate_xml_id`（:711，小写；经强制门禁**不可达**，投影先行抛错，仅供直接调用校验器时兜底）与上游 importer 的 ImportIssue `duplicate_xml_id`（types.ts:35，R1 交付的阻断 issue）是**另外两层**；C 类断言一律以投影层 `DUPLICATE_XML_ID` 为准 |
 | N-PITCH-C1 | 服务端 / 候选输出目标校验 | 候选 `EngineScoreEvent.pitch` 越界（<0 / >127）或非整数 | `invalid_target_pitch`（服务端现状为普通 Error，见映射表） |
 | N-PITCH-C2 | 上游 importer/planner | 非整数 alter / 不可表示音高 | `unrepresentable_pitch` + `blocksStrict`——报告必须写明拒绝在**上游层级**，不得笼统写成"差分失败" |
 | N-COV-C1 | 服务端派生目标校验 | scoreEvents 的 measure 集合 ≠ note atoms 的 bar 集合 | `measure_coverage_mismatch`（服务端现状为普通 Error，见映射表） |
@@ -251,6 +253,8 @@ TargetOnsetUs    = CountInUs + PlanOffsetUs        ← 相对拍位只舍入这�
 | N-FP-C2 | 强制门禁 | 未经校验的非法文档尝试进入指纹 | `DOCUMENT_VALIDATION_FAILED`，无旁路 |
 | N-FP-C3 | payload 校验 | handMapping 冲突（重复 part / 同 staff 列两次 / 同 staff 双手） | `hand_mapping_conflict` |
 | N-FP-C4 | planner 输入校验 | 空目标 / 非法 range / 非法 loop count（0、33） | `EMPTY_PLAN` / `invalid_range` / `invalid_repeat_count` |
+
+> 同族补充：同一投影入口对重复 eventId 抛 `DUPLICATE_EVENT_ID`（plan-fingerprint.ts:304）——与 N-ID-C3a 同层同性质，随 C3a 一并断言，避免实现者另行猜测入口与码。
 
 ### V 类——固定向量一致性（byte-exact；非敏感性、非故障注入、非拒绝）
 | ID | 操作 | 期望 |
