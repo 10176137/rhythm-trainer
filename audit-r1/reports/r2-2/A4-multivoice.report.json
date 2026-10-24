@@ -13,7 +13,7 @@
     },
     "candidate": {
       "kind": "ts-legacy-reference",
-      "gitSha": "e6ee4a61acaabd07df04c6d2872cf477171f8254",
+      "gitSha": "a99710a28853e2d0996e3c49bb73a863d9cec44a",
       "plannerVersion": "parity-harness-1",
       "engineVersion": "1.0.0"
     }
@@ -72,9 +72,9 @@
   },
   "diffs": [],
   "meta": {
-    "generatedAt": "2026-10-24T17:13:11.034Z",
-    "gitSha": "e6ee4a61acaabd07df04c6d2872cf477171f8254",
-    "command": "parity-runner --mode=full --reportDir=audit-r1/reports/r2-2",
+    "generatedAt": "2026-10-24T17:33:18.765Z",
+    "gitSha": "a99710a28853e2d0996e3c49bb73a863d9cec44a",
+    "command": "parity-runner --mode=full --reportDir=../audit-r1/reports/r2-2",
     "timeConversionVersion": "time-conversion-v1",
     "fingerprintSchemaVersion": 1,
     "parityGateDoc": "audit-r1/docs/TS_RUST_PARITY_GATE_V1.md @ 838cd9b"

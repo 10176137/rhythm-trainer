@@ -4,8 +4,8 @@
 // the exact field path, classified semantic-defect, and produce a failing
 // report — if the comparator ignored the path, these assertions would fail.
 import { describe, expect, it } from 'vitest';
-import { FAULT_SPECS, runFault, runParity } from './parity-runner';
-import { findRepoRoot } from './case-bundle';
+import { FAULT_SPECS, runCase, runFault, runParity } from './parity-runner';
+import { findRepoRoot, loadCaseIndex } from './case-bundle';
 
 const ROOT = findRepoRoot();
 const META = { root: ROOT, gitSha: null, command: 'acceptance-b' };
@@ -44,6 +44,21 @@ describe('acceptance B: the six frozen fault injections', () => {
   it('an unknown faultId FAILS instead of exiting 0 vacuously (2nd review §一.1)', () => {
     expect(() => runParity({ mode: 'fault', faultId: 'N-DOES-NOT-EXIST' }, META))
       .toThrow(/faultId not found/);
+  });
+
+  it('layer statuses stay truthful: an L2-only failure leaves L1/L3 as pass (3rd review)', () => {
+    const index = loadCaseIndex(META.root);
+    const base = index.cases.find((entry) => entry.caseId === 'G3-range-m2');
+    if (!base) throw new Error('G3-range-m2 missing');
+    // A wrong EXPECTED issue code makes only L2's expected-outcome check fail;
+    // L1 (fingerprint matches the real gate code) and L3 (empty-plan invariants
+    // + n/a wire) must keep reporting their own truthful pass.
+    const bundle = { ...base, expectedOutcome: { ...base.expectedOutcome, issueCodes: ['not_a_real_code'] } };
+    const report = runCase(bundle, META);
+    expect(report.l1.status).toBe('pass');
+    expect(report.l2.status).toBe('fail');
+    expect(report.l3.status).toBe('pass');
+    expect(report.summary.pass).toBe(false);
   });
 
   it('fault injection leaves the frozen bundle and golden untouched (no self-upgrade)', () => {

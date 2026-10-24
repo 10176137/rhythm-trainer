@@ -51,8 +51,14 @@ export function runCase(bundle: ParityCaseBundle, meta: RunnerMeta): ParityRepor
   const categories = categorize(allDiffs);
   const p13 = computeL3Invariants(result.candidate, config);
   const l3Ok = p13.every((check) => check.status === 'pass');
+  // Wire compatibility reports ITS OWN track only: semantic defects on the
+  // wireMs paths — never the whole-report category count (which would couple
+  // L3 to unrelated L2 outcome diffs).
+  const wireSemanticCount = diffs.filter(
+    (diff) => diff.path.startsWith('wireMs[') && diff.category === 'semantic-defect',
+  ).length;
   const wireCompatible = result.candidate.wireMs
-    ? (categories['semantic-defect'] === 0 ? 'pass' : 'fail')
+    ? (wireSemanticCount === 0 ? 'pass' : 'fail')
     : 'not-applicable';
   const stable = fingerprintStable(xml, fileName, config);
 
@@ -100,7 +106,7 @@ export function runCase(bundle: ParityCaseBundle, meta: RunnerMeta): ParityRepor
       note: 'TS-side only: stability of the frozen input under the gated fingerprint. TS↔Rust L1 equality is deferred to R2-3.',
     },
     l2: {
-      status: pass ? 'pass' : 'fail',
+      status: l2Status,
       occurrenceCount: result.candidate.occurrences.length,
       groupCount: result.candidate.groups.length,
       diffCount: allDiffs.length,

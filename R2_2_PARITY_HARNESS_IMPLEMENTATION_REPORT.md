@@ -48,15 +48,15 @@
 - **C 类**（`acceptance-c.test.ts`）：harness 层四规范码（`duplicate_target_id`/`invalid_target_pitch`/`measure_coverage_mismatch`/`target_outside_prescription_range`）+ 锚点映射只认冻结文本（无关错误返回 null）；契约层按**冻结入口**断言：投影 `DUPLICATE_XML_ID`（大写）与同口 `DUPLICATE_EVENT_ID`、payload 构建 `DUPLICATE_OCCURRENCE_ID`、planner 输入 `invalid_range`/`invalid_repeat_count`（0/33）、空计划门禁链、importer 上游 `unrepresentable_pitch`（blocksStrict）；C3a/C3b/N-FP-C1..C3 复用映射锚定。
 - **V 类**（`acceptance-v.test.ts`）：6 向量双路径逐字节（参考实现 + 独立 canonicalize+node sha256 + 提交 canonical bytes round-trip）；V6 冻结 175/2 与 35/8；half-up 手推表断言；**`RUST_V_CLASS_STATUS = DEFERRED_TO_R2-3`** 显式声明。
 
-## 4. 测试结果（全部实跑）
+## 4. 测试结果（最终状态：两轮复审全部修复后的复跑；历史递进见 §9/§10）
 
 | 命令 | 结果 |
 |---|---|
-| `npx vitest run`（未设 RHYTHM_REAL_SCORE_PATH） | **42 files / 360 passed / 3 skipped**（跳过 = 真实谱门禁 3 项：契约 113 小节回归 1 + R2-2 parity 结构不变量 2；**SKIP 不计 PASS**。口径说明：360/3 为 test 计数；file 计数为 41 passed + 1 skipped） |
-| `RHYTHM_REAL_SCORE_PATH=… npx vitest run src/score-engine/contract-v1` | **61/61**（113 小节真实谱回归实际执行） |
-| `RHYTHM_REAL_SCORE_PATH=… vitest real-score-parity.test.ts` | **2/2**：113 小节结构不变量 PASS——113 小节、1579 occurrence（ID 全唯一）、1018 group、1018 atom、capabilities 恰 `chords/multi_staff/multi_voice/ties/tuplets` 五值、门禁指纹两次重跑逐字节稳定 |
-| `node parity-runner.bundle.mjs --mode=full` | **15/15 case PASS**（0 semantic-defect、0 unclassified、0 time-rounding 未解释项）+ 6/6 fault 捕获，**exit=0**；报告落盘 `audit-r1/reports/r2-2/`（16 份） |
-| `npm run build`（tsc -b && vite build） | 通过 5.01s |
+| `npx vitest run`（未设 RHYTHM_REAL_SCORE_PATH） | **42 files（41 passed + 1 skipped）/ 368 passed + 3 skipped tests**（跳过 = 真实谱门禁 3 项：契约 113 小节回归 1 + R2-2 parity 结构不变量 2；**SKIP 不计 PASS**。历史递进：首提交 360/3 → 首轮复审修复 366/3 → 二轮复审修复 367/3 → 三轮复审修复 368/3） |
+| `RHYTHM_REAL_SCORE_PATH=… npx vitest run src/score-engine/parity src/score-engine/contract-v1` | **125/125**（113 小节真实谱回归与 parity 结构不变量实际执行；历史：首提交 61/61 契约 + 后补 parity 2/2 → 首轮复审修复 117/117 → 二轮复审修复 124/124 → 三轮复审修复 125/125） |
+| `node parity-runner.bundle.mjs --mode=full` | **15/15 case PASS**（0 semantic-defect、0 unclassified、0 time-rounding 未解释项）+ 6/6 fault 捕获，**exit=0**；报告落盘 `audit-r1/reports/r2-2/`（16 份，两轮复审后重新生成） |
+| `node parity-runner.bundle.mjs --mode=fault` 三路退出码 | 未知 `faultId` → **exit 1**（抛错）；全 fault 批 → exit 0（只产出 fault 报告，reports=0）；full → exit 0 |
+| `npm run build`（tsc -b && vite build） | 通过 4.02s |
 | `npm run selftest` | **251 条断言全部通过**（本轮零生产代码改动，按卡要求照跑） |
 | Rust | **零改动**（本卡不涉及；按边界未触碰） |
 
@@ -121,7 +121,7 @@ npm run build && npm run selftest
 ### 9.5 其他复审意见落实
 
 - `reportPasses()` 不再无条件放行 `unsupported-behavior`：任何此类差异现在都判 fail（当前无 case 声明预期放行；将来需要时须在 bundle 显式声明，另立判定）；+1 负测。
-- 数字口径统一：全量 vitest 为 **42 files（41 passed + 1 skipped file）/ 360 passed + 3 skipped tests**（跳过 = 真实谱门禁 3 项）；本报告 §4 与提交信息使用同一口径。
+- 数字口径统一（当时口径 360/3；二轮复审修复后最终为 367/3，见 §10.4——§4 表为最终状态）：全量 vitest 为 42 files（41 passed + 1 skipped file），跳过 = 真实谱门禁 3 项；§4 与提交信息使用同一口径。
 - 首版报告的"10/11"保守自评已由本节替代：复审四项阻断处理后，§10 清单 11/11 逐项有据（见 §7 复现命令可全部复跑）。
 
 **R2-2 关闭申请（更新）**：见 §10 二次复审修复。
@@ -150,14 +150,14 @@ npm run build && npm run selftest
 - `g5.expected.json` 的 `derivation` 重写：冻结协议为唯一正文，旧值仅作为"已被取代"记录并指向 §6.5；
 - 全文扫查：3333333/5333333 残留仅存在于裁决表"旧 dump 值"列（应保留的历史对照）。
 
-### 10.4 证据重跑（全部实跑）
+### 10.4 证据重跑（三轮复审修复后最终实跑；§4 为同一最终状态）
 
 | 命令 | 结果 |
 |---|---|
-| `npx vitest run`（未设 env） | **42 files（41+1 skipped）/ 367 passed + 3 skipped**（+1 未知 faultId 负测） |
-| 设 `RHYTHM_REAL_SCORE_PATH` 后 parity+contract | **124/124** |
+| `npx vitest run`（未设 env） | **42 files（41+1 skipped）/ 368 passed + 3 skipped**（+1 分层独立性负测） |
+| `RHYTHM_REAL_SCORE_PATH=… npx vitest run src/score-engine/parity src/score-engine/contract-v1` | **125/125** |
 | runner full（报告重新生成至 `audit-r1/reports/r2-2/`） | 15/15 case PASS + 6/6 fault 捕获，exit=0 |
 | runner fault 三路退出码 | unknown faultId=1 / 全 fault 批=0 / full=0 |
-| `npm run build` / `npm run selftest` | 通过 4.86s / 251 条 |
+| `npm run build` / `npm run selftest` | 通过 4.02s / 251 条 |
 
 **R2-2 关闭申请（二次更新）**：两项收尾（runner 隔离+分层状态、G5 文档同步）全处理，G5 裁决方向已获批准并完成文档同步。状态：`R2-2 TS-side parity harness implemented and tested`、`R2-3 Rust planner not started`、无权威切换、无 Rust 代码。**申请三次复审确认后关闭 R2-2。**
