@@ -17,7 +17,7 @@ import {
   validateCandidateScoreEvents,
 } from './normative-codes';
 
-const G1_XML = readFileSync('D:/123/audit-r1/fixtures/g1_single_voice.musicxml', 'utf8');
+const G1_XML = readFileSync(new URL('../../../../audit-r1/fixtures/g1_single_voice.musicxml', import.meta.url), 'utf8');
 
 /** Reuse map: C-class items already asserted by committed contract tests. */
 const REUSE_MAP: Record<string, { file: string; testTitle: string }> = {
@@ -58,7 +58,7 @@ const codeOf = (error: unknown): string => (error as { code?: string }).code ?? 
 describe('acceptance C: reuse map for contract-layer rejections', () => {
   it('reuse anchors exist in the committed tests', () => {
     for (const [item, anchor] of Object.entries(REUSE_MAP)) {
-      const source = readFileSync(`D:/123/rhythm-trainer-frontend/${anchor.file}`, 'utf8');
+      const source = readFileSync(new URL(`../../../${anchor.file}`, import.meta.url), 'utf8');
       expect(source.includes(anchor.testTitle), `${item}: anchor missing`).toBe(true);
     }
   });
@@ -198,7 +198,7 @@ describe('acceptance C: contract-layer rejections not yet covered elsewhere', ()
     // G3 with range m2..m2: the only notated note in range is a tie
     // CONTINUATION (span start lives in m1), so the plan legitimately has
     // zero occurrences (frozen semantics, parity case G3-range-m2).
-    const xml = readFileSync('D:/123/audit-r1/fixtures/g3_tie_across_bar.musicxml', 'utf8');
+    const xml = readFileSync(new URL('../../../../audit-r1/fixtures/g3_tie_across_bar.musicxml', import.meta.url), 'utf8');
     const imported = importMusicXml(xml, { fileName: 'g3_tie_across_bar.musicxml' });
     if (!imported.scoreDocument) throw new Error('g3 import failed');
     const { scoreDocument, importReport } = imported;

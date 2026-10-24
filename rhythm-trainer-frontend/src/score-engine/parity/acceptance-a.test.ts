@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { computePlanFingerprintV1 } from '../contract-v1/plan-fingerprint';
 
-const VECTORS_PATH = 'D:/123/audit-r1/contracts/test-vectors/plan-fingerprint-v1.json';
+const VECTORS_PATH = new URL('../../../../audit-r1/contracts/test-vectors/plan-fingerprint-v1.json', import.meta.url);
 
 /**
  * Reuse map: every A-class item already covered by a committed contract test.
@@ -35,7 +35,7 @@ const REUSE_MAP: Record<string, { file: string; testTitle: string }> = {
 describe('acceptance A: fingerprint sensitivity / invariance', () => {
   it('reuse map points at contract tests that actually exist', () => {
     for (const [item, anchor] of Object.entries(REUSE_MAP)) {
-      const source = readFileSync(`D:/123/rhythm-trainer-frontend/${anchor.file}`, 'utf8');
+      const source = readFileSync(new URL(`../../../${anchor.file}`, import.meta.url), 'utf8');
       expect(source.includes(anchor.testTitle), `${item}: anchor missing in ${anchor.file}`).toBe(true);
     }
   });

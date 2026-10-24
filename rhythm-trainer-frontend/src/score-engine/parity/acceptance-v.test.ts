@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import canonicalize from 'canonicalize';
 import { beatToMicroseconds, computePlanFingerprintV1 } from '../contract-v1/plan-fingerprint';
-const VECTORS_PATH = 'D:/123/audit-r1/contracts/test-vectors/plan-fingerprint-v1.json';
+const VECTORS_PATH = new URL('../../../../audit-r1/contracts/test-vectors/plan-fingerprint-v1.json', import.meta.url);
 
 export const RUST_V_CLASS_STATUS = 'DEFERRED_TO_R2-3' as const;
 

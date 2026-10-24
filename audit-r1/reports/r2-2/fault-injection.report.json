@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "faults": [
+    {
+      "faultId": "N-PITCH-F1",
+      "caseId": "G1-base",
+      "detected": true,
+      "classifiedCorrectly": true,
+      "pathFound": true,
+      "reportStatus": "fail",
+      "diffs": [
+        {
+          "path": "occurrences[P1:m1:e1:v1:p0].pitch.midiNote",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1",
+          "left": 60,
+          "right": 61
+        }
+      ]
+    },
+    {
+      "faultId": "N-COUNT-F1",
+      "caseId": "G3-base",
+      "detected": true,
+      "classifiedCorrectly": true,
+      "pathFound": true,
+      "reportStatus": "fail",
+      "diffs": [
+        {
+          "path": "occurrences[P1:m2:e1:v1:p0].presence",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1",
+          "left": "absent",
+          "right": "present"
+        },
+        {
+          "path": "runtimeIds.occurrenceIds[1]",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1 (runtime ID structural rules)",
+          "left": "defined",
+          "right": "missing"
+        }
+      ]
+    },
+    {
+      "faultId": "N-COUNT-F2",
+      "caseId": "G1-base",
+      "detected": true,
+      "classifiedCorrectly": true,
+      "pathFound": true,
+      "reportStatus": "fail",
+      "diffs": [
+        {
+          "path": "occurrences[P1:m2:e2:v1:p0].presence",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1",
+          "left": "absent",
+          "right": "present"
+        },
+        {
+          "path": "runtimeIds.occurrenceIds[5]",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1 (runtime ID structural rules)",
+          "left": "defined",
+          "right": "missing"
+        }
+      ]
+    },
+    {
+      "faultId": "N-COUNT-F3",
+      "caseId": "G2-base",
+      "detected": true,
+      "classifiedCorrectly": true,
+      "pathFound": true,
+      "reportStatus": "fail",
+      "diffs": [
+        {
+          "path": "occurrences[P1:m1:e4:v1:p0].presence",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1",
+          "left": "present",
+          "right": "missing"
+        }
+      ]
+    },
+    {
+      "faultId": "N-COUNT-F4",
+      "caseId": "A4-multivoice",
+      "detected": true,
+      "classifiedCorrectly": true,
+      "pathFound": true,
+      "reportStatus": "fail",
+      "diffs": [
+        {
+          "path": "groups[p0@0/1].members.length",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.2",
+          "left": 2,
+          "right": 1
+        },
+        {
+          "path": "groups[p0@0/1].pitches",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.2",
+          "left": [
+            "C4",
+            "E4"
+          ],
+          "right": [
+            "C4"
+          ]
+        },
+        {
+          "path": "groups[p0@0/1].voiceIds",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.2",
+          "left": [
+            "1",
+            "2"
+          ],
+          "right": [
+            "1"
+          ]
+        }
+      ]
+    },
+    {
+      "faultId": "N-COV-F1",
+      "caseId": "G1-base",
+      "detected": true,
+      "classifiedCorrectly": true,
+      "pathFound": true,
+      "reportStatus": "fail",
+      "diffs": [
+        {
+          "path": "atoms[tick=3840].presence",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.3",
+          "left": "present",
+          "right": "missing"
+        },
+        {
+          "path": "groups[p0@4/1].presence",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.2",
+          "left": "present",
+          "right": "missing"
+        },
+        {
+          "path": "occurrences[P1:m2:e1:v1:p0].presence",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1",
+          "left": "present",
+          "right": "missing"
+        },
+        {
+          "path": "scoreEvents[P1:m2:e1:v1:p0].presence",
+          "category": "semantic-defect",
+          "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.4/§3.5",
+          "left": "present",
+          "right": "missing"
+        }
+      ]
+    }
+  ]
+}

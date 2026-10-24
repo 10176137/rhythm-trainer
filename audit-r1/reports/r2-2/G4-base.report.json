@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "caseId": "G4-base",
+  "fixture": {
+    "path": "audit-r1/fixtures/g4_triplet.musicxml",
+    "sha256": "e084ca4e9e14e7f872b0b259e26c805273280137906a255e332ae53b2ed06ea9"
+  },
+  "configSha256": "db9e41d0d2470e236fba39147789820327383358ad8570ca73e7ffadcbe85c05",
+  "sides": {
+    "expected": {
+      "kind": "expected",
+      "source": "audit-r1/fixtures/golden/g4.expected.json"
+    },
+    "candidate": {
+      "kind": "ts-legacy-reference",
+      "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+      "plannerVersion": "parity-harness-1",
+      "engineVersion": "1.0.0"
+    }
+  },
+  "rustSide": "not-implemented / not-run",
+  "l1": {
+    "status": "pass",
+    "fingerprint": "plan-v1:sha256:a52614ebee8abc463f8f5c4003bc3361a0adfdd2772f429463e9b56db90a485e",
+    "fingerprintErrorCode": null,
+    "stableAcrossRuns": true,
+    "note": "TS-side only: stability of the frozen input under the gated fingerprint. TS↔Rust L1 equality is deferred to R2-3."
+  },
+  "l2": {
+    "status": "pass",
+    "occurrenceCount": 4,
+    "groupCount": 4,
+    "diffCount": 0
+  },
+  "l3": {
+    "status": "pass",
+    "atomCount": 4,
+    "scoreEventCount": 4,
+    "wireCompatibility": "pass",
+    "p1_3Invariants": [
+      {
+        "check": "onset-group set == atom onset set (exact µs)",
+        "status": "pass",
+        "detail": "groups=[4000000,4333333,4666667,5000000] atoms=[4000000,4333333,4666667,5000000]"
+      },
+      {
+        "check": "atom nominal duration == longest member duration (exact µs)",
+        "status": "pass"
+      },
+      {
+        "check": "scoreEvents measure set == atom bar set",
+        "status": "pass",
+        "detail": "scoreEvents=[1] atoms=[1]"
+      },
+      {
+        "check": "atom ticks are exact integers on the PPQ grid",
+        "status": "pass"
+      }
+    ]
+  },
+  "summary": {
+    "status": "pass",
+    "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+    },
+    "pass": true
+  },
+  "diffs": [],
+  "meta": {
+    "generatedAt": "2026-10-24T16:24:07.041Z",
+    "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+    "command": "parity-runner --mode=full --reportDir=../audit-r1/reports/r2-2",
+    "timeConversionVersion": "time-conversion-v1",
+    "fingerprintSchemaVersion": 1,
+    "parityGateDoc": "audit-r1/docs/TS_RUST_PARITY_GATE_V1.md @ 838cd9b"
+  }
+}
