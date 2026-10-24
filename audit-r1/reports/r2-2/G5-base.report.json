@@ -5,15 +5,15 @@
     "path": "audit-r1/fixtures/g5_three_four.musicxml",
     "sha256": "7cf95a8868824099d4454136f3d53104c4e714953532fb64da83d74e836c2ec7"
   },
-  "configSha256": "6886b63b2832665d39ab12a71d44edf9a9b557ae8c6b77df0a7133f669369171",
+  "configSha256": "4147395abebfedba17aa3ca94ce31e221c5010fd95d35b60eac6cc13332403da",
   "sides": {
     "expected": {
       "kind": "expected",
-      "source": "audit-r1/fixtures/parity-cases/expected/G5-base.json"
+      "source": "audit-r1/fixtures/golden/g5.expected.json"
     },
     "candidate": {
       "kind": "ts-legacy-reference",
-      "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+      "gitSha": "604101f6fd8b8f6c1f77b37450aecaf1e7b94fc5",
       "plannerVersion": "parity-harness-1",
       "engineVersion": "1.0.0"
     }
@@ -72,8 +72,8 @@
   },
   "diffs": [],
   "meta": {
-    "generatedAt": "2026-10-24T16:24:07.047Z",
-    "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+    "generatedAt": "2026-10-24T16:57:04.670Z",
+    "gitSha": "604101f6fd8b8f6c1f77b37450aecaf1e7b94fc5",
     "command": "parity-runner --mode=full --reportDir=../audit-r1/reports/r2-2",
     "timeConversionVersion": "time-conversion-v1",
     "fingerprintSchemaVersion": 1,

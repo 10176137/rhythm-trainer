@@ -49,7 +49,6 @@ export function runCase(bundle: ParityCaseBundle, meta: RunnerMeta): ParityRepor
   const outcomeDiffs: ParityDiff[] = checkExpectedOutcome(bundle, result);
   const allDiffs = [...diffs, ...outcomeDiffs].sort((a, b) => a.path.localeCompare(b.path));
   const categories = categorize(allDiffs);
-  const pass = reportPasses(categories);
   const p13 = computeL3Invariants(result.candidate, config);
   const l3Ok = p13.every((check) => check.status === 'pass');
   const wireCompatible = result.candidate.wireMs
@@ -65,6 +64,20 @@ export function runCase(bundle: ParityCaseBundle, meta: RunnerMeta): ParityRepor
   } else {
     l1Status = result.fingerprint !== null ? 'pass' : 'fail';
   }
+  // Case pass = ALL frozen gates (R2-1 §4: "L1 equal ∧ L2 clean ∧ L3 green"),
+  // evaluated per LAYER, never collapsed into the diff summary alone:
+  //   - diff categories clean (reportPasses), AND
+  //   - L1 status pass AND fingerprint stable across repeated runs, AND
+  //   - every P1-3 invariant green, AND
+  //   - wire compatibility not failing.
+  // A diff-only pass would let an unstable fingerprint or a failed invariant
+  // hide behind a clean summary — the review's P1-1 blocks exactly that.
+  const stable = fingerprintStable(xml, fileName, config);
+  const pass = reportPasses(categories)
+    && l1Status === 'pass'
+    && stable
+    && l3Ok
+    && wireCompatible !== 'fail';
 
   return {
     schemaVersion: 1,
@@ -85,7 +98,7 @@ export function runCase(bundle: ParityCaseBundle, meta: RunnerMeta): ParityRepor
       status: l1Status,
       fingerprint: result.fingerprint,
       fingerprintErrorCode: result.fingerprintErrorCode,
-      stableAcrossRuns: fingerprintStable(xml, fileName, config),
+      stableAcrossRuns: stable,
       note: 'TS-side only: stability of the frozen input under the gated fingerprint. TS↔Rust L1 equality is deferred to R2-3.',
     },
     l2: {

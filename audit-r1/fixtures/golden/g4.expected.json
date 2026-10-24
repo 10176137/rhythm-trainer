@@ -9,17 +9,99 @@
   "import": {
     "status": "READY",
     "strictAllowed": true,
-    "counts": { "partCount": 1, "measureCount": 1, "noteCount": 4, "restCount": 1, "chordNoteCount": 0, "tieSpanCount": 0, "graceCount": 0, "cueCount": 0 }
+    "counts": {
+      "partCount": 1,
+      "measureCount": 1,
+      "noteCount": 4,
+      "restCount": 1,
+      "chordNoteCount": 0,
+      "tieSpanCount": 0,
+      "graceCount": 0,
+      "cueCount": 0
+    }
   },
   "measures": [
-    { "ordinal": 1, "start": "0/1", "duration": "4/1", "time": "4/4" }
+    {
+      "ordinal": 1,
+      "start": "0/1",
+      "duration": "4/1",
+      "time": "4/4"
+    }
   ],
   "events": [
-    { "kind": "note", "spelling": "C4", "midi": 60, "onset": "0/1", "duration": "1/3", "measure": 1, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": false, "grace": false, "timeModification": "3:2" },
-    { "kind": "note", "spelling": "D4", "midi": 62, "onset": "1/3", "duration": "1/3", "measure": 1, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": false, "grace": false, "timeModification": "3:2" },
-    { "kind": "note", "spelling": "E4", "midi": 64, "onset": "2/3", "duration": "1/3", "measure": 1, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": false, "grace": false, "timeModification": "3:2" },
-    { "kind": "note", "spelling": "G4", "midi": 67, "onset": "1/1", "duration": "1/1", "measure": 1, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": false, "grace": false },
-    { "kind": "rest", "spelling": null, "midi": null, "onset": "2/1", "duration": "2/1", "measure": 1, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": false, "grace": false }
+    {
+      "kind": "note",
+      "spelling": "C4",
+      "midi": 60,
+      "onset": "0/1",
+      "duration": "1/3",
+      "measure": 1,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": false,
+      "grace": false,
+      "timeModification": "3:2"
+    },
+    {
+      "kind": "note",
+      "spelling": "D4",
+      "midi": 62,
+      "onset": "1/3",
+      "duration": "1/3",
+      "measure": 1,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": false,
+      "grace": false,
+      "timeModification": "3:2"
+    },
+    {
+      "kind": "note",
+      "spelling": "E4",
+      "midi": 64,
+      "onset": "2/3",
+      "duration": "1/3",
+      "measure": 1,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": false,
+      "grace": false,
+      "timeModification": "3:2"
+    },
+    {
+      "kind": "note",
+      "spelling": "G4",
+      "midi": 67,
+      "onset": "1/1",
+      "duration": "1/1",
+      "measure": 1,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": false,
+      "grace": false
+    },
+    {
+      "kind": "rest",
+      "spelling": null,
+      "midi": null,
+      "onset": "2/1",
+      "duration": "2/1",
+      "measure": 1,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": false,
+      "grace": false
+    }
   ],
   "tieSpans": [],
   "plan": {
@@ -28,29 +110,135 @@
     "occurrenceCount": 4,
     "groupCount": 4,
     "occurrences": [
-      { "playbackBeat": "0/1", "duration": "1/3", "bar": 1, "staff": 1, "voice": "1", "midi": 60, "isTieOnset": false },
-      { "playbackBeat": "1/3", "duration": "1/3", "bar": 1, "staff": 1, "voice": "1", "midi": 62, "isTieOnset": false },
-      { "playbackBeat": "2/3", "duration": "1/3", "bar": 1, "staff": 1, "voice": "1", "midi": 64, "isTieOnset": false },
-      { "playbackBeat": "1/1", "duration": "1/1", "bar": 1, "staff": 1, "voice": "1", "midi": 67, "isTieOnset": false }
+      {
+        "playbackBeat": "0/1",
+        "duration": "1/3",
+        "bar": 1,
+        "staff": 1,
+        "voice": "1",
+        "midi": 60,
+        "isTieOnset": false
+      },
+      {
+        "playbackBeat": "1/3",
+        "duration": "1/3",
+        "bar": 1,
+        "staff": 1,
+        "voice": "1",
+        "midi": 62,
+        "isTieOnset": false
+      },
+      {
+        "playbackBeat": "2/3",
+        "duration": "1/3",
+        "bar": 1,
+        "staff": 1,
+        "voice": "1",
+        "midi": 64,
+        "isTieOnset": false
+      },
+      {
+        "playbackBeat": "1/1",
+        "duration": "1/1",
+        "bar": 1,
+        "staff": 1,
+        "voice": "1",
+        "midi": 67,
+        "isTieOnset": false
+      }
     ],
     "groups": [
-      { "playbackBeat": "0/1", "pitches": ["C4"], "duration": "1/3" },
-      { "playbackBeat": "1/3", "pitches": ["D4"], "duration": "1/3" },
-      { "playbackBeat": "2/3", "pitches": ["E4"], "duration": "1/3" },
-      { "playbackBeat": "1/1", "pitches": ["G4"], "duration": "1/1" }
+      {
+        "playbackBeat": "0/1",
+        "pitches": [
+          "C4"
+        ],
+        "duration": "1/3"
+      },
+      {
+        "playbackBeat": "1/3",
+        "pitches": [
+          "D4"
+        ],
+        "duration": "1/3"
+      },
+      {
+        "playbackBeat": "2/3",
+        "pitches": [
+          "E4"
+        ],
+        "duration": "1/3"
+      },
+      {
+        "playbackBeat": "1/1",
+        "pitches": [
+          "G4"
+        ],
+        "duration": "1/1"
+      }
     ]
   },
   "scoreEvents": [
-    { "pitch": 60, "measure": 1, "beat": "0/1", "onsetUs": 4000000, "durationUs": 333333 },
-    { "pitch": 62, "measure": 1, "beat": "1/3", "onsetUs": 4333333, "durationUs": 333333 },
-    { "pitch": 64, "measure": 1, "beat": "2/3", "onsetUs": 4666667, "durationUs": 333333 },
-    { "pitch": 67, "measure": 1, "beat": "1/1", "onsetUs": 5000000, "durationUs": 1000000 }
+    {
+      "pitch": 60,
+      "measure": 1,
+      "beat": "0/1",
+      "onsetUs": 4000000,
+      "durationUs": 333333
+    },
+    {
+      "pitch": 62,
+      "measure": 1,
+      "beat": "1/3",
+      "onsetUs": 4333333,
+      "durationUs": 333333
+    },
+    {
+      "pitch": 64,
+      "measure": 1,
+      "beat": "2/3",
+      "onsetUs": 4666667,
+      "durationUs": 333333
+    },
+    {
+      "pitch": 67,
+      "measure": 1,
+      "beat": "1/1",
+      "onsetUs": 5000000,
+      "durationUs": 1000000
+    }
   ],
   "atoms": [
-    { "startTick": 0, "durationTicks": 320, "bar": 1, "beatInMeasure": "0/1" },
-    { "startTick": 320, "durationTicks": 320, "bar": 1, "beatInMeasure": "1/3" },
-    { "startTick": 640, "durationTicks": 320, "bar": 1, "beatInMeasure": "2/3" },
-    { "startTick": 960, "durationTicks": 960, "bar": 1, "beatInMeasure": "1/1" }
+    {
+      "startTick": 0,
+      "durationTicks": 320,
+      "bar": 1,
+      "beatInMeasure": "0/1"
+    },
+    {
+      "startTick": 320,
+      "durationTicks": 320,
+      "bar": 1,
+      "beatInMeasure": "1/3"
+    },
+    {
+      "startTick": 640,
+      "durationTicks": 320,
+      "bar": 1,
+      "beatInMeasure": "2/3"
+    },
+    {
+      "startTick": 960,
+      "durationTicks": 960,
+      "bar": 1,
+      "beatInMeasure": "1/1"
+    }
   ],
-  "legacyOnsetDiffsUs": [0, 0, 0, 0]
+  "legacyOnsetDiffsUs": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "countInUs": 4000000
 }

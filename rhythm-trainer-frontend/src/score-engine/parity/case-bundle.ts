@@ -77,9 +77,22 @@ export function loadFixtureXml(root: string, bundle: ParityCaseBundle): { xml: s
   return { xml, fileName: bundle.fixture.path.split('/').pop() ?? 'fixture.musicxml' };
 }
 
+/**
+ * Deterministic full-depth serialization: object keys sorted at EVERY level.
+ * (A top-level key whitelist passed to JSON.stringify would also filter NESTED
+ * objects and silently drop range/bpm fields — the review's P1-2.)
+ */
+function stableSerialize(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort()
+    .map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`)
+    .join(',')}}`;
+}
+
 export function configFingerprint(config: ParityCaseConfig): string {
-  const sorted = JSON.stringify(config, Object.keys(config).sort());
-  return sha256Hex(sorted);
+  return sha256Hex(stableSerialize(config));
 }
 
 // ---------------------------------------------------------------------------

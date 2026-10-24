@@ -189,4 +189,66 @@ describe('diffCandidates classification (frozen categories)', () => {
     expect(hit?.path).toBe('candidate.occurrences[0].{experimentalField}');
     expect(reportPasses(categorize(diffs))).toBe(false);
   });
+
+  // Review P1-3: a Map must never fold a duplicated semantic key into a pass.
+  it('a duplicated candidate occurrence key is a semantic-defect, not a silent fold', () => {
+    const expected = candidate();
+    const duplicated = clone(candidate());
+    duplicated.kind = 'candidate';
+    duplicated.occurrences.push(clone(duplicated.occurrences[0]));
+    const diffs = diffCandidates(expected, duplicated);
+    const hit = diffs.find((d) => d.path === 'candidate.occurrences[P1:m1:e1:v1:p0].duplicate');
+    expect(hit?.category).toBe('semantic-defect');
+    expect(reportPasses(categorize(diffs))).toBe(false);
+  });
+
+  it('a duplicated candidate atom tick is a semantic-defect', () => {
+    const expected = candidate();
+    const duplicated = clone(candidate());
+    duplicated.kind = 'candidate';
+    duplicated.atoms.push(clone(duplicated.atoms[0]));
+    const diffs = diffCandidates(expected, duplicated);
+    expect(diffs.find((d) => d.path === 'candidate.atoms[0].duplicate' && d.category === 'semantic-defect'))
+      .toBeTruthy();
+    expect(reportPasses(categorize(diffs))).toBe(false);
+  });
+
+  it('a duplicated candidate score-event key is a semantic-defect', () => {
+    const expected = candidate();
+    const duplicated = clone(candidate());
+    duplicated.kind = 'candidate';
+    duplicated.scoreEvents.push(clone(duplicated.scoreEvents[0]));
+    const diffs = diffCandidates(expected, duplicated);
+    expect(diffs.find((d) => d.path === 'candidate.scoreEvents[P1:m1:e1:v1:p0].duplicate' && d.category === 'semantic-defect'))
+      .toBeTruthy();
+    expect(reportPasses(categorize(diffs))).toBe(false);
+  });
+
+  it('a duplicated candidate group key is a semantic-defect (both sides checked)', () => {
+    const expected = candidate();
+    const duplicated = clone(candidate());
+    duplicated.kind = 'candidate';
+    duplicated.groups.push(clone(duplicated.groups[0]));
+    const diffs = diffCandidates(expected, duplicated);
+    expect(diffs.find((d) => d.path === 'candidate.groups[p0@0/1].duplicate' && d.category === 'semantic-defect'))
+      .toBeTruthy();
+    // And the same defect on the EXPECTED side is caught too.
+    const corruptedTruth = clone(expected);
+    corruptedTruth.groups.push(clone(corruptedTruth.groups[0]));
+    const diffsTruth = diffCandidates(corruptedTruth, clone(candidate()));
+    expect(diffsTruth.find((d) => d.path === 'expected.groups[p0@0/1].duplicate' && d.category === 'semantic-defect'))
+      .toBeTruthy();
+  });
+
+  it('an unsupported-behavior difference fails the report (never unconditionally tolerated)', () => {
+    const categories = {
+      'identity-mapping': 0,
+      'serialization-only': 0,
+      'time-rounding': 0,
+      'semantic-defect': 0,
+      'unsupported-behavior': 1,
+      unclassified: 0,
+    };
+    expect(reportPasses(categories)).toBe(false);
+  });
 });

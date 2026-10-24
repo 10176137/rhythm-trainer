@@ -352,6 +352,22 @@ m2: F4 q, G4 q, A4 q
 - **Tick@960**：`0, 960, 1920, 2880, 3840, 4800`，每音 960。
 
 > **勘误（2026-10-23，R1 收尾）**：本节初版把 `CountInUs = round(4 拍)` 与 `PlanOffsetUs = round(beat)` 分别舍入再相加，得到 `3 333 334` / `5 333 334`，并据此声称与实现存在 1 µs 差异。这违反了 §1.2"只舍入一次"，是文档自身的双重舍入错误。按单次舍入后，手推值与实现完全一致，**不存在 1 µs 差异**；差异分类机制保留（见下），但不应被用来为错误真值开脱。
+>
+> **裁决（2026-10-25，R2-2 复审）——时值权威 = R2-1 §3.5 冻结协议，§6.2 公式勘误**：
+>
+> 上一条勘误本身存在残留错误：它把 §6.2 的公式改为 `TargetOnsetUs = round((4 + beat) × 60 000 000 / 90)`——把 count-in 与拍位**合并成精确有理数后舍入总值**。这与本文自身的定义冲突：
+> - §1.1 定义 `PlanOffsetUs = round(beat × 60e6/bpm)`、`TargetOnsetUs = CountInUs + PlanOffsetUs`；
+> - §1.3 规定 **`CountInUs` 是整数 µs 输入**（产品规则；R2 的接口变更方向相同）。
+> 在 90 BPM 下 4 拍不是整数 µs（2 666 666.67），`round((4+beat)×…)` 实际上假设 count-in 是"精确 4 拍"而非冻结的整数 µs 输入，等于把 count-in 的量化偷偷消除。
+>
+> R2-1 `TS_RUST_PARITY_GATE_V1 §3.5`（四轮复审冻结，RF-01 逐字对齐 `beatToMicroseconds()`）明确规定：**`CountInUs` 是冻结的整数时间起点，唯一的舍入发生在 `PlanOffsetUs` 的 roundHalfUp**。据此裁决：
+>
+> 1. **时值权威 = 冻结协议**：G5 的 `TargetOnsetUs = 2 666 667 + roundHalfUp(beat × 60e6/90)`，即 `2 666 667, 3 333 334, 4 000 000, 4 666 667, 5 333 334, 6 000 000`；时值仍 `666 667`/音。
+> 2. **`g5.expected.json` 已按此修订**（scoreEvents beats 1/4：`3 333 333→3 333 334`、`5 333 333→5 333 334`；derivation 记录修订；全部五个 golden 增加 `countInUs` 字段）。
+> 3. **legacyReference 差异显式分类**：旧 dump 在 beats 1/4 与新真值差 −1 µs，按 §7.1 分类为 `time-rounding`（legacy float ms 表示的既有精度），**不是**语义差异，也不再声称"无差异"。
+> 4. 裁决依据：§1.1/§1.3 定义文本、R2-1 冻结规范（用户复审 RF-01 通过）、生产 count-in 的整数 µs 输入现实。本修订随 R2-2 复审提交，**最终批准权在复审人**；如否决，整体 revert 此提交并回退 G5-base case。
+>
+> 修订执行：R2-2 复审修复提交（见 `R2_2_PARITY_HARNESS_IMPLEMENTATION_REPORT.md` §复审修复）。
 
 ### 6.3 期望输出
 

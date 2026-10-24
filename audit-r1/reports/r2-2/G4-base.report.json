@@ -5,7 +5,7 @@
     "path": "audit-r1/fixtures/g4_triplet.musicxml",
     "sha256": "e084ca4e9e14e7f872b0b259e26c805273280137906a255e332ae53b2ed06ea9"
   },
-  "configSha256": "db9e41d0d2470e236fba39147789820327383358ad8570ca73e7ffadcbe85c05",
+  "configSha256": "59443cbf5cf2601a119c4bb43190640c07ba9a757a970bdcf4126dcff42a438a",
   "sides": {
     "expected": {
       "kind": "expected",
@@ -13,7 +13,7 @@
     },
     "candidate": {
       "kind": "ts-legacy-reference",
-      "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+      "gitSha": "604101f6fd8b8f6c1f77b37450aecaf1e7b94fc5",
       "plannerVersion": "parity-harness-1",
       "engineVersion": "1.0.0"
     }
@@ -72,8 +72,8 @@
   },
   "diffs": [],
   "meta": {
-    "generatedAt": "2026-10-24T16:24:07.041Z",
-    "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+    "generatedAt": "2026-10-24T16:57:04.664Z",
+    "gitSha": "604101f6fd8b8f6c1f77b37450aecaf1e7b94fc5",
     "command": "parity-runner --mode=full --reportDir=../audit-r1/reports/r2-2",
     "timeConversionVersion": "time-conversion-v1",
     "fingerprintSchemaVersion": 1,

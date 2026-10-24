@@ -156,7 +156,30 @@ describe('goldenToExpected (no second copy of the hand truth)', () => {
   it('configFingerprint is order-stable across key permutations', () => {
     const config = validBundle().config as Record<string, unknown>;
     const permuted = Object.fromEntries(Object.keys(config).reverse().map((key) => [key, config[key]]));
-    // JSON.stringify with sorted replacer keys makes the hash key-order-proof.
+    // Recursive sorted-key serialization makes the hash key-order-proof at
+    // every depth, not just the top level.
     expect(configFingerprint(permuted as never)).toBe(configFingerprint(config as never));
+  });
+
+  it('configFingerprint binds nested fields: range/bpm/loop/handMapping changes all move the hash', () => {
+    const base = validBundle().config as Record<string, unknown>;
+    const baseHash = configFingerprint(base as never);
+
+    const rangeShifted = structuredClone(base) as typeof base;
+    (rangeShifted.range as { endMeasureOrdinal: number }).endMeasureOrdinal = 3;
+    expect(configFingerprint(rangeShifted as never)).not.toBe(baseHash);
+
+    const bpmShifted = structuredClone(base) as typeof base;
+    (bpmShifted.bpm as { numerator: number }).numerator = 81;
+    expect(configFingerprint(bpmShifted as never)).not.toBe(baseHash);
+
+    const loopShifted = structuredClone(base) as typeof base;
+    loopShifted.repeatSelection = { kind: 'range-loop', count: 2 };
+    expect(configFingerprint(loopShifted as never)).not.toBe(baseHash);
+
+    const handShifted = structuredClone(base) as typeof base;
+    ((handShifted.handMapping as { parts: Array<{ staves: Array<{ hand: string }> }> })
+      .parts[0].staves[0] as { hand: string }).hand = 'left';
+    expect(configFingerprint(handShifted as never)).not.toBe(baseHash);
   });
 });

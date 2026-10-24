@@ -184,6 +184,19 @@ export function diffCandidates(
   options: CompareOptions = {},
 ): ParityDiff[] {
   const diffs: ParityDiff[] = [];
+  // Duplicate semantic keys must be caught BEFORE Map-based alignment: a Map
+  // folds duplicates silently, so a candidate emitting the same key twice
+  // could otherwise pass with one entry dropped (review P1-3). Checked on
+  // BOTH sides — a duplicated truth key is just as much a defect.
+  const ruleKeys = 'TS_RUST_PARITY_GATE_V1 §3 (semantic key uniqueness)';
+  checkDuplicateSemanticKeys(expected.occurrences, occurrenceKey, 'expected.occurrences', ruleKeys, diffs);
+  checkDuplicateSemanticKeys(candidate.occurrences, occurrenceKey, 'candidate.occurrences', ruleKeys, diffs);
+  checkDuplicateSemanticKeys(expected.groups, groupKey, 'expected.groups', ruleKeys, diffs);
+  checkDuplicateSemanticKeys(candidate.groups, groupKey, 'candidate.groups', ruleKeys, diffs);
+  checkDuplicateSemanticKeys(expected.atoms, (atom) => String(atom.startTick), 'expected.atoms', ruleKeys, diffs);
+  checkDuplicateSemanticKeys(candidate.atoms, (atom) => String(atom.startTick), 'candidate.atoms', ruleKeys, diffs);
+  checkDuplicateSemanticKeys(expected.scoreEvents, (event) => `${locatorKey(event.locator)}:p${event.passIndex}`, 'expected.scoreEvents', ruleKeys, diffs);
+  checkDuplicateSemanticKeys(candidate.scoreEvents, (event) => `${locatorKey(event.locator)}:p${event.passIndex}`, 'candidate.scoreEvents', ruleKeys, diffs);
   diffOccurrences(expected, candidate, diffs);
   diffGroups(expected, candidate, diffs);
   diffAtoms(expected, candidate, diffs);
@@ -241,6 +254,24 @@ function semantic(
   right: unknown,
 ): void {
   diffs.push({ path, category: 'semantic-defect', ruleRef, left, right });
+}
+
+/** Reports any semantic key appearing more than once in one layer/side. */
+function checkDuplicateSemanticKeys<T>(
+  items: readonly T[],
+  keyOf: (item: T) => string,
+  layer: string,
+  rule: string,
+  diffs: ParityDiff[],
+): void {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    const key = keyOf(item);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  for (const [key, count] of counts) {
+    if (count > 1) semantic(diffs, `${layer}[${key}].duplicate`, rule, 1, count);
+  }
 }
 
 function diffOccurrences(expected: ParityCandidate, candidate: ParityCandidate, diffs: ParityDiff[]): void {
@@ -540,5 +571,10 @@ export function categorize(diffs: ParityDiff[]): Record<DiffCategory, number> {
 }
 
 export function reportPasses(categories: Record<DiffCategory, number>): boolean {
-  return categories['semantic-defect'] === 0 && categories.unclassified === 0;
+  // unsupported-behavior is NOT unconditionally tolerable: per R2-1 §5 it may
+  // only be decided by an explicit expected-rejection case. No current case
+  // declares one, so any such difference fails here (review §三).
+  return categories['semantic-defect'] === 0
+    && categories.unclassified === 0
+    && categories['unsupported-behavior'] === 0;
 }

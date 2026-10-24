@@ -5,7 +5,7 @@
     "path": "audit-r1/fixtures/g6_unison_two_staves.musicxml",
     "sha256": "9fae445ebcbd727f4c0b13e0ec4b86715073a9f13f5e955e165ea0f8cd546bf0"
   },
-  "configSha256": "b40aef50105240944e99cefb8748f510c56cb930ca4c4370462ce31bd581a127",
+  "configSha256": "305189079172f74252c1c2f8eadc6bb771918b33451f97881744075df8d0f24b",
   "sides": {
     "expected": {
       "kind": "expected",
@@ -13,7 +13,7 @@
     },
     "candidate": {
       "kind": "ts-legacy-reference",
-      "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+      "gitSha": "604101f6fd8b8f6c1f77b37450aecaf1e7b94fc5",
       "plannerVersion": "parity-harness-1",
       "engineVersion": "1.0.0"
     }
@@ -72,8 +72,8 @@
   },
   "diffs": [],
   "meta": {
-    "generatedAt": "2026-10-24T16:24:07.064Z",
-    "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+    "generatedAt": "2026-10-24T16:57:04.689Z",
+    "gitSha": "604101f6fd8b8f6c1f77b37450aecaf1e7b94fc5",
     "command": "parity-runner --mode=full --reportDir=../audit-r1/reports/r2-2",
     "timeConversionVersion": "time-conversion-v1",
     "fingerprintSchemaVersion": 1,

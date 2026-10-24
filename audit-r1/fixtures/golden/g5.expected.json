@@ -2,26 +2,123 @@
   "case": "G5",
   "fixture": "g5_three_four.musicxml",
   "source": "audit-r1/docs/GOLDEN_FIXTURES.md §6 (corrected: single rounding)",
-  "derivation": "3/4 x2, divisions=1 => each bar is 3 quarter beats, m2 starts at 3. BPM 90 => 1 beat = 60_000_000/90 = 666666.666.. µs. TargetOnsetUs = round((countInBeats + beat) * 60e6 / bpm), rounded ONCE. For countIn 4 beats: bar 1 onsets round to 2666667/3333333/4000000; bar 2 to 4666667/5333333/6000000. NOTE: an earlier draft added a separately-rounded count-in to a separately-rounded offset (double rounding) and reported a spurious 1 µs difference; that draft is retracted here.",
+  "derivation": "3/4 x2, divisions=1 => each bar is 3 quarter beats, m2 starts at 3. BPM 90 => 1 beat = 60_000_000/90 = 666666.666.. µs. TargetOnsetUs = round((countInBeats + beat) * 60e6 / bpm), rounded ONCE. For countIn 4 beats: bar 1 onsets round to 2666667/3333333/4000000; bar 2 to 4666667/5333333/6000000. NOTE: an earlier draft added a separately-rounded count-in to a separately-rounded offset (double rounding) and reported a spurious 1 µs difference; that draft is retracted here. || REVISION 2026-10-25 (R2-2 review adjudication): scoreEvents onsets for beats 1 and 4 re-derived under the FROZEN time protocol (R2-1 §3.5 / time-conversion-v1: TargetOnsetUs = CountInUs + roundHalfUp(offset), CountInUs = 2666667 as the integer-µs input): 2666667+666667=3333334 and 2666667+2666667=5333334. The previous values 3333333/5333333 came from rounding the TOTAL (4+beat) quarters, which implicitly treats the count-in as an exact rational rather than the frozen integer-µs input and contradicts GOLDEN_FIXTURES §1.1 (PlanOffsetUs/CountInUs definitions) and §1.3 (CountInUs is an integer-µs input). Adjudication basis recorded in GOLDEN_FIXTURES §6.3; user confirmation requested in R2-2 re-review.",
   "bpm": 90,
   "countInBeats": 4,
   "fingerprint": "7cf95a8868824099d4454136f3d53104c4e714953532fb64da83d74e836c2ec7",
   "import": {
     "status": "READY",
     "strictAllowed": true,
-    "counts": { "partCount": 1, "measureCount": 2, "noteCount": 6, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 0, "graceCount": 0, "cueCount": 0 }
+    "counts": {
+      "partCount": 1,
+      "measureCount": 2,
+      "noteCount": 6,
+      "restCount": 0,
+      "chordNoteCount": 0,
+      "tieSpanCount": 0,
+      "graceCount": 0,
+      "cueCount": 0
+    }
   },
   "measures": [
-    { "ordinal": 1, "start": "0/1", "duration": "3/1", "time": "3/4" },
-    { "ordinal": 2, "start": "3/1", "duration": "3/1", "time": "3/4" }
+    {
+      "ordinal": 1,
+      "start": "0/1",
+      "duration": "3/1",
+      "time": "3/4"
+    },
+    {
+      "ordinal": 2,
+      "start": "3/1",
+      "duration": "3/1",
+      "time": "3/4"
+    }
   ],
   "events": [
-    { "kind": "note", "spelling": "C4", "midi": 60, "onset": "0/1", "duration": "1/1", "measure": 1, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": false, "grace": false },
-    { "kind": "note", "spelling": "D4", "midi": 62, "onset": "1/1", "duration": "1/1", "measure": 1, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": false, "grace": false },
-    { "kind": "note", "spelling": "E4", "midi": 64, "onset": "2/1", "duration": "1/1", "measure": 1, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": false, "grace": false },
-    { "kind": "note", "spelling": "F4", "midi": 65, "onset": "3/1", "duration": "1/1", "measure": 2, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": false, "grace": false },
-    { "kind": "note", "spelling": "G4", "midi": 67, "onset": "4/1", "duration": "1/1", "measure": 2, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": false, "grace": false },
-    { "kind": "note", "spelling": "A4", "midi": 69, "onset": "5/1", "duration": "1/1", "measure": 2, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": false, "grace": false }
+    {
+      "kind": "note",
+      "spelling": "C4",
+      "midi": 60,
+      "onset": "0/1",
+      "duration": "1/1",
+      "measure": 1,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": false,
+      "grace": false
+    },
+    {
+      "kind": "note",
+      "spelling": "D4",
+      "midi": 62,
+      "onset": "1/1",
+      "duration": "1/1",
+      "measure": 1,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": false,
+      "grace": false
+    },
+    {
+      "kind": "note",
+      "spelling": "E4",
+      "midi": 64,
+      "onset": "2/1",
+      "duration": "1/1",
+      "measure": 1,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": false,
+      "grace": false
+    },
+    {
+      "kind": "note",
+      "spelling": "F4",
+      "midi": 65,
+      "onset": "3/1",
+      "duration": "1/1",
+      "measure": 2,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": false,
+      "grace": false
+    },
+    {
+      "kind": "note",
+      "spelling": "G4",
+      "midi": 67,
+      "onset": "4/1",
+      "duration": "1/1",
+      "measure": 2,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": false,
+      "grace": false
+    },
+    {
+      "kind": "note",
+      "spelling": "A4",
+      "midi": 69,
+      "onset": "5/1",
+      "duration": "1/1",
+      "measure": 2,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": false,
+      "grace": false
+    }
   ],
   "tieSpans": [],
   "plan": {
@@ -30,37 +127,195 @@
     "occurrenceCount": 6,
     "groupCount": 6,
     "occurrences": [
-      { "playbackBeat": "0/1", "duration": "1/1", "bar": 1, "staff": 1, "voice": "1", "midi": 60, "isTieOnset": false },
-      { "playbackBeat": "1/1", "duration": "1/1", "bar": 1, "staff": 1, "voice": "1", "midi": 62, "isTieOnset": false },
-      { "playbackBeat": "2/1", "duration": "1/1", "bar": 1, "staff": 1, "voice": "1", "midi": 64, "isTieOnset": false },
-      { "playbackBeat": "3/1", "duration": "1/1", "bar": 2, "staff": 1, "voice": "1", "midi": 65, "isTieOnset": false },
-      { "playbackBeat": "4/1", "duration": "1/1", "bar": 2, "staff": 1, "voice": "1", "midi": 67, "isTieOnset": false },
-      { "playbackBeat": "5/1", "duration": "1/1", "bar": 2, "staff": 1, "voice": "1", "midi": 69, "isTieOnset": false }
+      {
+        "playbackBeat": "0/1",
+        "duration": "1/1",
+        "bar": 1,
+        "staff": 1,
+        "voice": "1",
+        "midi": 60,
+        "isTieOnset": false
+      },
+      {
+        "playbackBeat": "1/1",
+        "duration": "1/1",
+        "bar": 1,
+        "staff": 1,
+        "voice": "1",
+        "midi": 62,
+        "isTieOnset": false
+      },
+      {
+        "playbackBeat": "2/1",
+        "duration": "1/1",
+        "bar": 1,
+        "staff": 1,
+        "voice": "1",
+        "midi": 64,
+        "isTieOnset": false
+      },
+      {
+        "playbackBeat": "3/1",
+        "duration": "1/1",
+        "bar": 2,
+        "staff": 1,
+        "voice": "1",
+        "midi": 65,
+        "isTieOnset": false
+      },
+      {
+        "playbackBeat": "4/1",
+        "duration": "1/1",
+        "bar": 2,
+        "staff": 1,
+        "voice": "1",
+        "midi": 67,
+        "isTieOnset": false
+      },
+      {
+        "playbackBeat": "5/1",
+        "duration": "1/1",
+        "bar": 2,
+        "staff": 1,
+        "voice": "1",
+        "midi": 69,
+        "isTieOnset": false
+      }
     ],
     "groups": [
-      { "playbackBeat": "0/1", "pitches": ["C4"], "duration": "1/1" },
-      { "playbackBeat": "1/1", "pitches": ["D4"], "duration": "1/1" },
-      { "playbackBeat": "2/1", "pitches": ["E4"], "duration": "1/1" },
-      { "playbackBeat": "3/1", "pitches": ["F4"], "duration": "1/1" },
-      { "playbackBeat": "4/1", "pitches": ["G4"], "duration": "1/1" },
-      { "playbackBeat": "5/1", "pitches": ["A4"], "duration": "1/1" }
+      {
+        "playbackBeat": "0/1",
+        "pitches": [
+          "C4"
+        ],
+        "duration": "1/1"
+      },
+      {
+        "playbackBeat": "1/1",
+        "pitches": [
+          "D4"
+        ],
+        "duration": "1/1"
+      },
+      {
+        "playbackBeat": "2/1",
+        "pitches": [
+          "E4"
+        ],
+        "duration": "1/1"
+      },
+      {
+        "playbackBeat": "3/1",
+        "pitches": [
+          "F4"
+        ],
+        "duration": "1/1"
+      },
+      {
+        "playbackBeat": "4/1",
+        "pitches": [
+          "G4"
+        ],
+        "duration": "1/1"
+      },
+      {
+        "playbackBeat": "5/1",
+        "pitches": [
+          "A4"
+        ],
+        "duration": "1/1"
+      }
     ]
   },
   "scoreEvents": [
-    { "pitch": 60, "measure": 1, "beat": "0/1", "onsetUs": 2666667, "durationUs": 666667 },
-    { "pitch": 62, "measure": 1, "beat": "1/1", "onsetUs": 3333333, "durationUs": 666667 },
-    { "pitch": 64, "measure": 1, "beat": "2/1", "onsetUs": 4000000, "durationUs": 666667 },
-    { "pitch": 65, "measure": 2, "beat": "3/1", "onsetUs": 4666667, "durationUs": 666667 },
-    { "pitch": 67, "measure": 2, "beat": "4/1", "onsetUs": 5333333, "durationUs": 666667 },
-    { "pitch": 69, "measure": 2, "beat": "5/1", "onsetUs": 6000000, "durationUs": 666667 }
+    {
+      "pitch": 60,
+      "measure": 1,
+      "beat": "0/1",
+      "onsetUs": 2666667,
+      "durationUs": 666667
+    },
+    {
+      "pitch": 62,
+      "measure": 1,
+      "beat": "1/1",
+      "onsetUs": 3333334,
+      "durationUs": 666667
+    },
+    {
+      "pitch": 64,
+      "measure": 1,
+      "beat": "2/1",
+      "onsetUs": 4000000,
+      "durationUs": 666667
+    },
+    {
+      "pitch": 65,
+      "measure": 2,
+      "beat": "3/1",
+      "onsetUs": 4666667,
+      "durationUs": 666667
+    },
+    {
+      "pitch": 67,
+      "measure": 2,
+      "beat": "4/1",
+      "onsetUs": 5333334,
+      "durationUs": 666667
+    },
+    {
+      "pitch": 69,
+      "measure": 2,
+      "beat": "5/1",
+      "onsetUs": 6000000,
+      "durationUs": 666667
+    }
   ],
   "atoms": [
-    { "startTick": 0, "durationTicks": 960, "bar": 1, "beatInMeasure": "0/1" },
-    { "startTick": 960, "durationTicks": 960, "bar": 1, "beatInMeasure": "1/1" },
-    { "startTick": 1920, "durationTicks": 960, "bar": 1, "beatInMeasure": "2/1" },
-    { "startTick": 2880, "durationTicks": 960, "bar": 2, "beatInMeasure": "0/1" },
-    { "startTick": 3840, "durationTicks": 960, "bar": 2, "beatInMeasure": "1/1" },
-    { "startTick": 4800, "durationTicks": 960, "bar": 2, "beatInMeasure": "2/1" }
+    {
+      "startTick": 0,
+      "durationTicks": 960,
+      "bar": 1,
+      "beatInMeasure": "0/1"
+    },
+    {
+      "startTick": 960,
+      "durationTicks": 960,
+      "bar": 1,
+      "beatInMeasure": "1/1"
+    },
+    {
+      "startTick": 1920,
+      "durationTicks": 960,
+      "bar": 1,
+      "beatInMeasure": "2/1"
+    },
+    {
+      "startTick": 2880,
+      "durationTicks": 960,
+      "bar": 2,
+      "beatInMeasure": "0/1"
+    },
+    {
+      "startTick": 3840,
+      "durationTicks": 960,
+      "bar": 2,
+      "beatInMeasure": "1/1"
+    },
+    {
+      "startTick": 4800,
+      "durationTicks": 960,
+      "bar": 2,
+      "beatInMeasure": "2/1"
+    }
   ],
-  "legacyOnsetDiffsUs": [0, 0, 0, 0, 0, 0]
+  "legacyOnsetDiffsUs": [
+    0,
+    -1,
+    0,
+    0,
+    -1,
+    0
+  ],
+  "countInUs": 2666667
 }

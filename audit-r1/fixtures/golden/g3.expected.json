@@ -9,18 +9,67 @@
   "import": {
     "status": "READY",
     "strictAllowed": true,
-    "counts": { "partCount": 1, "measureCount": 2, "noteCount": 2, "restCount": 0, "chordNoteCount": 0, "tieSpanCount": 1, "graceCount": 0, "cueCount": 0 }
+    "counts": {
+      "partCount": 1,
+      "measureCount": 2,
+      "noteCount": 2,
+      "restCount": 0,
+      "chordNoteCount": 0,
+      "tieSpanCount": 1,
+      "graceCount": 0,
+      "cueCount": 0
+    }
   },
   "measures": [
-    { "ordinal": 1, "start": "0/1", "duration": "2/1", "time": "2/4" },
-    { "ordinal": 2, "start": "2/1", "duration": "2/1", "time": "2/4" }
+    {
+      "ordinal": 1,
+      "start": "0/1",
+      "duration": "2/1",
+      "time": "2/4"
+    },
+    {
+      "ordinal": 2,
+      "start": "2/1",
+      "duration": "2/1",
+      "time": "2/4"
+    }
   ],
   "events": [
-    { "kind": "note", "spelling": "C4", "midi": 60, "onset": "0/1", "duration": "2/1", "measure": 1, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": true, "tieStop": false, "grace": false },
-    { "kind": "note", "spelling": "C4", "midi": 60, "onset": "2/1", "duration": "2/1", "measure": 2, "staff": 1, "voice": "1", "chordGroup": false, "tieStart": false, "tieStop": true, "grace": false }
+    {
+      "kind": "note",
+      "spelling": "C4",
+      "midi": 60,
+      "onset": "0/1",
+      "duration": "2/1",
+      "measure": 1,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": true,
+      "tieStop": false,
+      "grace": false
+    },
+    {
+      "kind": "note",
+      "spelling": "C4",
+      "midi": 60,
+      "onset": "2/1",
+      "duration": "2/1",
+      "measure": 2,
+      "staff": 1,
+      "voice": "1",
+      "chordGroup": false,
+      "tieStart": false,
+      "tieStop": true,
+      "grace": false
+    }
   ],
   "tieSpans": [
-    { "start": "0/1", "end": "4/1", "eventCount": 2 }
+    {
+      "start": "0/1",
+      "end": "4/1",
+      "eventCount": 2
+    }
   ],
   "plan": {
     "rangeStart": "0/1",
@@ -28,17 +77,45 @@
     "occurrenceCount": 1,
     "groupCount": 1,
     "occurrences": [
-      { "playbackBeat": "0/1", "duration": "4/1", "bar": 1, "staff": 1, "voice": "1", "midi": 60, "isTieOnset": true }
+      {
+        "playbackBeat": "0/1",
+        "duration": "4/1",
+        "bar": 1,
+        "staff": 1,
+        "voice": "1",
+        "midi": 60,
+        "isTieOnset": true
+      }
     ],
     "groups": [
-      { "playbackBeat": "0/1", "pitches": ["C4"], "duration": "4/1" }
+      {
+        "playbackBeat": "0/1",
+        "pitches": [
+          "C4"
+        ],
+        "duration": "4/1"
+      }
     ]
   },
   "scoreEvents": [
-    { "pitch": 60, "measure": 1, "beat": "0/1", "onsetUs": 2000000, "durationUs": 2000000 }
+    {
+      "pitch": 60,
+      "measure": 1,
+      "beat": "0/1",
+      "onsetUs": 2000000,
+      "durationUs": 2000000
+    }
   ],
   "atoms": [
-    { "startTick": 0, "durationTicks": 3840, "bar": 1, "beatInMeasure": "0/1" }
+    {
+      "startTick": 0,
+      "durationTicks": 3840,
+      "bar": 1,
+      "beatInMeasure": "0/1"
+    }
   ],
-  "legacyOnsetDiffsUs": [0]
+  "legacyOnsetDiffsUs": [
+    0
+  ],
+  "countInUs": 2000000
 }

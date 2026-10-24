@@ -5,7 +5,7 @@
     "path": "audit-r1/fixtures/g1_single_voice.musicxml",
     "sha256": "44a959429fe07921e744f87721b7442c4ec34dbfa3c2e3260bdc467090af4692"
   },
-  "configSha256": "80ee6ed1c3af887531230d68fa49fbd72401027125541aa1531e7844977dce2d",
+  "configSha256": "713430d0e949be9d88f50913199a4cefc28e70c25523f8fd1e1e5e548569591e",
   "sides": {
     "expected": {
       "kind": "expected",
@@ -13,7 +13,7 @@
     },
     "candidate": {
       "kind": "ts-legacy-reference",
-      "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+      "gitSha": "604101f6fd8b8f6c1f77b37450aecaf1e7b94fc5",
       "plannerVersion": "parity-harness-1",
       "engineVersion": "1.0.0"
     }
@@ -72,8 +72,8 @@
   },
   "diffs": [],
   "meta": {
-    "generatedAt": "2026-10-24T16:24:07.074Z",
-    "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+    "generatedAt": "2026-10-24T16:57:04.699Z",
+    "gitSha": "604101f6fd8b8f6c1f77b37450aecaf1e7b94fc5",
     "command": "parity-runner --mode=full --reportDir=../audit-r1/reports/r2-2",
     "timeConversionVersion": "time-conversion-v1",
     "fingerprintSchemaVersion": 1,

@@ -5,7 +5,7 @@
     "path": "audit-r1/fixtures/g2_chord.musicxml",
     "sha256": "60ce9316750df57bbeed5305f3220024e118d3d26ea7795bebf3a7f25bbcd413"
   },
-  "configSha256": "32e0f5f584df2ca1f395451d77d1298542ae7d037a64aaee923fb724e7e48ec7",
+  "configSha256": "8040e09e2ef260354473279de99139d4f0128407bd68638c3a9dee17641e90e9",
   "sides": {
     "expected": {
       "kind": "expected",
@@ -13,7 +13,7 @@
     },
     "candidate": {
       "kind": "ts-legacy-reference",
-      "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+      "gitSha": "604101f6fd8b8f6c1f77b37450aecaf1e7b94fc5",
       "plannerVersion": "parity-harness-1",
       "engineVersion": "1.0.0"
     }
@@ -72,8 +72,8 @@
   },
   "diffs": [],
   "meta": {
-    "generatedAt": "2026-10-24T16:24:07.032Z",
-    "gitSha": "09e30ab1afd45ff5d258ff98a8fb4f402d7bf724",
+    "generatedAt": "2026-10-24T16:57:04.653Z",
+    "gitSha": "604101f6fd8b8f6c1f77b37450aecaf1e7b94fc5",
     "command": "parity-runner --mode=full --reportDir=../audit-r1/reports/r2-2",
     "timeConversionVersion": "time-conversion-v1",
     "fingerprintSchemaVersion": 1,

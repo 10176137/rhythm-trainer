@@ -52,7 +52,7 @@
 
 | 命令 | 结果 |
 |---|---|
-| `npx vitest run`（未设 RHYTHM_REAL_SCORE_PATH） | **43 files / 360 passed / 2 skipped**（跳过 = 真实谱门禁 2 项：契约 113 小节回归 + R2-2 parity 结构不变量；**SKIP 不计 PASS**） |
+| `npx vitest run`（未设 RHYTHM_REAL_SCORE_PATH） | **42 files / 360 passed / 3 skipped**（跳过 = 真实谱门禁 3 项：契约 113 小节回归 1 + R2-2 parity 结构不变量 2；**SKIP 不计 PASS**。口径说明：360/3 为 test 计数；file 计数为 41 passed + 1 skipped） |
 | `RHYTHM_REAL_SCORE_PATH=… npx vitest run src/score-engine/contract-v1` | **61/61**（113 小节真实谱回归实际执行） |
 | `RHYTHM_REAL_SCORE_PATH=… vitest real-score-parity.test.ts` | **2/2**：113 小节结构不变量 PASS——113 小节、1579 occurrence（ID 全唯一）、1018 group、1018 atom、capabilities 恰 `chords/multi_staff/multi_voice/ties/tuplets` 五值、门禁指纹两次重跑逐字节稳定 |
 | `node parity-runner.bundle.mjs --mode=full` | **15/15 case PASS**（0 semantic-defect、0 unclassified、0 time-rounding 未解释项）+ 6/6 fault 捕获，**exit=0**；报告落盘 `audit-r1/reports/r2-2/`（16 份） |
@@ -89,4 +89,39 @@ node ../audit-r1/spike/out/parity-runner.bundle.mjs --mode=case --caseId=G1-base
 npm run build && npm run selftest
 ```
 
-**R2-2 关闭申请**：10/11 验收清单满足（§10 报告项由本文件+reports/r2-2 承载）；未写 Rust、未切权威、未改 wire。申请复审。
+## 9. 复审修复（2026-10-25，R2-2 首轮复审四项阻断全处理）
+
+首轮复审（基线 604101f，静态）结论：substantially complete 但暂不关闭。逐项处理：
+
+### 9.1 P1-1 退出码未执行 L1/L3 门禁 → 已修
+
+`runCase()` 的 case 通过判定从"仅差分汇总干净"改为**四层门禁各自判定后取合取**：`reportPasses(categories) ∧ L1 status pass ∧ stableAcrossRuns ∧ 全部 P1-3 不变量绿 ∧ wire ≠ fail`。stableAcrossRuns 现在计算一次并写入 l1 与判定（此前算两次且不参与判定）。`runParity()` 退出码消费同一综合判定。预期拒绝 case 的通过规则不变（L1 按 fingerprintErrorCode 对比），但现在若其 P1-3/稳定性失败同样无法逃逸。
+
+### 9.2 P1-2 configFingerprint 白名单缺陷 → 已修
+
+原 `JSON.stringify(config, Object.keys(config).sort())` 的数组 replacer 是**全层级**属性白名单，嵌套的 range/bpm 字段被静默丢弃，不同配置可能同哈希。改为 `stableSerialize()`：每个对象层级递归排序键的完整序列化。新增 4 项负测：range end、bpm 分子、loop count、handMapping hand 任一改动 → 哈希必变（加原有键序稳定性测试）。
+
+### 9.3 P1-3 Map 对齐折叠重复语义键 → 已修
+
+`diffCandidates()` 在四层对齐**之前**对两侧分别做语义键重复检查（occurrence=locator+pass、group=pass+beat、atom=startTick、scoreEvent=locator+pass），重复即 `semantic-defect`（path 形如 `candidate.occurrences[<key>].duplicate`）。新增 4 项负测（四层各一）+ expected 侧重复同样被抓的断言。此前 `runtimeIds` 唯一性检查是 ID 层，不覆盖语义键层，现两层并存。
+
+### 9.4 G5 时间真值裁决 → 已裁决并执行（最终批准权在复审人）
+
+**裁决：时值权威 = R2-1 §3.5 冻结协议**（`TargetOnsetUs = CountInUs + roundHalfUp(offset)`，CountInUs 为整数 µs 输入）。依据：① GOLDEN_FIXTURES 自身 §1.1 定义表与 §1.3 产品规则（整数 µs 输入）；② 原 §6.2 公式 `round((4+beat)×…)` 隐含 count-in 为精确有理数、消掉了 count-in 量化，与 §1.1/§1.3 冲突——属 2026-10-23 勘误的残留错误；③ R2-1 冻结规范经四轮复审通过（RF-01 逐字对齐 `beatToMicroseconds()`）。
+
+同步执行：
+- `g5.expected.json` 修订（beats 1/4：3333333→3333334、5333333→5333334；derivation 记录修订原因/日期/规则版本）；五个 golden 全部补 `countInUs` 字段（G1–G4 数值不变）；
+- `GOLDEN_FIXTURES.md` §6.2 增加正式裁决记录（§6.3）；
+- `golden.fixtures.test.ts` 推导函数改为冻结协议（BigInt half-up）；实现 ms 对照放宽为显式 ≤1 µs legacy 容差；G5 legacy 差异显式分类 `time-rounding`（−1 µs ×2），G1–G4 保持全 exact 断言；
+- **G5-base case 改回复用修订后 golden**（删除独立手工副本 `expected/G5-base.json`）——"G1–G5 全部复用既有真值"恢复成立；
+- runner 重跑 15/15 PASS、6/6 fault、exit=0；golden 测试 51/51。
+
+**此裁决已按真值修订纪律记录（原因/日期/规则版本/影响面），并在提交信息与两份文档中显著标注"最终批准权在复审人；否决则整体 revert"。**
+
+### 9.5 其他复审意见落实
+
+- `reportPasses()` 不再无条件放行 `unsupported-behavior`：任何此类差异现在都判 fail（当前无 case 声明预期放行；将来需要时须在 bundle 显式声明，另立判定）；+1 负测。
+- 数字口径统一：全量 vitest 为 **42 files（41 passed + 1 skipped file）/ 360 passed + 3 skipped tests**（跳过 = 真实谱门禁 3 项）；本报告 §4 与提交信息使用同一口径。
+- 首版报告的"10/11"保守自评已由本节替代：复审四项阻断处理后，§10 清单 11/11 逐项有据（见 §7 复现命令可全部复跑）。
+
+**R2-2 关闭申请（更新）**：四项阻断已处理（三项代码修复 + G5 正式裁决执行），证据全部重跑刷新（`audit-r1/reports/r2-2/` 16 份报告为裁决后重新生成）。状态仍为 `R2-2 TS-side parity harness implemented and tested`、`R2-3 Rust planner not started`、无权威切换。**申请复审确认：① 三项修复；② G5 裁决方向（冻结协议权威）——若否决此裁决，revert 本提交即可回退全部 G5 改动。**
