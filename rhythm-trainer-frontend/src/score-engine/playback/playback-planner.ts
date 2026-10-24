@@ -143,6 +143,9 @@ export function buildPlaybackPlan(score: ScoreDocument, request: PlaybackPlanReq
       occurrences.push({
         occurrenceId: `${planId}:p${passIndex}:${ref.event.id}`,
         scoreEventId: ref.event.id,
+        sourcePartId: ref.event.source.partId,
+        sourceMeasureOrdinal: ref.event.source.measureOrdinal,
+        sourceOrdinal: ref.event.source.sourceOrdinal,
         playbackIndex: -1,
         passIndex,
         measureOrdinal: ref.measure.ordinal,

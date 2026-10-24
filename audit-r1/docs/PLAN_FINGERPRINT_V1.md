@@ -31,7 +31,7 @@
 
 **必排**：当前时间、随机数、设备/MIDI 输入、演奏表现与成绩、文件路径/文件名、UI 状态、OSMD anchor、诊断文案、key 插入顺序、临时 `planId`/`occurrenceId`/`groupId` 字符串（用语义 locator 替代）、墙上时钟。
 
-**时间量化**：TargetSchedule 需要整数时间时用**整数微秒**，`µs = round_half_up(beat × 60_000_000 / bpm)`；规则版本化（`time-conversion-v1`），TS 参考实现与未来 Rust 实现共用同一批测试向量。不可精确落到 PPQ tick 网格的目标沿用现有 `tick_grid_rounding` 阻断，不得悄悄改节奏。
+**时间量化**：TargetSchedule 需要整数时间时用**整数微秒**，`µs = floor((beat.num × 60_000_000 × bpm.den + bpm.num × beat.den / 2) / (beat.den × bpm.num))`（非负 round-half-up），**中间乘积用 BigInt 精确运算**，不依赖 IEEE-754（乘积超过 2^53 时浮点会偏离精确半数规则；参考实现与测试都有超界用例）。规则版本化（`time-conversion-v1`），TS 参考实现与未来 Rust 实现共用同一批测试向量。不可精确落到 PPQ tick 网格的目标沿用现有 `tick_grid_rounding` 阻断，不得悄悄改节奏。
 
 ## 4. 临时 ID 的隔离
 
@@ -49,14 +49,14 @@ sourceLocator = { partId, measureOrdinal, sourceOrdinal, voiceId? }
 
 ## 6. 人工核对向量（跨语言基准）
 
-5 组固定向量见 `contract-v1/plan-fingerprint.test.ts` 的 golden 断言，期望哈希为**手工独立计算**（构造 payload → 人工 JCS（按 key 字典序）→ 独立 sha256），不从被测实现 dump：
+5 组固定向量提交于 [`contracts/fixtures/plan-fingerprint.golden.json`](../contracts/fixtures/plan-fingerprint.golden.json)，每个向量含 payload、规范化 JSON 字节（`expectedCanonical`）与期望 SHA-256（`expectedFingerprint`）。期望值由独立生成脚本（raw `canonicalize` + Node `crypto`）产出并与参考实现交叉比对，分歧即中止；测试直接断言等于**提交的固定哈希**，不是运行时 oracle：
 
-| 向量 | 内容 | 期望（前 16 hex，全文在 fixture） |
+| 向量 | 内容 | 期望指纹 |
 |---|---|---|
-| V-single | 单音 1 组 | 见 `plan-fingerprint.golden.json` |
-| V-rest-gap | 两个 onset（含休止隔开的时距） | 同上 |
-| V-chord | 同 onset 两 member、异时值（组取最长） | 同上 |
-| V-tie | tie onset（1 组，`isTieOnset=true`，合并时值） | 同上 |
-| V-hand | 与 V-single 仅 hand/mapping 不同 | 同上 |
+| V-single | 单音 1 组 | `plan-v1:sha256:0d798c3151a62dcc2c2e7e4cb4b6a48c7587cf4945a8c62c43a2d92d99dffde4` |
+| V-rest-gap | 两个 onset（含休止隔开的时距） | `plan-v1:sha256:6771e36b1c73d37d24d9e55024e158674439d2975e6bba9ca1523fd4e2b12981` |
+| V-chord | 同 onset 两 member、异时值（组取最长） | `plan-v1:sha256:c922c4213bb299180b1e1b40c425333dbfdcac39425fb0a5321c379fe2919fa9` |
+| V-tie | tie onset（1 组，`isTieOnset=true`，合并时值） | `plan-v1:sha256:75298b49aff5eecb2d169810de4f92bba28f6acf1575f02630c398362cf388ca` |
+| V-hand | 与 V-single 仅 hand/mapping 不同 | `plan-v1:sha256:4eadaffdeb795da2bb1f567fac487e8081d5f8318fcaedb1b7d10f2d384a3142` |
 
-独立验证方法：payload 较小（≤10 个键），JCS 的 key 排序规则（字典序、递归）可手工排列；SHA-256 用 Node `crypto` 独立计算并与 `canonicalize`+自研路径交叉比对；两条路径不一致即测试失败。
+防回归语义：任何对 payload 结构、JCS、NFC、SHA-256 或时间量化的改动，若改变了这些向量的哈希，测试立即失败；升级 `fingerprintSchemaVersion` 并重新生成/人工复核向量是唯一合法路径。

@@ -95,3 +95,56 @@
 ## 6. 声明
 
 **R2 Rust planner 尚未开始。** 本卡只冻结契约与参考实现。路线决策 P6（ScoreDocumentV1 契约）与本卡对应的 planFingerprint 部分（P7 的指纹定义）已完成；P7 的差分测试门与 golden oracle 门仍未完成，是 R2 planner 的开工前置。
+
+
+---
+
+## 7. 审查修正：四个验收缺口 + 配对保护 + 测试可复现性
+
+审查 43253fb 指出的问题逐项修复：
+
+### 7.1 P1-01 完整校验（指纹前 + 文档级）
+
+- `validateScoreDocumentV1` 从根对象检查升级为**全量闭合校验**：封闭 key 集（`unexpected_field`）、必填 key、嵌套结构（part/measure/event/source/pitch/barline/tieSpan/tempoMark）、**约分有理数**（`isCanonicalRationalV1`：安全整数、分母>0、gcd=1、零=0/1）、唯一性（partId/ordinal 连续/eventId/xmlId）、**跨引用**（tieSpan→eventId 悬挂引用 `dangling_reference`）、语义（note 必有 pitch、rest 不得有、非 grace 时值为正、event.source.partId 与所属 part 一致）。
+- 新增 `validatePlanFingerprintPayloadV1`：payload 级同强度校验（含 handMapping 封闭枚举拒绝 `clef-heuristic`、repeat 联合、tempo 正性、group/member/locator/pitch 逐项、groupIndex 唯一）。
+- **`computePlanFingerprintV1` 在哈希前强制调用完整校验**，任何 issue 都抛 `PAYLOAD_VALIDATION_FAILED`（含全部 code）。缺 scope、未约分有理数、未知字段现在都在入口被拒。
+
+### 7.2 P1-02 固定哈希向量（提交文件 + 硬断言）
+
+- 新 fixture：`audit-r1/contracts/fixtures/plan-fingerprint.golden.json`，含 5 个向量的 `payload`、`expectedCanonical`（JCS 规范化字节）与 `expectedFingerprint`。
+- 生成走双路径：独立脚本（raw `canonicalize` + Node `crypto`）与参考实现交叉比对，分歧即中止（`contract-v1/generate-golden.ts`，带 `ts-nocheck`，仅构建用）。
+- 测试**直接断言等于提交的固定哈希**（非运行时 oracle），并验证：canonical 字节可 round-trip、sha256(提交字节)===提交哈希、参考实现===提交哈希、5 向量两两不同。
+- 冻结值：
+  - V-single `0d798c3151a62dcc2c2e7ee4cb4b6a48c7587cf4945a8c62c43a2d92d99dffde4`
+  - V-rest-gap `6771e36b1c73d37d24d9e55024e158674439d2975e6bba9ca1523fd4e2b12981`
+  - V-chord `c922c4213bb299180b1e1b40c425333dbfdcac39425fb0a5321c379fe2919fa9`
+  - V-tie `75298b49aff5eecb2d169810de4f92bba28f6acf1575f02630c398362cf388ca`
+  - V-hand `4eadaffdeb795da2bb1f567fac487e8081d5f8318fcaedb1b7d10f2d384a3142`
+
+### 7.3 P1-03 语义 locator（不再解析内部 ID）
+
+- `PlaybackOccurrence` 新增 `sourcePartId`、`sourceMeasureOrdinal`、`sourceOrdinal`（`domain/types.ts`），由 planner 从 `ref.event.source` 直接填充（`playback-planner.ts`）。
+- `buildPlanFingerprintPayloadV1` 的 member locator 改从这三个语义字段取值，**删除了 `scoreEventId.split(':')` 反解析**；occurrence 缺 locator 时抛 `LOCATOR_UNAVAILABLE`。含 '`:`' 的 partId 不再可能被错误切分。
+- 注：这组新字段目前没有 Rust 消费者，属于向前兼容的领域扩展；planner 语义与既有输出不变（golden/importer 测试全绿佐证）。
+
+### 7.4 P1-04 精确微秒 + 科学计数法
+
+- `beatToMicroseconds` 改为 **BigInt 精确运算**：`floor((num*60_000_000*den + den/2)/den')`，中间乘积不再经过 IEEE-754；结果超安全整数抛 `TIME_OUT_OF_RANGE`；未约分有理数直接拒绝（`INVALID_RATIONAL`）。新增超 2^53 中间积测试（444,444,447 拍 @60BPM = 444,444,447,000,000 µs 精确）。
+- `numberToRationalV1` 支持**科学计数法**十进制精确转换（`1e-7`→`1/10^7`、`-1.5e-3`→`-3/2000`、`2.5e3`→`2500/1`），按数字移位实现，不经过二进制近似。
+
+### 7.5 Document/Report 配对保护
+
+`projectScoreDocumentV1` 现在要求 `document.fingerprint === report.fingerprint`，不一致抛 `DOCUMENT_REPORT_MISMATCH`（防止用 B 的报告身份装 A 的音符）。有专门负例测试。
+
+### 7.6 113 小节回归：干净环境可复现
+
+真实谱测试改用 `it.skipIf(!existsSync(path))`：文件缺失时**跳过而非失败**，`npm test` 在无该本地文件的环境（CI/新克隆）可完整通过；本地有文件时照常执行完整回归（投影 + 全量校验零 issue + 指纹稳定）。
+
+### 7.7 测试（修正后）
+
+vitest **35 files / 280 tests**（契约测试 28→34：+科学计数法、+BigInt 边界、+配对拒绝、+文档悬挂引用/深树未约分/重复 ID、+payload 校验负例、+5 固定哈希断言）、`tsc -b && vite build`、selftest 251 通过；Rust 零改动。
+
+### 7.8 文档同步
+
+- `PLAN_FINGERPRINT_V1.md` §6 改为指向提交的 fixture 与 5 个完整冻结哈希；§3 时间量化改写为 BigInt 精确公式。
+- `SCOREDOCUMENT_V1_CONTRACT.md` §2 补科学计数法规则。

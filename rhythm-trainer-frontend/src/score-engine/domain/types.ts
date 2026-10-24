@@ -263,6 +263,11 @@ export interface PlaybackPlanRequest {
 export interface PlaybackOccurrence {
   occurrenceId: string;
   scoreEventId: string;
+  /** Semantic source locator of the underlying notated note (R2-0 contract):
+   * stable across languages and independent of any runtime ID encoding. */
+  sourcePartId: string;
+  sourceMeasureOrdinal: number;
+  sourceOrdinal: number;
   playbackIndex: number;
   passIndex: number;
   measureOrdinal: number;
