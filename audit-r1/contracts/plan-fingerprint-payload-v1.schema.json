@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://10176137.github.io/rhythm-trainer/contracts/plan-fingerprint-payload-v1.schema.json",
+  "title": "PlanFingerprintPayloadV1",
+  "description": "Exact input to the planFingerprintV1 hash. Everything here changes the fingerprint; everything outside it (timestamps, device state, UI, performance) must not. See audit-r1/docs/PLAN_FINGERPRINT_V1.md.",
+  "type": "object",
+  "required": [
+    "fingerprintSchemaVersion",
+    "plannerVersion",
+    "scoreRevisionId",
+    "normalizerVersion",
+    "supportProfileVersion",
+    "scope",
+    "tempo",
+    "targetGroups"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "fingerprintSchemaVersion": { "const": 1 },
+    "plannerVersion": { "type": "string", "minLength": 1 },
+    "scoreRevisionId": {
+      "type": "string",
+      "pattern": "^score-revision-v1:sha256:[0-9a-f]{64}$"
+    },
+    "normalizerVersion": { "type": "string", "minLength": 1 },
+    "supportProfileVersion": { "type": "string", "minLength": 1 },
+    "scope": {
+      "type": "object",
+      "required": ["partId", "range", "hand", "handMapping"],
+      "additionalProperties": false,
+      "properties": {
+        "partId": { "type": "string", "minLength": 1 },
+        "range": {
+          "type": "object",
+          "required": ["startMeasureOrdinal", "endMeasureOrdinal"],
+          "additionalProperties": false,
+          "properties": {
+            "startMeasureOrdinal": { "type": "integer", "minimum": 1 },
+            "endMeasureOrdinal": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "hand": { "enum": ["left", "right", "both"] },
+        "handMapping": {
+          "type": "object",
+          "required": ["schemaVersion", "mappingVersion", "source", "parts"],
+          "additionalProperties": false,
+          "properties": {
+            "schemaVersion": { "const": 1 },
+            "mappingVersion": { "type": "string", "minLength": 1 },
+            "source": { "enum": ["user", "score-metadata"] },
+            "parts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["partId", "staves"],
+                "additionalProperties": false,
+                "properties": {
+                  "partId": { "type": "string", "minLength": 1 },
+                  "staves": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["staffNumber", "hand"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "staffNumber": { "type": "integer", "minimum": 1 },
+                        "hand": { "enum": ["left", "right"] }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "repeatSelection": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": { "kind": { "const": "none" } }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "count"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "range-loop" },
+            "count": { "type": "integer", "minimum": 1, "maximum": 32 }
+          }
+        }
+      ]
+    },
+    "tempo": {
+      "type": "object",
+      "required": ["bpm", "ticksPerQuarter", "countInBeats", "timeOrigin"],
+      "additionalProperties": false,
+      "properties": {
+        "bpm": { "$ref": "#/$defs/RationalV1" },
+        "ticksPerQuarter": { "type": "integer", "minimum": 1 },
+        "countInBeats": { "$ref": "#/$defs/RationalV1" },
+        "timeOrigin": { "const": "playback-start" }
+      }
+    },
+    "targetGroups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TargetGroupV1" }
+    }
+  },
+  "$defs": {
+    "RationalV1": {
+      "type": "object",
+      "required": ["numerator", "denominator"],
+      "additionalProperties": false,
+      "properties": {
+        "numerator": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        "denominator": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+      }
+    },
+    "TargetGroupV1": {
+      "type": "object",
+      "required": [
+        "groupIndex", "passIndex", "bar", "onsetBeatFromRangeStart",
+        "durationBeat", "beatInMeasure", "staffNumbers", "voiceIds", "members"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "groupIndex": { "type": "integer", "minimum": 0 },
+        "passIndex": { "type": "integer", "minimum": 0 },
+        "bar": { "type": "integer", "minimum": 1 },
+        "onsetBeatFromRangeStart": { "$ref": "#/$defs/RationalV1" },
+        "durationBeat": { "$ref": "#/$defs/RationalV1" },
+        "beatInMeasure": { "$ref": "#/$defs/RationalV1" },
+        "staffNumbers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "voiceIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "members": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/TargetMemberV1" }
+        }
+      }
+    },
+    "TargetMemberV1": {
+      "type": "object",
+      "description": "One notated note inside the onset group. Locators are semantic (part/measure/ordinal), never runtime IDs.",
+      "required": [
+        "sourceLocator", "pitch", "durationBeat"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sourceLocator": {
+          "type": "object",
+          "required": ["partId", "measureOrdinal", "sourceOrdinal"],
+          "additionalProperties": false,
+          "properties": {
+            "partId": { "type": "string", "minLength": 1 },
+            "measureOrdinal": { "type": "integer", "minimum": 1 },
+            "sourceOrdinal": { "type": "integer", "minimum": 1 },
+            "voiceId": { "type": "string" }
+          }
+        },
+        "pitch": {
+          "type": "object",
+          "required": ["midiNote", "spelling"],
+          "additionalProperties": false,
+          "properties": {
+            "midiNote": { "type": "integer", "minimum": 0, "maximum": 127 },
+            "spelling": { "type": "string", "minLength": 1 }
+          }
+        },
+        "durationBeat": { "$ref": "#/$defs/RationalV1" },
+        "isTieOnset": { "type": "boolean" }
+      }
+    }
+  }
+}

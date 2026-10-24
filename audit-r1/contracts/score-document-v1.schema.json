@@ -1,0 +1,302 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://10176137.github.io/rhythm-trainer/contracts/score-document-v1.schema.json",
+  "title": "ScoreDocumentV1",
+  "description": "Language-neutral semantic score document projected from the MusicXML importer. Self-contained: no TypeScript types, no runtime objects. See audit-r1/docs/SCOREDOCUMENT_V1_CONTRACT.md for normative text.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "normalizerVersion",
+    "supportProfileVersion",
+    "source",
+    "scoreRevisionId",
+    "metadata",
+    "parts",
+    "tieSpans",
+    "tempoMarks",
+    "capabilities"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "normalizerVersion": { "type": "string", "minLength": 1 },
+    "supportProfileVersion": { "type": "string", "minLength": 1 },
+    "scoreRevisionId": {
+      "type": "string",
+      "pattern": "^score-revision-v1:sha256:[0-9a-f]{64}$"
+    },
+    "source": {
+      "type": "object",
+      "required": ["format", "sourceFingerprint"],
+      "additionalProperties": false,
+      "properties": {
+        "format": { "const": "musicxml-partwise" },
+        "sourceFingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["workTitle", "composer"],
+      "additionalProperties": false,
+      "properties": {
+        "workTitle": { "type": "string" },
+        "composer": { "type": "string" }
+      }
+    },
+    "parts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/PartV1" }
+    },
+    "tieSpans": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TieSpanV1" }
+    },
+    "tempoMarks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TempoMarkV1" }
+    },
+    "capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/Capability" }
+    }
+  },
+  "$defs": {
+    "RationalV1": {
+      "type": "object",
+      "description": "Exact rational number. Must be fully reduced, denominator > 0, zero is 0/1. Integer range is the JSON safe-integer range.",
+      "required": ["numerator", "denominator"],
+      "additionalProperties": false,
+      "properties": {
+        "numerator": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        "denominator": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+      }
+    },
+    "Capability": {
+      "description": "Closed enum of importer capability/limitation markers (importer.ts inventory at freeze time). Unknown values fail schema validation.",
+      "type": "string",
+      "enum": [
+        "chords",
+        "cue",
+        "grace",
+        "microtone",
+        "multi_staff",
+        "multi_voice",
+        "multiple_parts",
+        "repeat",
+        "tempo_curve",
+        "ties",
+        "transpose",
+        "tuplets",
+        "unsupported_clef",
+        "unsupported_transpose",
+        "unrepresentable_pitch"
+      ]
+    },
+    "PartV1": {
+      "type": "object",
+      "required": ["partId", "name", "staves", "measures"],
+      "additionalProperties": false,
+      "properties": {
+        "partId": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "staves": { "type": "integer", "minimum": 1 },
+        "measures": { "type": "array", "items": { "$ref": "#/$defs/MeasureV1" } }
+      }
+    },
+    "MeasureV1": {
+      "type": "object",
+      "required": [
+        "ordinal", "implicit", "startBeat", "durationBeat",
+        "attributes", "events", "barlines", "capabilities"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ordinal": { "type": "integer", "minimum": 1 },
+        "printedNumber": { "type": "string" },
+        "implicit": { "type": "boolean" },
+        "startBeat": { "$ref": "#/$defs/RationalV1" },
+        "durationBeat": { "$ref": "#/$defs/RationalV1" },
+        "attributes": { "$ref": "#/$defs/MeasureAttributesV1" },
+        "events": { "type": "array", "items": { "$ref": "#/$defs/EventV1" } },
+        "barlines": { "type": "array", "items": { "$ref": "#/$defs/BarlineV1" } },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["chords", "tuplets"] }
+        }
+      }
+    },
+    "MeasureAttributesV1": {
+      "type": "object",
+      "required": ["divisions", "time", "key", "staves", "clefs"],
+      "additionalProperties": false,
+      "properties": {
+        "divisions": { "type": "integer", "minimum": 1 },
+        "time": {
+          "type": "object",
+          "required": ["beats", "beatType"],
+          "additionalProperties": false,
+          "properties": {
+            "beats": { "type": "integer", "minimum": 1 },
+            "beatType": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "key": {
+          "type": "object",
+          "required": ["fifths", "mode"],
+          "additionalProperties": false,
+          "properties": {
+            "fifths": { "type": "integer", "minimum": -7, "maximum": 7 },
+            "mode": { "type": "string" }
+          }
+        },
+        "staves": { "type": "integer", "minimum": 1 },
+        "clefs": { "type": "array", "items": { "$ref": "#/$defs/ClefV1" } }
+      }
+    },
+    "ClefV1": {
+      "type": "object",
+      "required": ["staffNumber", "sign", "line"],
+      "additionalProperties": false,
+      "properties": {
+        "staffNumber": { "type": "integer", "minimum": 1 },
+        "sign": { "type": "string", "minLength": 1 },
+        "line": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "BarlineV1": {
+      "type": "object",
+      "required": [],
+      "additionalProperties": false,
+      "properties": {
+        "location": { "type": "string" },
+        "barStyle": { "type": "string" },
+        "repeat": {
+          "type": "object",
+          "required": ["direction"],
+          "additionalProperties": false,
+          "properties": {
+            "direction": { "enum": ["forward", "backward"] },
+            "times": { "type": "integer", "minimum": 1 },
+            "afterJump": { "type": "boolean" }
+          }
+        },
+        "ending": {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "number": { "type": "string" },
+            "type": { "enum": ["start", "stop", "discontinue"] }
+          }
+        }
+      }
+    },
+    "EventV1": {
+      "type": "object",
+      "required": [
+        "eventId", "kind", "source", "onsetBeat", "durationBeat",
+        "dots", "tieStart", "tieStop", "tiedStart", "tiedStop",
+        "isGrace", "isCue", "articulations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "eventId": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["note", "rest"] },
+        "source": { "$ref": "#/$defs/SourceRefV1" },
+        "onsetBeat": { "$ref": "#/$defs/RationalV1" },
+        "durationBeat": { "$ref": "#/$defs/RationalV1" },
+        "notatedType": { "type": "string" },
+        "dots": { "type": "integer", "minimum": 0 },
+        "pitch": { "$ref": "#/$defs/PitchV1" },
+        "chordGroupId": { "type": "string", "minLength": 1 },
+        "tieStart": { "type": "boolean" },
+        "tieStop": { "type": "boolean" },
+        "tiedStart": { "type": "boolean" },
+        "tiedStop": { "type": "boolean" },
+        "tieSpanId": { "type": "string", "minLength": 1 },
+        "isGrace": { "type": "boolean" },
+        "isCue": { "type": "boolean" },
+        "lyricText": { "type": "string" },
+        "articulations": { "type": "array", "items": { "type": "string" } },
+        "timeModification": {
+          "type": "object",
+          "required": ["actualNotes", "normalNotes"],
+          "additionalProperties": false,
+          "properties": {
+            "actualNotes": { "type": "integer", "minimum": 1 },
+            "normalNotes": { "type": "integer", "minimum": 1 }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "note" } } },
+          "then": { "required": ["pitch"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "rest" } } },
+          "then": { "not": { "required": ["pitch"] } }
+        }
+      ]
+    },
+    "SourceRefV1": {
+      "type": "object",
+      "required": ["partId", "measureOrdinal", "staffNumber", "sourceOrdinal"],
+      "additionalProperties": false,
+      "properties": {
+        "partId": { "type": "string", "minLength": 1 },
+        "measureOrdinal": { "type": "integer", "minimum": 1 },
+        "staffNumber": { "type": "integer", "minimum": 1 },
+        "sourceOrdinal": { "type": "integer", "minimum": 1 },
+        "printedMeasureNumber": { "type": "string" },
+        "voiceId": { "type": "string" },
+        "xmlId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "PitchV1": {
+      "type": "object",
+      "required": ["step", "alter", "octave", "midiNote", "spelling"],
+      "additionalProperties": false,
+      "properties": {
+        "step": { "enum": ["A", "B", "C", "D", "E", "F", "G"] },
+        "alter": { "$ref": "#/$defs/RationalV1" },
+        "octave": { "type": "integer", "minimum": -1, "maximum": 10 },
+        "midiNote": {
+          "description": "null = not representable in the MIDI model; must not be rewritten to 0.",
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 127
+        },
+        "spelling": { "type": "string", "minLength": 1 }
+      }
+    },
+    "TieSpanV1": {
+      "type": "object",
+      "required": ["id", "pitchKey", "eventIds", "startBeat", "endBeat"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "pitchKey": { "type": "string", "minLength": 1 },
+        "eventIds": { "type": "array", "minItems": 2, "items": { "type": "string", "minLength": 1 } },
+        "startBeat": { "$ref": "#/$defs/RationalV1" },
+        "endBeat": { "$ref": "#/$defs/RationalV1" }
+      }
+    },
+    "TempoMarkV1": {
+      "type": "object",
+      "required": ["measureOrdinal", "beat", "bpm", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "measureOrdinal": { "type": "integer", "minimum": 1 },
+        "beat": { "$ref": "#/$defs/RationalV1" },
+        "bpm": { "$ref": "#/$defs/RationalV1" },
+        "kind": { "enum": ["metronome", "sound"] }
+      }
+    }
+  }
+}
