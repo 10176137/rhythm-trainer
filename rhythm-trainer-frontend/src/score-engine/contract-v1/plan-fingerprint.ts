@@ -199,7 +199,10 @@ export function projectScoreDocumentV1(
     capabilities.push(capability);
   }
   for (const capability of report.capabilities) {
-    if (CAPABILITY_ENUM.has(capability) && !capabilities.includes(capability)) capabilities.push(capability);
+    if (!CAPABILITY_ENUM.has(capability)) {
+      throw new ContractError('UNKNOWN_CAPABILITY', `report capability not in frozen enum: ${capability}`);
+    }
+    if (!capabilities.includes(capability)) capabilities.push(capability);
   }
   capabilities.sort();
 
@@ -456,6 +459,9 @@ export function validateScoreDocumentV1(dto: unknown): Issue[] {
   const partIds = new Set<string>();
   const eventIds = new Set<string>();
   const xmlIds = new Set<string>();
+  // Document-level semantic-source uniqueness: (partId, measureOrdinal,
+  // sourceOrdinal) addresses exactly one notated note.
+  const locatorKeys = new Set<string>();
   if (!Array.isArray(dto.parts)) {
     issues.push({ code: 'invalid_parts', message: 'parts must be an array' });
   } else {
@@ -499,7 +505,18 @@ export function validateScoreDocumentV1(dto: unknown): Issue[] {
         if (!Array.isArray(measure.events)) {
           issues.push({ code: 'invalid_events', message: 'measure.events must be an array' });
         } else {
-          for (const event of measure.events) validateEvent(event, issues, part.partId as string, eventIds, xmlIds);
+          for (const event of measure.events) {
+            validateEvent(event, issues, part.partId as string, eventIds, xmlIds, locatorKeys);
+            // The event's source must point back INTO its parent measure.
+            if (isPlainObject(event) && isPlainObject(event.source)
+              && typeof measure.ordinal === 'number' && typeof event.source.measureOrdinal === 'number'
+              && event.source.measureOrdinal !== measure.ordinal) {
+              issues.push({
+                code: 'source_measure_mismatch',
+                message: `event ${String(event.eventId)} in measure ${measure.ordinal} claims source measure ${event.source.measureOrdinal}`,
+              });
+            }
+          }
         }
         if (!Array.isArray(measure.barlines)) {
           issues.push({ code: 'invalid_barlines', message: 'measure.barlines must be an array' });
@@ -520,9 +537,17 @@ export function validateScoreDocumentV1(dto: unknown): Issue[] {
   if (!Array.isArray(dto.tieSpans)) {
     issues.push({ code: 'invalid_tie_spans', message: 'tieSpans must be an array' });
   } else {
+    const tieSpanIds = new Set<string>();
     for (const span of dto.tieSpans) {
       if (!isPlainObject(span)) { issues.push({ code: 'invalid_tie_span', message: 'tieSpan must be an object' }); continue; }
       checkClosedKeys(span, ['id', 'pitchKey', 'eventIds', 'startBeat', 'endBeat'], 'tieSpan', issues);
+      if (typeof span.id === 'string') {
+        if (tieSpanIds.has(span.id)) {
+          issues.push({ code: 'duplicate_tie_span_id', message: `tieSpan id duplicated: ${span.id}` });
+        } else {
+          tieSpanIds.add(span.id);
+        }
+      }
       if (!Array.isArray(span.eventIds) || span.eventIds.length < 2) {
         issues.push({ code: 'invalid_tie_span', message: 'tieSpan.eventIds must list at least 2 events' });
       } else {
@@ -534,6 +559,47 @@ export function validateScoreDocumentV1(dto: unknown): Issue[] {
       }
       checkRational(span.startBeat, 'tieSpan.startBeat', issues);
       checkRational(span.endBeat, 'tieSpan.endBeat', issues);
+    }
+    // Bidirectional check: an event claiming tieSpanId X must appear in X's
+    // eventIds, and X's eventIds entries must point back at X.
+    for (const part of Array.isArray(dto.parts) ? dto.parts : []) {
+      if (!isPlainObject(part) || !Array.isArray(part.measures)) continue;
+      for (const measure of part.measures) {
+        if (!isPlainObject(measure) || !Array.isArray(measure.events)) continue;
+        for (const event of measure.events) {
+          if (!isPlainObject(event) || typeof event.tieSpanId !== 'string' || !isPlainObject(event.source)) continue;
+          const tieSpansList = Array.isArray(dto.tieSpans) ? dto.tieSpans : [];
+          const span = tieSpansList.find(
+            (entry) => isPlainObject(entry) && entry.id === event.tieSpanId,
+          );
+          if (!isPlainObject(span)) {
+            issues.push({
+              code: 'dangling_reference',
+              message: `event ${String(event.eventId)} references unknown tieSpanId ${event.tieSpanId}`,
+            });
+            continue;
+          }
+          const memberIds = Array.isArray(span.eventIds) ? span.eventIds : [];
+          if (!memberIds.includes(event.eventId)) {
+            issues.push({
+              code: 'tie_reference_mismatch',
+              message: `event ${String(event.eventId)} claims tieSpanId ${event.tieSpanId} but is not in its eventIds`,
+            });
+          }
+        }
+      }
+    }
+    for (const span of dto.tieSpans) {
+      if (!isPlainObject(span) || !Array.isArray(span.eventIds)) continue;
+      for (const eventId of span.eventIds) {
+        const owner = findEventTieSpanId(dto, eventId);
+        if (owner !== undefined && owner !== span.id) {
+          issues.push({
+            code: 'tie_reference_mismatch',
+            message: `tieSpan ${String(span.id)} lists ${String(eventId)} but that event claims tieSpanId ${owner}`,
+          });
+        }
+      }
     }
   }
 
@@ -550,7 +616,36 @@ export function validateScoreDocumentV1(dto: unknown): Issue[] {
       }
     }
   }
+  // The revision id must equal the frozen formula over the document's own
+  // sourceFingerprint + normalizerVersion; a mismatched stamp is an identity
+  // forgery regardless of how well-formed the rest is.
+  if (typeof dto.scoreRevisionId === 'string' && isPlainObject(dto.source)
+    && typeof dto.source.sourceFingerprint === 'string' && typeof dto.normalizerVersion === 'string') {
+    const expected = computeScoreRevisionId(dto.source.sourceFingerprint, dto.normalizerVersion);
+    if (dto.scoreRevisionId !== expected) {
+      issues.push({
+        code: 'revision_id_mismatch',
+        message: `scoreRevisionId does not match sha256(JCS({sourceFingerprint, normalizerVersion})): expected ${expected}`,
+      });
+    }
+  }
   return issues;
+}
+
+/** Finds the tieSpanId an event claims, or undefined when it claims none (or does not exist). */
+function findEventTieSpanId(dto: Record<string, unknown>, eventId: unknown): string | undefined {
+  for (const part of Array.isArray(dto.parts) ? dto.parts : []) {
+    if (!isPlainObject(part) || !Array.isArray(part.measures)) continue;
+    for (const measure of part.measures) {
+      if (!isPlainObject(measure) || !Array.isArray(measure.events)) continue;
+      for (const event of measure.events) {
+        if (isPlainObject(event) && event.eventId === eventId && typeof event.tieSpanId === 'string') {
+          return event.tieSpanId;
+        }
+      }
+    }
+  }
+  return undefined;
 }
 
 function validateEvent(
@@ -559,6 +654,7 @@ function validateEvent(
   partId: string,
   eventIds: Set<string>,
   xmlIds: Set<string>,
+  locatorKeys: Set<string>,
 ): void {
   if (!isPlainObject(event)) { issues.push({ code: 'invalid_event', message: 'event must be an object' }); return; }
   checkClosedKeys(event, ['eventId', 'kind', 'source', 'onsetBeat', 'durationBeat', 'notatedType', 'dots', 'pitch', 'chordGroupId', 'tieStart', 'tieStop', 'tiedStart', 'tiedStop', 'tieSpanId', 'isGrace', 'isCue', 'lyricText', 'articulations', 'timeModification'], 'event', issues);
@@ -599,6 +695,15 @@ function validateEvent(
     checkPositiveInteger(event.source.measureOrdinal, 'event.source.measureOrdinal', issues, 1);
     checkPositiveInteger(event.source.staffNumber, 'event.source.staffNumber', issues, 1);
     checkPositiveInteger(event.source.sourceOrdinal, 'event.source.sourceOrdinal', issues, 1);
+    if (typeof event.source.partId === 'string' && Number.isInteger(event.source.measureOrdinal)
+      && Number.isInteger(event.source.sourceOrdinal)) {
+      const locatorKey = `${event.source.partId}:${event.source.measureOrdinal}:${event.source.sourceOrdinal}`;
+      if (locatorKeys.has(locatorKey)) {
+        issues.push({ code: 'duplicate_source_locator', message: `source locator claimed by two events: ${locatorKey}` });
+      } else {
+        locatorKeys.add(locatorKey);
+      }
+    }
     if (event.source.xmlId !== undefined) {
       if (typeof event.source.xmlId !== 'string' || event.source.xmlId.length === 0) {
         issues.push({ code: 'invalid_event', message: 'xmlId must be a non-empty string' });
@@ -651,6 +756,7 @@ export interface PlanFingerprintPayloadV1 {
 }
 
 type PlanOccurrenceLike = {
+  occurrenceId: string;
   scoreEventId: string;
   sourcePartId: string;
   sourceMeasureOrdinal: number;
@@ -662,6 +768,11 @@ type PlanOccurrenceLike = {
   durationBeat: { numerator: number; denominator: number };
   isTieOnset?: boolean;
 };
+
+/** true when a > b for reduced rationals; BigInt cross-multiplication so the comparison stays exact near the safe-integer boundary. */
+function rationalGreaterThan(a: RationalV1, b: RationalV1): boolean {
+  return BigInt(a.numerator) * BigInt(b.denominator) > BigInt(b.numerator) * BigInt(a.denominator);
+}
 
 /** Deterministic order for a hand mapping (see the payload scope comment). */
 function canonicalHandMapping(mapping: HandMappingV1): HandMappingV1 {
@@ -693,30 +804,68 @@ export function buildPlanFingerprintPayloadV1(input: {
   plan: PlaybackPlan;
 }): PlanFingerprintPayloadV1 {
   const occurrences = input.plan.occurrences as readonly PlanOccurrenceLike[];
-  const byScoreEventId = new Map<string, PlanOccurrenceLike>();
-  for (const occurrence of occurrences) byScoreEventId.set(occurrence.scoreEventId, occurrence);
+  // occurrenceId is unique per pass (the planner embeds passIndex in it);
+  // scoreEventId is NOT — the same notated note repeats in every loop pass.
+  // All group member lookup therefore goes through occurrenceIds, and the
+  // paired scoreEventId is cross-checked, never used to search.
+  const byOccurrenceId = new Map<string, PlanOccurrenceLike>();
+  for (const occurrence of occurrences) {
+    if (byOccurrenceId.has(occurrence.occurrenceId)) {
+      throw new ContractError('DUPLICATE_OCCURRENCE_ID', `occurrenceId not unique in plan: ${occurrence.occurrenceId}`);
+    }
+    byOccurrenceId.set(occurrence.occurrenceId, occurrence);
+  }
+  const usedOccurrenceIds = new Set<string>();
 
   const targetGroups = input.plan.groups.map((group: PlaybackGroup, index: number) => {
-    const firstOccurrence = group.occurrenceIds.length > 0
-      ? occurrences.find((entry) => entry.scoreEventId === group.scoreEventIds[0] || entry.scoreEventId === group.scoreEventIds[0])
-      : undefined;
+    if (group.occurrenceIds.length !== group.scoreEventIds.length) {
+      throw new ContractError('GROUP_ID_MISMATCH',
+        `group ${group.groupId}: occurrenceIds (${group.occurrenceIds.length}) and scoreEventIds (${group.scoreEventIds.length}) must pair 1:1`);
+    }
+    const groupOccurrences: PlanOccurrenceLike[] = [];
+    for (const occurrenceId of group.occurrenceIds) {
+      const occurrence = byOccurrenceId.get(occurrenceId);
+      if (!occurrence) {
+        throw new ContractError('OCCURRENCE_NOT_IN_PLAN', `group ${group.groupId} references unknown occurrence ${occurrenceId}`);
+      }
+      if (usedOccurrenceIds.has(occurrenceId)) {
+        throw new ContractError('OCCURRENCE_REUSED', `occurrence ${occurrenceId} is claimed by more than one group`);
+      }
+      usedOccurrenceIds.add(occurrenceId);
+      groupOccurrences.push(occurrence);
+    }
+    // Cross-check each pair: the occurrence must carry exactly the paired
+    // scoreEventId, otherwise the group's two ID lists disagree.
+    groupOccurrences.forEach((occurrence, memberIndex) => {
+      if (occurrence.scoreEventId !== group.scoreEventIds[memberIndex]) {
+        throw new ContractError('GROUP_ID_MISMATCH',
+          `group ${group.groupId} member ${memberIndex}: occurrence ${occurrence.occurrenceId} carries scoreEventId ${occurrence.scoreEventId}, group lists ${group.scoreEventIds[memberIndex]}`);
+      }
+    });
+    // Every member of one onset group shares the same pass; a mixed group
+    // means the grouping contract broke.
+    const passIndex = groupOccurrences[0]?.passIndex ?? 0;
+    for (const occurrence of groupOccurrences) {
+      if (occurrence.passIndex !== passIndex) {
+        throw new ContractError('GROUP_PASS_MISMATCH',
+          `group ${group.groupId} mixes pass ${passIndex} and ${occurrence.passIndex}`);
+      }
+    }
     return {
       groupIndex: index,
-      passIndex: firstOccurrence?.passIndex ?? 0,
+      passIndex,
       bar: group.bar,
       onsetBeatFromRangeStart: r(group.playbackBeat),
       durationBeat: r(group.durationBeat),
       beatInMeasure: r(group.beatInMeasure),
       staffNumbers: [...group.staffNumbers].sort((a, b) => a - b),
       voiceIds: [...group.voiceIds].sort(),
-      members: group.scoreEventIds.map((scoreEventId) => {
-        const occurrence = byScoreEventId.get(scoreEventId);
-        if (!occurrence) throw new ContractError('MEMBER_NOT_IN_PLAN', `scoreEvent ${scoreEventId} has no occurrence`);
+      members: groupOccurrences.map((occurrence) => {
         if (typeof occurrence.sourcePartId !== 'string'
           || !Number.isInteger(occurrence.sourceMeasureOrdinal)
           || !Number.isInteger(occurrence.sourceOrdinal)) {
           throw new ContractError('LOCATOR_UNAVAILABLE',
-            `occurrence for ${scoreEventId} lacks a semantic source locator (planner must fill sourcePartId/sourceMeasureOrdinal/sourceOrdinal)`);
+            `occurrence ${occurrence.occurrenceId} lacks a semantic source locator (planner must fill sourcePartId/sourceMeasureOrdinal/sourceOrdinal)`);
         }
         return {
           sourceLocator: {
@@ -826,6 +975,50 @@ export function validatePlanFingerprintPayloadV1(payload: unknown): Issue[] {
       }
       if (!Array.isArray(mapping.parts)) {
         issues.push({ code: 'invalid_scope', message: 'handMapping.parts must be an array' });
+      } else {
+        // A mapping is a set of assignments: duplicate parts, duplicate staff
+        // entries, or one staff assigned both hands are conflicts, not
+        // orderings to canonicalize away.
+        const seenPartIds = new Set<string>();
+        for (const part of mapping.parts) {
+          if (!isPlainObject(part)) { issues.push({ code: 'invalid_scope', message: 'handMapping part must be an object' }); continue; }
+          if (typeof part.partId !== 'string' || part.partId.length === 0) {
+            issues.push({ code: 'invalid_scope', message: 'handMapping part.partId must be a non-empty string' });
+            continue;
+          }
+          if (seenPartIds.has(part.partId)) {
+            issues.push({ code: 'hand_mapping_conflict', message: `handMapping lists part ${part.partId} more than once` });
+          } else {
+            seenPartIds.add(part.partId);
+          }
+          if (!Array.isArray(part.staves)) {
+            issues.push({ code: 'invalid_scope', message: `handMapping part ${part.partId}: staves must be an array` });
+            continue;
+          }
+          const staffAssignments = new Map<number, string>();
+          for (const staff of part.staves) {
+            if (!isPlainObject(staff)
+              || typeof staff.staffNumber !== 'number' || !Number.isInteger(staff.staffNumber) || staff.staffNumber < 1
+              || (staff.hand !== 'left' && staff.hand !== 'right')) {
+              issues.push({ code: 'invalid_scope', message: `handMapping part ${part.partId}: each staff needs staffNumber>=1 and hand left|right` });
+              continue;
+            }
+            const previous = staffAssignments.get(staff.staffNumber);
+            if (previous === undefined) {
+              staffAssignments.set(staff.staffNumber, staff.hand);
+            } else if (previous !== staff.hand) {
+              issues.push({
+                code: 'hand_mapping_conflict',
+                message: `handMapping assigns staff ${staff.staffNumber} of ${part.partId} both ${previous} and ${staff.hand}`,
+              });
+            } else {
+              issues.push({
+                code: 'hand_mapping_conflict',
+                message: `handMapping lists staff ${staff.staffNumber} of ${part.partId} more than once`,
+              });
+            }
+          }
+        }
       }
     }
   }
@@ -934,8 +1127,7 @@ export function validatePlanFingerprintPayloadV1(payload: unknown): Issue[] {
       }
       checkRational(member.durationBeat, 'member.durationBeat', issues);
       if (isCanonicalRationalV1(member.durationBeat)) {
-        if (longestMember === null
-          || member.durationBeat.numerator * longestMember.denominator > longestMember.numerator * member.durationBeat.denominator) {
+        if (longestMember === null || rationalGreaterThan(member.durationBeat, longestMember)) {
           longestMember = member.durationBeat;
         }
       }
@@ -967,6 +1159,63 @@ export function computePlanFingerprintV1(payload: PlanFingerprintPayloadV1): str
       `plan fingerprint payload failed V1 validation: ${issues.map((issue) => issue.code).join(', ')} (${issues[0].message})`);
   }
   return `plan-v1:sha256:${sha256Hex(canonicalizeJcs(payload))}`;
+}
+
+/**
+ * MANDATORY gate: the only supported end-to-end path from an imported score to
+ * a fingerprint. It projects, fully validates the projected document, checks
+ * that the plan was actually built from THIS document, builds the payload from
+ * the validated document's own identity fields and hashes it. An invalid
+ * ScoreDocumentV1 can never reach a fingerprint through this entry point.
+ */
+export function planFingerprintV1(input: {
+  document: ScoreDocument;
+  report: ImportReport;
+  plan: PlaybackPlan;
+  plannerVersion: string;
+  partId: string;
+  range: { startMeasureOrdinal: number; endMeasureOrdinal: number };
+  hand: PracticeHand;
+  handMapping: HandMappingV1;
+  repeatSelection: { kind: 'none' } | { kind: 'range-loop'; count: number };
+  bpm: { numerator: number; denominator: number };
+  ticksPerQuarter: number;
+  countInBeats: { numerator: number; denominator: number };
+}): string {
+  // Projection is fail-closed on its own invariants (duplicate ids, unknown
+  // capabilities, fingerprint pairing).
+  const projected = projectScoreDocumentV1(input.document, input.report);
+  if (projected.issues.length > 0) {
+    throw new ContractError('DOCUMENT_VALIDATION_FAILED',
+      `projection reported issues: ${projected.issues.map((issue) => issue.code).join(', ')}`);
+  }
+  // Full schema + semantic validation of the projected document.
+  const documentIssues = validateScoreDocumentV1(projected.dto);
+  if (documentIssues.length > 0) {
+    throw new ContractError('DOCUMENT_VALIDATION_FAILED',
+      `ScoreDocumentV1 failed validation: ${documentIssues.map((issue) => issue.code).join(', ')} (${documentIssues[0].message})`);
+  }
+  // The plan must have been built from THIS document: same source fingerprint.
+  if (input.plan.scoreFingerprint !== input.report.fingerprint) {
+    throw new ContractError('PLAN_DOCUMENT_MISMATCH',
+      `plan was built for score ${input.plan.scoreFingerprint}, document is ${input.report.fingerprint}`);
+  }
+  const payload = buildPlanFingerprintPayloadV1({
+    plannerVersion: input.plannerVersion,
+    scoreRevisionId: projected.dto.scoreRevisionId,
+    normalizerVersion: projected.dto.normalizerVersion,
+    supportProfileVersion: projected.dto.supportProfileVersion,
+    partId: input.partId,
+    range: input.range,
+    hand: input.hand,
+    handMapping: input.handMapping,
+    repeatSelection: input.repeatSelection,
+    bpm: input.bpm,
+    ticksPerQuarter: input.ticksPerQuarter,
+    countInBeats: input.countInBeats,
+    plan: input.plan,
+  });
+  return computePlanFingerprintV1(payload);
 }
 
 /**

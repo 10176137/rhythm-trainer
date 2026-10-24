@@ -12,6 +12,7 @@ import {
   computePlanFingerprintV1,
   computeScoreRevisionId,
   numberToRationalV1,
+  planFingerprintV1,
   projectScoreDocumentV1,
   rationalV1,
   validateScoreDocumentV1,
@@ -416,6 +417,265 @@ describe('planFingerprintV1 semantics', () => {
       },
     }));
     expect(swapped).toBe(sorted);
+  });
+});
+
+// --- R2-0B: loop passes, exact rational comparison, doc constraints, gate ---
+
+describe('R2-0B 1: range-loop passes map through occurrenceIds', () => {
+  function loopPlan(count: number): PlaybackPlan {
+    const doc = importMusicXml(fixture('g1_single_voice.musicxml'), { fileName: 'g1.musicxml' }).scoreDocument!;
+    return buildPlaybackPlan(doc, {
+      range: { startMeasureOrdinal: 1, endMeasureOrdinal: 2 },
+      repeatSelection: { kind: 'range-loop', count },
+      unsupportedNotationPolicy: 'reject-strict',
+    }).plan!;
+  }
+
+  it('a two-pass plan assigns each group its own passIndex and correct relative onsets', () => {
+    const plan = loopPlan(2);
+    // 5 notes per pass -> 10 occurrences, 10 groups (one per onset).
+    expect(plan.occurrences).toHaveLength(10);
+    expect(plan.groups).toHaveLength(10);
+    const payload = payloadFor(plan, { repeatSelection: { kind: 'range-loop', count: 2 } });
+    const groups = payload.targetGroups;
+    expect(groups).toHaveLength(10);
+    // Groups 0-4 are pass 0; 5-9 are pass 1 — derived from occurrenceIds,
+    // not from the non-unique scoreEventId.
+    expect(groups.slice(0, 5).every((group) => group.passIndex === 0)).toBe(true);
+    expect(groups.slice(5).every((group) => group.passIndex === 1)).toBe(true);
+    // The same score event repeats in both passes with identical member
+    // locators but different relative onsets (pass offset = range duration 8).
+    const firstPass = groups[0];
+    const secondPass = groups[5];
+    expect(secondPass.members[0].sourceLocator).toEqual(firstPass.members[0].sourceLocator);
+    expect(secondPass.onsetBeatFromRangeStart).toEqual({ numerator: firstPass.onsetBeatFromRangeStart.numerator + 8, denominator: 1 });
+    // Deterministic and distinct from the single-pass plan.
+    const singlePass = computePlanFingerprintV1(payloadFor(loopPlan(1)));
+    expect(computePlanFingerprintV1(payload)).not.toBe(singlePass);
+    expect(computePlanFingerprintV1(payload)).toBe(computePlanFingerprintV1(payloadFor(loopPlan(2), { repeatSelection: { kind: 'range-loop', count: 2 } })));
+  });
+
+  it('the same scoreEventId appearing in multiple passes does not corrupt the lookup', () => {
+    const plan = loopPlan(3);
+    const eventIds = plan.occurrences.map((occurrence) => occurrence.scoreEventId);
+    // 15 occurrences but only 5 distinct score events.
+    expect(new Set(eventIds).size).toBe(5);
+    const payload = payloadFor(plan, { repeatSelection: { kind: 'range-loop', count: 3 } });
+    expect(payload.targetGroups).toHaveLength(15);
+    expect(payload.targetGroups.filter((group) => group.passIndex === 2)).toHaveLength(5);
+  });
+
+  it('fail-closed: an occurrenceId claimed by two groups is rejected', () => {
+    const plan = loopPlan(1);
+    const tampered = JSON.parse(JSON.stringify(plan)) as typeof plan;
+    // Point group 1's first occurrenceId at group 0's occurrence.
+    const target = tampered.groups[1].occurrenceIds as unknown as string[];
+    target[0] = tampered.groups[0].occurrenceIds[0];
+    expect(() => payloadFor(tampered)).toThrowError(/claimed by more than one group/);
+  });
+
+  it('fail-closed: occurrence/scoreEventId pair mismatch inside a group is rejected', () => {
+    // g2's first group is a two-note chord: a real multi-member group whose
+    // paired ID lists can be made to disagree.
+    const doc = importMusicXml(fixture('g2_chord.musicxml'), { fileName: 'g2.musicxml' }).scoreDocument!;
+    const plan = buildPlaybackPlan(doc, {
+      range: { startMeasureOrdinal: 1, endMeasureOrdinal: 1 },
+      repeatSelection: { kind: 'none' },
+      unsupportedNotationPolicy: 'reject-strict',
+    }).plan!;
+    const tampered = JSON.parse(JSON.stringify(plan)) as typeof plan;
+    const ids = tampered.groups[0].scoreEventIds as unknown as string[];
+    [ids[0], ids[1]] = [ids[1], ids[0]];
+    expect(() => payloadFor(tampered)).toThrowError(/carries scoreEventId/);
+  });
+});
+
+describe('R2-0B 2: exact rational comparison for the longest-member rule', () => {
+  const chordVector = () => GOLDEN.vectors['V-chord'].payload as Record<string, never>;
+
+  type PayloadGroup = {
+    durationBeat: { numerator: number; denominator: number };
+    members: Array<{ durationBeat: { numerator: number; denominator: number } }>;
+  };
+  type PayloadShape = { targetGroups: PayloadGroup[] };
+
+  it('accepts near-boundary legal rationals the Number product would misjudge', () => {
+    // 4503599627370449/4503599627370453 vs 4503599627370449/4503599627370447:
+    // both reduced, both safe; the Number cross-products approach 2^104.
+    const a = rationalV1(4503599627370449, 4503599627370453);
+    const b = rationalV1(4503599627370449, 4503599627370447);
+    // a < b (same numerator, larger denominator). The validation must accept a
+    // group whose longest member is exactly b.
+    const payload = JSON.parse(JSON.stringify(chordVector())) as PayloadShape;
+    payload.targetGroups[0].durationBeat = b;
+    payload.targetGroups[0].members[0].durationBeat = a;
+    payload.targetGroups[0].members[1].durationBeat = b;
+    const issues = validatePlanFingerprintPayloadV1(payload);
+    expect(issues.filter((issue) => issue.code === 'group_duration_mismatch')).toEqual([]);
+  });
+
+  it('still rejects a tampered longest member at the boundary', () => {
+    const a = rationalV1(4503599627370449, 4503599627370453);
+    const b = rationalV1(4503599627370449, 4503599627370447);
+    const payload = JSON.parse(JSON.stringify(chordVector())) as PayloadShape;
+    payload.targetGroups[0].durationBeat = a; // group claims the SHORTER one
+    payload.targetGroups[0].members[0].durationBeat = a;
+    payload.targetGroups[0].members[1].durationBeat = b;
+    const issues = validatePlanFingerprintPayloadV1(payload);
+    expect(issues.map((issue) => issue.code)).toContain('group_duration_mismatch');
+  });
+});
+
+describe('R2-0B 3: ScoreDocumentV1 semantic constraints', () => {
+  const projected = () => {
+    const result = importMusicXml(fixture('g1_single_voice.musicxml'), { fileName: 'g1.musicxml' });
+    return projectScoreDocumentV1(result.scoreDocument!, result.importReport);
+  };
+  const tieProjected = () => {
+    const result = importMusicXml(fixture('g3_tie_across_bar.musicxml'), { fileName: 'g3.musicxml' });
+    return projectScoreDocumentV1(result.scoreDocument!, result.importReport);
+  };
+
+  type DocEvent = Record<string, unknown> & { source: Record<string, unknown>; eventId: string; tieSpanId?: string };
+  type DocShape = {
+    parts: Array<{ measures: Array<{ ordinal: number; events: DocEvent[] }> }>;
+    tieSpans: Array<Record<string, unknown>>;
+  };
+
+  it('event source measureOrdinal must match its parent measure', () => {
+    const dto = JSON.parse(JSON.stringify(projected().dto)) as DocShape;
+    dto.parts[0].measures[0].events[0].source.measureOrdinal = 2;
+    expect(validateScoreDocumentV1(dto).map((issue) => issue.code)).toContain('source_measure_mismatch');
+  });
+
+  it('document-level source locators must be unique', () => {
+    const dto = JSON.parse(JSON.stringify(projected().dto)) as DocShape;
+    // Point the second event at the first event's source locator.
+    dto.parts[0].measures[0].events[1].source.measureOrdinal = dto.parts[0].measures[0].events[0].source.measureOrdinal;
+    dto.parts[0].measures[0].events[1].source.sourceOrdinal = dto.parts[0].measures[0].events[0].source.sourceOrdinal;
+    expect(validateScoreDocumentV1(dto).map((issue) => issue.code)).toContain('duplicate_source_locator');
+  });
+
+  it('duplicate tieSpan ids are rejected', () => {
+    const dto = JSON.parse(JSON.stringify(tieProjected().dto));
+    const spans = dto.tieSpans as Array<Record<string, unknown>>;
+    spans.push(JSON.parse(JSON.stringify(spans[0])));
+    expect(validateScoreDocumentV1(dto).map((issue) => issue.code)).toContain('duplicate_tie_span_id');
+  });
+
+  it('an event claiming an unknown tieSpanId is rejected (forward direction)', () => {
+    const dto = JSON.parse(JSON.stringify(tieProjected().dto));
+    const parts = dto.parts as Array<{ measures: Array<{ events: Array<Record<string, unknown>> }> }>;
+    parts[0].measures[0].events[0].tieSpanId = 'tie:nonexistent';
+    expect(validateScoreDocumentV1(dto).map((issue) => issue.code)).toContain('dangling_reference');
+  });
+
+  it('an event claiming a span it does not belong to is rejected (bidirectional)', () => {
+    // Add a second span and point the first event at it: the event is listed
+    // only in span A, so claiming span B is an inconsistency.
+    const dto = JSON.parse(JSON.stringify(tieProjected().dto));
+    const spans = dto.tieSpans as Array<Record<string, unknown>>;
+    const parts = dto.parts as Array<{ measures: Array<{ events: Array<Record<string, unknown>> }> }>;
+    const firstEventId = parts[0].measures[0].events[0].eventId;
+    const secondEventId = parts[0].measures[1].events[0].eventId;
+    spans.push({
+      id: 'tie:other',
+      pitchKey: (spans[0] as { pitchKey: string }).pitchKey,
+      eventIds: [secondEventId, firstEventId],
+      startBeat: spans[0].startBeat,
+      endBeat: spans[0].endBeat,
+    });
+    // Now firstEvent is in BOTH spans but claims only one of them.
+    parts[0].measures[0].events[0].tieSpanId = 'tie:other';
+    const codes = validateScoreDocumentV1(dto).map((issue) => issue.code);
+    expect(codes).toContain('tie_reference_mismatch');
+  });
+
+  it('a span listing an event that claims a different span is rejected (reverse direction)', () => {
+    const dto = JSON.parse(JSON.stringify(tieProjected().dto));
+    const spans = dto.tieSpans as Array<Record<string, unknown>>;
+    spans.push({
+      id: 'tie:ghost',
+      pitchKey: (spans[0] as { pitchKey: string }).pitchKey,
+      eventIds: [...(spans[0] as { eventIds: string[] }).eventIds],
+      startBeat: spans[0].startBeat,
+      endBeat: spans[0].endBeat,
+    });
+    // Both spans list the same events, but the events claim only the first.
+    const codes = validateScoreDocumentV1(dto).map((issue) => issue.code);
+    expect(codes).toContain('tie_reference_mismatch');
+  });
+
+  it('scoreRevisionId must match the frozen formula over the document own fields', () => {
+    const dto = JSON.parse(JSON.stringify(projected().dto));
+    dto.scoreRevisionId = 'score-revision-v1:sha256:' + '0'.repeat(64);
+    expect(validateScoreDocumentV1(dto).map((issue) => issue.code)).toContain('revision_id_mismatch');
+  });
+});
+
+describe('R2-0B 4: mandatory gate and conflict rejection', () => {
+  const imported = () => importMusicXml(fixture('g1_single_voice.musicxml'), { fileName: 'g1.musicxml' });
+
+  const gateInput = (overrides: Record<string, unknown> = {}) => ({
+    document: imported().scoreDocument!,
+    report: imported().importReport,
+    plan: basePlan(),
+    plannerVersion: 'planner-ref-1',
+    ...BASE_SCOPE,
+    repeatSelection: { kind: 'none' as const },
+    bpm: { numerator: 80, denominator: 1 },
+    ticksPerQuarter: 960,
+    countInBeats: { numerator: 4, denominator: 1 },
+    ...overrides,
+  });
+
+  it('the gated entry produces the same fingerprint as the raw path for a valid document', () => {
+    const raw = computePlanFingerprintV1(payloadFor(basePlan()));
+    expect(planFingerprintV1(gateInput() as never)).toBe(raw);
+  });
+
+  it('an invalid ScoreDocumentV1 blocks the fingerprint at the gate', () => {
+    const input = gateInput();
+    // Tamper the document so its projection is invalid: skip a measure ordinal.
+    const tampered = JSON.parse(JSON.stringify(input.document));
+    const parts = tampered.parts as Array<{ measures: unknown[] }>;
+    parts[0].measures.splice(0, 1); // ordinals now start at 2
+    expect(() => planFingerprintV1({ ...input, document: tampered } as never))
+      .toThrowError(/ScoreDocumentV1 failed validation/);
+  });
+
+  it('a plan built from a different document is rejected at the gate', () => {
+    const other = importMusicXml(fixture('g5_three_four.musicxml'), { fileName: 'g5.musicxml' });
+    const otherPlan = buildPlaybackPlan(other.scoreDocument!, {
+      range: { startMeasureOrdinal: 1, endMeasureOrdinal: 2 },
+      repeatSelection: { kind: 'none' },
+      unsupportedNotationPolicy: 'reject-strict',
+    }).plan!;
+    expect(() => planFingerprintV1({ ...gateInput(), plan: otherPlan } as never))
+      .toThrowError(/plan was built for score/);
+  });
+
+  it('unknown report capabilities are fail-closed, not silently dropped', () => {
+    const result = imported();
+    const tamperedReport = { ...result.importReport, capabilities: [...result.importReport.capabilities, 'future_cap'] };
+    expect(() => projectScoreDocumentV1(result.scoreDocument!, tamperedReport))
+      .toThrowError(/not in frozen enum/);
+  });
+
+  it('handMapping with a duplicate part entry is rejected', () => {
+    const golden = GOLDEN.vectors['V-single'].payload as Record<string, never>;
+    const payload = JSON.parse(JSON.stringify(golden));
+    payload.scope.handMapping.parts.push(JSON.parse(JSON.stringify(payload.scope.handMapping.parts[0])));
+    expect(validatePlanFingerprintPayloadV1(payload).map((issue) => issue.code)).toContain('hand_mapping_conflict');
+  });
+
+  it('handMapping assigning one staff both hands is rejected', () => {
+    const golden = GOLDEN.vectors['V-single'].payload as Record<string, never>;
+    const payload = JSON.parse(JSON.stringify(golden));
+    payload.scope.handMapping.parts[0].staves.push({ staffNumber: 1, hand: 'left' });
+    const codes = validatePlanFingerprintPayloadV1(payload).map((issue) => issue.code);
+    expect(codes).toContain('hand_mapping_conflict');
   });
 });
 

@@ -76,6 +76,21 @@ for (const [name, payload] of Object.entries(vectors)) {
   if (fingerprint !== independentHash) throw new Error(`${name} hash divergence`);
   out.vectors[name] = { payload, expectedCanonical: canonical, expectedFingerprint: fingerprint };
 }
-mkdirSync('D:/123/audit-r1/contracts/fixtures', { recursive: true });
-writeFileSync('D:/123/audit-r1/contracts/test-vectors/plan-fingerprint-v1.json', JSON.stringify(out, null, 2) + '\n');
+// Resolve the repo root by walking up from CWD until audit-r1/contracts is
+// found; works from the repo root, the frontend dir, or anywhere inside the
+// clone. No personal absolute paths.
+import { existsSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+function repoRoot(): string {
+  let dir = process.cwd();
+  for (;;) {
+    if (existsSync(join(dir, 'audit-r1', 'contracts'))) return dir;
+    const parent = resolve(dir, '..');
+    if (parent === dir) throw new Error('run from inside the rhythm-trainer repository');
+    dir = parent;
+  }
+}
+const outputDir = join(repoRoot(), 'audit-r1', 'contracts', 'test-vectors');
+mkdirSync(outputDir, { recursive: true });
+writeFileSync(join(outputDir, 'plan-fingerprint-v1.json'), JSON.stringify(out, null, 2) + '\n');
 console.log('golden written:', Object.entries(out.vectors).map(([key, value]) => `${key}=${value.expectedFingerprint.slice(0, 24)}…`).join(' '));

@@ -216,3 +216,82 @@ vitest **35 files / 280 tests**（契约测试 28→34：+科学计数法、+Big
 - [x] 干净环境可运行常规测试（286 passed / 1 skipped，唯一 skipped 是可选真实谱回归）
 - [x] 实施报告与代码、测试数字一致
 - [x] **Rust planner 仍未启动**
+
+
+---
+
+## 9. R2-0B：契约语义闭环修复
+
+### 9.1 修复 1：重复轮次映射（passIndex 与成员查找都走 occurrenceIds）
+
+**问题**：`buildPlanFingerprintPayloadV1` 用 `occurrences.find(scoreEventId)` 推导 `passIndex`——range-loop 时同一 `scoreEventId` 出现在多个 pass，`find` 永远返回第一个 pass 的 occurrence，且成员查找也按非唯一键。
+
+**修复**（`plan-fingerprint.ts:810-856`）：
+- 全部按 `group.occurrenceIds`（pass 内唯一）查 occurrence，构建 `byOccurrenceId` 索引；
+- 逐对交叉校验 `occurrence.scoreEventId === group.scoreEventIds[i]`（`GROUP_ID_MISMATCH`）；
+- occurrence 被两个组认领 → `OCCURRENCE_REUSED`；引用不存在的 occurrence → `OCCURRENCE_NOT_IN_PLAN`；plan 内 occurrenceId 重复 → `DUPLICATE_OCCURRENCE_ID`；单组混入多个 pass → `GROUP_PASS_MISMATCH`。全部 fail-closed 抛错。
+
+**测试**（`contract-v1.test.ts:425-485`）：
+- 两轮 loop：10 组分属 pass 0/1、同 score event 跨 pass 出现且 member locator 相同、第二 pass 相对 onset 偏移 +8 拍（range 时长）、指纹稳定且异于单轮；
+- 三轮 loop：15 occurrence / 5 个不同 scoreEventId，pass 2 恰好 5 组——直接覆盖"同一 score event 在不同 pass 重复"；
+- 两个 fail-closed 负例（OCCURRENCE_REUSED、chord 组的 GROUP_ID_MISMATCH）。
+
+### 9.2 修复 2：有理数比较精度
+
+**修复**（`plan-fingerprint.ts:773-775`）：最长 member 判定改为 `rationalGreaterThan`——BigInt 交叉相乘 `a.num*b.den > b.num*a.den`，不再有 Number 乘积溢出。
+
+**测试**（`contract-v1.test.ts:494-528`）：分子分母各 ~2^52 的合法约分有理数（Number 乘积 ~2^104 必失真）——正确最长时通过、被换成较短值时报 `group_duration_mismatch`。原有 BigInt 微秒、科学计数法、half-up 测试全部保留且通过。
+
+### 9.3 修复 3：ScoreDocumentV1 语义约束
+
+全部在 `validateScoreDocumentV1`（叠加在 AJV Schema 校验之上）并各有独立负例：
+
+| 约束 | 代码位置 | 负例测试 |
+|---|---|---|
+| `event.source.measureOrdinal` 必须等于父 measure 的 ordinal | :515 `source_measure_mismatch` | :536（改为 2） |
+| 文档级 (partId, measureOrdinal, sourceOrdinal) 唯一 | :702 `duplicate_source_locator` | :543（第二个事件指向第一个的 locator） |
+| tieSpan ID 唯一 | :546 `duplicate_tie_span_id` | :552（复制 span） |
+| 事件引用不存在的 tieSpanId（正向） | :585 `tie_reference_mismatch` / dangling | :559（改为 tie:nonexistent） |
+| span 列出的事件必须反过来认领该 span（反向） | :598 `tie_reference_mismatch` | :565、:577（事件认另一 span / 幽灵 span 抄同一 eventIds） |
+| `scoreRevisionId === sha256(JCS({sourceFingerprint, normalizerVersion}))` | :627 `revision_id_mismatch` | :610（改为全 0 哈希） |
+
+### 9.4 修复 4：强制校验门禁
+
+- **新入口 `planFingerprintV1`**（`plan-fingerprint.ts:1171-1212`）：投影 → 文档全量校验（`DOCUMENT_VALIDATION_FAILED` :1189/:1195）→ **plan↔document 指纹交叉检查**（`PLAN_DOCUMENT_MISMATCH` :1200，plan.scoreFingerprint 必须等于 report.fingerprint）→ payload 构建（用文档自己的 scoreRevisionId/normalizerVersion/supportProfileVersion）→ 哈希。**不合法的 ScoreDocumentV1 无法通过该入口到达指纹。**
+- **report.capabilities 未知值同样 fail-closed**（投影处抛 `UNKNOWN_CAPABILITY`，与 document.capabilities 一致；此前被静默丢弃）。
+- **handMapping 冲突**（payload 校验 :990/:1011/:1016 `hand_mapping_conflict`）：重复 part 条目、同 staff 列两次、同 staff 同时分配左右手，均拒绝。
+
+**测试**（`contract-v1.test.ts:617-681`）：gate 正路径与裸路径指纹一致；篡改文档（跳小节）→ gate 拒绝；用 g5 的 plan 配 g1 的文档 → `PLAN_DOCUMENT_MISMATCH`；未知 report capability → 抛错；重复 part / 同 staff 冲突 → `hand_mapping_conflict`。
+
+### 9.5 修复 5：Golden 生成脚本
+
+- 删除 `D:/123/...` 绝对路径；改为从 CWD 向上找含 `audit-r1/contracts` 的目录（repo root / frontend dir / 克隆内任意位置均可）；
+- 实测从 repo root 与 frontend dir 两次运行：**五个向量哈希逐字节不变**（`git diff` 无内容差异），无意外漂移，未覆盖任何固定值。
+
+### 9.6 修改文件
+
+| 文件 | 改动 |
+|---|---|
+| `contract-v1/plan-fingerprint.ts` | occurrenceIds 映射 + 五个 fail-closed 错误码；`rationalGreaterThan` BigInt 比较；六项文档语义约束；handMapping 冲突检查；report capabilities fail-closed；`planFingerprintV1` 强制门禁 |
+| `contract-v1/contract-v1.test.ts` | +19 测试（R2-0B 四组 describe） |
+| `contract-v1/generate-golden.ts` | 仓库相对路径解析 |
+| `src/score-engine/domain/types.ts`、`playback/playback-planner.ts` | 无改动（上轮已加的 sourcePartId 等字段沿用） |
+
+### 9.7 执行记录（全部实跑，区分通过/跳过）
+
+| 命令 | 环境 | 结果 |
+|---|---|---|
+| `npx vitest run`（全量） | 未设 RHYTHM_REAL_SCORE_PATH | **37 files / 305 passed / 1 skipped**（契约文件 59+1skip） |
+| `RHYTHM_REAL_SCORE_PATH=… vitest contract-v1` | 设真实谱 | **60/60**（113 小节回归实际执行） |
+| `npm run build` | — | 通过 4.70s |
+| `npm run selftest` | — | 通过，251 条断言 |
+| `cargo test --target x86_64-pc-windows-gnu` | — | **110**（Rust 零改动，仍如实重跑：6 个 test binary 全 ok） |
+| generate-golden 双 CWD 重跑 | repo root + frontend | 5 哈希不变，test-vectors 文件无 diff |
+
+**跳过项**：仅"113 小节真实谱回归"在未设环境变量时跳过，不计为通过。
+
+### 9.8 范围合规
+
+- 未开始 Rust planner；未改 playback planner 生产语义（occurrence 新字段是上轮 R2-0A 已交付的向前兼容扩展）；未改 `scoring_v1`、生产评分权威、UI、importer 行为；未放宽 Schema、未删负例、未覆盖黄金值（重生成验证哈希不变）。
+
+**R2 Rust planner 继续保持未启动。** 申请关闭 R2-0，等待复审。
