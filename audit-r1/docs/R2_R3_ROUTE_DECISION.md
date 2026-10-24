@@ -223,7 +223,11 @@ P1–P5 属于 R1 收尾，P6–P8 属于 R2 设计。
 | P7 | **Contract CLOSED / Parity Gate OPEN** | planFingerprintV1 定义（规范化内容、JCS + SHA-256、plannerVersion、指纹输入）+ 5 固定哈希向量 + AJV schema-first 校验已交付（f9ab52f→1b48e8e）；**"Rust 规划器输出 vs 独立 golden 真值"的差分门仍开放——契约验收不等于迁移验收** |
 | P8 | OPEN（负例清单已冻结，双侧实现并通过后关闭） | 负例验收清单已在 R2-1 逐条冻结——音高/目标数量/ID 唯一性/小节覆盖/指纹一致性（[TS_RUST_PARITY_GATE_V1.md](TS_RUST_PARITY_GATE_V1.md) §6）；指纹/配对/文档校验部分已由 R2-0/R2-0B 强制门禁先行交付 |
 
-**R2-1 Golden Semantic Differential & TS↔Rust Planner Parity Gate**：验收规则经四轮复审 **Accepted / Frozen**（最终版 [TS_RUST_PARITY_GATE_V1.md](TS_RUST_PARITY_GATE_V1.md) @ `838cd9b`，2026-10-24）——对照对象与 case bundle（含双侧同一冻结 `plannerVersion` 输入）、逐字段映射（occurrence/group/atom/scoreEvent）、三层比较协议（指纹/结构/派生）、四类验收测试（A 敏感性/B 故障注入/C 拒绝型带规范码映射表/V 固定向量一致性）、差异分类（**Rust 整数 µs 必须 exact，容差仅限 TS legacyReference ms 且逐项归因**）、回归矩阵与迁移证据门槛。**冻结的是验收规则，不是迁移已通过。下一卡（R2-2）：parity harness 与固定用例落地**（按 §6 四类清单与 §7 回归矩阵在 TS 侧先落 harness 与冻结用例），**随后（R2-3）Rust planner 实施**——用独立 golden 真值验证两侧语义，须按 §8 交付全部证据后才允许 `RHYTHM_PLANNER=rust` 切换生产权威。
+**R2-1 Golden Semantic Differential & TS↔Rust Planner Parity Gate**：验收规则经四轮复审 **Accepted / Frozen**（最终版 [TS_RUST_PARITY_GATE_V1.md](TS_RUST_PARITY_GATE_V1.md) @ `838cd9b`，2026-10-24）——对照对象与 case bundle（含双侧同一冻结 `plannerVersion` 输入）、逐字段映射（occurrence/group/atom/scoreEvent）、三层比较协议（指纹/结构/派生）、四类验收测试（A 敏感性/B 故障注入/C 拒绝型带规范码映射表/V 固定向量一致性）、差异分类（**Rust 整数 µs 必须 exact，容差仅限 TS legacyReference ms 且逐项归因**）、回归矩阵与迁移证据门槛。**冻结的是验收规则，不是迁移已通过。**
+
+**R2-2 Parity Harness 与固定用例**：**CLOSED**（2026-10-25 用户批准，`f64e88d` 关闭；经四轮复审修复，历程与最终证据见 `R2_2_PARITY_HARNESS_IMPLEMENTATION_REPORT.md` §11）——TS 侧差分比较器、15 冻结 case、A/B/C/V 四类验收测试、真实谱门禁、16 份机器可读报告；G5 时间语义正式裁决为冻结协议（`TargetOnsetUs = CountInUs + roundHalfUp(offset)`）。
+
+**R2-3 Rust planner 实施**：**已获批进入**（2026-10-25）——尚未动工。验收靶场与判据执行器已就绪（R2-1 规则 + R2-2 harness）；须按 TS_RUST_PARITY_GATE_V1 §8 交付全部七条证据后才允许 `RHYTHM_PLANNER=rust` 切换生产权威。
 
 ---
 

@@ -160,4 +160,18 @@ npm run build && npm run selftest
 | runner fault 三路退出码 | unknown faultId=1 / 全 fault 批=0 / full=0 |
 | `npm run build` / `npm run selftest` | 通过 4.02s / 251 条 |
 
-**R2-2 关闭申请（二次更新）**：两项收尾（runner 隔离+分层状态、G5 文档同步）全处理，G5 裁决方向已获批准并完成文档同步。状态：`R2-2 TS-side parity harness implemented and tested`、`R2-3 Rust planner not started`、无权威切换、无 Rust 代码。**申请三次复审确认后关闭 R2-2。**
+**R2-2 关闭申请（二次更新）**：见 §11 关闭决定。
+
+---
+
+## 11. 关闭决定（2026-10-25，用户批准）
+
+**R2-2 正式关闭。** 用户（复审人）于第三次复审修复（f64e88d）后批准：① G5 时间语义裁决（冻结协议权威，`TargetOnsetUs = CountInUs + roundHalfUp(offset)`）维持有效；② R2-2 验收基建（比较器/门禁/配置哈希/重复键检查/fault 隔离/分层报告/G5 文档同步/数字口径）关闭。
+
+**复审历程**（提交递进）：`3084afb`（比较器+Schema+runner）→ `f43431a`（15 case+手工真值+V6 向量）→ `09e30ab`（A/B/C/V 验收）→ `604101f`（真实谱门禁+证据）→ 首轮复审四阻断 → `e6ee4a6`（门禁合取/配置哈希/重复键/G5 裁决）→ 二轮复审两收尾 → `a99710a`（fault 隔离/分层状态/G5 文档同步+CLI 解析 bug）→ 三轮复审三小修 → `f64e88d`（l2Status 引用/wireCompatible 解耦/G5 旧勘误退役/数字统一）→ **关闭批准**。
+
+**关闭时状态**：`R2-1 Design Frozen / Accepted`；`R2-2 TS-side parity harness + frozen cases: CLOSED (implemented, tested, reviewed ×4)`；`R2-3 Rust planner: APPROVED TO START (not yet started)`；生产权威未切换、无 Rust 代码。最终验证口径：vitest 368 passed / 3 skipped（未设 env）、125/125（设 env）、runner 15/15 case + 6/6 fault + 三路退出码正确、build 4.02s、selftest 251。
+
+**遗留至 R2-3**（全部为 Rust 侧）：TS↔Rust L1 相等（§4）、N-FP-V1 Rust 独立复现（§6 V 类）、C 类 Rust 码（§6 C 类）、差分双跑（`diffCandidates(expected, rustCandidate)`）、§8 七条迁移证据。
+
+**下一步：R2-3 Rust planner 实施**（用户已批准开工；按项目惯例待任务卡/实施拆分确认后动工；§8 证据全齐才允许 `RHYTHM_PLANNER=rust` 切换生产权威）。

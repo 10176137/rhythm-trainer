@@ -95,6 +95,6 @@ MusicXML
 
 - **已完成**：G0 真机四项、P1-2/P1-2B、P1-3、P1-4、R2-0（契约冻结 + A/B 修正）。前置条件正式状态（d7d4472 复审，2026-10-24）：**P6 CLOSED；P7 Contract CLOSED；TS↔Rust Golden 语义差分 / Parity Gate OPEN**（见 `R2_R3_ROUTE_DECISION.md` §5.1）。
 - **未启动**：R2 Rust planner，以及"**Rust 规划器输出 vs 独立 golden 真值**"的逐字段语义差分。注意：G1–G5 手工推导 golden 及针对 **TypeScript** 实现的差分测试已存在并通过（`GOLDEN_FIXTURES.md`）——尚未开始的只是 Rust 侧输出与这些真值的对照，不是整个项目都没有 golden 测试。
-- **已知后续卡**：R2-2 parity harness 与固定用例落地（先）→ R2-3 Rust planner 实施（后）——验收规则已由 R2-1 四轮复审 **Accepted/Frozen**（[TS_RUST_PARITY_GATE_V1.md](TS_RUST_PARITY_GATE_V1.md) @ 838cd9b：逐字段映射、三层比较协议、四类验收测试、迁移证据门槛）；P09 待发射任务持久化、多 Part Part 选择器（方案 B）、零输入
+- **已知后续卡**：**R2-3 Rust planner 实施（已获批，待任务卡）**——验收规则（R2-1 Frozen）与 TS 侧靶场（R2-2 CLOSED：`src/score-engine/parity/` 差分比较器 + 15 冻结 case + A/B/C/V 测试 + 真实谱门禁，见 [TS_RUST_PARITY_GATE_V1.md](TS_RUST_PARITY_GATE_V1.md) 与 `R2_2_PARITY_HARNESS_IMPLEMENTATION_REPORT.md`）均已就绪；P09 待发射任务持久化、多 Part Part 选择器（方案 B）、零输入
   `trustworthy` 标记。关于"AJV 独立 CI 校验"：不再单列后续卡——AJV 已在参考实现内直接编译两份已提交 Schema（schema-first，`schema_violation` 负例保证实现与 Schema 一致）；独立于参考实现的第二套 Schema 校验将由 R2 Rust planner 消费同一 Schema 时自然形成，其验收已并入 Parity Gate（N-FP-1 等）。
 - 历史细节：`R2_0_CONTRACT_FREEZE_REPORT.md`（§6–§11 含每轮审查的修复与证据、复审结论）。
