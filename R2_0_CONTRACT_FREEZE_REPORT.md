@@ -50,7 +50,7 @@
 - **Rust planner 未实现、未验证**——本卡通过的是契约测试，不是 planner 验证；
 - golden oracle 与 TS/Rust 差分框架是 R2 planner 的前置门，本卡只交付了 fingerprint 向量，不是 plan 语义差分；
 - ImportReport V1 表达冻结为"职责边界"（§3 文档），完整 report schema 未在本卡展开；
-- `Schema → ajv` 结构校验未引入（`validateScoreDocumentV1` 为手写闭合检查）；ajv 接线可在 R2 里加，不阻塞。
+- `Schema → ajv` 结构校验未引入（`validateScoreDocumentV1` 为手写闭合检查）；ajv 接线可在 R2 里加，不阻塞。**〔后记：已由 §8.1（R2-0A）完成——AJV 直接编译两份已提交 Schema 并接入 validator；此条为提交时的历史状态。〕**
 
 ---
 
@@ -88,7 +88,7 @@
 
 1. **Rust planner 与 TS↔Rust 差分**：本卡的向量是跨语言一致性基准，但 Rust 侧消费尚未存在——"contract tests passed" ≠ "planner verified"。
 2. **plan 语义 golden 差分**（GOLDEN_FIXTURES 的 plan 逐字段对照 Rust 输出）仍是 R2 planner 的前置门。
-3. ajv 或等价 validator 对两份 Schema 的自动校验接线（当前为手写闭合检查 + Schema 文档）。
+3. ~~ajv 或等价 validator 对两份 Schema 的自动校验接线~~ **已由 §8.1（R2-0A）完成**：`plan-fingerprint.ts` 现直接编译两份已提交 Schema 并接入两个 validator，schema-first 校验已接线——本条不再是未完成项，保留原文仅为历史对照（d7d4472 复审指出的前后矛盾，随 §11 修整）。
 4. ImportReport 的完整 V1 schema（本卡只冻结了职责边界与 capabilities 枚举）。
 5. P09 待发射任务持久化、多 Part Part 选择器（方案 B）、零输入 `trustworthy` 标记——前几张卡记录的后续项，均未动。
 
@@ -301,3 +301,30 @@ vitest **35 files / 280 tests**（契约测试 28→34：+科学计数法、+Big
 ## 10. 架构文档同步（审查后补）
 
 审查指出开发者架构文档基于 f9ab52fe、落后于 R2-0B。已新增 [audit-r1/docs/DEVELOPER_ARCHITECTURE.md](DEVELOPER_ARCHITECTURE.md)（同步至 1b48e8e），内容与当前代码一致：仓库布局、语义链（含 R2-0B 的 occurrence 语义 locator）、契约层四交付物、强制校验门（§3.1）、循环轮次语义（§3.2）、不变量 file:line 对照表（§3.3）、评分/输入链（标注"未因 R2-0 变化"）、测试矩阵与迁移状态（Rust planner 未启动）。已列入 README 文档索引。
+
+---
+
+## 11. 复审结论（d7d4472）：P6/P7 状态正式记录
+
+d7d4472（架构文档同步）**复审通过**——纯文档提交，未改代码与测试。复审要求的两处文档一致性修整随本节落实：
+
+1. 本报告 §5 第 3 条（ajv 接线"未完成"）与 §8.1 矛盾——已改为"已由 §8.1（R2-0A）完成"（见 §5 修订）。
+2. `DEVELOPER_ARCHITECTURE.md` §6 的"golden 语义差分未启动"已澄清为"**Rust 规划器输出与独立 golden 真值的对照**尚未启动"——G1–G5 手工推导真值及针对 TypeScript 的 golden 测试已存在并通过，不应让开发者误以为项目尚无 golden 测试。
+
+路线决策前置条件状态正式记录为（`R2_R3_ROUTE_DECISION.md` §5.1）：
+
+- **P6：CLOSED**（语言无关 JSON Schema + 字段约束 + 版本策略已交付）
+- **P7 Contract：CLOSED**（planFingerprintV1 规范化内容、JCS + SHA-256、plannerVersion、指纹输入已交付）
+- **R2 Golden Semantic Differential / TS↔Rust Parity Gate：OPEN**——**指纹契约验收 ≠ Rust 迁移验收**；已有指纹契约测试不等于两套规划器语义一致
+
+下一张卡 **R2-1: Golden Semantic Differential & TS↔Rust Planner Parity Gate**——先冻结验收规则，不提前写 Rust planner、不提前切换生产权威。核心交付物：
+
+1. **确定对照对象**：以 ScoreDocumentV1 + 完整练习配置为输入，明确 Rust planner 的语言无关输出，及其与 TS 侧 occurrences / groups / 评分事件 / 节奏 atoms 的对应。
+2. **冻结逐字段验收规则**：音符来源定位、音高、时值、顺序、小节、pass、和弦分组、练习范围、手别逐项核对；不得以总音符数相同、总时长接近或最终分数接近判定迁移成功。
+3. **明确两类真值的地位**：G1–G5 手工推导 golden 继续作为独立真值；TS 输出仅作 legacyReference 对照对象，不得取代手工真值成为权威。
+4. **冻结差异分类与容差**：默认严格比较；有理数语义精确相等；时间量化只遵循已冻结舍入规则；任何允许的微秒级差异必须明确归因，不得以通用容差掩盖语义差异。
+5. **冻结失败门槛**：固定指纹向量逐字节匹配；篡改输入与非法计划必须拒绝；重复段落、连音线、和弦、左右手、范围边界不得存在未解释差异；未通过门槛不得切换生产权威。
+
+113 小节真实谱继续进入回归矩阵验证大谱面兼容性，但 TS↔Rust 互相一致不构成正确性证明（两个实现可能共享同一语义错误）——权威仍是手工 golden。
+
+**完成标准**：任何开发者在开始实现 Rust planner 前，能明确知道输入是什么、输出比较哪些字段、哪些差异允许、哪些差异必须阻断、什么证据才能宣布迁移通过。

@@ -210,6 +210,21 @@ R3 之后，Rust importer 输出**同一个 `ScoreDocumentV1`**，TS importer �
 
 P1–P5 属于 R1 收尾，P6–P8 属于 R2 设计。
 
+### 5.1 前置条件状态（2026-10-24，d7d4472 复审后正式记录）
+
+| # | 状态 | 依据 |
+|---|---|---|
+| P1 | CLOSED | 双仓 git 版本控制（R1 收尾） |
+| P2 | CLOSED | G1–G5 手工推导 golden + 逐字段差分测试落地（e33f529，`GOLDEN_FIXTURES.md`）；TS 输出定位为 legacyReference |
+| P3 | CLOSED | `source.xmlId` 唯一性校验 + `duplicate_xml_id` 阻断（R1 收尾） |
+| P4 | CLOSED | hand 归属显式 `HandMappingV1`，谱号推断被拒绝（P1-4） |
+| P5 | CLOSED | 多 part 范围/手别语义冻结（`HAND_AND_MULTIPART_CONTRACT.md`） |
+| P6 | **CLOSED** | ScoreDocumentV1 语言无关 JSON Schema + 字段约束 + 版本策略（R2-0，`SCOREDOCUMENT_V1_CONTRACT.md`） |
+| P7 | **Contract CLOSED / Parity Gate OPEN** | planFingerprintV1 定义（规范化内容、JCS + SHA-256、plannerVersion、指纹输入）+ 5 固定哈希向量 + AJV schema-first 校验已交付（f9ab52f→1b48e8e）；**"Rust 规划器输出 vs 独立 golden 真值"的差分门仍开放——契约验收不等于迁移验收** |
+| P8 | OPEN（随 R2 planner 交付） | 目标校验加固的完整实现属 R2 planner 范围；其中指纹/配对/文档校验部分已由 R2-0/R2-0B 的强制门禁（`planFingerprintV1` 入口）先行交付 |
+
+**下一张卡：R2-1 Golden Semantic Differential & TS↔Rust Planner Parity Gate**——先冻结验收规则（对照对象、逐字段验收规则、真值地位、差异分类与容差、失败门槛），不提前开始 Rust planner 实现，不提前切换生产权威。卡定义见 `R2_0_CONTRACT_FREEZE_REPORT.md` §11。
+
 ---
 
 ## 6. 迁移边界（哪些动、哪些不动）

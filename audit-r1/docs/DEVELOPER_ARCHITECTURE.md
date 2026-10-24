@@ -93,8 +93,8 @@ MusicXML
 
 ## 6. 迁移状态与未完成项
 
-- **已完成**：G0 真机四项、P1-2/P1-2B、P1-3、P1-4、R2-0（契约冻结 + A/B 修正）。
-- **未启动**：R2 Rust planner、golden 语义差分、TS↔Rust 对照。
-- **已知后续卡**：P09 待发射任务持久化、多 Part Part 选择器（方案 B）、零输入
+- **已完成**：G0 真机四项、P1-2/P1-2B、P1-3、P1-4、R2-0（契约冻结 + A/B 修正）。前置条件正式状态（d7d4472 复审，2026-10-24）：**P6 CLOSED；P7 Contract CLOSED；TS↔Rust Golden 语义差分 / Parity Gate OPEN**（见 `R2_R3_ROUTE_DECISION.md` §5.1）。
+- **未启动**：R2 Rust planner，以及"**Rust 规划器输出 vs 独立 golden 真值**"的逐字段语义差分。注意：G1–G5 手工推导 golden 及针对 **TypeScript** 实现的差分测试已存在并通过（`GOLDEN_FIXTURES.md`）——尚未开始的只是 Rust 侧输出与这些真值的对照，不是整个项目都没有 golden 测试。
+- **已知后续卡**：R2-1（Golden Semantic Differential & TS↔Rust Planner Parity Gate，验收门槛设计）、P09 待发射任务持久化、多 Part Part 选择器（方案 B）、零输入
   `trustworthy` 标记、ajv 独立接线（当前 AJV 在参考实现内直接使用已提交 Schema）。
-- 历史细节：`R2_0_CONTRACT_FREEZE_REPORT.md`（§6-§9 含每轮审查的修复与证据）。
+- 历史细节：`R2_0_CONTRACT_FREEZE_REPORT.md`（§6–§11 含每轮审查的修复与证据、复审结论）。
