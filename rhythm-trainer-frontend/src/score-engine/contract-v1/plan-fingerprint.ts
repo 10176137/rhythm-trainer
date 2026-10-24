@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
 import jcsModule from 'canonicalize';
+import Ajv2020 from 'ajv/dist/2020';
+import scoreDocumentSchema from '../../../../audit-r1/contracts/score-document-v1.schema.json';
+import planFingerprintPayloadSchema from '../../../../audit-r1/contracts/plan-fingerprint-payload-v1.schema.json';
 import type { ScoreDocument, ScoreEvent, ImportReport } from '../domain/types';
 import type { PlaybackGroup, PlaybackPlan } from '../domain/types';
 import type { HandMappingV1, PracticeHand } from '../scope/practice-scope';
@@ -189,8 +192,9 @@ export function projectScoreDocumentV1(
   const capabilities: string[] = [];
   for (const capability of document.capabilities) {
     if (!CAPABILITY_ENUM.has(capability)) {
-      issues.push({ code: 'unknown_capability', message: `capability not in frozen enum: ${capability}` });
-      continue;
+      // The enum is closed: an unknown value is a contract break, not a
+      // droppable warning. Bump the enum version instead.
+      throw new ContractError('UNKNOWN_CAPABILITY', `capability not in frozen enum: ${capability}`);
     }
     capabilities.push(capability);
   }
@@ -200,7 +204,9 @@ export function projectScoreDocumentV1(
   capabilities.sort();
 
   const parts = document.parts.map((part) => {
-    if (partIds.has(part.id)) issues.push({ code: 'duplicate_part_id', message: `partId duplicated: ${part.id}` });
+    if (partIds.has(part.id)) {
+      throw new ContractError('DUPLICATE_PART_ID', `partId duplicated: ${part.id}`);
+    }
     partIds.add(part.id);
     return {
       partId: part.id,
@@ -339,9 +345,25 @@ function projectEvent(event: ScoreEvent, eventIds: Set<string>, xmlIds: Set<stri
   };
 }
 
-// --- Full closed validation (ScoreDocumentV1) ------------------------------
+// --- Schema validation (AJV, JSON Schema Draft 2020-12) --------------------
+// The two committed schemas are the AUTHORITY: the reference validators run
+// them first, then add the semantic checks a schema cannot express. Keeping
+// the schemas in the loop is what makes "schema and implementation agree" an
+// automated property instead of a claim.
 
 type Issue = { code: string; message: string };
+
+const ajv = new Ajv2020({ allErrors: true, strict: false });
+const validateScoreSchema = ajv.compile(scoreDocumentSchema);
+const validatePayloadSchema = ajv.compile(planFingerprintPayloadSchema);
+
+function schemaIssues(errors: Array<{ instancePath: string; message?: string }> | null | undefined): Issue[] {
+  if (!errors) return [];
+  return errors.map((error) => ({
+    code: 'schema_violation',
+    message: `${error.instancePath || '/'} ${error.message ?? ''}`.trim(),
+  }));
+}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -388,6 +410,8 @@ export function validateScoreDocumentV1(dto: unknown): Issue[] {
   if (dto.schemaVersion !== 1) {
     return [{ code: 'unknown_schema_version', message: `schemaVersion must be 1, got ${String(dto.schemaVersion)}` }];
   }
+  // Schema-first: the committed JSON Schema is the structural authority.
+  if (!validateScoreSchema(dto)) issues.push(...schemaIssues(validateScoreSchema.errors));
   checkClosedKeys(dto, SCORE_DOC_ALLOWED_ROOT, 'root', issues);
   checkRequiredKeys(dto, SCORE_DOC_REQUIRED_ROOT, 'root', issues);
   for (const key of ['normalizerVersion', 'supportProfileVersion']) {
@@ -639,6 +663,20 @@ type PlanOccurrenceLike = {
   isTieOnset?: boolean;
 };
 
+/** Deterministic order for a hand mapping (see the payload scope comment). */
+function canonicalHandMapping(mapping: HandMappingV1): HandMappingV1 {
+  const comparePartIds = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  return {
+    ...mapping,
+    parts: [...mapping.parts]
+      .map((part) => ({
+        ...part,
+        staves: [...part.staves].sort((a, b) => a.staffNumber - b.staffNumber),
+      }))
+      .sort((a, b) => comparePartIds(a.partId, b.partId)),
+  };
+}
+
 export function buildPlanFingerprintPayloadV1(input: {
   plannerVersion: string;
   scoreRevisionId: string;
@@ -714,7 +752,11 @@ export function buildPlanFingerprintPayloadV1(input: {
       partId: input.partId,
       range: { ...input.range },
       hand: input.hand,
-      handMapping: input.handMapping,
+      // The mapping is a SET of assignments: array order carries no semantics,
+      // so the payload canonicalizes it (parts by partId, staves by staff
+      // number). Equivalent mappings in any input order produce identical
+      // fingerprints.
+      handMapping: canonicalHandMapping(input.handMapping),
     },
     repeatSelection: { ...input.repeatSelection },
     tempo: {
@@ -734,6 +776,8 @@ export function validatePlanFingerprintPayloadV1(payload: unknown): Issue[] {
   if (payload.fingerprintSchemaVersion !== 1) {
     return [{ code: 'unknown_schema_version', message: `fingerprintSchemaVersion must be 1, got ${String(payload.fingerprintSchemaVersion)}` }];
   }
+  // Schema-first: the committed JSON Schema is the structural authority.
+  if (!validatePayloadSchema(payload)) issues.push(...schemaIssues(validatePayloadSchema.errors));
   checkClosedKeys(payload, ['fingerprintSchemaVersion', 'plannerVersion', 'scoreRevisionId', 'normalizerVersion', 'supportProfileVersion', 'scope', 'repeatSelection', 'tempo', 'targetGroups'], 'payload', issues);
   checkRequiredKeys(payload, ['fingerprintSchemaVersion', 'plannerVersion', 'scoreRevisionId', 'normalizerVersion', 'supportProfileVersion', 'scope', 'tempo', 'targetGroups'], 'payload', issues);
   for (const key of ['plannerVersion', 'normalizerVersion', 'supportProfileVersion']) {
@@ -825,7 +869,7 @@ export function validatePlanFingerprintPayloadV1(payload: unknown): Issue[] {
     return issues;
   }
   const groupIndexes = new Set<number>();
-  for (const group of payload.targetGroups) {
+  for (const [groupPosition, group] of payload.targetGroups.entries()) {
     if (!isPlainObject(group)) { issues.push({ code: 'invalid_group', message: 'targetGroup must be an object' }); continue; }
     checkClosedKeys(group, ['groupIndex', 'passIndex', 'bar', 'onsetBeatFromRangeStart', 'durationBeat', 'beatInMeasure', 'staffNumbers', 'voiceIds', 'members'], 'targetGroup', issues);
     if (typeof group.groupIndex !== 'number' || !Number.isInteger(group.groupIndex) || group.groupIndex < 0) {
@@ -834,6 +878,12 @@ export function validatePlanFingerprintPayloadV1(payload: unknown): Issue[] {
       issues.push({ code: 'duplicate_group_index', message: `groupIndex duplicated: ${group.groupIndex}` });
     } else {
       groupIndexes.add(group.groupIndex);
+    }
+    // The index must be the array position: the payload's group order IS the
+    // playback order, so a reordered or sparse numbering is a contract break.
+    if (typeof group.groupIndex === 'number' && Number.isInteger(group.groupIndex)
+      && group.groupIndex !== groupPosition) {
+      issues.push({ code: 'group_index_out_of_sequence', message: `groupIndex must equal its array position (position ${groupPosition}, got ${group.groupIndex})` });
     }
     checkPositiveInteger(group.passIndex, 'group.passIndex', issues, 0);
     checkPositiveInteger(group.bar, 'group.bar', issues, 1);
@@ -850,6 +900,8 @@ export function validatePlanFingerprintPayloadV1(payload: unknown): Issue[] {
       issues.push({ code: 'invalid_group', message: 'members must be a non-empty array' });
       continue;
     }
+    const locatorKeys = new Set<string>();
+    let longestMember: RationalV1 | null = null;
     for (const member of group.members) {
       if (!isPlainObject(member)) { issues.push({ code: 'invalid_member', message: 'member must be an object' }); continue; }
       checkClosedKeys(member, ['sourceLocator', 'pitch', 'durationBeat', 'isTieOnset'], 'member', issues);
@@ -862,6 +914,16 @@ export function validatePlanFingerprintPayloadV1(payload: unknown): Issue[] {
         }
         checkPositiveInteger(member.sourceLocator.measureOrdinal, 'locator.measureOrdinal', issues, 1);
         checkPositiveInteger(member.sourceOrdinal ?? member.sourceLocator.sourceOrdinal, 'locator.sourceOrdinal', issues, 1);
+        // Two members of one onset group must not claim the same notated
+        // source note; that means a duplicated/fabricated member.
+        const locatorKey = isPlainObject(member.sourceLocator)
+          ? `${member.sourceLocator.partId}:${member.sourceLocator.measureOrdinal}:${member.sourceLocator.sourceOrdinal}:${member.sourceLocator.voiceId ?? ''}`
+          : '';
+        if (locatorKey && locatorKeys.has(locatorKey)) {
+          issues.push({ code: 'duplicate_member_locator', message: `two members of one group claim the same source locator: ${locatorKey}` });
+        } else if (locatorKey) {
+          locatorKeys.add(locatorKey);
+        }
       }
       if (!isPlainObject(member.pitch)
         || typeof member.pitch.midiNote !== 'number'
@@ -871,6 +933,22 @@ export function validatePlanFingerprintPayloadV1(payload: unknown): Issue[] {
         issues.push({ code: 'invalid_member', message: 'member.pitch must be a MIDI note and spelling' });
       }
       checkRational(member.durationBeat, 'member.durationBeat', issues);
+      if (isCanonicalRationalV1(member.durationBeat)) {
+        if (longestMember === null
+          || member.durationBeat.numerator * longestMember.denominator > longestMember.numerator * member.durationBeat.denominator) {
+          longestMember = member.durationBeat;
+        }
+      }
+    }
+    // The group's nominal duration is the LONGEST member (the atom records
+    // group.durationBeat = max); anything else is a tampered plan.
+    if (isCanonicalRationalV1(group.durationBeat) && longestMember
+      && (group.durationBeat.numerator !== longestMember.numerator
+        || group.durationBeat.denominator !== longestMember.denominator)) {
+      issues.push({
+        code: 'group_duration_mismatch',
+        message: `group ${String(group.groupIndex)} duration ${group.durationBeat.numerator}/${group.durationBeat.denominator} != longest member ${longestMember.numerator}/${longestMember.denominator}`,
+      });
     }
   }
   return issues;

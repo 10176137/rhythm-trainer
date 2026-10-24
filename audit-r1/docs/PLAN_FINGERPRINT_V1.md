@@ -29,7 +29,7 @@
 **必含**（任何一项变化 ⇒ 指纹变化，均有测试断言）：
 `fingerprintSchemaVersion`、`plannerVersion`、`scoreRevisionId`、`normalizerVersion`、`supportProfileVersion`、scope（partId、range、hand、**用户确认的** HandMappingV1，`clef-heuristic` 不得进入）、repeatSelection、tempo（Rational BPM、PPQ、Rational count-in、timeOrigin）、**实际生成的有序 target groups**（顺序 index、pass、bar、相对 onset、组时值、beat-in-measure、staff/voice、以及每个 member 的语义 locator + pitch + 单音时值 + tie 标志）。
 
-**必排**：当前时间、随机数、设备/MIDI 输入、演奏表现与成绩、文件路径/文件名、UI 状态、OSMD anchor、诊断文案、key 插入顺序、临时 `planId`/`occurrenceId`/`groupId` 字符串（用语义 locator 替代）、墙上时钟。
+**必排**：当前时间、随机数、设备/MIDI 输入、演奏表现与成绩、文件路径/文件名、UI 状态、OSMD anchor、诊断文案、key 插入顺序、临时 `planId`/`occurrenceId`/`groupId` 字符串（用语义 locator 替代）、墙上时钟、**HandMappingV1.parts 与 staves 的数组输入顺序**（映射是集合语义：入口按 partId/staffNumber 确定性排序，交换等价映射不改变指纹）。
 
 **时间量化**：TargetSchedule 需要整数时间时用**整数微秒**，`µs = floor((beat.num × 60_000_000 × bpm.den + bpm.num × beat.den / 2) / (beat.den × bpm.num))`（非负 round-half-up），**中间乘积用 BigInt 精确运算**，不依赖 IEEE-754（乘积超过 2^53 时浮点会偏离精确半数规则；参考实现与测试都有超界用例）。规则版本化（`time-conversion-v1`），TS 参考实现与未来 Rust 实现共用同一批测试向量。不可精确落到 PPQ tick 网格的目标沿用现有 `tick_grid_rounding` 阻断，不得悄悄改节奏。
 
@@ -49,7 +49,7 @@ sourceLocator = { partId, measureOrdinal, sourceOrdinal, voiceId? }
 
 ## 6. 人工核对向量（跨语言基准）
 
-5 组固定向量提交于 [`contracts/fixtures/plan-fingerprint.golden.json`](../contracts/fixtures/plan-fingerprint.golden.json)，每个向量含 payload、规范化 JSON 字节（`expectedCanonical`）与期望 SHA-256（`expectedFingerprint`）。期望值由独立生成脚本（raw `canonicalize` + Node `crypto`）产出并与参考实现交叉比对，分歧即中止；测试直接断言等于**提交的固定哈希**，不是运行时 oracle：
+5 组固定向量提交于 [`contracts/test-vectors/plan-fingerprint-v1.json`](../contracts/test-vectors/plan-fingerprint-v1.json)，每个向量含 payload、规范化 JSON 字节（`expectedCanonical`）与期望 SHA-256（`expectedFingerprint`）。期望值由独立生成脚本（raw `canonicalize` + Node `crypto`）产出并与参考实现交叉比对，分歧即中止；测试直接断言等于**提交的固定哈希**，不是运行时 oracle：
 
 | 向量 | 内容 | 期望指纹 |
 |---|---|---|

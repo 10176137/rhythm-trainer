@@ -111,7 +111,7 @@
 
 ### 7.2 P1-02 固定哈希向量（提交文件 + 硬断言）
 
-- 新 fixture：`audit-r1/contracts/fixtures/plan-fingerprint.golden.json`，含 5 个向量的 `payload`、`expectedCanonical`（JCS 规范化字节）与 `expectedFingerprint`。
+- 新 fixture：`audit-r1/contracts/test-vectors/plan-fingerprint-v1.json`，含 5 个向量的 `payload`、`expectedCanonical`（JCS 规范化字节）与 `expectedFingerprint`。
 - 生成走双路径：独立脚本（raw `canonicalize` + Node `crypto`）与参考实现交叉比对，分歧即中止（`contract-v1/generate-golden.ts`，带 `ts-nocheck`，仅构建用）。
 - 测试**直接断言等于提交的固定哈希**（非运行时 oracle），并验证：canonical 字节可 round-trip、sha256(提交字节)===提交哈希、参考实现===提交哈希、5 向量两两不同。
 - 冻结值：
@@ -148,3 +148,71 @@ vitest **35 files / 280 tests**（契约测试 28→34：+科学计数法、+Big
 
 - `PLAN_FINGERPRINT_V1.md` §6 改为指向提交的 fixture 与 5 个完整冻结哈希；§3 时间量化改写为 BigInt 精确公式。
 - `SCOREDOCUMENT_V1_CONTRACT.md` §2 补科学计数法规则。
+
+
+---
+
+## 8. R2-0A 验收修正：Schema 自动化校验、向量规范化路径、顺序语义与可复现性
+
+依据任务卡 R2-0A 对 9e3b2ab 的增量要求逐项落实。§7 已完成的项（BigInt 微秒、科学计数法、Document/Report 配对、语义 locator、fail-closed 入口）不重复；本节只列新增改动与全部验收证据。
+
+### 8.1 A：AJV Schema 自动化校验（schema-first）
+
+- `plan-fingerprint.ts` 现在直接 import 两份**已提交的 Schema**（`audit-r1/contracts/*.schema.json`），用 **AJV（ajv/dist/2020，JSON Schema Draft 2020-12）** 编译；`validateScoreDocumentV1` 与 `validatePlanFingerprintPayloadV1` 先跑 Schema（违规映射为 `schema_violation` + instancePath），再叠加 Schema 表达不了的语义检查。**Schema 是权威，实现与 Schema 的一致性由此自动化，不再只是声明。**
+- 新增语义检查：`groupIndex` 必须等于数组下标（`group_index_out_of_sequence`）、组时值 === 组内最长 member 时值（`group_duration_mismatch`）、同组内 member locator 不得重复（`duplicate_member_locator`）。
+- 投影 fail-closed 收紧：重复 `partId`、未知 capability 从"记 issue 继续"改为**直接抛错**（`DUPLICATE_PART_ID` / `UNKNOWN_CAPABILITY`）——闭合枚举下的未知值是契约破裂，不是可丢弃的警告。
+- 依赖：`ajv` 加入 devDependencies（仅 contract 参考实现引用；引擎服务与生产 UI 不依赖它）。
+
+### 8.2 B：向量文件规范化路径
+
+- 文件移至任务卡指定路径：`audit-r1/contracts/test-vectors/plan-fingerprint-v1.json`（原 `contracts/fixtures/plan-fingerprint.golden.json`，git mv 保留历史）。
+- 重新生成验证：加入 handMapping 确定性排序后重跑生成器，**5 个哈希逐字节不变**（V-single `0d798c31…`、V-rest-gap `6771e36b…`、V-chord `c922c421…`、V-tie `75298b49a…`、V-hand `4eadaffd…`）——现有向量本就是排序后的形态，排序规则是行为澄清而非哈希变更，**无需升级 fingerprintSchemaVersion**。
+- 文档全部改指新路径（PLAN_FINGERPRINT_V1.md §6、本报告 §7.2 的历史记录保留原文并已在 §8 更正引用）。
+
+### 8.3 C：顺序语义与 ID 编码不变性
+
+- `buildPlanFingerprintPayloadV1` 对 `HandMappingV1` 做**确定性排序**（parts 按 partId、staves 按 staffNumber）并在契约文档声明"映射是集合语义"。
+- 新测试：
+  - **交换等价映射**（staves 逆序输入）→ 指纹不变；
+  - **内部 ID 编码不变性**：一致重命名所有 `occurrenceId`/`scoreEventId`/`groupId`/`planId`（不同前缀/格式）且语义来源不动 → 指纹逐字节相同；
+  - **真实语义变化**（member 音高 +1）→ 指纹变化。
+
+### 8.4 F：真实谱回归改环境变量
+
+- 测试路径改为 `process.env.RHYTHM_REAL_SCORE_PATH`；未设置或文件不存在 → `it.skipIf` **跳过**（不是失败也不是通过）。
+- 本机验证两种模式都跑过（见 §8.6 执行记录）。
+
+### 8.5 修改文件与位置
+
+| 文件 | 改动 |
+|---|---|
+| `contract-v1/plan-fingerprint.ts` | AJV 编译两份 Schema 并接入两个 validator；groupIndex 序列/组时值/重复 locator 语义检查；`canonicalHandMapping` 确定性排序；投影对重复 partId/未知 capability 抛错 |
+| `contract-v1/contract-v1.test.ts` | +7 测试（Schema violation ×2、投影抛错、payload 语义负例、ID 编码不变性、音高篡改、映射顺序不变性）；真实谱改环境变量；向量路径更新 |
+| `contract-v1/generate-golden.ts` | 输出路径改 test-vectors |
+| `audit-r1/contracts/test-vectors/plan-fingerprint-v1.json` | 由 fixtures 路径 git mv 而来，内容未变 |
+| `audit-r1/docs/PLAN_FINGERPRINT_V1.md` | 向量路径、映射顺序语义、（§3 时间量化与 §6 哈希表已在上轮更新） |
+| `package.json` / lock | devDependency `ajv` |
+
+### 8.6 执行记录（全部实跑，区分通过/跳过）
+
+| 命令 | 环境 | 结果 |
+|---|---|---|
+| `npx vitest run`（全量） | **未设置** RHYTHM_REAL_SCORE_PATH（模拟干净克隆） | **36 files / 286 passed / 1 skipped**（契约文件 40 passed + 1 skipped） |
+| `RHYTHM_REAL_SCORE_PATH=… npx vitest run src/score-engine/contract-v1` | 设置真实谱 | **41 passed / 0 skipped**（113 小节回归实际执行：投影 + validateScoreDocumentV1 零 issue + capabilities 5 枚举 + 指纹稳定） |
+| `npm run build`（tsc -b && vite build） | — | 通过 4.60s |
+| `npm run selftest` | — | 通过，251 条断言 |
+| `cargo test --target x86_64-p64-windows-gnu` | — | **110**（6 个 test binary 全 ok；本卡零 Rust 改动） |
+
+**跳过项**：仅"113 小节真实谱回归"在未设置环境变量时跳过；这是设计行为，**不计为通过**。
+
+### 8.7 DoD 对照
+
+- [x] 两份 Schema 与参考实现的一致性自动化验证（AJV 直接编译已提交 Schema + schema_violation 负例）
+- [x] fingerprint 入口完整校验、非法 payload fail-closed（含新增 groupIndex/组时值/重复 locator）
+- [x] 五个 golden vectors 固定 canonical JSON + 固定哈希断言（重生成后哈希不变）
+- [x] 来源定位符独立于内部 ID 编码（重命名全部内部 ID → 指纹不变，测试证明）
+- [x] Rational/微秒精度边界（BigInt + 科学计数法，§7.4 已交付，本轮无回归）
+- [x] Document/Report 指纹错配拒绝（§7.5 已交付）
+- [x] 干净环境可运行常规测试（286 passed / 1 skipped，唯一 skipped 是可选真实谱回归）
+- [x] 实施报告与代码、测试数字一致
+- [x] **Rust planner 仍未启动**

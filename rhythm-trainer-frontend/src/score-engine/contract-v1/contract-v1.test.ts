@@ -20,7 +20,7 @@ import {
 
 const FIXTURE_ROOT = new URL('../../../../audit-r1/fixtures/', import.meta.url);
 const GOLDEN = JSON.parse(readFileSync(
-  new URL('../../../../audit-r1/contracts/fixtures/plan-fingerprint.golden.json', import.meta.url),
+  new URL('../../../../audit-r1/contracts/test-vectors/plan-fingerprint-v1.json', import.meta.url),
   'utf8',
 )) as {
   vectors: Record<string, { payload: unknown; expectedCanonical: string; expectedFingerprint: string }>;
@@ -190,6 +190,41 @@ describe('validateScoreDocumentV1 (full closed validation)', () => {
     expect(validateScoreDocumentV1({ schemaVersion: 1, extra: true }).map((issue) => issue.code)).toContain('unexpected_field');
   });
 
+  it('schema violations surface as schema_violation (AJV against the committed schema)', () => {
+    const result = importMusicXml(fixture('g1_single_voice.musicxml'), { fileName: 'g1.musicxml' });
+    const projected = projectScoreDocumentV1(result.scoreDocument!, result.importReport);
+    // Nested unexpected field.
+    const nestedExtra = JSON.parse(JSON.stringify(projected.dto));
+    (nestedExtra.parts as Array<Record<string, unknown>>)[0].oops = 1;
+    expect(validateScoreDocumentV1(nestedExtra).map((issue) => issue.code)).toContain('schema_violation');
+    // Wrong type deep in the tree.
+    const wrongType = JSON.parse(JSON.stringify(projected.dto));
+    const parts = wrongType.parts as Array<{ measures: Array<{ ordinal: unknown }> }>;
+    parts[0].measures[0].ordinal = 'one';
+    expect(validateScoreDocumentV1(wrongType).map((issue) => issue.code)).toContain('schema_violation');
+    // Enum violation (measure capability outside chords|tuplets).
+    const badEnum = JSON.parse(JSON.stringify(projected.dto));
+    const parts2 = badEnum.parts as Array<{ measures: Array<{ capabilities: string[] }> }>;
+    parts2[0].measures[0].capabilities = ['grace'];
+    expect(validateScoreDocumentV1(badEnum).map((issue) => issue.code)).toContain('schema_violation');
+  });
+
+  it('projection throws fail-closed on duplicate partId and unknown capability', () => {
+    const result = importMusicXml(fixture('g1_single_voice.musicxml'), { fileName: 'g1.musicxml' });
+    const withUnknownCapability = {
+      ...result.scoreDocument!,
+      capabilities: [...result.scoreDocument!.capabilities, 'some_future_capability'],
+    };
+    expect(() => projectScoreDocumentV1(withUnknownCapability, result.importReport))
+      .toThrowError(/not in frozen enum/);
+    const withDuplicatePart = JSON.parse(JSON.stringify(result.scoreDocument!));
+    (withDuplicatePart.parts as unknown[]).push(
+      JSON.parse(JSON.stringify((withDuplicatePart.parts as unknown[])[0])),
+    );
+    expect(() => projectScoreDocumentV1(withDuplicatePart, result.importReport))
+      .toThrowError(/partId duplicated/);
+  });
+
   it('rejects unreduced rationals and duplicate identities deep in the tree', () => {
     const result = importMusicXml(fixture('g1_single_voice.musicxml'), { fileName: 'g1.musicxml' });
     const projected = projectScoreDocumentV1(result.scoreDocument!, result.importReport);
@@ -240,6 +275,34 @@ describe('validatePlanFingerprintPayloadV1 (full closed validation)', () => {
     const empty = JSON.parse(JSON.stringify(golden));
     empty.targetGroups = [];
     expect(validatePlanFingerprintPayloadV1(empty).map((issue) => issue.code)).toContain('empty_plan');
+  });
+
+  it('rejects out-of-sequence groupIndex, group-duration != max member, duplicate member locator', () => {
+    const renumbered = JSON.parse(JSON.stringify(golden));
+    renumbered.targetGroups[0].groupIndex = 7;
+    const codes = validatePlanFingerprintPayloadV1(renumbered).map((issue) => issue.code);
+    expect(codes).toContain('group_index_out_of_sequence');
+
+    const chordVector = GOLDEN.vectors['V-chord'].payload as Record<string, never>;
+    const tamperedDuration = JSON.parse(JSON.stringify(chordVector));
+    // Group max is 2/1 (the G4); claim 3/1 instead.
+    tamperedDuration.targetGroups[0].durationBeat = { numerator: 3, denominator: 1 };
+    expect(validatePlanFingerprintPayloadV1(tamperedDuration).map((issue) => issue.code))
+      .toContain('group_duration_mismatch');
+
+    const duplicatedMember = JSON.parse(JSON.stringify(chordVector));
+    duplicatedMember.targetGroups[0].members[1].sourceLocator.sourceOrdinal =
+      duplicatedMember.targetGroups[0].members[0].sourceLocator.sourceOrdinal;
+    expect(validatePlanFingerprintPayloadV1(duplicatedMember).map((issue) => issue.code))
+      .toContain('duplicate_member_locator');
+  });
+
+  it('schema violations surface as schema_violation (AJV against the committed schema)', () => {
+    const badHand = JSON.parse(JSON.stringify(golden));
+    badHand.scope.hand = 'left';
+    badHand.ticksPerQuarter = '960';
+    const codes = validatePlanFingerprintPayloadV1(badHand).map((issue) => issue.code);
+    expect(codes).toContain('schema_violation');
   });
 });
 
@@ -298,6 +361,62 @@ describe('planFingerprintV1 semantics', () => {
     expect(first.measureOrdinal).toBe(1);
     expect(first.sourceOrdinal).toBeGreaterThanOrEqual(1);
   });
+
+  it('changing internal ID encodings without changing semantic sources leaves the fingerprint identical', () => {
+    const plan = basePlan();
+    const original = computePlanFingerprintV1(payloadFor(plan));
+    // Re-encode every runtime ID (different prefix/format) while keeping the
+    // semantic source fields untouched. The builder looks occurrences up by
+    // scoreEventId, so both sides are renamed consistently.
+    const renamed = JSON.parse(JSON.stringify(plan)) as typeof plan;
+    for (const occurrence of renamed.occurrences) {
+      occurrence.occurrenceId = `zz-${occurrence.occurrenceId}`;
+      occurrence.scoreEventId = `zz/${occurrence.scoreEventId}`;
+    }
+    for (const group of renamed.groups) {
+      group.groupId = `zz-${group.groupId}`;
+      group.occurrenceIds = group.occurrenceIds.map((id) => `zz-${id}`);
+      group.scoreEventIds = group.scoreEventIds.map((id) => `zz/${id}`);
+    }
+    renamed.planId = 'plan:totally-different-encoding';
+    const renamedFingerprint = computePlanFingerprintV1(payloadFor(renamed));
+    expect(renamedFingerprint).toBe(original);
+  });
+
+  it('a real semantic change (pitch) changes the fingerprint', () => {
+    const plan = basePlan();
+    const original = computePlanFingerprintV1(payloadFor(plan));
+    const tampered = JSON.parse(JSON.stringify(plan)) as typeof plan;
+    for (const occurrence of tampered.occurrences) {
+      if (occurrence.pitch) occurrence.pitch = { ...occurrence.pitch, midiNote: occurrence.pitch.midiNote! + 1 };
+    }
+    expect(computePlanFingerprintV1(payloadFor(tampered))).not.toBe(original);
+  });
+
+  it('hand mapping input order does not change the fingerprint (sets, not lists)', () => {
+    const plan = basePlan();
+    const sorted = computePlanFingerprintV1(payloadFor(plan, {
+      scope: {
+        ...BASE_SCOPE,
+        hand: 'both',
+        handMapping: buildUserHandMapping('P1', [
+          { staffNumber: 1, hand: 'right' },
+          { staffNumber: 2, hand: 'left' },
+        ]),
+      },
+    }));
+    const swapped = computePlanFingerprintV1(payloadFor(plan, {
+      scope: {
+        ...BASE_SCOPE,
+        hand: 'both',
+        handMapping: buildUserHandMapping('P1', [
+          { staffNumber: 2, hand: 'left' },
+          { staffNumber: 1, hand: 'right' },
+        ]),
+      },
+    }));
+    expect(swapped).toBe(sorted);
+  });
 });
 
 describe('committed golden vectors (frozen hashes)', () => {
@@ -343,9 +462,12 @@ describe('committed golden vectors (frozen hashes)', () => {
 
 // --- Real-score regression (optional local file; skipped when absent) -------
 
-describe('113-bar real score projection (local, skipped when file absent)', () => {
-  const scorePath = 'D:/123/score-latest.musicxml';
-  const hasFile = existsSync(scorePath);
+// Optional local regression: set RHYTHM_REAL_SCORE_PATH to a private real
+// score to run it. Without the variable the suite stays green in a clean
+// clone/CI; a skipped run is NOT a passed run and is never reported as one.
+describe('113-bar real score projection (optional local regression)', () => {
+  const scorePath = process.env.RHYTHM_REAL_SCORE_PATH ?? '';
+  const hasFile = scorePath !== '' && existsSync(scorePath);
   const xml = hasFile ? readFileSync(scorePath, 'utf8') : null;
 
   it.skipIf(!hasFile)('projects successfully, validates cleanly, and fingerprints a plan stably', () => {

@@ -77,5 +77,5 @@ for (const [name, payload] of Object.entries(vectors)) {
   out.vectors[name] = { payload, expectedCanonical: canonical, expectedFingerprint: fingerprint };
 }
 mkdirSync('D:/123/audit-r1/contracts/fixtures', { recursive: true });
-writeFileSync('D:/123/audit-r1/contracts/fixtures/plan-fingerprint.golden.json', JSON.stringify(out, null, 2) + '\n');
+writeFileSync('D:/123/audit-r1/contracts/test-vectors/plan-fingerprint-v1.json', JSON.stringify(out, null, 2) + '\n');
 console.log('golden written:', Object.entries(out.vectors).map(([key, value]) => `${key}=${value.expectedFingerprint.slice(0, 24)}…`).join(' '));
