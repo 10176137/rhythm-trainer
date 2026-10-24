@@ -1338,15 +1338,21 @@ wss.on('connection', (socket) => {
         const durationPolicy = scoringConfig.durationPolicy;
         // Traceability from the semantic score engine (never used for scoring).
         const scoreFingerprint = typeof msg.scoreFingerprint === 'string' ? msg.scoreFingerprint : null;
-        const playbackPlanId = typeof msg.playbackPlanId === 'string' ? msg.playbackPlanId : null;
         const scoreImportStatus = typeof msg.scoreImportStatus === 'string' ? msg.scoreImportStatus : null;
-        // P1-3 fail-closed entry: the frontend sets playbackPlanId exactly when
-        // it generated a semantic plan, and that plan always carries per-note
-        // scoreEvents. A start claiming a semantic plan without them would
-        // produce targets with no authoritative final-scoring input, so it is
-        // rejected here instead of silently downgrading to rhythm-only.
-        if (playbackPlanId && (!Array.isArray(msg.scoreEvents) || msg.scoreEvents.length === 0)) {
-          throw new Error('请求声称使用语义计划（playbackPlanId），但缺少 scoreEvents；拒绝降级为仅节拍练习');
+        // P1-3 fail-closed entry: distinguish "field absent" (a legitimate
+        // rhythm-only start) from "field present but malformed" (fail closed —
+        // an empty string or a number must not silently mean "no plan"), then
+        // require scoreEvents whenever a semantic plan is claimed.
+        const playbackPlanIdProvided = msg.playbackPlanId !== undefined && msg.playbackPlanId !== null;
+        let playbackPlanId = null;
+        if (playbackPlanIdProvided) {
+          if (typeof msg.playbackPlanId !== 'string' || msg.playbackPlanId.trim() === '') {
+            throw new Error('playbackPlanId 提供了但格式非法；拒绝静默当作无语义计划');
+          }
+          playbackPlanId = msg.playbackPlanId;
+          if (!Array.isArray(msg.scoreEvents) || msg.scoreEvents.length === 0) {
+            throw new Error('请求声称使用语义计划（playbackPlanId），但缺少 scoreEvents；拒绝降级为仅节拍练习');
+          }
         }
         const hand = msg.hand === 'both' || msg.hand === 'right' || msg.hand === 'left' ? msg.hand : null;
         const scoreBarCountValue = Number(msg.scoreBarCount);

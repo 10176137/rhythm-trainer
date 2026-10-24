@@ -1546,6 +1546,28 @@ async function scenarioChordPlanNegative() {
   check('有 playbackPlanId 但 scoreEvents 为空数组被拒绝', emptyEvents.message.includes('缺少 scoreEvents'),
     String(emptyEvents.message));
   client6.close();
+  // Malformed plan ids must fail closed too: "" and non-strings must not be
+  // normalized into "no semantic plan".
+  const client7 = new TestClient();
+  await client7.open();
+  client7.send({ ...bpm240, atoms: quarterAtoms(1, 1), playbackPlanId: '' });
+  const emptyId = await client7.next('error');
+  check('playbackPlanId 为空字符串被拒绝', emptyId.message.includes('格式非法'), String(emptyId.message));
+  client7.close();
+  const client8 = new TestClient();
+  await client8.open();
+  client8.send({ ...bpm240, atoms: quarterAtoms(1, 1), playbackPlanId: 123 });
+  const numericId = await client8.next('error');
+  check('playbackPlanId 为非字符串被拒绝', numericId.message.includes('格式非法'), String(numericId.message));
+  client8.close();
+  // A start without the field at all stays a legitimate rhythm-only start.
+  const client9 = new TestClient();
+  await client9.open();
+  client9.send({ ...bpm240, atoms: quarterAtoms(1, 1) });
+  const rhythmOnly = await client9.next('started');
+  check('未提供 playbackPlanId 的纯节拍 start 仍被接受', rhythmOnly.targets.length === 1,
+    JSON.stringify(rhythmOnly.targets));
+  client9.close();
 }
 
 async function scenarioDurations() {
