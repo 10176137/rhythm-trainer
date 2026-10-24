@@ -155,3 +155,24 @@ vitest **246**、selftest **245**（+4：和弦正例 + 合法和弦接受 + 拉
 
 P1-3：关闭（组粒度正确 + 和弦正例/负例齐备；pitch 校验留给 R2 契约）。
 P1-4：单 Part 路径关闭（显式映射 + 拒绝启发式 + 拒绝未映射谱表 + 空范围拒绝）；**多 Part 按方案 A 显式拒绝**，方案 B（Part 选择器 + 全链路 Part 过滤）保留为后续卡。
+
+
+---
+
+## 7. 审查修正 2：playbackPlanId 入口门（P1-3 最后缺口）
+
+审查指出 fail-open 漏洞：计划一致性校验整体包在 `if (scoreEvents && scoreEvents.length > 0)` 里，带合法 atoms 但缺失/空 scoreEvents 的 start 会跳过全部校验并被接受，静默降级为"仅节拍练习"——而前端约定是 `playbackPlanId` 出现即代表语义计划（必带 scoreEvents）。
+
+**修正**：`start` 入口处，`playbackPlanId` 存在但 `scoreEvents` 缺失或为空数组 → 直接拒绝（"请求声称使用语义计划（playbackPlanId），但缺少 scoreEvents；拒绝降级为仅节拍练习"）。
+
+**新增回归（3 条，selftest 245 → 248）**：
+
+- 混合时值和弦正例：同 onset 两音 125ms/250ms，atom 记组最长 250ms → 接受，`nominalDurationMs=250`；
+- 有 `playbackPlanId` 但缺 `scoreEvents` → 拒绝；
+- 有 `playbackPlanId` 但 `scoreEvents: []` → 拒绝。
+
+（每个负例用独立连接：被接受的 start 持有活动 Take 租约，会拒掉同连接的下一个 start。）
+
+vitest 246、build 通过、cargo 110（Rust 零改动）。
+
+**P1-3 至此 fail-closed 关闭。**

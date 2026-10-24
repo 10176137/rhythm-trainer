@@ -1514,6 +1514,38 @@ async function scenarioChordPlanNegative() {
   const wrongBars = await client3.next('error');
   check('小节覆盖不一致被拒绝', wrongBars.message.includes('小节覆盖'), String(wrongBars.message));
   client3.close();
+
+  // Mixed-duration chord (review request): same onset, notes of 125ms and
+  // 250ms, atom records the group max (250ms) -> must be accepted.
+  const client4 = new TestClient();
+  await client4.open();
+  client4.send({ ...bpm240, atoms: [{ startTick: 0, durationTicks: 960, kind: 'note', bar: 1, beat: 1 }], scoreEvents: [
+    { scoreEventId: 'mix-short', measure: 1, beatPosition: 1, pitch: 60, targetOnsetMs: 1000, targetDurationMs: 125, partId: 'P1' },
+    { scoreEventId: 'mix-long', measure: 1, beatPosition: 1, pitch: 64, targetOnsetMs: 1000.2, targetDurationMs: 250, partId: 'P1' },
+  ] });
+  const mixedStarted = await client4.next('started');
+  check('混合时值和弦被接受（组时值=最长 250ms）', mixedStarted.targets.length === 1
+    && Math.abs(mixedStarted.targets[0].nominalDurationMs - 250) < 1e-9,
+    JSON.stringify(mixedStarted.targets));
+  client4.close();
+
+  // P1-3 entry gate: a start claiming a semantic plan (playbackPlanId) without
+  // scoreEvents would silently downgrade to rhythm-only. Both shapes are
+  // rejected; each needs its own connection (an accepted start holds the lease).
+  const client5 = new TestClient();
+  await client5.open();
+  client5.send({ ...bpm240, atoms: quarterAtoms(1, 1), playbackPlanId: 'plan:test-123' });
+  const missingEvents = await client5.next('error');
+  check('有 playbackPlanId 但缺 scoreEvents 被拒绝', missingEvents.message.includes('缺少 scoreEvents'),
+    String(missingEvents.message));
+  client5.close();
+  const client6 = new TestClient();
+  await client6.open();
+  client6.send({ ...bpm240, atoms: quarterAtoms(1, 1), playbackPlanId: 'plan:test-123', scoreEvents: [] });
+  const emptyEvents = await client6.next('error');
+  check('有 playbackPlanId 但 scoreEvents 为空数组被拒绝', emptyEvents.message.includes('缺少 scoreEvents'),
+    String(emptyEvents.message));
+  client6.close();
 }
 
 async function scenarioDurations() {

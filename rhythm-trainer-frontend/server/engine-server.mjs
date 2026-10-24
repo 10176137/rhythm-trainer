@@ -1340,6 +1340,14 @@ wss.on('connection', (socket) => {
         const scoreFingerprint = typeof msg.scoreFingerprint === 'string' ? msg.scoreFingerprint : null;
         const playbackPlanId = typeof msg.playbackPlanId === 'string' ? msg.playbackPlanId : null;
         const scoreImportStatus = typeof msg.scoreImportStatus === 'string' ? msg.scoreImportStatus : null;
+        // P1-3 fail-closed entry: the frontend sets playbackPlanId exactly when
+        // it generated a semantic plan, and that plan always carries per-note
+        // scoreEvents. A start claiming a semantic plan without them would
+        // produce targets with no authoritative final-scoring input, so it is
+        // rejected here instead of silently downgrading to rhythm-only.
+        if (playbackPlanId && (!Array.isArray(msg.scoreEvents) || msg.scoreEvents.length === 0)) {
+          throw new Error('请求声称使用语义计划（playbackPlanId），但缺少 scoreEvents；拒绝降级为仅节拍练习');
+        }
         const hand = msg.hand === 'both' || msg.hand === 'right' || msg.hand === 'left' ? msg.hand : null;
         const scoreBarCountValue = Number(msg.scoreBarCount);
         const scoreBarCount = Number.isInteger(scoreBarCountValue) && scoreBarCountValue > 0
