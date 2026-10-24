@@ -18,6 +18,33 @@ fn err(code: &str, message: impl Into<String>) -> ContractError {
     contract_error(code, message)
 }
 
+/// Input-domain alignment with TS `isCanonicalRationalV1`: parts beyond
+/// ±(2^53-1) are not canonical rationals (third review §一.3, input-domain
+/// consistency for the time/rational conversion interfaces).
+fn ensure_rational_in_domain(rational: &RationalV1, field: &str) -> Result<(), ContractError> {
+    let over = |v: i64| v > MAX_SAFE_INTEGER || v < -MAX_SAFE_INTEGER;
+    if over(rational.numerator) || over(rational.denominator) {
+        return Err(err(
+            "INVALID_RATIONAL",
+            format!("{field} parts exceed the safe-integer domain"),
+        ));
+    }
+    Ok(())
+}
+
+fn ensure_count_in_us_in_domain(count_in_us: i64) -> Result<(), ContractError> {
+    if count_in_us < 0 {
+        return Err(err("INVALID_TIME", "count-in must be a non-negative integer µs value"));
+    }
+    if count_in_us > MAX_SAFE_INTEGER {
+        return Err(err(
+            "TIME_OUT_OF_RANGE",
+            format!("count-in exceeds the safe-integer domain: {count_in_us}"),
+        ));
+    }
+    Ok(())
+}
+
 fn half_up_div(numerator: &BigInt, denominator: &BigInt) -> BigInt {
     // floor((N + D/2) / D) — exact half-up for non-negative values.
     let two = BigInt::from(2);
@@ -40,6 +67,8 @@ fn to_safe_integer(value: &BigInt) -> Result<i64, ContractError> {
 /// `INVALID_RATIONAL` (unreduced), `NEGATIVE_TIME`, `INVALID_BPM`,
 /// `TIME_OUT_OF_RANGE`.
 pub fn beat_to_microseconds(beat: &RationalV1, bpm: &RationalV1) -> Result<i64, ContractError> {
+    ensure_rational_in_domain(beat, "beat")?;
+    ensure_rational_in_domain(bpm, "bpm")?;
     if !is_canonical(beat.numerator, beat.denominator) {
         return Err(err("INVALID_RATIONAL", "beat is not a reduced RationalV1"));
     }
@@ -64,9 +93,8 @@ pub fn beat_to_microseconds(beat: &RationalV1, bpm: &RationalV1) -> Result<i64, 
 /// beyond the safe-integer domain → `RATIONAL_OUT_OF_RANGE` (aligned with
 /// the TS constructor; C-7).
 pub fn count_in_beats(count_in_us: i64, bpm: &RationalV1) -> Result<RationalV1, ContractError> {
-    if count_in_us < 0 {
-        return Err(err("INVALID_TIME", "count-in must be a non-negative integer µs value"));
-    }
+    ensure_count_in_us_in_domain(count_in_us)?;
+    ensure_rational_in_domain(bpm, "bpm")?;
     if !is_canonical(bpm.numerator, bpm.denominator) {
         return Err(err("INVALID_RATIONAL", "bpm is not a reduced RationalV1"));
     }
@@ -96,6 +124,10 @@ pub fn target_onset_us(
     beat: &RationalV1,
     bpm: &RationalV1,
 ) -> Result<i64, ContractError> {
+    // §3.5 + input-domain alignment: reject a negative count-in at THIS
+    // entry (a negative addend could cancel a positive offset and slip a
+    // distorted result through), then add exactly and bound-check the sum.
+    ensure_count_in_us_in_domain(count_in_us)?;
     let offset = beat_to_microseconds(beat, bpm)?;
     let total = BigInt::from(count_in_us) + BigInt::from(offset);
     match i64::try_from(&total) {
@@ -138,6 +170,14 @@ mod tests {
     }
 
     #[test]
+    fn half_up_rounds_exact_half_up() {
+        // Exact .5 anchor (fourth review P2): beat 1/1_000_000 at 120 BPM →
+        // 60e6 × 1 × 1 / (1e6 × 120) = 0.5 µs → half-up = 1 µs.
+        let bpm = rat(120, 1);
+        assert_eq!(beat_to_microseconds(&rat(1, 1_000_000), &bpm).unwrap(), 1);
+    }
+
+    #[test]
     fn half_up_rounds_below_half_down_and_above_half_up() {
         // 60e6 / 119_999_999 = 0.50000004… → rounds UP to 1.
         let bpm = rat(119_999_999, 1);
@@ -145,6 +185,19 @@ mod tests {
         // 60e6 / 120_000_001 = 0.49999999… → rounds DOWN to 0.
         let bpm = rat(120_000_001, 1);
         assert_eq!(beat_to_microseconds(&rat(1, 1), &bpm).unwrap(), 0);
+    }
+
+    #[test]
+    fn negative_count_in_is_rejected_at_the_entry() {
+        // §3.5 discipline: target_onset_us itself rejects a negative count-in
+        // before the addition — a negative addend must never cancel a
+        // positive offset into a "successful" distorted result.
+        let bpm = rat(120, 1);
+        let error = target_onset_us(-3_000_000, &rat(1, 1), &bpm).unwrap_err();
+        assert_eq!(error.code, "INVALID_TIME");
+        // Safe-integer domain: beyond ±(2^53-1) µs count-in is out of domain.
+        let error = target_onset_us(9_007_199_254_740_992, &rat(1, 1), &bpm).unwrap_err();
+        assert_eq!(error.code, "TIME_OUT_OF_RANGE");
     }
 
     #[test]

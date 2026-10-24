@@ -53,9 +53,11 @@ pub fn is_canonical(numerator: i64, denominator: i64) -> bool {
     big_gcd(BigInt::from(numerator), BigInt::from(denominator)) == BigInt::from(1)
 }
 
-/// Reduces arbitrary i64 parts into canonical form; zero normalizes to 0/1.
-/// Reduced parts beyond the safe-integer domain are rejected (aligned with
-/// the TS constructor's RATIONAL_OUT_OF_RANGE).
+/// Reduces arbitrary i64 parts into canonical form: denominator normalized
+/// positive, zero as 0/1, reduced parts within the safe-integer domain.
+/// The domain check compares against BigInt bounds (never `abs()` on an i64 —
+/// `i64::MIN.abs()` would overflow); anything that cannot legally fit returns
+/// RATIONAL_OUT_OF_RANGE (aligned with the TS constructor).
 pub fn reduce(numerator: i64, denominator: i64) -> Result<RationalV1, ContractError> {
     if denominator == 0 {
         return Err(contract_error("INVALID_RATIONAL", "denominator must not be zero"));
@@ -66,19 +68,27 @@ pub fn reduce(numerator: i64, denominator: i64) -> Result<RationalV1, ContractEr
     let n_big = BigInt::from(numerator);
     let d_big = BigInt::from(denominator);
     let g = big_gcd(n_big.clone(), d_big.clone());
-    let reduced_n = &n_big / &g;
-    let reduced_d = &d_big / &g;
-    let n = i64::try_from(&reduced_n)
-        .map_err(|_| contract_error("RATIONAL_OUT_OF_RANGE", "reduced numerator out of range"))?;
-    let d = i64::try_from(&reduced_d)
-        .map_err(|_| contract_error("RATIONAL_OUT_OF_RANGE", "reduced denominator out of range"))?;
-    if n.abs() > MAX_SAFE_INTEGER || d.abs() > MAX_SAFE_INTEGER {
+    let mut reduced_n = &n_big / &g;
+    let mut reduced_d = &d_big / &g;
+    // Normalize the sign: the denominator must stay positive.
+    if reduced_d < BigInt::from(0) {
+        reduced_n = -reduced_n;
+        reduced_d = -reduced_d;
+    }
+    let max = BigInt::from(MAX_SAFE_INTEGER);
+    let min = -&max;
+    if reduced_n > max || reduced_n < min || reduced_d > max || reduced_d < min {
         return Err(contract_error(
             "RATIONAL_OUT_OF_RANGE",
             "reduced rational exceeds the safe-integer domain",
         ));
     }
-    Ok(RationalV1 { numerator: n, denominator: d })
+    Ok(RationalV1 {
+        numerator: i64::try_from(&reduced_n)
+            .map_err(|_| contract_error("RATIONAL_OUT_OF_RANGE", "reduced numerator out of range"))?,
+        denominator: i64::try_from(&reduced_d)
+            .map_err(|_| contract_error("RATIONAL_OUT_OF_RANGE", "reduced denominator out of range"))?,
+    })
 }
 
 /// Cross-multiplied exact comparison: a/b > c/d via BigInt.
@@ -107,6 +117,15 @@ mod tests {
         assert_eq!(reduce(0, 5).unwrap(), RationalV1 { numerator: 0, denominator: 1 });
         assert_eq!(reduce(-2, 6).unwrap(), RationalV1 { numerator: -1, denominator: 3 });
         assert!(reduce(1, 0).is_err());
+        // Negative denominator normalizes positive (C-14).
+        assert_eq!(reduce(1, -2).unwrap(), RationalV1 { numerator: -1, denominator: 2 });
+        assert_eq!(reduce(-1, -2).unwrap(), RationalV1 { numerator: 1, denominator: 2 });
+        // i64::MIN must not overflow through abs(); it is far outside the
+        // safe-integer domain and is rejected with RATIONAL_OUT_OF_RANGE.
+        let error = reduce(i64::MIN, 3).unwrap_err();
+        assert_eq!(error.code, "RATIONAL_OUT_OF_RANGE");
+        let error = reduce(1, i64::MIN).unwrap_err();
+        assert_eq!(error.code, "RATIONAL_OUT_OF_RANGE");
     }
 
     #[test]

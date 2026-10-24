@@ -104,6 +104,74 @@ fn invalid_configs_are_rejected_with_frozen_codes() {
         assert_eq!(parse_plan_request_config(&json).unwrap_err().code, "INVALID_REPEAT_COUNT");
     }
 
+    // Frozen oneOf mutual exclusion (fifth review §二-2): "none" must NOT
+    // carry a count; "range-loop" must carry one.
+    let json = valid_config_json().replace(
+        r#""repeatSelection": { "kind": "none" }"#,
+        r#""repeatSelection": { "kind": "none", "count": 2 }"#,
+    );
+    assert_eq!(
+        parse_plan_request_config(&json).unwrap_err().code,
+        "INVALID_REPEAT_SELECTION"
+    );
+    let json = valid_config_json().replace(
+        r#""repeatSelection": { "kind": "none" }"#,
+        r#""repeatSelection": { "kind": "range-loop" }"#,
+    );
+    assert_eq!(parse_plan_request_config(&json).unwrap_err().code, "INVALID_REPEAT_COUNT");
+
+    // handMapping frozen schemaVersion/mappingVersion values.
+    let json = valid_config_json().replace("\"schemaVersion\": 1", "\"schemaVersion\": 2");
+    assert_eq!(
+        parse_plan_request_config(&json).unwrap_err().code,
+        "HAND_MAPPING_INCOMPLETE"
+    );
+    let json = valid_config_json().replace(
+        "\"mappingVersion\": \"hand-mapping-1\"",
+        "\"mappingVersion\": \"hand-mapping-2\"",
+    );
+    assert_eq!(
+        parse_plan_request_config(&json).unwrap_err().code,
+        "HAND_MAPPING_INCOMPLETE"
+    );
+
+    // Non-empty partId (top level and hand-mapping parts).
+    let json = valid_config_json().replacen("\"partId\": \"P1\",", "\"partId\": \" \",", 1);
+    assert_eq!(parse_plan_request_config(&json).unwrap_err().code, "INVALID_CONFIG");
+    let json = valid_config_json().replace(
+        "\"parts\": [{ \"partId\": \"P1\"",
+        "\"parts\": [{ \"partId\": \"\"",
+    );
+    assert_eq!(
+        parse_plan_request_config(&json).unwrap_err().code,
+        "HAND_MAPPING_INCOMPLETE"
+    );
+
+    // Safe-integer input domain: bpm parts and countInUs beyond ±(2^53-1).
+    let beyond = "9007199254740992"; // 2^53
+    let json = valid_config_json().replace(
+        "\"bpm\": { \"numerator\": 80, \"denominator\": 1 }",
+        &format!("\"bpm\": {{ \"numerator\": 80, \"denominator\": {beyond} }}"),
+    );
+    assert_eq!(parse_plan_request_config(&json).unwrap_err().code, "RATIONAL_OUT_OF_RANGE");
+    let json = valid_config_json().replace(
+        "\"countInUs\": 3000000",
+        &format!("\"countInUs\": {beyond}"),
+    );
+    assert_eq!(parse_plan_request_config(&json).unwrap_err().code, "RATIONAL_OUT_OF_RANGE");
+
+    // BPM bounds comparison must survive huge denominators without i64
+    // overflow (the comparison is BigInt after the safe-integer check): a
+    // huge denominator makes bpm < 20 without any multiplication overflow.
+    let json = valid_config_json().replace(
+        "\"bpm\": { \"numerator\": 80, \"denominator\": 1 }",
+        &format!(
+            "\"bpm\": {{ \"numerator\": {}, \"denominator\": {} }}",
+            9_007_199_254_740_000i64, 9_007_199_254_740_991i64
+        ),
+    );
+    assert_eq!(parse_plan_request_config(&json).unwrap_err().code, "INVALID_BPM");
+
     // bpm zero and unreduced
     let json = valid_config_json().replace(
         "\"numerator\": 80",
