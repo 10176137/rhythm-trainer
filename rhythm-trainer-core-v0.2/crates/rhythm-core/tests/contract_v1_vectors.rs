@@ -128,3 +128,88 @@ fn jcs_rejects_non_integer_numbers() {
     let error = serialize_jcs(&value).expect_err("fractional float must be rejected");
     assert_eq!(error.code, "NON_INTEGER_NUMBER");
 }
+
+/// Safe-integer boundary enforced at the serialization entry (third review
+/// §一.2): ±2^53 must be rejected with a distinct code, while ±(2^53-1) and
+/// the six committed vectors keep serializing byte-exact.
+#[test]
+fn jcs_enforces_safe_integer_boundary() {
+    use rhythm_core::contract_v1::serialize_jcs;
+    use serde_json::json;
+
+    const MAX_SAFE: i64 = 9_007_199_254_740_991; // 2^53 - 1
+
+    // In-domain values still serialize.
+    let inside = serialize_jcs(&json!({ "n": MAX_SAFE })).expect("2^53-1 serializes");
+    assert_eq!(inside, format!("{{\"n\":{MAX_SAFE}}}"));
+    let inside_negative = serialize_jcs(&json!({ "n": -MAX_SAFE })).expect("-(2^53-1) serializes");
+    assert_eq!(inside_negative, format!("{{\"n\":{}}}", -MAX_SAFE));
+
+    // Out-of-domain values are rejected with the dedicated code.
+    for offending in [MAX_SAFE as i64 + 1, -(MAX_SAFE as i64 + 1)] {
+        let error = serialize_jcs(&json!({ "n": offending }))
+            .expect_err("beyond ±(2^53-1) must be rejected");
+        assert_eq!(error.code, "SAFE_INTEGER_OVERFLOW", "value {offending}");
+    }
+}
+
+/// Strongly-typed PlanFingerprintPayloadV1: deserializing each committed
+/// vector payload into the serde types and serializing back must produce the
+/// SAME canonical bytes as the raw-Value path — proving the types neither
+/// drop fields nor turn absent optionals into `null`s.
+#[test]
+fn payload_strong_types_round_trip_byte_exact() {
+    use rhythm_core::contract_v1::{
+        canonical_bytes, nfc_normalize_value, PlanFingerprintPayloadV1,
+    };
+    use serde_json::Value;
+
+    let vectors = load_vectors();
+    for (name, vector) in &vectors {
+        let expected_canonical = vector["expectedCanonical"].as_str().unwrap();
+
+        // Path A: raw Value -> canonical.
+        let mut raw = vector["payload"].clone();
+        nfc_normalize_value(&mut raw);
+        let raw_canonical = canonical_bytes(&mut raw).unwrap();
+
+        // Path B: strong types -> serde -> canonical.
+        let typed: PlanFingerprintPayloadV1 =
+            serde_json::from_value(vector["payload"].clone())
+                .unwrap_or_else(|error| panic!("{name}: strong-type deserialization: {error}"));
+        let mut round_tripped =
+            serde_json::to_value(&typed).expect("{name}: strong-type reserialization");
+        nfc_normalize_value(&mut round_tripped);
+        let typed_canonical = canonical_bytes(&mut round_tripped).unwrap();
+
+        assert_eq!(raw_canonical, expected_canonical, "{name}: raw path");
+        assert_eq!(
+            typed_canonical, expected_canonical,
+            "{name}: strong-type round trip"
+        );
+    }
+}
+
+/// Direct NFC regression (third review §一.3): decomposed "e + combining
+/// acute" must normalize to precomposed é in BOTH string values and object
+/// keys — and the ordering assertion proves NFC runs BEFORE JCS key sorting:
+/// before normalization the decomposed key (first code unit U+0065) sorts
+/// before "f" (U+0066); after normalization é (U+00E9) sorts AFTER "f". The
+/// committed output therefore witnesses the NFC -> JCS order.
+#[test]
+fn nfc_normalizes_values_and_keys_before_jcs() {
+    use rhythm_core::contract_v1::{canonical_bytes, nfc_normalize_value};
+    use serde_json::json;
+
+    // String value normalization.
+    let mut value = json!({ "spelling": "e\u{0301}" });
+    nfc_normalize_value(&mut value);
+    let canonical = canonical_bytes(&mut value).expect("serialize");
+    assert_eq!(canonical, "{\"spelling\":\"\u{00E9}\"}");
+
+    // Object key normalization + NFC-before-JCS ordering witness.
+    let mut keyed = json!({ "e\u{0301}": 1, "f": 2 });
+    nfc_normalize_value(&mut keyed);
+    let keyed_canonical = canonical_bytes(&mut keyed).expect("serialize");
+    assert_eq!(keyed_canonical, "{\"f\":2,\"\u{00E9}\":1}");
+}

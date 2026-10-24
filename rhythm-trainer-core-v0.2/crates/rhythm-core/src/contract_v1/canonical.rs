@@ -93,10 +93,27 @@ fn serialize_number(number: &Number) -> Result<String, ContractError> {
     // in a validated payload, and ECMAScript float serialization is exactly
     // where hand-rolled JCS implementations go wrong — so reject, don't
     // approximate.
+    //
+    // Safe-integer boundary (2^53-1) is enforced HERE, at the serialization
+    // entry: integers beyond it must not silently pass through (third review
+    // §一.2), even though the full payload validation lands in a3.
+    const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991; // 2^53 - 1
     if let Some(int) = number.as_i64() {
+        if int < -MAX_SAFE_INTEGER || int > MAX_SAFE_INTEGER {
+            return Err(ContractError::new(
+                "SAFE_INTEGER_OVERFLOW",
+                format!("integer outside the safe-integer domain: {int}"),
+            ));
+        }
         return Ok(int.to_string());
     }
     if let Some(uint) = number.as_u64() {
+        if uint > MAX_SAFE_INTEGER as u64 {
+            return Err(ContractError::new(
+                "SAFE_INTEGER_OVERFLOW",
+                format!("integer outside the safe-integer domain: {uint}"),
+            ));
+        }
         return Ok(uint.to_string());
     }
     Err(ContractError::new(

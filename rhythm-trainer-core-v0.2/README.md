@@ -66,7 +66,7 @@ From the repository root:
 cargo test
 ```
 
-The root workspace includes only the dependency-free Rust core. This avoids requiring network access just to run core tests.
+The root workspace includes the Rust core. Since R2-3 (contract_v1 fingerprint layer) the core carries a small set of audited runtime dependencies (unicode-normalization, sha2, serde/serde_json; see crates/rhythm-core/Cargo.toml), so the first build fetches them once from crates.io.
 
 ## Build the Node-API binding
 

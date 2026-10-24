@@ -90,7 +90,7 @@ const analysis = analyzeTiming(judgments, {
 
 ## StudentModel persistence
 
-`StudentModel` tracks per-skill mastery evidence in the Rust core. Persistence is snapshot-based; the host application owns JSON storage, the core stays dependency-free.
+`StudentModel` tracks per-skill mastery evidence in the Rust core. Persistence is snapshot-based; the host application owns JSON storage, the persistence/teaching layers stay dependency-free; the R2-3 contract_v1 fingerprint layer adds unicode-normalization, sha2 and serde/serde_json (see crates/rhythm-core/Cargo.toml).
 
 Rust:
 
