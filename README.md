@@ -35,6 +35,7 @@
 - [G0 真机证据记录](G0_HARDWARE_EVIDENCE.md)
 - [开发者架构（同步至 1b48e8e）](audit-r1/docs/DEVELOPER_ARCHITECTURE.md)
 - [ScoreDocumentV1 契约](audit-r1/docs/SCOREDOCUMENT_V1_CONTRACT.md) · [planFingerprintV1 契约](audit-r1/docs/PLAN_FINGERPRINT_V1.md) · [R2-0 实施报告](R2_0_CONTRACT_FREEZE_REPORT.md)
+- [TS↔Rust Parity Gate V1（R2-1 验收规则冻结）](audit-r1/docs/TS_RUST_PARITY_GATE_V1.md)
 
 原始证据：`audit-r1/fixtures/`（G1–G8 极简 MusicXML）、`audit-r1/spike/out/`（importer dump、OSMD 10-case JSON、真实谱跑通结果、18 组 TS/Rust 时间线交叉验证）。
 

@@ -221,9 +221,9 @@ P1–P5 属于 R1 收尾，P6–P8 属于 R2 设计。
 | P5 | CLOSED | 多 part 范围/手别语义冻结（`HAND_AND_MULTIPART_CONTRACT.md`） |
 | P6 | **CLOSED** | ScoreDocumentV1 语言无关 JSON Schema + 字段约束 + 版本策略（R2-0，`SCOREDOCUMENT_V1_CONTRACT.md`） |
 | P7 | **Contract CLOSED / Parity Gate OPEN** | planFingerprintV1 定义（规范化内容、JCS + SHA-256、plannerVersion、指纹输入）+ 5 固定哈希向量 + AJV schema-first 校验已交付（f9ab52f→1b48e8e）；**"Rust 规划器输出 vs 独立 golden 真值"的差分门仍开放——契约验收不等于迁移验收** |
-| P8 | OPEN（随 R2 planner 交付） | 目标校验加固的完整实现属 R2 planner 范围；其中指纹/配对/文档校验部分已由 R2-0/R2-0B 的强制门禁（`planFingerprintV1` 入口）先行交付 |
+| P8 | OPEN（负例清单已冻结，双侧实现并通过后关闭） | 负例验收清单已在 R2-1 逐条冻结——音高/目标数量/ID 唯一性/小节覆盖/指纹一致性（[TS_RUST_PARITY_GATE_V1.md](TS_RUST_PARITY_GATE_V1.md) §6）；指纹/配对/文档校验部分已由 R2-0/R2-0B 强制门禁先行交付 |
 
-**下一张卡：R2-1 Golden Semantic Differential & TS↔Rust Planner Parity Gate**——先冻结验收规则（对照对象、逐字段验收规则、真值地位、差异分类与容差、失败门槛），不提前开始 Rust planner 实现，不提前切换生产权威。卡定义见 `R2_0_CONTRACT_FREEZE_REPORT.md` §11。
+**R2-1 Golden Semantic Differential & TS↔Rust Planner Parity Gate**：验收规则已冻结于 [TS_RUST_PARITY_GATE_V1.md](TS_RUST_PARITY_GATE_V1.md)（2026-10-24）——对照对象与 case bundle（含双侧同一冻结 `plannerVersion` 输入）、逐字段映射（occurrence/group/atom/scoreEvent）、三层比较协议（指纹/结构/派生）、差异分类（**Rust 整数 µs 必须 exact，容差仅限 TS legacyReference ms 且逐项归因**）、P8 负例清单、回归矩阵与迁移证据门槛。**下一卡：R2 planner 实施**——须按该门槛交付全部证据后才允许 `RHYTHM_PLANNER=rust` 切换生产权威。
 
 ---
 
