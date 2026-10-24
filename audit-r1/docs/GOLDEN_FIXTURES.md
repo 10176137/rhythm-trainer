@@ -346,9 +346,10 @@ m2: F4 q, G4 q, A4 q
 - 小节长度 = `3 × 4 / 4 = 3` 拍（**不是 4**）。
 - m1 start 0，m2 start **3**，总长 6。
 - 拍位：0,1,2 | 3,4,5。
-- 1 拍 = `60_000_000/90 = 666 666.67 µs`。
-- 按 §1.2 的**单次舍入**规则，`TargetOnsetUs = round((4 + beat) × 60 000 000 / 90)`：
-  `2 666 667, 3 333 333, 4 000 000, 4 666 667, 5 333 333, 6 000 000`。
+- 1 拍 = `60 000 000/90 = 666 666.67 µs`。
+- 按 **2026-10-25 裁决后的冻结协议**（§6.2 裁决记录；即 R2-1 §3.5）：
+  `CountInUs = 2 666 667`（整数 µs 输入）；`PlanOffsetUs = roundHalfUp(beat × 60 000 000 / 90)` = `0, 666 667, 1 333 333, 2 000 000, 2 666 667, 3 333 333`；
+  `TargetOnsetUs = CountInUs + PlanOffsetUs` = **`2 666 667, 3 333 334, 4 000 000, 4 666 667, 5 333 334, 6 000 000`**。
 - **Tick@960**：`0, 960, 1920, 2880, 3840, 4800`，每音 960。
 
 > **勘误（2026-10-23，R1 收尾）**：本节初版把 `CountInUs = round(4 拍)` 与 `PlanOffsetUs = round(beat)` 分别舍入再相加，得到 `3 333 334` / `5 333 334`，并据此声称与实现存在 1 µs 差异。这违反了 §1.2"只舍入一次"，是文档自身的双重舍入错误。按单次舍入后，手推值与实现完全一致，**不存在 1 µs 差异**；差异分类机制保留（见下），但不应被用来为错误真值开脱。
@@ -371,13 +372,16 @@ m2: F4 q, G4 q, A4 q
 
 ### 6.3 期望输出
 
+（按 2026-10-25 裁决后的冻结协议；见 §6.2 裁决记录）
+
 ```
 measures[0].startBeat = 0/1 ; durationBeat = 3/1
 measures[1].startBeat = 3/1 ; durationBeat = 3/1     ← 关键：不是 4/1
 plan.rangeStartBeat = 0/1 ; rangeDurationBeat = 6/1
 occurrences = 6；groups = 6
 atoms: bar=1,beat=1,2,3 ; bar=2,beat=1,2,3
-scoreEvents.targetOnsetUs = 2666667, 3333333, 4000000, 4666667, 5333333, 6000000
+scoreEvents.targetOnsetUs = 2666667, 3333334, 4000000, 4666667, 5333334, 6000000
+scoreEvents.targetDurationUs = 666667 ×6
 ```
 **ID**
 ```
@@ -393,18 +397,18 @@ fingerprint = 7cf95a8868824099d4454136f3d53104c4e714953532fb64da83d74e836c2ec7
 
 ### 6.5 legacyReference 差分
 
-按 §1.2 的单次舍入真值，G5 的六个 onset 与 `legacyReference` **逐项相等**（差 0），没有 1 µs 差异。
+（按 2026-10-25 裁决后的冻结协议真值）G5 的六个 onset 中**四个与 `legacyReference` 逐项相等**；beats 1/4 两个 onset 比旧 dump **大 1 µs**（旧 dump 由 legacy float ms 链产生，见 §6.2 裁决记录第 3 条），按 §7.1 显式分类为 `time-rounding`——**不是**语义差异，也不再声称"无差异"。
 
-| index | 真值 `TargetOnsetUs` | legacyReference（ms→µs） | 差 | 分类 |
+| index | 真值 `TargetOnsetUs`（冻结协议） | legacyReference（ms→µs，旧 dump） | 差 | 分类 |
 |---|---|---|---|---|
 | 0 | 2666667 | 2666667 | 0 | exact |
-| 1 | 3333333 | 3333333 | 0 | exact |
+| 1 | **3333334** | 3333333 | **−1** | **time-rounding** |
 | 2 | 4000000 | 4000000 | 0 | exact |
 | 3 | 4666667 | 4666667 | 0 | exact |
-| 4 | 5333333 | 5333333 | 0 | exact |
+| 4 | **5333334** | 5333333 | **−1** | **time-rounding** |
 | 5 | 6000000 | 6000000 | 0 | exact |
 
-**差异分类纪律仍然保留**（`exact` / `time-rounding`（≤1 µs）/ `semantic`），并已由 `golden.fixtures.test.ts` 的单元断言覆盖。任何未来的 1 µs 差异必须被显式分类，但**不得用"分类"掩盖语义差异**，也不得为了制造差异而修改真值。
+**差异分类纪律仍然保留**（`exact` / `time-rounding`（≤1 µs）/ `semantic`），并已由 `golden.fixtures.test.ts` 的单元断言覆盖（G5 的两处 −1 µs 断言为 `time-rounding`，G1–G4 保持全 exact）。任何未来的 1 µs 差异必须被显式分类，但**不得用"分类"掩盖语义差异**，也不得为了制造差异而修改真值。
 
 ---
 

@@ -30,6 +30,7 @@ describe('acceptance B: the six frozen fault injections', () => {
   it('all six faults together yield a caught-and-failed batch (fault MODE semantics)', () => {
     const result = runParity({ mode: 'fault' }, META);
     // Fault mode runs ONLY the injected faults; no case reports are produced.
+    expect(result.reports).toHaveLength(0);
     expect(result.faultReports).toHaveLength(6);
     // The batch "passes" iff every fault was CAUGHT (detected + classified +
     // the mutated comparison failed). That is the opposite of the faults
@@ -38,6 +39,11 @@ describe('acceptance B: the six frozen fault injections', () => {
     for (const fault of result.faultReports) {
       expect(fault.detected && fault.classifiedCorrectly && fault.reportStatus === 'fail').toBe(true);
     }
+  });
+
+  it('an unknown faultId FAILS instead of exiting 0 vacuously (2nd review §一.1)', () => {
+    expect(() => runParity({ mode: 'fault', faultId: 'N-DOES-NOT-EXIST' }, META))
+      .toThrow(/faultId not found/);
   });
 
   it('fault injection leaves the frozen bundle and golden untouched (no self-upgrade)', () => {

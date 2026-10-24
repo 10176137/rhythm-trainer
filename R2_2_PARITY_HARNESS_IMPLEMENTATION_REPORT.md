@@ -124,4 +124,40 @@ npm run build && npm run selftest
 - 数字口径统一：全量 vitest 为 **42 files（41 passed + 1 skipped file）/ 360 passed + 3 skipped tests**（跳过 = 真实谱门禁 3 项）；本报告 §4 与提交信息使用同一口径。
 - 首版报告的"10/11"保守自评已由本节替代：复审四项阻断处理后，§10 清单 11/11 逐项有据（见 §7 复现命令可全部复跑）。
 
-**R2-2 关闭申请（更新）**：四项阻断已处理（三项代码修复 + G5 正式裁决执行），证据全部重跑刷新（`audit-r1/reports/r2-2/` 16 份报告为裁决后重新生成）。状态仍为 `R2-2 TS-side parity harness implemented and tested`、`R2-3 Rust planner not started`、无权威切换。**申请复审确认：① 三项修复；② G5 裁决方向（冻结协议权威）——若否决此裁决，revert 本提交即可回退全部 G5 改动。**
+**R2-2 关闭申请（更新）**：见 §10 二次复审修复。
+
+## 10. 二次复审修复（2026-10-25，G5 裁决方向已批准；两项收尾全处理）
+
+二次复审（基线 e6ee4a6）批准 G5 裁决方向与配置哈希、重复键两项修复；指出 runner 隔离/分层状态与 G5 文档同步两类收尾。逐项处理：
+
+### 10.1 fault 模式隔离与失败路径 → 已修（含连带发现的 CLI 解析 bug）
+
+- `runParity()` 的 fault 模式现在**只跑请求的故障注入**（cases=[]），不再顺带执行全部普通 case；
+- **未知 `faultId` 抛错**（`faultId not found`）——之前空数组 `every()` 空真可能 exit 0；另加空 fault 批保护（`faultsAllCaught` 要求 `length > 0`）；
+- **连带发现并修复 CLI 参数解析 bug**：`flag('mode')` 用 `indexOf('--mode')` 精确匹配，`--mode=fault` 连等号形式解析不到、静默回落默认 `full`——该 bug 自 entry 创建以来潜伏（此前 CLI 只跑过 full 恰好没暴露；B 类验收走 vitest 不经此路径）。改为同时支持 `--name=value` 与 `--name value`；
+- 实测三种退出码：`--mode=fault --faultId=N-DOES-NOT-EXIST` → **exit 1**（抛错）；`--mode=fault`（6 项全捕获）→ exit 0 且**只产出 fault 报告（reports=0）**；`--mode=full` → exit 0（15 case + 6 fault）。
+- 新增 2 项验收测试：fault 模式 `reports` 长度为 0；未知 `faultId` 必须 `toThrow(/faultId not found/)`。
+
+### 10.2 分层状态各自真实 → 已修
+
+`l1.status` = 指纹存在/预期错误码匹配 **∧** 跨运行稳定（稳定性本就是 L1 属性）；`l2.status` = 差分分类干净（含 expected-outcome 一致性）——不再借用综合结果；`l3.status` = P1-3 不变量全绿 ∧ wire 兼容——不再 `&& pass`。综合 `summary.pass` = 三层各自状态的合取。这样 L1 失败时干净的 L2/L3 仍如实报告 `pass`，分层证据不失真，而总门禁不变。
+
+### 10.3 GOLDEN_FIXTURES G5 文档同步 → 已完成
+
+- §6.2 主文本：手推改为冻结协议（CountInUs 2 666 667 + 偏移表 0/666 667/1 333 333/2 000 000/2 666 667/3 333 333 → TargetOnsetUs `2 666 667, 3 333 334, 4 000 000, 4 666 667, 5 333 334, 6 000 000`），旧公式不再出现在正文；
+- §6.3 期望输出：`targetOnsetUs` 更新为裁决后值（+`targetDurationUs` 666 667×6），标注裁决来源；
+- §6.5：表格更新——四项 exact，beats 1/4 差 **−1 µs** 显式分类 **time-rounding**，删除"无差异"声明；测试断言口径（G1–G4 全 exact、G5 两处 rounding）已写明；
+- `g5.expected.json` 的 `derivation` 重写：冻结协议为唯一正文，旧值仅作为"已被取代"记录并指向 §6.5；
+- 全文扫查：3333333/5333333 残留仅存在于裁决表"旧 dump 值"列（应保留的历史对照）。
+
+### 10.4 证据重跑（全部实跑）
+
+| 命令 | 结果 |
+|---|---|
+| `npx vitest run`（未设 env） | **42 files（41+1 skipped）/ 367 passed + 3 skipped**（+1 未知 faultId 负测） |
+| 设 `RHYTHM_REAL_SCORE_PATH` 后 parity+contract | **124/124** |
+| runner full（报告重新生成至 `audit-r1/reports/r2-2/`） | 15/15 case PASS + 6/6 fault 捕获，exit=0 |
+| runner fault 三路退出码 | unknown faultId=1 / 全 fault 批=0 / full=0 |
+| `npm run build` / `npm run selftest` | 通过 4.86s / 251 条 |
+
+**R2-2 关闭申请（二次更新）**：两项收尾（runner 隔离+分层状态、G5 文档同步）全处理，G5 裁决方向已获批准并完成文档同步。状态：`R2-2 TS-side parity harness implemented and tested`、`R2-3 Rust planner not started`、无权威切换、无 Rust 代码。**申请三次复审确认后关闭 R2-2。**

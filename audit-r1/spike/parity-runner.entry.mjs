@@ -10,7 +10,13 @@
 import { runParity, writeReports } from '../../rhythm-trainer-frontend/src/score-engine/parity/parity-runner.ts';
 
 const args = process.argv.slice(2);
+// Supports both --name=value and "--name value" spellings; an unrecognized
+// --mode=fault previously fell through to the 'full' default and silently
+// ran everything (found by the 2nd-review fault-isolation test).
 const flag = (name) => {
+  const prefix = `--${name}=`;
+  const inline = args.find((arg) => arg.startsWith(prefix));
+  if (inline !== undefined) return inline.slice(prefix.length);
   const index = args.indexOf(`--${name}`);
   return index >= 0 ? args[index + 1] : undefined;
 };

@@ -54,30 +54,28 @@ export function runCase(bundle: ParityCaseBundle, meta: RunnerMeta): ParityRepor
   const wireCompatible = result.candidate.wireMs
     ? (categories['semantic-defect'] === 0 ? 'pass' : 'fail')
     : 'not-applicable';
+  const stable = fingerprintStable(xml, fileName, config);
 
-  let l1Status: 'pass' | 'fail';
+  // Each layer reports ITS OWN status (2nd review §一.1: layered evidence must
+  // not distort — an L1 failure must not mark a clean-diff L2 as fail):
+  //   L1 = fingerprint presence/expected-error AND stability across runs;
+  //   L2 = diff categories clean (incl. expected-outcome agreement);
+  //   L3 = P1-3 invariants green AND wire compatibility not failing.
+  let l1Fingerprint: 'pass' | 'fail';
   if (bundle.expectedOutcome.planStatus === 'blocked') {
     const wantFpError = bundle.expectedOutcome.fingerprintErrorCode;
-    l1Status = wantFpError
+    l1Fingerprint = wantFpError
       ? (result.fingerprintErrorCode === wantFpError ? 'pass' : 'fail')
       : (result.fingerprint === null ? 'pass' : 'fail');
   } else {
-    l1Status = result.fingerprint !== null ? 'pass' : 'fail';
+    l1Fingerprint = result.fingerprint !== null ? 'pass' : 'fail';
   }
-  // Case pass = ALL frozen gates (R2-1 §4: "L1 equal ∧ L2 clean ∧ L3 green"),
-  // evaluated per LAYER, never collapsed into the diff summary alone:
-  //   - diff categories clean (reportPasses), AND
-  //   - L1 status pass AND fingerprint stable across repeated runs, AND
-  //   - every P1-3 invariant green, AND
-  //   - wire compatibility not failing.
-  // A diff-only pass would let an unstable fingerprint or a failed invariant
-  // hide behind a clean summary — the review's P1-1 blocks exactly that.
-  const stable = fingerprintStable(xml, fileName, config);
-  const pass = reportPasses(categories)
-    && l1Status === 'pass'
-    && stable
-    && l3Ok
-    && wireCompatible !== 'fail';
+  const l1Status: 'pass' | 'fail' = l1Fingerprint === 'pass' && stable ? 'pass' : 'fail';
+  const l2Status: 'pass' | 'fail' = reportPasses(categories) ? 'pass' : 'fail';
+  const l3Status: 'pass' | 'fail' = l3Ok && wireCompatible !== 'fail' ? 'pass' : 'fail';
+  // Case pass = the conjunction of the three self-reported layers
+  // (R2-1 §4: "L1 equal ∧ L2 clean ∧ L3 green") — never the summary alone.
+  const pass = l1Status === 'pass' && l2Status === 'pass' && l3Status === 'pass';
 
   return {
     schemaVersion: 1,
@@ -108,7 +106,7 @@ export function runCase(bundle: ParityCaseBundle, meta: RunnerMeta): ParityRepor
       diffCount: allDiffs.length,
     },
     l3: {
-      status: l3Ok && pass ? 'pass' : 'fail',
+      status: l3Status,
       atomCount: result.candidate.atoms.length,
       scoreEventCount: result.candidate.scoreEvents.length,
       wireCompatibility: wireCompatible,
@@ -323,9 +321,14 @@ export function runParity(options: RunnerMode, meta?: Partial<RunnerMeta>): RunR
     command: meta?.command ?? `parity-runner ${JSON.stringify(options)}`,
   };
   const index = loadCaseIndex(root);
+  // Fault mode runs ONLY the requested fault injections — never the regular
+  // cases (2nd review §一.1: an unknown faultId used to degrade to "run
+  // everything / nothing" and could exit 0 without testing the asked fault).
   const cases = options.mode === 'case'
     ? index.cases.filter((entry) => entry.caseId === options.caseId)
-    : index.cases;
+    : options.mode === 'fault'
+      ? []
+      : index.cases;
   if (options.mode === 'case' && cases.length === 0) {
     throw new Error(`caseId not found: ${options.caseId}`);
   }
@@ -333,12 +336,19 @@ export function runParity(options: RunnerMode, meta?: Partial<RunnerMeta>): RunR
   const faultSpecs = options.mode === 'fault' && options.faultId
     ? FAULT_SPECS.filter((spec) => spec.faultId === options.faultId)
     : FAULT_SPECS;
+  if (options.mode === 'fault' && faultSpecs.length === 0) {
+    // A requested-but-unknown fault must FAIL, never exit 0 vacuously.
+    throw new Error(`faultId not found: ${options.faultId}`);
+  }
   const faultReports = options.mode === 'fault' || options.mode === 'full'
     ? faultSpecs.map((spec) => runFault(runnerMeta, spec))
     : [];
 
-  const exitCode = reports.every((report) => report.summary.pass) && faultReports.every((fault) =>
-    fault.detected && fault.classifiedCorrectly && fault.reportStatus === 'fail')
+  // An empty fault batch would make every() vacuously true; guard it so a
+  // fault run that executed zero faults can never report success.
+  const faultsAllCaught = faultReports.length > 0
+    && faultReports.every((fault) => fault.detected && fault.classifiedCorrectly && fault.reportStatus === 'fail');
+  const exitCode = reports.every((report) => report.summary.pass) && faultsAllCaught
     ? 0 : 1;
   return { exitCode, reports, faultReports };
 }
