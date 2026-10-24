@@ -100,22 +100,16 @@ describe('assessPracticeScope: D2 standard piano G2/F4', () => {
 });
 
 describe('assessPracticeScope: D3 multi-part', () => {
-  it('requires an explicit part selection and rejects unknown parts', () => {
+  it('refuses multi-part scores outright until a Part selector exists (option A)', () => {
     const score = multiPartScore();
-    const missing = assessPracticeScope(score, { ...scope(score), partId: 'nope' });
-    expect(missing.ok).toBe(false);
-    expect(missing.codes).toContain('range_part_mismatch');
+    // Even a well-formed scope for P2 is refused: without an explicit selection
+    // flag the pure function cannot tell it from parts[0] defaulting.
+    const assessment = assessPracticeScope(score, scope(score, { partId: 'P2' }));
+    expect(assessment.ok).toBe(false);
+    expect(assessment.codes).toContain('multiple_parts_require_part_selection');
 
-    const selected = assessPracticeScope(score, scope(score, { partId: 'P2' }));
-    expect(selected.ok).toBe(true);
-
-    // The mapping must cover the SELECTED part; P1's mapping does not cover P2.
-    const p1MappingOnly = { ...scope(score, { partId: 'P2' }), handMapping: buildUserHandMapping('P1', [{ staffNumber: 1, hand: 'right' }]) };
-    const incomplete = assessPracticeScope(score, p1MappingOnly);
-    expect(incomplete.ok).toBe(false);
-    expect(incomplete.codes).toContain('hand_mapping_incomplete');
-    expect(incomplete.missingStaffs.length).toBe(1);
-    expect(incomplete.missingStaffs[0]).toMatchObject({ partId: 'P2', staffNumber: 1, eventCount: 1 });
+    const unknown = assessPracticeScope(score, { ...scope(score), partId: 'nope' });
+    expect(unknown.codes).toContain('range_part_mismatch');
   });
 });
 

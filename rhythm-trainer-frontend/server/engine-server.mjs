@@ -1481,8 +1481,16 @@ wss.on('connection', (socket) => {
         const countInMs = countInBeats * (60_000 / bpm);
         const targets = addon.buildSchedule(pattern, bpm, countInMs, profile);
         // P1-3: prove atoms and scoreEvents describe the SAME plan before any
-        // take starts. Onset proximity alone cannot tell a tampered pitch or a
-        // missing event from a consistent plan.
+        // take starts. Data model (playback-planner.ts): one EngineAtom per
+        // PlaybackGroup (an onset group that may contain several notes), and
+        // one scoreEvent per notated note. So the verifiable invariants are
+        // per-onset-GROUP, not per-note:
+        //   - the set of scoreEvents onset groups == the set of targets;
+        //   - each onset group maps to exactly one note atom;
+        //   - the group's duration equals the group's LONGEST scoreEvent (the
+        //     atom records group.durationBeat, i.e. the max, not per-note).
+        // Per-note count/pitch cannot be verified against atoms (they carry no
+        // pitch or note count) and need explicit group IDs in a future contract.
         if (scoreEvents && scoreEvents.length > 0) {
           const targetOnsets = targets.map((target) => Number(target.atMs));
           const offPlan = scoreEvents.find((event) => !targetOnsets.some(
@@ -1491,9 +1499,6 @@ wss.on('connection', (socket) => {
           if (offPlan) {
             throw new Error(`scoreEvents 目标 ${offPlan.scoreEventId} 的 onset 不在本次练习时间线上`);
           }
-          // Every onset group must be fully covered: the number of score events
-          // sharing a target onset must equal the number of note atoms sharing
-          // that tick. A dropped or fabricated event shows up as a mismatch.
           const scoreEventsByOnset = new Map();
           for (const event of scoreEvents) {
             const key = targetOnsets.find((atMs) => Math.abs(atMs - event.targetOnsetMs) <= 0.5);
@@ -1504,41 +1509,29 @@ wss.on('connection', (socket) => {
           if (scoreEventsByOnset.size !== targets.length) {
             throw new Error(`scoreEvents 与目标时间线不一致：覆盖 ${scoreEventsByOnset.size} 个 onset，目标 ${targets.length} 个`);
           }
-          const noteAtomsByTick = new Map();
+          const noteAtomsByOnset = new Map();
           for (const atom of pattern.atoms) {
             if (atom.kind !== 'note') continue;
             const atMs = countInMs + (atom.startTick / ticksPerQuarter) * (60_000 / bpm);
             const onset = targetOnsets.find((value) => Math.abs(value - atMs) <= 0.5);
-            if (onset == null) continue; // buildSchedule rejected it already
-            const group = noteAtomsByTick.get(onset) ?? [];
-            group.push(atom);
-            noteAtomsByTick.set(onset, group);
-          }
-          for (const [onset, events] of scoreEventsByOnset) {
-            const atoms = noteAtomsByTick.get(onset) ?? [];
-            if (events.length !== atoms.length) {
-              throw new Error(`scoreEvents 与 atoms 在 onset ${onset.toFixed(1)}ms 处数量不一致（${events.length} vs ${atoms.length}）`);
+            if (onset == null) continue; // buildSchedule merged same-tick atoms already
+            if (noteAtomsByOnset.has(onset)) {
+              throw new Error(`atoms 在 onset ${onset.toFixed(1)}ms 处出现多个起音组（应已被 buildSchedule 合并）`);
             }
+            noteAtomsByOnset.set(onset, atom);
           }
-          // Pitch and duration: each onset group's pitch multiset must match
-          // the atoms' nominal pitches, and each score duration must match the
-          // atom's nominal duration (tie merging happens upstream).
           for (const [onset, events] of scoreEventsByOnset) {
-            const atoms = noteAtomsByTick.get(onset) ?? [];
-            // Pitch: the atoms carry no pitch, but each onset group's pitch
-            // multiset must be internally consistent — duplicates of the same
-            // pitch are legal (repeated notes at one onset are not), while an
-            // unsorted duplicate would mean fabricated events. The definitive
-            // pitch check is group size vs atom count above; here we enforce
-            // that every event maps to exactly one atom slot.
-            for (const event of events) {
-              const nominalTicks = atoms.length === 1
-                ? atoms[0].durationTicks
-                : Math.max(...atoms.map((atom) => atom.durationTicks));
-              const nominalMs = (nominalTicks / ticksPerQuarter) * (60_000 / bpm);
-              if (Math.abs(event.targetDurationMs - nominalMs) > 1) {
-                throw new Error(`scoreEvents 目标 ${event.scoreEventId} 的时值 ${event.targetDurationMs.toFixed(1)}ms 与计划 ${nominalMs.toFixed(1)}ms 不一致`);
-              }
+            const atom = noteAtomsByOnset.get(onset);
+            if (!atom) {
+              throw new Error(`scoreEvents 的 onset ${onset.toFixed(1)}ms 没有对应的 note atom`);
+            }
+            // One atom = one onset group; the group's nominal duration is the
+            // LONGEST member (group.durationBeat). Compare against the longest
+            // scoreEvent of the group, not each note individually.
+            const longestEventMs = Math.max(...events.map((event) => event.targetDurationMs));
+            const nominalMs = (atom.durationTicks / ticksPerQuarter) * (60_000 / bpm);
+            if (Math.abs(longestEventMs - nominalMs) > 1) {
+              throw new Error(`scoreEvents 在 onset ${onset.toFixed(1)}ms 处的组时值 ${longestEventMs.toFixed(1)}ms 与计划 ${nominalMs.toFixed(1)}ms 不一致`);
             }
           }
           // Measure coverage: the set of measures in scoreEvents must equal the

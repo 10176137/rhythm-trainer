@@ -919,21 +919,33 @@ export default function App() {
       }
       // P1-4: hand/multi-part gate. The hand comes from an explicit user
       // mapping per score fingerprint; clef heuristics are never accepted for
-      // strict practice, and a multi-part score must select its part.
+      // strict practice. Multi-part scores are refused outright (option A of
+      // the P1-4 review): until a Part selector exists there is no user-selected
+      // partId, and parts[0] would silently leak other parts into hand='both'
+      // plans, because filterPlaybackPlanByHand is a no-op for hand='both'.
       const engineFingerprint = scoreDoc.engine?.fingerprint ?? null;
-      const partId = scoreDoc.engine?.parts[0]?.id ?? 'P1';
+      const partCount = scoreDoc.engine?.parts.length ?? 1;
       if (!engineFingerprint) {
         setStarting(false);
         addFeedback('无法确定练习范围', '当前乐谱缺少语义引擎数据，无法安全确定手别与练习范围。', 'warning');
         return false;
       }
+      if (partCount > 1) {
+        setStarting(false);
+        addFeedback(
+          '多 Part 乐谱暂不支持严格练习',
+          `该乐谱包含 ${partCount} 个 Part；在提供显式 Part 选择之前，严格计分被禁止（避免把未选 Part 的音符混入目标）。可以浏览谱面。`,
+          'warning',
+        );
+        return false;
+      }
+      const partId = scoreDoc.engine?.parts[0]?.id ?? 'P1';
       const storedMapping = userHandMappingFor(engineFingerprint, partId);
       if (!storedMapping) {
         setStarting(false);
-        const partHint = (scoreDoc.engine?.parts.length ?? 1) > 1 ? '该乐谱包含多个 Part，需要选择练习的 Part。' : '';
         addFeedback(
           '需要先指定手别映射',
-          `严格计分需要显式的谱表→手别映射；谱号推断只用于显示，不再作为默认。${partHint}请在练习设置中确认手别后重试。`,
+          '严格计分需要显式的谱表→手别映射；谱号推断只用于显示，不再作为默认。请在练习设置中确认手别后重试。',
           'warning',
         );
         return false;

@@ -102,9 +102,13 @@ export function assessPracticeScope(score: ScoreDocument, scope: PracticeScopeV1
   }
 
   if (score.parts.length > 1) {
-    // partId must exist (checked above); the explicit selection is what makes a
-    // multi-part score legal. There is no implicit "first part" here.
-    codes.push(...[]);
+    // The partId must be an explicit selection. The pure function cannot tell a
+    // user choice from a default, so callers that only have parts[0] must not
+    // call this for multi-part scores (the UI gate refuses them outright).
+    // A `selectedPart: true` flag on the scope would formalize this; until the
+    // Part selector exists, multi-part scores are refused upstream.
+    codes.push('multiple_parts_require_part_selection');
+    return { ok: false, codes, missingStaffs };
   }
 
   if (!scope.handMapping || !Array.isArray(scope.handMapping.parts)) {

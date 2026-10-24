@@ -115,3 +115,43 @@ P1-3 负例（selftest 新增断言）：重复 ID / 非法时值 / 缺失事件
 3. **pitch 进 atom 契约**：P1-3 的 pitch 校验需要 R2 的 `TargetSchedule` 携带 pitch。
 4. **R2**：未开始。P1-4 的 `HandMappingV1`/`PracticeScopeV1` 是 `ScoreDocumentV1`/`PracticePlanConfig` 设计的直接输入；下一步按既定顺序冻结这两份契约。
 5. `trustworthy=true` 对零输入轮的空洞标记（G0 期间发现）仍未处理。
+
+
+---
+
+## 6. 审查修正（同日第二次提交）
+
+审查指出两个阻塞问题，均已修复：
+
+### 6.1 P1-3 误拒合法和弦
+
+数据模型事实：一个 `EngineAtom` 对应一个 `PlaybackGroup`（同 onset 的若干音符，`durationBeat` = 组内最长），而 `scoreEvent` 对应每个乐谱音符。初版校验错误地要求"同 onset 的 scoreEvents 数 === atoms 数"（三音和弦 3 vs 1 必然失败），且要求每个音符时值等于组最长。
+
+**修正后的不变量（按组）**：
+
+- scoreEvents 的 onset 组集合 === Rust targets 集合；
+- 每个 onset 组恰好对应一个 note atom（atoms 内同 tick 由 buildSchedule 合并，发现多组即报错）；
+- 组时值 === 组内**最长** scoreEvent 时值（±1ms）；
+- 小节集合一致。
+
+**明确不校验（诚实边界）**：组内音符数量与 pitch——atoms 不携带这些，需要 R2 的 group ID/pitch 契约。
+
+**回归**：新增 `scenarioChordPlanAccepted`（三音和弦 start：1 atom / 3 scoreEvents，被接受并可结算）与 `scenarioChordPlanNegative`（合法两音和弦被接受；同形状但拉长组时值被"组时值"拒绝；小节覆盖负例改用独立连接）。旧的"数量不一致"负例已按新语义替换。
+
+### 6.2 P1-4 多 Part 未真正 fail-closed
+
+审查确认三点：`partId = parts[0]?.id` 是程序默认；`codes.push(...[])` 是空操作；`hand='both'` 时 `filterPlaybackPlanByHand` 不过滤，其他 Part 会混入计划。
+
+**修正（方案 A：立即安全收口）**：
+
+- `launchPractice` gate 对 `parts.length > 1` 一律拒绝严格练习（"多 Part 乐谱暂不支持严格练习"），不再用 parts[0] 假装选择了 Part；
+- `assessPracticeScope` 对多 Part 返回 `multiple_parts_require_part_selection`（此前是空操作）；纯函数测试同步改为断言拒绝（方案 B 的 Part 选择器落地后再放宽）。
+
+### 6.3 测试（第二次提交后）
+
+vitest **246**、selftest **245**（+4：和弦正例 + 合法和弦接受 + 拉长组时值拒绝 + 小节覆盖独立连接）、build 通过、cargo 110。
+
+### 6.4 关闭判定
+
+P1-3：关闭（组粒度正确 + 和弦正例/负例齐备；pitch 校验留给 R2 契约）。
+P1-4：单 Part 路径关闭（显式映射 + 拒绝启发式 + 拒绝未映射谱表 + 空范围拒绝）；**多 Part 按方案 A 显式拒绝**，方案 B（Part 选择器 + 全链路 Part 过滤）保留为后续卡。

@@ -1358,6 +1358,43 @@ async function scenarioSingleActiveTakeLease() {
   b.close();
 }
 
+async function scenarioChordPlanAccepted() {
+  console.log('scenario: P1-3 三音和弦 start → 一个 atom 对一组 scoreEvents，必须被接受');
+  // Data model check: scoreEvents carries one event per NOTE (3 here), while
+  // atoms carry one atom per onset GROUP (1 here, duration = group max).
+  const client = new TestClient();
+  await client.open();
+  const chordAtom = [{ startTick: 0, durationTicks: 960, kind: 'note', bar: 1, beat: 1 }];
+  // The chord: C4/E4/G4 at the same onset, each with the group's longest
+  // duration (group.durationBeat feeds every member's scoreEvent duration).
+  const chordEvents = [
+    { scoreEventId: 'chord-c4', measure: 1, beatPosition: 1, pitch: 60 },
+    { scoreEventId: 'chord-e4', measure: 1, beatPosition: 1, pitch: 64 },
+    { scoreEventId: 'chord-g4', measure: 1, beatPosition: 1, pitch: 67 },
+  ].map((event) => ({
+    ...event,
+    targetOnsetMs: 1000, // countIn 4 beats @240bpm + tick 0
+    targetDurationMs: 960 * (60_000 / 240 / 960),
+    partId: 'P1',
+  }));
+  client.send({
+    type: 'start', modeId: 'score', bpm: 240, profile: 'standard', countInBeats: 4,
+    ticksPerQuarter: 960, atoms: chordAtom, scoreEvents: chordEvents,
+    scoreFingerprint: 'chord-plan-fp', hand: 'both', scoreBarCount: 1,
+  });
+  const started = await client.next('started');
+  check('三音和弦 start 被接受（1 atom / 3 scoreEvents）', started.targets.length === 1,
+    JSON.stringify(started.targets));
+  // Live: the chord merges into ONE target; a single hit resolves it.
+  client.send({ type: 'hit', seq: 1, atMs: started.targets[0].atMs + 5, notes: [60, 64, 67] });
+  await client.next('judgments');
+  client.send({ type: 'finish' });
+  const message = await client.next('report');
+  check('和弦 start 的报告可用', !!message.report && !message.report.error,
+    JSON.stringify(message.report && message.report.stats));
+  client.close();
+}
+
 async function scenarioErrors() {
   console.log('scenario: 非法输入 → 结构化错误,不崩溃');
   const client = new TestClient();
@@ -1412,15 +1449,19 @@ async function scenarioErrors() {
   check('非法时值被拒绝', badDur.message.includes('时值'), String(badDur.message));
   client.send({ ...bpm240, atoms: quarterAtoms(2, 1), scoreEvents: [goodEvents[0]] });
   const missingEvent = await client.next('error');
-  check('缺失事件（onset 覆盖不全）被拒绝', missingEvent.message.includes('不一致'), String(missingEvent.message));
-  const extraEvents = [...goodEvents, { ...goodEvents[0], scoreEventId: 'ev-fake', targetOnsetMs: goodEvents[0].targetOnsetMs + 0.2, scoreEventId2: undefined }];
-  client.send({ ...bpm240, atoms: quarterAtoms(2, 1), scoreEvents: extraEvents.map((e, i) => ({ ...e, scoreEventId: i === 2 ? 'ev-fake' : e.scoreEventId })) });
+  check('缺失事件（onset 覆盖不全）被拒绝', missingEvent.message.includes('时间线不一致'), String(missingEvent.message));
+  // A fabricated same-onset event no longer breaks atom counts (one atom = one
+  // onset group), but it MUST break the group-duration invariant: the group max
+  // duration would exceed the atom's nominal duration. This negative needs its
+  // own connection: a successful start leaves an active Take that would reject
+  // the next start on the same socket.
+  const extraEvents = [
+    { ...goodEvents[0], scoreEventId: 'ev-a' },
+    { ...goodEvents[1], scoreEventId: 'ev-b', targetOnsetMs: goodEvents[1].targetOnsetMs + 0.2, targetDurationMs: goodEvents[1].targetDurationMs * 3 },
+  ];
+  client.send({ ...bpm240, atoms: quarterAtoms(2, 1), scoreEvents: extraEvents });
   const fabricated = await client.next('error');
-  check('伪造同 onset 事件被拒绝', fabricated.message.includes('数量不一致'), String(fabricated.message));
-  const twoBarAtoms = quarterAtoms(2, 1).map((atom) => ({ ...atom, bar: atom.bar + 5 }));
-  client.send({ ...bpm240, atoms: twoBarAtoms, scoreEvents: goodEvents });
-  const wrongBars = await client.next('error');
-  check('小节覆盖不一致被拒绝', wrongBars.message.includes('小节覆盖'), String(wrongBars.message));
+  check('伪造同 onset 事件（拉长组时值）被拒绝', fabricated.message.includes('组时值'), String(fabricated.message));
   client.send({
     type: 'start', modeId: 'score', bpm: 240, profile: 'standard', countInBeats: 4,
     ticksPerQuarter: 960, atoms: quarterAtoms(1, 1),
@@ -1428,6 +1469,51 @@ async function scenarioErrors() {
   const started = await client.next('started');
   check('出错后同一连接可重新开始', started.targets.length === 1);
   client.close();
+}
+
+async function scenarioChordPlanNegative() {
+  console.log('scenario: P1-3 负例补充 → 合法同 onset 和弦被接受、拉长组时值被拒绝');
+  const client = new TestClient();
+  await client.open();
+  const bpm240 = { type: 'start', modeId: 'score', bpm: 240, profile: 'standard', countInBeats: 4, ticksPerQuarter: 960 };
+  const quarterMs = 60_000 / 240;
+  // Legitimate chord: one note atom for the onset group, two scoreEvents at the
+  // same onset, each carrying the group's longest duration (group.durationBeat).
+  client.send({ ...bpm240, atoms: [{ startTick: 0, durationTicks: 960, kind: 'note', bar: 1, beat: 1 }], scoreEvents: [
+    { scoreEventId: 'chord-a', measure: 1, beatPosition: 1, pitch: 60, targetOnsetMs: 1000, targetDurationMs: 250, partId: 'P1' },
+    { scoreEventId: 'chord-b', measure: 1, beatPosition: 1, pitch: 64, targetOnsetMs: 1000.2, targetDurationMs: 250, partId: 'P1' },
+  ] });
+  const started = await client.next('started');
+  check('合法同 onset 两音和弦被接受', started.targets.length === 1,
+    JSON.stringify(started.targets));
+  client.close();
+
+  // Tampered variant: same shape but one event stretches the group beyond the
+  // atom's nominal duration -> the group-duration invariant must reject it.
+  const client2 = new TestClient();
+  await client2.open();
+  client2.send({ ...bpm240, atoms: [{ startTick: 0, durationTicks: 960, kind: 'note', bar: 1, beat: 1 }], scoreEvents: [
+    { scoreEventId: 'chord-a', measure: 1, beatPosition: 1, pitch: 60, targetOnsetMs: 1000, targetDurationMs: 250, partId: 'P1' },
+    { scoreEventId: 'chord-b', measure: 1, beatPosition: 1, pitch: 64, targetOnsetMs: 1000.2, targetDurationMs: 750, partId: 'P1' },
+  ] });
+  const fabricated = await client2.next('error');
+  check('伪造同 onset 事件（拉长组时值）被拒绝', fabricated.message.includes('组时值'), String(fabricated.message));
+  client2.close();
+
+  // Measure-coverage negative: scoreEvents reference bars the atoms never touch.
+  const client3 = new TestClient();
+  await client3.open();
+  const twoBarAtoms = quarterAtoms(2, 1).map((atom) => ({ ...atom, bar: atom.bar + 5 }));
+  const goodEvents = quarterAtoms(2, 1).map((atom, index) => ({
+    scoreEventId: `ev-${index}`, measure: atom.bar, beatPosition: atom.beat, pitch: 60,
+    targetOnsetMs: 1000 + atom.startTick * quarterMs / 960,
+    targetDurationMs: atom.durationTicks * quarterMs / 960,
+    partId: 'P1',
+  }));
+  client3.send({ ...bpm240, atoms: twoBarAtoms, scoreEvents: goodEvents });
+  const wrongBars = await client3.next('error');
+  check('小节覆盖不一致被拒绝', wrongBars.message.includes('小节覆盖'), String(wrongBars.message));
+  client3.close();
 }
 
 async function scenarioDurations() {
@@ -1926,6 +2012,8 @@ async function main() {
     await scenarioPauseWithMidiInput();
     await scenarioPauseAdmissionLedger();
     await scenarioUnreleasedKeyStillScores();
+    await scenarioChordPlanAccepted();
+    await scenarioChordPlanNegative();
     await scenarioPauseCrossingKey();
     await scenarioScoreChain();
     await scenarioDisconnectFinalizesTake();
