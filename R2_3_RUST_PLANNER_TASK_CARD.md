@@ -1,28 +1,26 @@
-# R2-3 工程任务卡（v3——按二轮复审意见修订，提交于 `r2-3-rust-planner` 分支）
+# R2-3 工程任务卡（v4——按三轮复审意见修订，提交于 `r2-3-rust-planner` 分支）
 
-**状态：** v3 SUBMITTED；**批准范围 = 仅 R2-3a1**（Rust NFC/JCS/SHA-256 + 六固定向量 byte-exact 复现）。R2-3a2/a3 未放行——各有前置阻断项（见 §4）。
+**状态：** v4；**a1 已放行并实施**（交付见分支后续提交）；a2/a3 仍未放行（阻断项见 §4，v4 已按三轮意见补齐其中 scoreFingerprint 规则与 TargetOnsetUs 加法边界）。
 **基线：** `main` @ `ba6d3c4`；本分支自该点创建。
 **上位约束：** R2-1 `TS_RUST_PARITY_GATE_V1.md`（Frozen @ 838cd9b）、R2-2 关闭报告 §11、路线决策 §5.1。
-**工作方式：** 全程在本分支提交；**不推送、不合入 main**，直至用户按阶段审查批准。
+**工作方式：** 全程在本分支提交。分支已推送远端供 GitHub 审查（用户确立的审查模式）；**main 不动、不合入**。
 
-**v3 变更摘要**（相对 v2/ecf0b06，全部来自二轮复审意见）：
-1. **§3.2 时间公式修正**：v2 遗漏了 `bpm.denominator`（关键数学错误 C-8）——正确公式为 `N = beat.num × 60_000_000 × bpm.den`；以 175/2 BPM 为例 v2 公式会得到 342,857 而非 685,714（差一倍）。**time.rs 的实现被阻断至 a2 修复完成**。
-2. **§3 溢出策略重写**：v2 的 i128 上界证明不成立（补上 bpm.den 后分子为三因子积，上界 ≈2^132 > i128 的 2^127；C-9）——改为 **`num-bigint` 任意精度中间值 + 结果 checked 到 safe-integer** 的方案。
-3. **§1 sha2 版本更正**：v2 写"2.x"错误（C-10）——经 crates.io API 核验（2026-10-25，走代理）**`sha2 0.11.1`** 为最新稳定版；全部依赖列真实版本并锁定 Cargo.lock。
-4. **§2.2/§2.3 `scoreFingerprint` 接口明确化**（C-11）：`PlannerOutput` 顶层新增 `scoreFingerprint` 字段，由 `build_plan_v1` 从输入 document 的 fingerprint 字段携带；门禁 `plan_fingerprint_v1_gate` 接收的 plan 即该 PlannerOutput，检查 `plan.scoreFingerprint == report.fingerprint`。
-5. **§4 阶段状态**更新：a1 有条件批准（本卡即其边界）；a2 前置阻断 = 修正后的时间公式 + num-bigint 溢出策略 + config 输入边界；a3 前置阻断 = scoreFingerprint 接口（已在 v3 完成）+ a2 通过。
+**v4 变更摘要**（相对 v3/b6c2b9f，全部来自三轮复审意见）：
+1. **§2.2/§2.3 `scoreFingerprint` 字段来源修正**（C-12，关键）：v3 写"从输入 document 的 fingerprint 字段携带"——**ScoreDocumentV1 顶层不存在 `fingerprint` 字段**（Schema `additionalProperties:false`）。正确规则（三轮复审 §二 五步）：源指纹在 **`document.source.sourceFingerprint`**（格式 `sha256:` + 64 位小写 hex）；`build_plan_v1` 读取它、**验证格式、去 `sha256:` 前缀**得 64hex，写入 `PlannerOutput.scoreFingerprint`；门禁比较 `plan.scoreFingerprint == report.fingerprint`（后者即裸 64hex，TS 投影 :178 同格式）；`project_score_document_v1` 的文档/报告绑定检查使用**同一规范化规则**（去前缀后比较），不比较不存在的 `document.fingerprint`。
+2. **§3.5 新增 `TargetOnsetUs` 最终加法边界**（三轮复审 §三）：`CountInUs + PlanOffsetUs` 各自合法、和仍可能超 safe-integer——最终加法必须精确整数并做范围检查，超限返回越界错误码，禁止截断/回绕（a2 阻断项 +1）。
+3. **§0.1 git 状态同步**：v3 实际已推送（`origin/r2-3-rust-planner == b6c2b9f`），v2→v3 diff 已由用户在 GitHub 完成审查——撤销 v3 文本中"未推送"的过时表述，避免本地/远端版本追溯混淆。
+4. **§4 阶段状态**：a1 放行开工（不依赖时间换算/Planner/scoreFingerprint）；a2 阻断项 +1（TargetOnsetUs 加法）；a3 阻断项 = 本节 scoreFingerprint 规则（已写入）+ a2 通过。
 
 ---
 
 ## 0. 调查结论（以实际代码为据）
 
-### 0.1 Git 状态——两个时点分别记录
+### 0.1 Git 状态——按时点分别记录（v3 的"未推送"表述已过时，此处为准）
 
-**调查时快照（任务卡 v1 产出时）**：分支 `main`，HEAD = `ba6d3c4`（R2-2 关闭落档提交）。工作区无已提交修改；untracked 文件两枚：`R2_3_RUST_PLANNER_TASK_CARD.md`（当时尚未提交的任务卡草案）与 `audit-r1/spike/sync-r20-report.mjs`（R2-0 时期历史遗留脚本，非本卡范围）。"工作区干净"的准确表述：**无 staged/modified 的已跟踪文件；存在上述两枚 untracked 文件**。
-
-**本卡提交时状态（v3 提交时）**：分支 `r2-3-rust-planner`（自 `main@ba6d3c4` 创建），提交链 `ad3f60c`(v1) → `ecf0b06`(v2) → 本 v3。untracked 仍剩 `audit-r1/spike/sync-r20-report.mjs`（保持不动）。**按二轮复审指令：本阶段只提交、不推送**（分支曾在 v2 时经用户指令推送过一次至 `ecf0b06`，远端当前可见到 v2；v3 待用户指示后再推）。
-
-远端：`origin/main == ba6d3c4`（ls-remote 多次核验）；`origin/r2-3-rust-planner == ecf0b06`（v2 时点推送，用户已在 GitHub 完成 v2 审查）。
+- **调查时快照（v1 产出时）**：`main` @ `ba6d3c4`；任务卡为 untracked 草案；另有历史遗留 untracked `audit-r1/spike/sync-r20-report.mjs`（至今保持不动）。
+- **v2 时点**：分支 `r2-3-rust-planner` 创建并推送至远端 `ecf0b06`（用户要求远程审查）。
+- **v3 时点**：本地提交 `b6c2b9f`，随后**经用户指令推送**，`origin/r2-3-rust-planner == b6c2b9f`（v3 文本中"未推送"的表述已过时，以此处为准）。用户已在 GitHub 完成 v2→v3 diff 的三轮审查。
+- **v4 时点（本卡）**：v4 修订提交在分支上并推送；a1 实现提交随后。`origin/main` 保持 `ba6d3c4` 不动、不合入。
 
 ### 0.2 Rust workspace 真实结构（已核实）
 
@@ -127,17 +125,18 @@ audit-r1/contracts/parity-case-bundle-v1.schema.json       # case bundle（含 p
 ### 2.2 `project`/`validate`/门禁的责任边界与接口
 
 - **`project_score_document_v1(document_json, report_json) -> Result<ProjectedDocument, ContractError>`**
-  = TS `projectScoreDocumentV1`（:172）同款 fail-closed 层：反序列化 → 投影级不变量（`DUPLICATE_EVENT_ID`/`DUPLICATE_PART_ID`/`DUPLICATE_XML_ID`、`UNKNOWN_CAPABILITY`、`DOCUMENT_REPORT_MISMATCH`、`INVALID_SOURCE_FINGERPRINT`）→ 规范化强类型 DTO。不做完整语义校验。
+  = TS `projectScoreDocumentV1`（:172）同款 fail-closed 层：反序列化 → 投影级不变量 → 规范化强类型 DTO。**文档/报告绑定检查使用规范化规则（C-12 修正）**：读取 `document.source.sourceFingerprint`（格式 `sha256:` + 64 位小写 hex），**去掉 `sha256:` 前缀**后与 `report.fingerprint`（裸 64hex）比较，不一致 → `DOCUMENT_REPORT_MISMATCH`；**不比较不存在的 `document.fingerprint`**（ScoreDocumentV1 顶层无此字段，Schema `additionalProperties:false`）。其余投影级不变量：`DUPLICATE_EVENT_ID`/`DUPLICATE_PART_ID`/`DUPLICATE_XML_ID`、`UNKNOWN_CAPABILITY`、`INVALID_SOURCE_FINGERPRINT`。不做完整语义校验。
 - **`validate_score_document_v1(dto) -> Vec<Issue>`** = TS `validateScoreDocumentV1` 完整闭合清单（closed keys、约分有理数、ordinal 连续、tieSpan 双向、`scoreRevisionId` 公式、locator 唯一、时值规则等），每条独立负例。
 - **门禁 `plan_fingerprint_v1_gate(document_json, report_json, plan_json, config_json) -> Result<String, ContractError>`**
-  复刻 TS `planFingerprintV1`（:1171）无旁路：投影 → 全量校验（→`DOCUMENT_VALIDATION_FAILED`）→ **`plan.scoreFingerprint == report.fingerprint`**（否则 `PLAN_DOCUMENT_MISMATCH`）→ payload 构造（取已校验 DTO 自己的 scoreRevisionId/normalizerVersion/supportProfileVersion）→ payload 全量校验 → 哈希。
+  复刻 TS `planFingerprintV1`（:1171）无旁路：投影 → 全量校验（→`DOCUMENT_VALIDATION_FAILED`）→ **`plan.scoreFingerprint == report.fingerprint`**（裸 64hex 对裸 64hex；否则 `PLAN_DOCUMENT_MISMATCH`）→ payload 构造（取已校验 DTO 自己的 scoreRevisionId/normalizerVersion/supportProfileVersion）→ payload 全量校验 → 哈希。
   **plan_json 的形状 = §2.3 的 `PlannerOutput`**（含顶层 `scoreFingerprint`）——公开输出与门禁输入是同一结构，不存在"内部 Plan 另有一套"的第二协议。
 
 ### 2.3 `PlannerOutput`（Rust 输出契约；v3 增补 `scoreFingerprint`，审修 4）
 
 ```jsonc
 {
-  "scoreFingerprint": "ba6d3c4…64hex",     // ★ v3 新增：build_plan_v1 从输入 document.fingerprint 携带；
+  "scoreFingerprint": "…64hex",            // ★ C-12 修正：build_plan_v1 从 document.source.sourceFingerprint
+                                            //   （"sha256:"+64hex）验证格式并去前缀后携带（裸 64hex）；
                                             //   门禁用它与 report.fingerprint 比对（PLAN_DOCUMENT_MISMATCH）
   "occurrences": [ { "locator": {…}, "passIndex": 0, "playbackBeat": "0/1", "durationBeat": "1/1",
                      "measureOrdinal": 1, "bar": 1, "beatInMeasure": "0/1", "staffNumber": 1, "voiceId": "1",
@@ -188,6 +187,13 @@ D = beat.den  × bpm.numerator
 3. 越界拒绝：结果 >2^53−1 → `TIME_OUT_OF_RANGE`；未约分 → `INVALID_RATIONAL`；countInBeats 超域 → `RATIONAL_OUT_OF_RANGE`。
 4. 三因子上界回归：beat.num≈2^53、bpm.den≈2^53、60_000_000 常数并存（这正是 v2 i128 会爆、BigInt 必须存活的用例）。
 
+### 3.5 `TargetOnsetUs` 最终加法边界（v4 新增，三轮复审 §三；a2 阻断项）
+
+`TargetOnsetUs = CountInUs + PlanOffsetUs`——两项**各自**在 safe-integer 域内，其和仍可能超出（如 CountInUs ≈ 2^53、PlanOffsetUs ≈ 2^53）。规则：
+- 最终加法用 BigInt 精确执行（不得落回 f64/i128 截断）；
+- 加法结果做范围检查：> 2^53−1 → 返回越界错误码（`TIME_OUT_OF_RANGE`），**禁止截断、回绕或输出失真数字**；
+- 边界测试：CountInUs 与 PlanOffsetUs 各取 ≈2^53/2 的合法组合，断言和越界时按错误码拒绝、和未越界时精确。
+
 ## 4. 阶段状态与验收条件（v3：仅 a1 放行）
 
 ### 4.1 R2-3a1——**已获有条件批准，即将开工**
@@ -230,9 +236,11 @@ D = beat.den  × bpm.numerator
 | **C-8** | **v2 §3.2 公式遗漏 bpm.denominator（二轮复审抓获；175/2 反例差一倍）** | §3.2 已修正；time.rs 阻断至 a2 |
 | **C-9** | **v2 i128 上界证明不成立（三因子 ≈2^132 > 2^127）** | §3 改 num-bigint 任意精度（0.5.1） |
 | **C-10** | **v2 sha2 版本误写"2.x"** | 更正 0.11.1（crates.io API 核验） |
-| **C-11** | **scoreFingerprint 的持有/生成/门禁输入歧义** | §2.2/§2.3 明确：PlannerOutput 顶层字段，build_plan_v1 从 document.fingerprint 携带，门禁输入即该结构 |
+| **C-11** | **scoreFingerprint 的持有/生成/门禁输入歧义** | v3 的修正方向正确但字段来源错误（C-12）；v4 按 §2.2/§2.3 五步规则定稿 |
+| **C-12** | **v3 写"从 document.fingerprint 携带"——ScoreDocumentV1 顶层无此字段（additionalProperties:false）；源指纹在 source.sourceFingerprint（sha256: 前缀）**（三轮复审抓获） | §2.2/§2.3 定稿五步规则：读 source.sourceFingerprint → 验格式去前缀 → 写 scoreFingerprint → 门禁与 report.fingerprint 比较；绑定检查同规则 |
+| **C-13** | TargetOnsetUs = CountInUs + PlanOffsetUs 的**和**可越界（分项各自合法） | §3.5 新增：BigInt 精确加法 + 结果范围检查（a2 阻断项） |
 
-## 7. 实施顺序（v3）
+## 7. 实施顺序（v4）
 
-a1（已批准，开工中边界见 §4.1）→ 复审 → a2 阻断解除（时间公式+BigInt+config 边界）→ a2 复审 → a3（scoreFingerprint 已定义）→ a3 复审 → R2-3b → c → d。
+a1（已放行，本卡随附实现提交）→ 复审 → a2（阻断项：时间公式实现 + BigInt 策略 + config 边界 + **§3.5 加法边界**）→ a2 复审 → a3（scoreFingerprint 规则已在 §2.2/§2.3 定稿）→ a3 复审 → R2-3b → c → d。
 **第一小验收点不变 = a1 的 N-FP-V1**：`cargo test --target x86_64-pc-windows-gnu contract_v1_vectors` 中"6 committed vectors are byte-exact"通过 + 非 BMP 键负例 + 既有 110 项零回归。
