@@ -469,6 +469,18 @@ export interface JsSessionScoreReport {
  * derived from the existing alignment (no second scoring algorithm).
  */
 export declare function scorePerformance(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsSessionScoreReport
+/**
+ * Builds the PlannerOutput (task card §2.3) from the frozen ScoreDocumentV1,
+ * ImportReportV1 and parity-case config JSON instances.
+ */
+export declare function buildPlanV1(documentJson: string, reportJson: string, configJson: string): string
+/**
+ * Builds the frozen ParityCandidate projection ({ candidate, meta }) that
+ * feeds the TS `diffCandidates` comparator in the dual-run harness.
+ */
+export declare function buildParityCandidateV1(documentJson: string, reportJson: string, configJson: string): string
+/** The mandatory a3 fingerprint gate over a PlannerOutput. */
+export declare function planFingerprintV1Gate(documentJson: string, reportJson: string, planJson: string, configJson: string): string
 export declare class NativeSession {
   constructor(targets: Array<JsTarget>, queueCapacity: number, finalizationGraceMs: number)
   start(): void
@@ -520,12 +532,3 @@ export declare class NativeTakeCoordinator {
   snapshot(): JsTakeSnapshot
   sessionId(): string
 }
-
-/**
- * R2-3c contract_v1 planner dual-run surface (JSON-in / JSON-out).
- * Errors reject with `"<CODE>: <message>"` — the frozen ContractError code.
- * Additive exports only: the production surface above is unchanged.
- */
-export function buildPlanV1(documentJson: string, reportJson: string, configJson: string): string
-export function buildParityCandidateV1(documentJson: string, reportJson: string, configJson: string): string
-export function planFingerprintV1Gate(documentJson: string, reportJson: string, planJson: string, configJson: string): string
