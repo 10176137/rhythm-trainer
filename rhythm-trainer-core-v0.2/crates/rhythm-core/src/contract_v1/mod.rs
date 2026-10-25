@@ -18,7 +18,7 @@ pub mod time;
 
 pub use canonical::{nfc_normalize_value, serialize_jcs};
 pub use config::{parse_plan_request_config, PlanRequestConfig};
-pub use document::validate_score_document_v1;
+pub use document::{Issue, validate_score_document_v1};
 pub use error::ContractError;
 pub use fingerprint::{canonical_bytes, compute_plan_fingerprint_v1, sha256_hex};
 pub use gate::{build_payload, plan_fingerprint_v1_gate};

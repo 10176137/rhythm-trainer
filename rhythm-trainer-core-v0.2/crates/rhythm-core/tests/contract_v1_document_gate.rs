@@ -396,7 +396,7 @@ fn schema_tier_gaps_are_reported_by_the_validator() {
     // measure.attributes missing entirely.
     let mut no_attributes = base.clone();
     no_attributes["parts"][0]["measures"][0].as_object_mut().unwrap().remove("attributes");
-    let attributes_codes = payload_codes(&no_attributes);
+    let attributes_codes = codes(&no_attributes);
     assert!(attributes_codes.contains(&"missing_field".to_string()), "codes: {attributes_codes:?}");
 
     // attributes missing divisions.
@@ -425,7 +425,7 @@ fn schema_tier_gaps_are_reported_by_the_validator() {
     let mut no_sign = base.clone();
     no_sign["parts"][0]["measures"][0]["attributes"]["clefs"][0]
         .as_object_mut().unwrap().remove("sign");
-    assert!(payload_codes(&no_sign).contains(&"missing_field".to_string()));
+    assert!(codes(&no_sign).contains(&"missing_field".to_string()));
 
     // barline repeat with an unknown direction.
     let mut bad_direction = base.clone();
@@ -495,4 +495,64 @@ fn payload_locator_identity_includes_voice_id() {
     let codes: Vec<String> = validate_plan_fingerprint_payload_v1(&payload_for(distinct_voices))
         .into_iter().map(|issue| issue.code).collect();
     assert!(!codes.contains(&"duplicate_member_locator".to_string()), "codes: {codes:?}");
+}
+
+
+#[test]
+fn barline_optional_fields_are_not_mandatory() {
+    let fixture = load_fixture();
+    let base = fixture["document"].clone();
+    fn codes(value: &Value) -> Vec<String> {
+        validate_score_document_v1(value).into_iter().map(|issue| issue.code).collect()
+    }
+    fn full_issues(value: &Value) -> Vec<rhythm_core::contract_v1::Issue> {
+        validate_score_document_v1(value)
+    }
+    let with_barlines = |barlines: Value| {
+        let mut document = base.clone();
+        document["parts"][0]["measures"][0]["barlines"] = barlines;
+        codes(&document)
+    };
+
+    // Empty barline object: everything optional, all legal.
+    assert!(with_barlines(serde_json::json!([])).is_empty());
+    let codes_empty_object = with_barlines(serde_json::json!([{}]));
+    assert!(codes_empty_object.is_empty());
+
+    // Only location.
+    assert!(with_barlines(serde_json::json!([{ "location": "left" }])).is_empty());
+
+    // Only a legal repeat direction.
+    let repeat_codes = with_barlines(serde_json::json!([
+        { "repeat": { "direction": "forward" } }
+    ]));
+    if !repeat_codes.is_empty() {
+        println!("DEBUG full issues: {:?}", full_issues(&{
+            let mut document = base.clone();
+            document["parts"][0]["measures"][0]["barlines"] = serde_json::json!([
+                { "repeat": { "direction": "forward" } }
+            ]);
+            document
+        }));
+    }
+    assert!(repeat_codes.is_empty());
+    assert!(with_barlines(serde_json::json!([
+        { "repeat": { "direction": "backward", "times": 2, "afterJump": true } }
+    ])).is_empty());
+
+    // Only a legal ending type.
+    assert!(with_barlines(serde_json::json!([
+        { "ending": { "type": "discontinue" } }
+    ])).is_empty());
+
+    // Optional-but-present fields still enforce their types/ranges.
+    let codes = with_barlines(serde_json::json!([
+        { "repeat": { "direction": "forward", "times": 0 } }
+    ]));
+    assert!(codes.iter().any(|code| code == "schema_violation"), "times=0 must fail");
+    assert!(with_barlines(serde_json::json!([
+        { "ending": { "type": "discontinue", "number": 5 } }
+    ]))
+    .iter()
+    .any(|code| code == "schema_violation"), "numeric ending.number must fail");
 }

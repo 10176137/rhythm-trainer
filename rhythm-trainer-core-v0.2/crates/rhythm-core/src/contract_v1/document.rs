@@ -30,8 +30,14 @@ fn schema_violation(message: impl Into<String>) -> Issue {
 }
 
 fn check_integer_bounds(value: Option<&Value>, context: &str, min: i64, max: Option<i64>, issues: &mut Vec<Issue>) {
+    // OPTIONAL integer field: ABSENCE is legal; PRESENCE must be an integer
+    // meeting the range constraint (never silently skipped).
     match value.and_then(Value::as_i64) {
-        None => issues.push(schema_violation(format!("{context}: must be an integer"))),
+        None => {
+            if value.map(|v| !v.is_null()).unwrap_or(false) {
+                issues.push(schema_violation(format!("{context}: must be an integer")));
+            }
+        }
         Some(v) => {
             if v < min {
                 issues.push(schema_violation(format!("{context}: must be >= {min}")));
@@ -45,14 +51,24 @@ fn check_integer_bounds(value: Option<&Value>, context: &str, min: i64, max: Opt
 }
 
 fn check_string_field(value: Option<&Value>, context: &str, min_len: usize, issues: &mut Vec<Issue>) {
-    let ok = value.and_then(Value::as_str).map(|s| s.len() >= min_len).unwrap_or(false);
-    if !ok {
-        issues.push(schema_violation(format!("{context}: must be a string of length >= {min_len}")));
+    // OPTIONAL string field: ABSENCE is legal; PRESENCE must be a string
+    // meeting the length constraint (never silently skipped).
+    match value {
+        None | Some(Value::Null) => {}
+        Some(Value::String(text)) => {
+            if text.len() < min_len {
+                issues.push(schema_violation(format!("{context}: must be a string of length >= {min_len}")));
+            }
+        }
+        Some(other) => issues.push(schema_violation(format!("{context}: must be a string, got {other}"))),
     }
 }
 
 fn check_boolean_field(value: Option<&Value>, context: &str, issues: &mut Vec<Issue>) {
-    if !value.map(Value::is_boolean).unwrap_or(false) {
+    // OPTIONAL boolean field: absence is legal where the schema marks the
+    // field optional; when present, it must be a boolean.
+    let Some(actual) = value else { return };
+    if !actual.is_boolean() {
         issues.push(schema_violation(format!("{context}: must be a boolean")));
     }
 }
@@ -82,11 +98,14 @@ fn check_string_array(value: Option<&Value>, context: &str, issues: &mut Vec<Iss
     }
 }
 
-/// Closed-object gate: reports unexpected + missing fields, returns whether
-/// the value is an object (callers skip field checks when false).
+/// Closed-object gate: reports unexpected fields (closed) and missing
+/// required fields SEPARATELY — optional fields (in allowed but not in
+/// required) must not be upgraded to mandatory. Returns whether the value
+/// is an object (callers skip field checks when false).
 fn check_object_shape(
     value: &Value,
     allowed: &[&str],
+    required: &[&str],
     context: &str,
     issues: &mut Vec<Issue>,
 ) -> bool {
@@ -95,9 +114,10 @@ fn check_object_shape(
         return false;
     }
     check_closed_keys(value, allowed, context, issues);
-    check_required_keys(value, allowed, context, issues);
+    check_required_keys(value, required, context, issues);
     true
 }
+
 pub fn is_object(value: &Value) -> bool {
     value.is_object()
 }
@@ -193,6 +213,7 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
     }
     const ROOT_ALLOWED: [&str; 10] = ["schemaVersion", "normalizerVersion", "supportProfileVersion",
         "scoreRevisionId", "source", "metadata", "parts", "tieSpans", "tempoMarks", "capabilities"];
+    const ROOT_REQUIRED: [&str; 10] = ROOT_ALLOWED;
     check_closed_keys(dto, &ROOT_ALLOWED, "root", &mut issues);
     check_required_keys(dto, &ROOT_ALLOWED, "root", &mut issues);
     for key in ["normalizerVersion", "supportProfileVersion"] {
@@ -300,6 +321,7 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
             }
             check_closed_keys(measure, &["ordinal", "printedNumber", "implicit", "startBeat", "durationBeat",
                 "attributes", "events", "barlines", "capabilities"], "measure", &mut issues);
+            check_required_keys(measure, &["ordinal", "implicit", "startBeat", "durationBeat", "attributes", "events", "barlines", "capabilities"], "measure", &mut issues);
             let ordinal = measure.get("ordinal").and_then(Value::as_i64);
             match ordinal {
                 None => issues.push(issue("invalid_ordinal", "measure.ordinal must be a positive integer")),
@@ -322,18 +344,18 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
             // MeasureAttributesV1 (frozen schema: all five fields required, closed).
             if let Some(attributes) = measure.get("attributes") {
                 const ATTR_ALLOWED: [&str; 5] = ["divisions", "time", "key", "staves", "clefs"];
-                if check_object_shape(attributes, &ATTR_ALLOWED, "measure.attributes", &mut issues) {
+                if check_object_shape(attributes, &ATTR_ALLOWED, &ATTR_ALLOWED, "measure.attributes", &mut issues) {
                     check_integer_bounds(attributes.get("divisions"), "measure.attributes.divisions", 1, None, &mut issues);
                     if let Some(time) = attributes.get("time") {
                         const TIME_ALLOWED: [&str; 2] = ["beats", "beatType"];
-                        if check_object_shape(time, &TIME_ALLOWED, "measure.attributes.time", &mut issues) {
+                        if check_object_shape(time, &TIME_ALLOWED, &TIME_ALLOWED, "measure.attributes.time", &mut issues) {
                             check_integer_bounds(time.get("beats"), "measure.attributes.time.beats", 1, None, &mut issues);
                             check_integer_bounds(time.get("beatType"), "measure.attributes.time.beatType", 1, None, &mut issues);
                         }
                     }
                     if let Some(key) = attributes.get("key") {
                         const KEY_ALLOWED: [&str; 2] = ["fifths", "mode"];
-                        if check_object_shape(key, &KEY_ALLOWED, "measure.attributes.key", &mut issues) {
+                        if check_object_shape(key, &KEY_ALLOWED, &KEY_ALLOWED, "measure.attributes.key", &mut issues) {
                             check_integer_bounds(key.get("fifths"), "measure.attributes.key.fifths", -7, Some(7), &mut issues);
                             check_string_field(key.get("mode"), "measure.attributes.key.mode", 0, &mut issues);
                         }
@@ -343,7 +365,7 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
                         Some(Value::Array(clefs)) => {
                             for clef in clefs {
                                 const CLEF_ALLOWED: [&str; 3] = ["staffNumber", "sign", "line"];
-                                if check_object_shape(clef, &CLEF_ALLOWED, "measure.attributes.clefs[]", &mut issues) {
+                                if check_object_shape(clef, &CLEF_ALLOWED, &CLEF_ALLOWED, "measure.attributes.clefs[]", &mut issues) {
                                     check_integer_bounds(clef.get("staffNumber"), "measure.attributes.clefs[].staffNumber", 1, None, &mut issues);
                                     check_string_field(clef.get("sign"), "measure.attributes.clefs[].sign", 1, &mut issues);
                                     check_integer_bounds(clef.get("line"), "measure.attributes.clefs[].line", 1, None, &mut issues);
@@ -383,12 +405,14 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
                 Some(Value::Array(barlines)) => {
                     for barline in barlines {
                         const BARLINE_ALLOWED: [&str; 4] = ["location", "barStyle", "repeat", "ending"];
-                        if check_object_shape(barline, &BARLINE_ALLOWED, "measure.barlines[]", &mut issues) {
+                        const BARLINE_REQUIRED: [&str; 0] = [];
+                        if check_object_shape(barline, &BARLINE_ALLOWED, &BARLINE_REQUIRED, "measure.barlines[]", &mut issues) {
                             check_string_field(barline.get("location"), "measure.barlines[].location", 0, &mut issues);
                             check_string_field(barline.get("barStyle"), "measure.barlines[].barStyle", 0, &mut issues);
                             if let Some(repeat) = barline.get("repeat") {
                                 const REPEAT_ALLOWED: [&str; 3] = ["direction", "times", "afterJump"];
-                                if check_object_shape(repeat, &REPEAT_ALLOWED, "measure.barlines[].repeat", &mut issues) {
+                                const REPEAT_REQUIRED: [&str; 1] = ["direction"];
+                                if check_object_shape(repeat, &REPEAT_ALLOWED, &REPEAT_REQUIRED, "measure.barlines[].repeat", &mut issues) {
                                     check_enum(repeat.get("direction"), &["forward", "backward"],
                                         "measure.barlines[].repeat.direction", &mut issues);
                                     check_integer_bounds(repeat.get("times"), "measure.barlines[].repeat.times", 1, None, &mut issues);
@@ -397,7 +421,8 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
                             }
                             if let Some(ending) = barline.get("ending") {
                                 const ENDING_ALLOWED: [&str; 2] = ["number", "type"];
-                                if check_object_shape(ending, &ENDING_ALLOWED, "measure.barlines[].ending", &mut issues) {
+                                const ENDING_REQUIRED: [&str; 1] = ["type"];
+                                if check_object_shape(ending, &ENDING_ALLOWED, &ENDING_REQUIRED, "measure.barlines[].ending", &mut issues) {
                                     check_string_field(ending.get("number"), "measure.barlines[].ending.number", 0, &mut issues);
                                     check_enum(ending.get("type"), &["start", "stop", "discontinue"],
                                         "measure.barlines[].ending.type", &mut issues);
@@ -550,6 +575,7 @@ fn validate_event(
     check_closed_keys(event, &["eventId", "kind", "source", "onsetBeat", "durationBeat", "notatedType", "dots",
         "pitch", "chordGroupId", "tieStart", "tieStop", "tiedStart", "tiedStop", "tieSpanId", "isGrace", "isCue",
         "lyricText", "articulations", "timeModification"], "event", issues);
+    check_required_keys(event, &["eventId", "kind", "source", "onsetBeat", "durationBeat", "dots", "tieStart", "tieStop", "tiedStart", "tiedStop", "isGrace", "isCue", "articulations"], "event", issues);
     let event_id = event.get("eventId").and_then(Value::as_str);
     match event_id {
         None => issues.push(issue("invalid_event", "eventId must be a non-empty string")),
