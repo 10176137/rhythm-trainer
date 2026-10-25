@@ -63,6 +63,7 @@ export interface MappingResult {
 export interface ScoreViewAdapter {
   buildMapping(score: ScoreDocument, renderer: OpenSheetMusicDisplay): MappingResult;
   highlightScoreEvent(scoreEventId: string, state: HighlightState): boolean;
+  setScoreEventOpacity(scoreEventId: string, opacity: string): boolean;
   clearHighlights(): void;
 }
 
@@ -84,6 +85,24 @@ const COLOR_OPTIONS = {
   applyToTies: true,
   applyToSlurs: true,
   applyToGlissandi: true,
+};
+
+/**
+ * VexFlow's graphical note exposes the SVG parts that are siblings of the
+ * notehead group. These getters are documented by OSMD's
+ * VexFlowGraphicalNote but are not part of the base GraphicalNote type.
+ */
+type VexFlowNoteSvgApi = {
+  getSVGGElement?: () => SVGGElement | null;
+  getNoteheadSVGs?: () => HTMLElement[];
+  getStemSVG?: () => HTMLElement | null;
+  getBeamSVGs?: () => HTMLElement[];
+  getLedgerLineSVGs?: () => HTMLElement[];
+  getTieSVGs?: () => HTMLElement[];
+  getSlurSVGs?: () => HTMLElement[];
+  getGlissandoSVGs?: () => HTMLElement[];
+  getFlagSVG?: () => HTMLElement | null;
+  getModifierSVGs?: () => HTMLElement[];
 };
 
 function voiceNumber(value: string | undefined, fallback: number): number {
@@ -339,6 +358,43 @@ export class OsmdScoreViewAdapter implements ScoreViewAdapter {
       }
     }
     return true;
+  }
+
+  /**
+   * Display-only opacity for out-of-scope notes. Unlike setColor, CSS opacity
+   * also dims the sibling glyphs (stem, beams, flag, ledgers, ties, slurs,
+   * glissandi, modifiers) that VexFlow renders outside the notehead group.
+   */
+  setScoreEventOpacity(scoreEventId: string, opacity: string): boolean {
+    const ref = this.mapping?.byEventId.get(scoreEventId);
+    if (!ref) return false;
+    let applied = false;
+    for (const graphical of ref.graphicalNotes) {
+      const note = graphical as unknown as VexFlowNoteSvgApi;
+      const targets = new Set<SVGElement | HTMLElement>();
+      const add = (element: SVGElement | HTMLElement | null | undefined) => {
+        if (element) targets.add(element);
+      };
+      try {
+        add(note.getSVGGElement?.());
+        add(note.getStemSVG?.());
+        add(note.getFlagSVG?.());
+        for (const element of note.getNoteheadSVGs?.() ?? []) add(element);
+        for (const element of note.getBeamSVGs?.() ?? []) add(element);
+        for (const element of note.getLedgerLineSVGs?.() ?? []) add(element);
+        for (const element of note.getTieSVGs?.() ?? []) add(element);
+        for (const element of note.getSlurSVGs?.() ?? []) add(element);
+        for (const element of note.getGlissandoSVGs?.() ?? []) add(element);
+        for (const element of note.getModifierSVGs?.() ?? []) add(element);
+      } catch {
+        // A backend/version without SVG getters must not break the app.
+      }
+      for (const target of targets) {
+        target.style.opacity = opacity;
+        applied = true;
+      }
+    }
+    return applied;
   }
 
   clearHighlights(): void {

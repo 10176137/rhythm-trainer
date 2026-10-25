@@ -189,24 +189,12 @@ export default function OsmdScoreView({
 
   // Single-hand practice keeps the other staff visible for context, but the
   // non-target notes are de-emphasized instead of looking equally active.
+  // The adapter also dims VexFlow's sibling stem/beam/ledger/flag groups.
   useEffect(() => {
     const adapter = adapterRef.current;
     if (!adapter || loading) return;
-    const svgElement = (graphical: unknown) => (
-      (graphical as { getSVGGElement?: () => SVGGElement }).getSVGGElement?.()
-    );
-    for (const eventId of previousMutedRef.current) {
-      for (const graphical of adapter.getGraphicalNotes(eventId)) {
-        const element = svgElement(graphical);
-        if (element) element.style.opacity = '';
-      }
-    }
-    for (const eventId of mutedNoteIds) {
-      for (const graphical of adapter.getGraphicalNotes(eventId)) {
-        const element = svgElement(graphical);
-        if (element) element.style.opacity = '0.22';
-      }
-    }
+    for (const eventId of previousMutedRef.current) adapter.setScoreEventOpacity(eventId, '');
+    for (const eventId of mutedNoteIds) adapter.setScoreEventOpacity(eventId, '0.22');
     previousMutedRef.current = [...mutedNoteIds];
   }, [mutedNoteIds, loading]);
 
