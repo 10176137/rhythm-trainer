@@ -1,7 +1,7 @@
 {
  "schemaVersion": "r2-3c-dual-run-report-v1",
- "generatedAt": "2026-10-25T12:39:56.172Z",
- "command": "GENERATE_R2C_REPORT=1 npx vitest run src/score-engine/parity/rust-parity.test.ts",
+ "generatedAt": "2026-10-25T12:53:47.350Z",
+ "command": "npx vitest run src/score-engine/parity/rust-parity.test.ts",
  "sides": {
   "expected": {
    "kind": "independent truth via loadExpected (golden-fixture converter / hand-derived expected files)",
@@ -9,15 +9,24 @@
   },
   "ts": {
    "kind": "candidate",
-   "pipeline": "buildTsCandidate (live)",
-   "plannerVersion": "parity-harness-1"
+   "pipeline": "buildTsCandidate (live, run twice for stability)",
+   "plannerVersion": "parity-harness-1",
+   "gitSha": "af8adfcd34c762d66cdd3a90b98163e612f627d1",
+   "gitShaNote": "single repo: TS and Rust sources are pinned by the same commit"
   },
   "rust": {
    "kind": "candidate",
-   "pipeline": "build_plan_v1 via NAPI buildParityCandidateV1 (live)",
+   "pipeline": "build_plan_v1 + build_parity_candidate_v1 via NAPI (live, run twice for stability)",
    "plannerVersion": "parity-harness-1",
-   "gitSha": "56da11581235e0a915e129c083232865d673175d"
+   "gitSha": "af8adfcd34c762d66cdd3a90b98163e612f627d1",
+   "gitShaNote": "single repo: TS and Rust sources are pinned by the same commit"
   }
+ },
+ "contract": {
+  "plannerVersion": "parity-harness-1",
+  "fingerprintSchemaVersion": 1,
+  "timeConversion": "time-conversion-v1",
+  "parityGateDoc": "audit-r1/docs/TS_RUST_PARITY_GATE_V1.md @ 838cd9b"
  },
  "cases": [
   {
@@ -28,7 +37,14 @@
     "rustFingerprint": "plan-v1:sha256:84ab007a8c2a2a0d1c5b4316a6791036604eed7f4d3b1d776132c197a508f71d",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -41,7 +57,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -53,7 +70,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -77,6 +95,13 @@
       "status": "pass"
      }
     ]
+   },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
    },
    "blocked": {
     "isBlockedCase": false,
@@ -91,7 +116,14 @@
     "rustFingerprint": "plan-v1:sha256:97875afe2ad7a00b6439207ead1008c4a380a9deb6674c0d8e7e0564c7370f66",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -104,7 +136,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -116,7 +149,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -141,6 +175,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": false,
     "errorCode": null
@@ -154,7 +195,14 @@
     "rustFingerprint": "plan-v1:sha256:af3900c4bfaa47ec442dacb204674de425051eabdc7603b46e16fedf83b8362c",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -167,7 +215,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -179,7 +228,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -204,6 +254,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": false,
     "errorCode": null
@@ -217,7 +274,14 @@
     "rustFingerprint": "plan-v1:sha256:56746cd7698c7f9bb8d174d6b56eea7451c0fc3bb8fedf9a30556a215f664797",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -230,7 +294,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -242,7 +307,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -267,6 +333,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": false,
     "errorCode": null
@@ -280,7 +353,14 @@
     "rustFingerprint": "plan-v1:sha256:0d2453632a532907a7196486c286575f940a2365ddb949e9c75b37a55c40747a",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -293,7 +373,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -305,7 +386,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -330,6 +412,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": false,
     "errorCode": null
@@ -343,7 +432,14 @@
     "rustFingerprint": "plan-v1:sha256:1ef79b9ca10910dfa7f8d3e66e6cd06dee7a466ae9d00af4717705f0e454510c",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -356,7 +452,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -368,7 +465,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -392,6 +490,13 @@
       "status": "pass"
      }
     ]
+   },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
    },
    "blocked": {
     "isBlockedCase": false,
@@ -406,7 +511,14 @@
     "rustFingerprint": "plan-v1:sha256:ea10410f4a98984241e67cadeb3e59249a88380d877938c2fe248ed8f3f69eb4",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -419,7 +531,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -431,7 +544,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -456,6 +570,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": false,
     "errorCode": null
@@ -469,7 +590,14 @@
     "rustFingerprint": "plan-v1:sha256:ce18e0cfe05c474874648c7571cc0450bf62918077a2f579137573fc991c80ad",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -482,7 +610,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -494,7 +623,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -519,6 +649,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": false,
     "errorCode": null
@@ -532,7 +669,14 @@
     "rustFingerprint": "plan-v1:sha256:47df4d0b17bf14795357555b42a19e23be9d9cc1bb6a98e5286da803cc39d4ce",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -545,7 +689,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -557,7 +702,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -582,6 +728,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": false,
     "errorCode": null
@@ -595,7 +748,14 @@
     "rustFingerprint": null,
     "fingerprintErrorCode": "PAYLOAD_VALIDATION_FAILED",
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -608,7 +768,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -620,7 +781,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -645,6 +807,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "blocked",
+    "planStatusMatch": true,
+    "issueCodesMatch": true,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": true,
     "errorCode": "PAYLOAD_VALIDATION_FAILED"
@@ -658,7 +827,14 @@
     "rustFingerprint": "plan-v1:sha256:a52614ebee8abc463f8f5c4003bc3361a0adfdd2772f429463e9b56db90a485e",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -671,7 +847,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -683,7 +860,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -708,6 +886,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": false,
     "errorCode": null
@@ -721,7 +906,14 @@
     "rustFingerprint": "plan-v1:sha256:ae7293cd39836316548709d5f441901354dc317c4b45206999f5a1708591335b",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -734,7 +926,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -746,7 +939,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -771,6 +965,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": false,
     "errorCode": null
@@ -784,7 +985,14 @@
     "rustFingerprint": "plan-v1:sha256:f67fd6e87c2d28997639b2f5624ca9dbdb5ec5a1f178f1e259c2405e3d10715c",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -797,7 +1005,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -809,7 +1018,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -834,6 +1044,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": false,
     "errorCode": null
@@ -847,7 +1064,14 @@
     "rustFingerprint": "plan-v1:sha256:904251663e9535508731bc2598593308b85bf68215488339241905d1dec0515d",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -860,7 +1084,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -872,7 +1097,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -896,6 +1122,13 @@
       "status": "pass"
      }
     ]
+   },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
    },
    "blocked": {
     "isBlockedCase": false,
@@ -910,7 +1143,14 @@
     "rustFingerprint": "plan-v1:sha256:9c540ca249535e157c84e131aaff08d7efd2114297e2ddbe78e04e6393365255",
     "fingerprintErrorCode": null,
     "stableAcrossRuns": true,
-    "note": "rust gate (NAPI) vs ts gate (live) on the same frozen inputs; expected side is the independent truth"
+    "stability": {
+     "tsCandidateIdentical": true,
+     "tsGateIdentical": true,
+     "rustCandidateIdentical": true,
+     "rustPlanIdentical": true,
+     "rustGateIdentical": true
+    },
+    "note": "both pipelines executed TWICE in full; stability = identical candidates/plans AND identical gate results"
    },
    "l2": {
     "tsVsExpected": {
@@ -923,7 +1163,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
@@ -935,7 +1176,8 @@
       "semantic-defect": 0,
       "unsupported-behavior": 0,
       "unclassified": 0
-     }
+     },
+     "diffs": []
     }
    },
    "l3": {
@@ -960,6 +1202,13 @@
      }
     ]
    },
+   "expectedOutcome": {
+    "planStatus": "strict",
+    "planStatusMatch": true,
+    "issueCodesMatch": null,
+    "fingerprintErrorCodeMatch": true,
+    "scopeCodesMatch": null
+   },
    "blocked": {
     "isBlockedCase": false,
     "errorCode": null
@@ -969,6 +1218,7 @@
  "summary": {
   "cases": 15,
   "fingerprintPasses": 15,
+  "stabilityPasses": 15,
   "semanticDiffTotal": 0,
   "unclassifiedTotal": 0,
   "unsupportedTotal": 0,
