@@ -5,6 +5,7 @@
 //   F2 — a plan that arrives after the score/config/launch-generation changed
 //        must never start a session.
 import type { RustPlanResponse } from './rust-plan';
+import type { ScoreAdvanceMode } from '../../types/practice';
 
 export type PlannerAuthorityValue = 'rts' | 'rust';
 
@@ -44,7 +45,12 @@ export function decideAuthority(cached: PlannerAuthorityValue | null): Authority
   };
 }
 
-/** Stable key over the launch-relevant practice configuration. */
+/**
+ * Stable key over the launch-relevant practice configuration. The launch mode
+ * (timeline vs follow) is deliberately NOT part of this key: it is bound as a
+ * first-class token field (`LaunchToken.mode`) so a mode switch reports its own
+ * STALE_MODE cause instead of being folded into a generic config mismatch.
+ */
 export function planContextKey(input: {
   hand: string;
   tempo: number;
@@ -72,24 +78,33 @@ export interface LaunchToken {
   generation: number;
   contextKey: string;
   scoreFingerprint: string;
+  /** The mode this launch actually requested (not a copy of config.modeId). */
+  mode: ScoreAdvanceMode;
 }
 
 export interface LiveLaunchState {
   generation: number;
   contextKey: string;
   scoreFingerprint: string | null;
+  /** The advance mode currently selected in the app. */
+  mode: ScoreAdvanceMode;
   authority: PlannerAuthorityValue | null;
 }
 
 export type CurrencyVerdict =
   | { current: true }
-  | { current: false; code: 'STALE_SUPERSEDED' | 'STALE_SCORE' | 'STALE_CONTEXT' | 'AUTHORITY_LOST'; message: string };
+  | { current: false; code: 'STALE_SUPERSEDED' | 'STALE_SCORE' | 'STALE_MODE' | 'STALE_CONTEXT' | 'AUTHORITY_LOST'; message: string };
 
 /**
  * Checks that the launch which issued the request is STILL the live one.
  * `live` is read from the app's current state AFTER the response arrived —
  * comparing only against values captured in the async closure would prove
  * nothing about the score being the one currently selected.
+ *
+ * The mode check is separate from the context key on purpose: timeline and
+ * follow plans are consumed by different starters (session.begin vs
+ * FollowSession), and switching between them changes neither the score nor
+ * the practice config, so only an explicit mode comparison can reject it.
  */
 export function evaluatePlanCurrency(token: LaunchToken, live: LiveLaunchState): CurrencyVerdict {
   if (live.generation !== token.generation) {
@@ -97,6 +112,9 @@ export function evaluatePlanCurrency(token: LaunchToken, live: LiveLaunchState):
   }
   if (live.scoreFingerprint === null || live.scoreFingerprint !== token.scoreFingerprint) {
     return { current: false, code: 'STALE_SCORE', message: '等待期间曲谱已切换' };
+  }
+  if (live.mode !== token.mode) {
+    return { current: false, code: 'STALE_MODE', message: '等待期间练习推进模式已切换' };
   }
   if (live.contextKey !== token.contextKey) {
     return { current: false, code: 'STALE_CONTEXT', message: '等待期间练习配置或范围已变化' };

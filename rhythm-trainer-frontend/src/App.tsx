@@ -971,9 +971,10 @@ export default function App() {
   ) => {
     const engineDoc = scoreDoc.engine;
     const report = scoreDoc.importReport;
-    // R2-3h-R1 (F2): bind this launch to a generation + the exact score and
-    // config snapshot taken at request time. A newer launch supersedes it and
-    // a changed score/config changes the snapshot, so a late response can
+    // R2-3h-R1 (F2): bind this launch to a generation, the exact score/config
+    // snapshot taken at request time AND the actual launch mode. A newer launch
+    // supersedes it, a changed score/config changes the snapshot, and switching
+    // Timeline <-> Follow is caught by the mode field — so a late response can
     // never start a session for state the user has already left.
     const generation = ++launchSeqRef.current;
     const boundFingerprint = engineDoc?.fingerprint ?? null;
@@ -998,7 +999,7 @@ export default function App() {
     }
 
     const outcome = await orchestrateRustLaunch<true>({
-      token: { generation, contextKey: boundContextKey, scoreFingerprint: boundFingerprint },
+      token: { generation, contextKey: boundContextKey, scoreFingerprint: boundFingerprint, mode },
       request: async () => {
         // Inputs come from the existing import/projection flow — never from a
         // reconstructed TS PlaybackPlan.
@@ -1054,6 +1055,7 @@ export default function App() {
               : null,
           }),
           scoreFingerprint: currentFingerprint,
+          mode: currentConfig.advanceMode,
           authority: plannerAuthorityRef.current,
         };
       },

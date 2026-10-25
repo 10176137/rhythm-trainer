@@ -40,6 +40,7 @@ const token: LaunchToken = {
   generation: 1,
   contextKey: contextKeyFor(),
   scoreFingerprint: FINGERPRINT,
+  mode: 'timeline',
 };
 
 function live(overrides: Partial<LiveLaunchState> = {}): LiveLaunchState {
@@ -47,6 +48,7 @@ function live(overrides: Partial<LiveLaunchState> = {}): LiveLaunchState {
     generation: 1,
     contextKey: contextKeyFor(),
     scoreFingerprint: FINGERPRINT,
+    mode: 'timeline',
     authority: 'rust',
     ...overrides,
   };
@@ -75,6 +77,14 @@ function deferred<T>() {
   let reject!: (error: unknown) => void;
   const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
   return { promise, resolve, reject };
+}
+
+/**
+ * Models App.startRustPractice's `mode` parameter: a union-typed value, so the
+ * captured closure branch is not statically narrowed to a single literal.
+ */
+function capturedMode(mode: 'timeline' | 'follow'): 'timeline' | 'follow' {
+  return mode;
 }
 
 describe('R2-3h-R1 F1: unknown planner authority never falls back to TS', () => {
@@ -231,6 +241,70 @@ describe('R2-3h-R1 F2: a stale plan never starts', () => {
     expect(accept).not.toHaveBeenCalled();
   });
 
+  it('5c. timeline -> follow while waiting: the old timeline plan never calls session.begin', async () => {
+    const plan = deferred<RustPlanResponse>();
+    const beginSession = vi.fn();
+    const startFollow = vi.fn();
+    // `launchMode` is the mode captured by the launch closure (App.tsx passes
+    // it down and accept branches on it); `currentMode` is the live setting.
+    const launchMode = capturedMode('timeline');
+    let currentMode: 'timeline' | 'follow' = 'timeline';
+    const run = orchestrateRustLaunch({
+      token: { ...token, mode: launchMode },
+      request: () => plan.promise,
+      // Score, generation and context key are all unchanged — only the mode
+      // differs, which is exactly the case the previous context key missed.
+      live: () => live({ mode: currentMode }),
+      accept: (res) => {
+        if (launchMode === 'follow') startFollow();
+        else beginSession(res.requestId);
+        return 'started';
+      },
+    });
+    currentMode = 'follow'; // the user flips the setting before the response
+    plan.resolve(response());
+    const outcome = await run;
+    expect(outcome.status).toBe('cancelled');
+    if (outcome.status === 'cancelled') expect(outcome.code).toBe('STALE_MODE');
+    expect(beginSession).not.toHaveBeenCalled();
+    expect(startFollow).not.toHaveBeenCalled();
+  });
+
+  it('5d. follow -> timeline while waiting: the old follow plan never builds a FollowSession', async () => {
+    const plan = deferred<RustPlanResponse>();
+    const beginSession = vi.fn();
+    const startFollow = vi.fn();
+    const launchMode = capturedMode('follow');
+    let currentMode: 'timeline' | 'follow' = 'follow';
+    const run = orchestrateRustLaunch({
+      token: { ...token, mode: launchMode },
+      request: () => plan.promise,
+      live: () => live({ mode: currentMode }),
+      accept: () => {
+        if (launchMode === 'follow') startFollow();
+        else beginSession();
+        return 'started';
+      },
+    });
+    currentMode = 'timeline';
+    plan.resolve(response());
+    const outcome = await run;
+    expect(outcome.status).toBe('cancelled');
+    if (outcome.status === 'cancelled') expect(outcome.code).toBe('STALE_MODE');
+    expect(startFollow).not.toHaveBeenCalled();
+    expect(beginSession).not.toHaveBeenCalled();
+  });
+
+  it('5e. the mode cause survives an otherwise identical snapshot', () => {
+    // Same generation, score and context key: only the explicit mode check
+    // can distinguish this launch from the live state.
+    const verdict = evaluatePlanCurrency(
+      { ...token, mode: 'timeline' },
+      live({ mode: 'follow', contextKey: token.contextKey }),
+    );
+    expect(verdict).toMatchObject({ current: false, code: 'STALE_MODE' });
+  });
+
   it('6. a current response still starts normally (timeline and follow accept paths)', async () => {
     const timelineAccept = vi.fn(() => 'timeline-started');
     const timeline = await orchestrateRustLaunch({
@@ -244,9 +318,9 @@ describe('R2-3h-R1 F2: a stale plan never starts', () => {
 
     const followAccept = vi.fn(() => 'follow-started');
     const follow = await orchestrateRustLaunch({
-      token,
+      token: { ...token, mode: 'follow' },
       request: async () => response(),
-      live: () => live(),
+      live: () => live({ mode: 'follow' }),
       accept: followAccept,
     });
     expect(follow).toEqual({ status: 'started', result: 'follow-started' });
@@ -280,6 +354,7 @@ describe('R2-3h-R1 F2: a stale plan never starts', () => {
     expect(evaluatePlanCurrency(token, live())).toEqual({ current: true });
     expect(evaluatePlanCurrency(token, live({ generation: 2 }))).toMatchObject({ current: false, code: 'STALE_SUPERSEDED' });
     expect(evaluatePlanCurrency(token, live({ scoreFingerprint: null }))).toMatchObject({ current: false, code: 'STALE_SCORE' });
+    expect(evaluatePlanCurrency(token, live({ mode: 'follow' }))).toMatchObject({ current: false, code: 'STALE_MODE' });
     expect(evaluatePlanCurrency(token, live({ contextKey: 'other' }))).toMatchObject({ current: false, code: 'STALE_CONTEXT' });
     expect(evaluatePlanCurrency(token, live({ authority: 'rts' }))).toMatchObject({ current: false, code: 'AUTHORITY_LOST' });
     expect(evaluatePlanCurrency(token, live({ authority: null }))).toMatchObject({ current: false, code: 'AUTHORITY_LOST' });
