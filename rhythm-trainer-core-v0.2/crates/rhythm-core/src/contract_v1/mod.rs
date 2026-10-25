@@ -9,6 +9,7 @@ pub mod document;
 pub mod error;
 pub mod fingerprint;
 pub mod gate;
+pub mod normative;
 pub mod payload;
 pub mod payload_check;
 pub use payload_check::validate_plan_fingerprint_payload_v1;
@@ -23,6 +24,10 @@ pub use document::{Issue, validate_score_document_v1};
 pub use error::ContractError;
 pub use fingerprint::{canonical_bytes, compute_plan_fingerprint_v1, sha256_hex};
 pub use gate::{build_payload, plan_fingerprint_v1_gate};
+pub use normative::{
+    validate_candidate_score_events, CandidateValidationOptions, DUPLICATE_TARGET_ID,
+    INVALID_TARGET_PITCH, MEASURE_COVERAGE_MISMATCH, TARGET_OUTSIDE_PRESCRIPTION_RANGE,
+};
 pub use payload::PlanFingerprintPayloadV1;
 pub use planner::{build_parity_candidate_v1, build_plan_v1};
 pub use project::project_score_document_v1;

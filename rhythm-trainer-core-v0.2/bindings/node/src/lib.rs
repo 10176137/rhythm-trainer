@@ -1872,3 +1872,23 @@ pub fn plan_fingerprint_v1_gate(
         .map(|fingerprint| fingerprint)
         .map_err(|error| napi_error(error.to_string()))
 }
+
+/// E4-V channel: recomputes a committed fingerprint vector payload with the
+/// independent Rust primitive (NFC/JCS/SHA-256 in-tree; no FFI to TS).
+/// Rejections carry the frozen contract code prefix.
+#[napi]
+pub fn compute_plan_fingerprint_v1_json(payload_json: String) -> napi::Result<String> {
+    let mut payload = parse_json(&payload_json, "payload")?;
+    rhythm_core::contract_v1::compute_plan_fingerprint_v1(&mut payload)
+        .map(|fingerprint| fingerprint)
+        .map_err(|error| napi_error(error.to_string()))
+}
+
+/// E4-V channel: canonical JSON bytes (RFC 8785 over NFC) of a vector payload.
+#[napi]
+pub fn canonical_bytes_json(payload_json: String) -> napi::Result<String> {
+    let mut payload = parse_json(&payload_json, "payload")?;
+    rhythm_core::contract_v1::canonical_bytes(&mut payload)
+        .map(|bytes| bytes)
+        .map_err(|error| napi_error(error.to_string()))
+}

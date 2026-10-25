@@ -1,14 +1,32 @@
 // R2-2c acceptance class V: fixed-vector consistency (byte-exact).
-// TS stage only — the Rust-side independent reproduction of N-FP-V1 is
-// explicitly DEFERRED_TO_R2-3 and must never be reported as done here.
+// R2-3d update: the Rust-side independent reproduction of N-FP-V1 is now
+// EXECUTED here through the NAPI primitive surface (computePlanFingerprintV1
+// / canonicalBytes — in-tree NFC/JCS/SHA-256, no FFI to TS). The TS-stage
+// assertions below are kept untouched; the former DEFERRED_TO_R2-3 constant
+// was replaced by an executed verdict backed by the tests in this file.
+import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import canonicalize from 'canonicalize';
 import { beatToMicroseconds, computePlanFingerprintV1 } from '../contract-v1/plan-fingerprint';
+import { findRepoRoot } from './case-bundle';
 const VECTORS_PATH = new URL('../../../../audit-r1/contracts/test-vectors/plan-fingerprint-v1.json', import.meta.url);
 
-export const RUST_V_CLASS_STATUS = 'DEFERRED_TO_R2-3' as const;
+const require = createRequire(import.meta.url);
+const native = require(join(findRepoRoot(), 'rhythm-trainer-core-v0.2', 'bindings', 'node')) as {
+  computePlanFingerprintV1Json(payloadJson: string): string;
+  canonicalBytesJson(payloadJson: string): string;
+};
+
+/**
+ * Executed verdict (R2-3d E4-V): backed by the byte-exact tests below — the
+ * Rust side recomputes every committed vector through its OWN NFC/JCS/SHA-256
+ * implementation and must match the frozen canonical bytes and hashes
+ * byte-for-byte. Never flipped without the executing tests passing.
+ */
+export const RUST_V_CLASS_STATUS = 'EXECUTED_RUST_BYTE_EXACT' as const;
 
 const GOLDEN = JSON.parse(readFileSync(VECTORS_PATH, 'utf8')) as {
   vectors: Record<string, { payload: unknown; expectedCanonical: string; expectedFingerprint: string }>;
@@ -63,8 +81,24 @@ describe('acceptance V: fixed-vector consistency (TS stage)', () => {
     expect(beatToMicroseconds({ numerator: 1, denominator: 3 }, { numerator: 60, denominator: 1 })).toBe(333333);
   });
 
-  it('honestly reports the Rust side as deferred (no fake cross-language parity)', () => {
-    // R2-2 runs the TS side only; N-FP-V1's Rust reproduction belongs to R2-3.
-    expect(RUST_V_CLASS_STATUS).toBe('DEFERRED_TO_R2-3');
+  it('E4-V / N-FP-V1: the Rust implementation recomputes EVERY committed vector byte-exact (NAPI, no FFI to TS)', () => {
+    for (const [name, vector] of Object.entries(GOLDEN.vectors)) {
+      const payloadJson = JSON.stringify(vector.payload);
+      // The Rust side owns its own NFC/JCS/SHA-256: these calls execute the
+      // rhythm-core primitives, not any TS computation.
+      const rustCanonical = native.canonicalBytesJson(payloadJson);
+      const rustFingerprint = native.computePlanFingerprintV1Json(payloadJson);
+      expect(rustCanonical, `${name}: rust canonical bytes`).toBe(vector.expectedCanonical);
+      expect(rustFingerprint, `${name}: rust fingerprint`).toBe(vector.expectedFingerprint);
+      // And the two independent implementations agree with each other.
+      expect(rustFingerprint).toBe(computePlanFingerprintV1(vector.payload as never));
+    }
+  });
+
+  it('reports the executed Rust verdict (state flips only because the tests above actually execute)', () => {
+    // The constant is now backed by the executing test above; the former
+    // DEFERRED_TO_R2-3 value would fail here, so the status cannot silently
+    // regress to "deferred" while vectors keep passing.
+    expect(RUST_V_CLASS_STATUS).toBe('EXECUTED_RUST_BYTE_EXACT');
   });
 });

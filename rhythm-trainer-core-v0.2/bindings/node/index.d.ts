@@ -481,6 +481,14 @@ export declare function buildPlanV1(documentJson: string, reportJson: string, co
 export declare function buildParityCandidateV1(documentJson: string, reportJson: string, configJson: string): string
 /** The mandatory a3 fingerprint gate over a PlannerOutput. */
 export declare function planFingerprintV1Gate(documentJson: string, reportJson: string, planJson: string, configJson: string): string
+/**
+ * E4-V channel: recomputes a committed fingerprint vector payload with the
+ * independent Rust primitive (NFC/JCS/SHA-256 in-tree; no FFI to TS).
+ * Rejections carry the frozen contract code prefix.
+ */
+export declare function computePlanFingerprintV1Json(payloadJson: string): string
+/** E4-V channel: canonical JSON bytes (RFC 8785 over NFC) of a vector payload. */
+export declare function canonicalBytesJson(payloadJson: string): string
 export declare class NativeSession {
   constructor(targets: Array<JsTarget>, queueCapacity: number, finalizationGraceMs: number)
   start(): void
