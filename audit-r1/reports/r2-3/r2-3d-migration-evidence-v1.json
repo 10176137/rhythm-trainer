@@ -1,18 +1,18 @@
 {
  "schemaVersion": "r2-3d-migration-evidence-v1",
- "generatedAt": "2026-10-25T14:00:03.097Z",
+ "generatedAt": "2026-10-25T14:11:43.945Z",
  "command": "npx vitest run src/score-engine/parity/r2-3d-evidence.test.ts (+ cargo test contract_v1_r23d_evidence, acceptance suites)",
- "verifiedCodeSha": "d36d707a782cb90842311e413daaa7f97c527e4a",
+ "verifiedCodeSha": "d687a9edfd0b3e23fd2e0476923e12568e6ef70c",
  "sides": {
   "ts": {
    "pipeline": "buildTsCandidate (live)",
    "plannerVersion": "parity-harness-1",
-   "gitSha": "d36d707a782cb90842311e413daaa7f97c527e4a"
+   "gitSha": "d687a9edfd0b3e23fd2e0476923e12568e6ef70c"
   },
   "rust": {
    "pipeline": "build_plan_v1 via NAPI (live)",
    "plannerVersion": "parity-harness-1",
-   "gitSha": "d36d707a782cb90842311e413daaa7f97c527e4a"
+   "gitSha": "d687a9edfd0b3e23fd2e0476923e12568e6ef70c"
   },
   "note": "single repo: one commit pins both TS and Rust sources"
  },
@@ -6902,13 +6902,95 @@
    }
   ],
   "classC": {
-   "rust": "contract_v1::normative unit tests (4 frozen codes, decision-for-decision vs TS validator)",
-   "ts": "acceptance-c.test.ts (anchor mapping + contract-layer reuse)",
-   "note": "Rust produces the normative codes directly from day one per Gate §6 code-table boundary"
+   "cases": [
+    {
+     "id": "N-ID-C1 duplicate_target_id",
+     "expectedCode": "duplicate_target_id",
+     "actualCode": "duplicate_target_id",
+     "pass": true
+    },
+    {
+     "id": "N-PITCH-C1 invalid_target_pitch (pitch 128)",
+     "expectedCode": "invalid_target_pitch",
+     "actualCode": "invalid_target_pitch",
+     "pass": true
+    },
+    {
+     "id": "N-PITCH-C1 invalid_target_pitch (duration 0)",
+     "expectedCode": "invalid_target_pitch",
+     "actualCode": "invalid_target_pitch",
+     "pass": true
+    },
+    {
+     "id": "N-COV-C1 measure_coverage_mismatch",
+     "expectedCode": "measure_coverage_mismatch",
+     "actualCode": "measure_coverage_mismatch",
+     "pass": true
+    },
+    {
+     "id": "N-COV-C2 target_outside_prescription_range",
+     "expectedCode": "target_outside_prescription_range",
+     "actualCode": "target_outside_prescription_range",
+     "pass": true
+    },
+    {
+     "id": "fail-closed structural rejection (non-array)",
+     "expectedCode": "invalid_target_pitch",
+     "actualCode": "invalid_target_pitch",
+     "pass": true
+    },
+    {
+     "id": "clean candidate accepted",
+     "expectedCode": "<null>",
+     "actualCode": null,
+     "pass": true
+    }
+   ],
+   "allPass": true,
+   "channel": "live Rust NAPI validator (validateCandidateScoreEventsJson)"
   },
   "classV": {
-   "status": "EXECUTED_RUST_BYTE_EXACT via NAPI primitives",
-   "suite": "acceptance-v.test.ts"
+   "vectors": [
+    {
+     "vector": "V-single",
+     "canonicalMatch": true,
+     "fingerprintMatch": true,
+     "pass": true
+    },
+    {
+     "vector": "V-rest-gap",
+     "canonicalMatch": true,
+     "fingerprintMatch": true,
+     "pass": true
+    },
+    {
+     "vector": "V-chord",
+     "canonicalMatch": true,
+     "fingerprintMatch": true,
+     "pass": true
+    },
+    {
+     "vector": "V-tie",
+     "canonicalMatch": true,
+     "fingerprintMatch": true,
+     "pass": true
+    },
+    {
+     "vector": "V-hand",
+     "canonicalMatch": true,
+     "fingerprintMatch": true,
+     "pass": true
+    },
+    {
+     "vector": "V-rational-bpm",
+     "canonicalMatch": true,
+     "fingerprintMatch": true,
+     "pass": true
+    }
+   ],
+   "allPass": true,
+   "channel": "live Rust NAPI primitives (canonicalBytesJson / computePlanFingerprintV1Json)",
+   "suite": "acceptance-v.test.ts (EXECUTED_RUST_BYTE_EXACT)"
   }
  },
  "e5": {
@@ -7000,10 +7082,10 @@
    },
    {
     "id": "E4",
-    "name": "§6 P8 acceptance A/B/C/V executed",
+    "name": "§6 P8 acceptance A/B/C/V executed — ALL FOUR classes computed from live results",
     "status": "PASS",
-    "evidence": "classA: r2-3d-rust-evidence.json; B: r2-3d-e4b embedded below; C: contract_v1::normative tests + acceptance-c.test.ts; V: acceptance-v.test.ts (EXECUTED_RUST_BYTE_EXACT)",
-    "detail": "A: 12 items; B: 6 rust-candidate injections; C: 4 normative codes (Rust) + anchor mapping (TS) + contract-layer codes; V: 6 vectors via NAPI primitives"
+    "evidence": "A: r2-3d-rust-evidence.json classA[]; B: e4.classB[] (captured diffs); C: e4.classC[] (live Rust NAPI validator); V: e4.classV[] (live Rust NAPI byte-exact)",
+    "detail": "A: 12 items; B: 6 rust-candidate injections; C: 7 normative-code cases (allPass=true); V: 6 vectors via NAPI (allPass=true)"
    },
    {
     "id": "E5",
