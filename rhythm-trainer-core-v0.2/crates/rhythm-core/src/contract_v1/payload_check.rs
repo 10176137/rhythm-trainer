@@ -285,31 +285,50 @@ pub fn validate_plan_fingerprint_payload_v1(payload: &Value) -> Vec<Issue> {
                             issues.push(issue("invalid_member", "isTieOnset must be boolean"));
                         }
                     }
-                    if let Some(locator) = member.get("sourceLocator") {
-                        if !is_object(locator) {
-                            issues.push(issue("invalid_member", "sourceLocator must be an object"));
-                        } else {
+                    match member.get("sourceLocator") {
+                        Some(locator) if is_object(locator) => {
                             check_closed_keys(locator, &["partId", "measureOrdinal", "sourceOrdinal", "voiceId"],
                                 "member.sourceLocator", &mut issues);
-                            let part = locator.get("partId").and_then(Value::as_str).unwrap_or_default();
+                            let part_empty = locator.get("partId").and_then(Value::as_str)
+                                .map(|s| s.is_empty()).unwrap_or(true);
                             let measure = locator.get("measureOrdinal").and_then(Value::as_i64);
                             let ordinal = locator.get("sourceOrdinal").and_then(Value::as_i64);
-                            if part.is_empty() || measure.is_none() || ordinal.is_none() {
-                                issues.push(issue("invalid_member", "sourceLocator must carry partId/measureOrdinal/sourceOrdinal"));
+                            if part_empty || measure.map(|v| v < 1).unwrap_or(true)
+                                || ordinal.map(|v| v < 1).unwrap_or(true) {
+                                issues.push(issue("invalid_member",
+                                    "sourceLocator must carry partId/measureOrdinal>=1/sourceOrdinal>=1"));
                             } else {
-                                let voice = locator.get("voiceId").and_then(Value::as_str).unwrap_or("");
-                            let key = format!("{part}:{measure:?}:{ordinal:?}:{voice}");
-                                if !locators.insert(key.clone()) {
-                                    issues.push(issue("duplicate_member_locator",
-                                        format!("member locator duplicated: {key}")));
+                                // Frozen identity: voiceId ?? '' — missing uses the
+                                // empty string; a PRESENT non-string voiceId is a
+                                // violation, never silently ''.
+                                let voice_ok = match locator.get("voiceId") {
+                                    None => Some(String::new()),
+                                    Some(Value::String(text)) => Some(text.clone()),
+                                    Some(other) => {
+                                        issues.push(issue("invalid_member",
+                                            format!("sourceLocator.voiceId must be a string, got {other}")));
+                                        None
+                                    }
+                                };
+                                if let Some(voice) = voice_ok {
+                                    let key = format!(
+                                        "{}:{}:{}:{}",
+                                        locator.get("partId").and_then(Value::as_str).unwrap_or_default(),
+                                        measure.unwrap_or(0),
+                                        ordinal.unwrap_or(0),
+                                        voice
+                                    );
+                                    if !locators.insert(key.clone()) {
+                                        issues.push(issue("duplicate_member_locator",
+                                            format!("member locator duplicated: {key}")));
+                                    }
                                 }
                             }
                         }
+                        _ => issues.push(issue("invalid_member", "member.sourceLocator must be an object")),
                     }
-                    if let Some(pitch) = member.get("pitch") {
-                        if !is_object(pitch) {
-                            issues.push(issue("invalid_member", "member.pitch must be an object"));
-                        } else {
+                    match member.get("pitch") {
+                        Some(pitch) if is_object(pitch) => {
                             check_closed_keys(pitch, &["midiNote", "spelling"], "member.pitch", &mut issues);
                             let midi = pitch.get("midiNote").and_then(Value::as_i64);
                             if !midi.map(|n| (0..=127).contains(&n)).unwrap_or(false) {
@@ -319,6 +338,7 @@ pub fn validate_plan_fingerprint_payload_v1(payload: &Value) -> Vec<Issue> {
                                 issues.push(issue("invalid_member", "pitch.spelling must be a non-empty string"));
                             }
                         }
+                        _ => issues.push(issue("invalid_member", "member.pitch must be an object with midiNote/spelling")),
                     }
                     // Track the longest member duration for the group check.
                     if let Some(duration) = member.get("durationBeat").and_then(Value::as_object) {

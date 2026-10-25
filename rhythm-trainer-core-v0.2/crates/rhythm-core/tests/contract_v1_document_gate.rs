@@ -556,3 +556,137 @@ fn barline_optional_fields_are_not_mandatory() {
     .iter()
     .any(|code| code == "schema_violation"), "numeric ending.number must fail");
 }
+
+
+// ---- Sixth-round follow-up: None vs Some(Null) semantics, required-key
+// ---- completeness, locator voiceId typing ----
+
+#[test]
+fn part_name_and_tempo_ordinal_are_required() {
+    let fixture = load_fixture();
+    let base = fixture["document"].clone();
+    fn document_codes(value: &Value) -> Vec<String> {
+        validate_score_document_v1(value).into_iter().map(|issue| issue.code).collect()
+    }
+
+    // parts[0].name removed -> missing_field.
+    let mut no_name = base.clone();
+    no_name["parts"][0].as_object_mut().unwrap().remove("name");
+    assert!(document_codes(&no_name).contains(&"missing_field".to_string()));
+
+    // parts[0].name = null -> schema_violation (null is NOT the same as absent).
+    let mut null_name = base.clone();
+    null_name["parts"][0]["name"] = Value::Null;
+    assert!(document_codes(&null_name).contains(&"schema_violation".to_string()));
+
+    // tempoMark negatives: inject a tempoMark first (the TS-projected fixture
+    // has none), then break measureOrdinal in both the missing and null forms.
+    let mut with_mark = base.clone();
+    with_mark["tempoMarks"] = serde_json::json!([
+        { "measureOrdinal": 1, "beat": {"numerator": 0, "denominator": 1},
+          "bpm": {"numerator": 80, "denominator": 1}, "kind": "metronome" }
+    ]);
+    let mut no_ordinal = with_mark.clone();
+    no_ordinal["tempoMarks"][0].as_object_mut().unwrap().remove("measureOrdinal");
+    assert!(document_codes(&no_ordinal).contains(&"missing_field".to_string()));
+
+    let mut null_ordinal = with_mark.clone();
+    null_ordinal["tempoMarks"][0]["measureOrdinal"] = Value::Null;
+    assert!(document_codes(&null_ordinal).contains(&"schema_violation".to_string()));
+}
+
+#[test]
+fn event_nested_required_fields_are_enforced() {
+    let fixture = load_fixture();
+    let base = fixture["document"].clone();
+    fn document_codes(value: &Value) -> Vec<String> {
+        validate_score_document_v1(value).into_iter().map(|issue| issue.code).collect()
+    }
+    let with_event = |patch: Value| {
+        let mut document = base.clone();
+        let event = document["parts"][0]["measures"][0]["events"][0].as_object_mut().unwrap();
+        if let Value::Object(patch) = patch {
+            for (key, value) in patch {
+                event.insert(key, value);
+            }
+        }
+        document_codes(&document)
+    };
+    let remove_key = |key: &str| {
+        let mut document = base.clone();
+        document["parts"][0]["measures"][0]["events"][0]
+            .as_object_mut().unwrap().remove(key);
+        document_codes(&document)
+    };
+
+    // event.dots as a string -> schema_violation.
+    assert!(with_event(serde_json::json!({ "dots": "three" }))
+        .contains(&"schema_violation".to_string()));
+    // dots removed -> missing_field.
+    assert!(remove_key("dots").contains(&"missing_field".to_string()));
+
+    // tieStart as a string -> schema_violation.
+    assert!(with_event(serde_json::json!({ "tieStart": "yes" }))
+        .contains(&"schema_violation".to_string()));
+
+    // articulations with a non-string item -> schema_violation.
+    assert!(with_event(serde_json::json!({ "articulations": [1, 2] }))
+        .contains(&"schema_violation".to_string()));
+
+    // pitch fields: missing alter -> missing_field; step enum violation;
+    // octave out of range; midiNote out of domain; spelling empty.
+    assert!(with_event(serde_json::json!({
+        "pitch": { "step": "C", "octave": 4, "midiNote": 60, "spelling": "C4" }
+    })).contains(&"missing_field".to_string()));
+    assert!(with_event(serde_json::json!({
+        "pitch": { "step": "H", "alter": {"numerator":0,"denominator":1}, "octave": 4,
+                   "midiNote": 60, "spelling": "C4" }
+    })).contains(&"schema_violation".to_string()));
+    assert!(with_event(serde_json::json!({
+        "pitch": { "step": "C", "alter": {"numerator":0,"denominator":1}, "octave": 11,
+                   "midiNote": 60, "spelling": "C4" }
+    })).contains(&"schema_violation".to_string()));
+    assert!(with_event(serde_json::json!({
+        "pitch": { "step": "C", "alter": {"numerator":0,"denominator":1}, "octave": 4,
+                   "midiNote": 200, "spelling": "C4" }
+    })).contains(&"schema_violation".to_string()));
+    assert!(with_event(serde_json::json!({
+        "pitch": { "step": "C", "alter": {"numerator":0,"denominator":1}, "octave": 4,
+                   "midiNote": 60, "spelling": "" }
+    })).contains(&"schema_violation".to_string()));
+
+    // timeModification missing a required field -> missing_field.
+    assert!(with_event(serde_json::json!({
+        "timeModification": { "actualNotes": 3 }
+    })).contains(&"missing_field".to_string()));
+
+    // SourceRefV1: voiceId present but numeric -> schema_violation.
+    assert!(with_event(serde_json::json!({
+        "source": { "partId": "P1", "measureOrdinal": 1, "staffNumber": 1,
+                    "sourceOrdinal": 1, "voiceId": 7 }
+    })).contains(&"schema_violation".to_string()));
+
+    // A fully legal event variant still passes.
+    assert!(with_event(serde_json::json!({
+        "notatedType": "quarter",
+        "chordGroupId": "chord:1",
+        "lyricText": "la"
+    })).iter().all(|code| code != "schema_violation" && code != "missing_field"));
+}
+
+#[test]
+fn gate_payload_missing_member_fields_are_rejected() {
+    let fixture = load_fixture();
+    // A PlannerOutput whose member omits sourceLocator and pitch must be
+    // rejected by the gate (payload construction produces an invalid member).
+    let mut plan = fixture["plannerOutput"].clone();
+    for occurrence in plan["occurrences"].as_array_mut().unwrap() {
+        occurrence.as_object_mut().unwrap().remove("locator");
+        occurrence.as_object_mut().unwrap().remove("pitch");
+    }
+    let error = plan_fingerprint_v1_gate(
+        &fixture["document"], &fixture["report"], &plan, &fixture["config"],
+    )
+    .expect_err("members without locator/pitch must fail closed");
+    assert_eq!(error.code, "PAYLOAD_VALIDATION_FAILED");
+}
