@@ -1,0 +1,135 @@
+{
+  "vectors": [
+    {
+      "vector": "V-single",
+      "canonicalMatch": true,
+      "fingerprintMatch": true,
+      "computedFingerprint": "plan-v1:sha256:0d798c3151a62dcc2c2e7e4cb4b6a48c7587cf4945a8c62c43a2d92d99dffde4",
+      "expectedFingerprint": "plan-v1:sha256:0d798c3151a62dcc2c2e7e4cb4b6a48c7587cf4945a8c62c43a2d92d99dffde4",
+      "computedCanonical": "{\"fingerprintSchemaVersion\":1,\"normalizerVersion\":\"normalizer-1\",\"plannerVersion\":\"planner-ref-1\",\"repeatSelection\":{\"kind\":\"none\"},\"scope\":{\"hand\":\"right\",\"handMapping\":{\"mappingVersion\":\"hand-mapping-1\",\"parts\":[{\"partId\":\"P1\",\"staves\":[{\"hand\":\"right\",\"staffNumber\":1}]}],\"schemaVersion\":1,\"source\":\"user\"},\"partId\":\"P1\",\"range\":{\"endMeasureOrdinal\":2,\"startMeasureOrdinal\":1}},\"scoreRevisionId\":\"score-revision-v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"supportProfileVersion\":\"musicxml-v1.0\",\"targetGroups\":[{\"bar\":1,\"beatInMeasure\":{\"denominator\":1,\"numerator\":0},\"durationBeat\":{\"denominator\":1,\"numerator\":1},\"groupIndex\":0,\"members\":[{\"durationBeat\":{\"denominator\":1,\"numerator\":1},\"pitch\":{\"midiNote\":60,\"spelling\":\"C4\"},\"sourceLocator\":{\"measureOrdinal\":1,\"partId\":\"P1\",\"sourceOrdinal\":1}}],\"onsetBeatFromRangeStart\":{\"denominator\":1,\"numerator\":0},\"passIndex\":0,\"staffNumbers\":[1],\"voiceIds\":[\"1\"]}],\"tempo\":{\"bpm\":{\"denominator\":1,\"numerator\":80},\"countInBeats\":{\"denominator\":1,\"numerator\":4},\"ticksPerQuarter\":960,\"timeOrigin\":\"playback-start\"}}",
+      "expectedCanonicalRef": "audit-r1/contracts/test-vectors/plan-fingerprint-v1.json (frozen, not duplicated here)"
+    },
+    {
+      "vector": "V-rest-gap",
+      "canonicalMatch": true,
+      "fingerprintMatch": true,
+      "computedFingerprint": "plan-v1:sha256:6771e36b1c73d37d24d9e55024e158674439d2975e6bba9ca1523fd4e2b12981",
+      "expectedFingerprint": "plan-v1:sha256:6771e36b1c73d37d24d9e55024e158674439d2975e6bba9ca1523fd4e2b12981",
+      "computedCanonical": "{\"fingerprintSchemaVersion\":1,\"normalizerVersion\":\"normalizer-1\",\"plannerVersion\":\"planner-ref-1\",\"repeatSelection\":{\"kind\":\"none\"},\"scope\":{\"hand\":\"right\",\"handMapping\":{\"mappingVersion\":\"hand-mapping-1\",\"parts\":[{\"partId\":\"P1\",\"staves\":[{\"hand\":\"right\",\"staffNumber\":1}]}],\"schemaVersion\":1,\"source\":\"user\"},\"partId\":\"P1\",\"range\":{\"endMeasureOrdinal\":2,\"startMeasureOrdinal\":1}},\"scoreRevisionId\":\"score-revision-v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"supportProfileVersion\":\"musicxml-v1.0\",\"targetGroups\":[{\"bar\":1,\"beatInMeasure\":{\"denominator\":1,\"numerator\":0},\"durationBeat\":{\"denominator\":1,\"numerator\":1},\"groupIndex\":0,\"members\":[{\"durationBeat\":{\"denominator\":1,\"numerator\":1},\"pitch\":{\"midiNote\":60,\"spelling\":\"C4\"},\"sourceLocator\":{\"measureOrdinal\":1,\"partId\":\"P1\",\"sourceOrdinal\":1}}],\"onsetBeatFromRangeStart\":{\"denominator\":1,\"numerator\":0},\"passIndex\":0,\"staffNumbers\":[1],\"voiceIds\":[\"1\"]},{\"bar\":2,\"beatInMeasure\":{\"denominator\":1,\"numerator\":2},\"durationBeat\":{\"denominator\":1,\"numerator\":2},\"groupIndex\":1,\"members\":[{\"durationBeat\":{\"denominator\":1,\"numerator\":2},\"pitch\":{\"midiNote\":67,\"spelling\":\"G4\"},\"sourceLocator\":{\"measureOrdinal\":2,\"partId\":\"P1\",\"sourceOrdinal\":2}}],\"onsetBeatFromRangeStart\":{\"denominator\":1,\"numerator\":6},\"passIndex\":0,\"staffNumbers\":[1],\"voiceIds\":[\"1\"]}],\"tempo\":{\"bpm\":{\"denominator\":1,\"numerator\":80},\"countInBeats\":{\"denominator\":1,\"numerator\":4},\"ticksPerQuarter\":960,\"timeOrigin\":\"playback-start\"}}",
+      "expectedCanonicalRef": "audit-r1/contracts/test-vectors/plan-fingerprint-v1.json (frozen, not duplicated here)"
+    },
+    {
+      "vector": "V-chord",
+      "canonicalMatch": true,
+      "fingerprintMatch": true,
+      "computedFingerprint": "plan-v1:sha256:c922c4213bb299180b1e1b40c425333dbfdcac39425fb0a5321c379fe2919fa9",
+      "expectedFingerprint": "plan-v1:sha256:c922c4213bb299180b1e1b40c425333dbfdcac39425fb0a5321c379fe2919fa9",
+      "computedCanonical": "{\"fingerprintSchemaVersion\":1,\"normalizerVersion\":\"normalizer-1\",\"plannerVersion\":\"planner-ref-1\",\"repeatSelection\":{\"kind\":\"none\"},\"scope\":{\"hand\":\"right\",\"handMapping\":{\"mappingVersion\":\"hand-mapping-1\",\"parts\":[{\"partId\":\"P1\",\"staves\":[{\"hand\":\"right\",\"staffNumber\":1}]}],\"schemaVersion\":1,\"source\":\"user\"},\"partId\":\"P1\",\"range\":{\"endMeasureOrdinal\":2,\"startMeasureOrdinal\":1}},\"scoreRevisionId\":\"score-revision-v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"supportProfileVersion\":\"musicxml-v1.0\",\"targetGroups\":[{\"bar\":1,\"beatInMeasure\":{\"denominator\":1,\"numerator\":0},\"durationBeat\":{\"denominator\":1,\"numerator\":2},\"groupIndex\":0,\"members\":[{\"durationBeat\":{\"denominator\":1,\"numerator\":1},\"pitch\":{\"midiNote\":60,\"spelling\":\"C4\"},\"sourceLocator\":{\"measureOrdinal\":1,\"partId\":\"P1\",\"sourceOrdinal\":1}},{\"durationBeat\":{\"denominator\":1,\"numerator\":2},\"pitch\":{\"midiNote\":67,\"spelling\":\"G4\"},\"sourceLocator\":{\"measureOrdinal\":1,\"partId\":\"P1\",\"sourceOrdinal\":2}}],\"onsetBeatFromRangeStart\":{\"denominator\":1,\"numerator\":0},\"passIndex\":0,\"staffNumbers\":[1],\"voiceIds\":[\"1\"]}],\"tempo\":{\"bpm\":{\"denominator\":1,\"numerator\":80},\"countInBeats\":{\"denominator\":1,\"numerator\":4},\"ticksPerQuarter\":960,\"timeOrigin\":\"playback-start\"}}",
+      "expectedCanonicalRef": "audit-r1/contracts/test-vectors/plan-fingerprint-v1.json (frozen, not duplicated here)"
+    },
+    {
+      "vector": "V-tie",
+      "canonicalMatch": true,
+      "fingerprintMatch": true,
+      "computedFingerprint": "plan-v1:sha256:75298b49aff5eecb2d169810de4f92bba28f6acf1575f02630c398362cf388ca",
+      "expectedFingerprint": "plan-v1:sha256:75298b49aff5eecb2d169810de4f92bba28f6acf1575f02630c398362cf388ca",
+      "computedCanonical": "{\"fingerprintSchemaVersion\":1,\"normalizerVersion\":\"normalizer-1\",\"plannerVersion\":\"planner-ref-1\",\"repeatSelection\":{\"kind\":\"none\"},\"scope\":{\"hand\":\"right\",\"handMapping\":{\"mappingVersion\":\"hand-mapping-1\",\"parts\":[{\"partId\":\"P1\",\"staves\":[{\"hand\":\"right\",\"staffNumber\":1}]}],\"schemaVersion\":1,\"source\":\"user\"},\"partId\":\"P1\",\"range\":{\"endMeasureOrdinal\":2,\"startMeasureOrdinal\":1}},\"scoreRevisionId\":\"score-revision-v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"supportProfileVersion\":\"musicxml-v1.0\",\"targetGroups\":[{\"bar\":1,\"beatInMeasure\":{\"denominator\":1,\"numerator\":0},\"durationBeat\":{\"denominator\":1,\"numerator\":4},\"groupIndex\":0,\"members\":[{\"durationBeat\":{\"denominator\":1,\"numerator\":4},\"isTieOnset\":true,\"pitch\":{\"midiNote\":60,\"spelling\":\"C4\"},\"sourceLocator\":{\"measureOrdinal\":1,\"partId\":\"P1\",\"sourceOrdinal\":1}}],\"onsetBeatFromRangeStart\":{\"denominator\":1,\"numerator\":0},\"passIndex\":0,\"staffNumbers\":[1],\"voiceIds\":[\"1\"]}],\"tempo\":{\"bpm\":{\"denominator\":1,\"numerator\":80},\"countInBeats\":{\"denominator\":1,\"numerator\":4},\"ticksPerQuarter\":960,\"timeOrigin\":\"playback-start\"}}",
+      "expectedCanonicalRef": "audit-r1/contracts/test-vectors/plan-fingerprint-v1.json (frozen, not duplicated here)"
+    },
+    {
+      "vector": "V-hand",
+      "canonicalMatch": true,
+      "fingerprintMatch": true,
+      "computedFingerprint": "plan-v1:sha256:4eadaffdeb795da2bb1f567fac487e8081d5f8318fcaedb1b7d10f2d384a3142",
+      "expectedFingerprint": "plan-v1:sha256:4eadaffdeb795da2bb1f567fac487e8081d5f8318fcaedb1b7d10f2d384a3142",
+      "computedCanonical": "{\"fingerprintSchemaVersion\":1,\"normalizerVersion\":\"normalizer-1\",\"plannerVersion\":\"planner-ref-1\",\"repeatSelection\":{\"kind\":\"none\"},\"scope\":{\"hand\":\"both\",\"handMapping\":{\"mappingVersion\":\"hand-mapping-1\",\"parts\":[{\"partId\":\"P1\",\"staves\":[{\"hand\":\"right\",\"staffNumber\":1},{\"hand\":\"left\",\"staffNumber\":2}]}],\"schemaVersion\":1,\"source\":\"user\"},\"partId\":\"P1\",\"range\":{\"endMeasureOrdinal\":2,\"startMeasureOrdinal\":1}},\"scoreRevisionId\":\"score-revision-v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"supportProfileVersion\":\"musicxml-v1.0\",\"targetGroups\":[{\"bar\":1,\"beatInMeasure\":{\"denominator\":1,\"numerator\":0},\"durationBeat\":{\"denominator\":1,\"numerator\":1},\"groupIndex\":0,\"members\":[{\"durationBeat\":{\"denominator\":1,\"numerator\":1},\"pitch\":{\"midiNote\":60,\"spelling\":\"C4\"},\"sourceLocator\":{\"measureOrdinal\":1,\"partId\":\"P1\",\"sourceOrdinal\":1}}],\"onsetBeatFromRangeStart\":{\"denominator\":1,\"numerator\":0},\"passIndex\":0,\"staffNumbers\":[1],\"voiceIds\":[\"1\"]}],\"tempo\":{\"bpm\":{\"denominator\":1,\"numerator\":80},\"countInBeats\":{\"denominator\":1,\"numerator\":4},\"ticksPerQuarter\":960,\"timeOrigin\":\"playback-start\"}}",
+      "expectedCanonicalRef": "audit-r1/contracts/test-vectors/plan-fingerprint-v1.json (frozen, not duplicated here)"
+    },
+    {
+      "vector": "V-rational-bpm",
+      "canonicalMatch": true,
+      "fingerprintMatch": true,
+      "computedFingerprint": "plan-v1:sha256:51ba177687597c2d49ff18ab4e5db2515278a1673bc45f517ed29e53c8643e3a",
+      "expectedFingerprint": "plan-v1:sha256:51ba177687597c2d49ff18ab4e5db2515278a1673bc45f517ed29e53c8643e3a",
+      "computedCanonical": "{\"fingerprintSchemaVersion\":1,\"normalizerVersion\":\"normalizer-1\",\"plannerVersion\":\"planner-ref-1\",\"repeatSelection\":{\"kind\":\"none\"},\"scope\":{\"hand\":\"right\",\"handMapping\":{\"mappingVersion\":\"hand-mapping-1\",\"parts\":[{\"partId\":\"P1\",\"staves\":[{\"hand\":\"right\",\"staffNumber\":1}]}],\"schemaVersion\":1,\"source\":\"user\"},\"partId\":\"P1\",\"range\":{\"endMeasureOrdinal\":2,\"startMeasureOrdinal\":1}},\"scoreRevisionId\":\"score-revision-v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"supportProfileVersion\":\"musicxml-v1.0\",\"targetGroups\":[{\"bar\":1,\"beatInMeasure\":{\"denominator\":1,\"numerator\":0},\"durationBeat\":{\"denominator\":1,\"numerator\":1},\"groupIndex\":0,\"members\":[{\"durationBeat\":{\"denominator\":1,\"numerator\":1},\"pitch\":{\"midiNote\":60,\"spelling\":\"C4\"},\"sourceLocator\":{\"measureOrdinal\":1,\"partId\":\"P1\",\"sourceOrdinal\":1}}],\"onsetBeatFromRangeStart\":{\"denominator\":1,\"numerator\":0},\"passIndex\":0,\"staffNumbers\":[1],\"voiceIds\":[\"1\"]}],\"tempo\":{\"bpm\":{\"denominator\":2,\"numerator\":175},\"countInBeats\":{\"denominator\":8,\"numerator\":35},\"ticksPerQuarter\":960,\"timeOrigin\":\"playback-start\"}}",
+      "expectedCanonicalRef": "audit-r1/contracts/test-vectors/plan-fingerprint-v1.json (frozen, not duplicated here)"
+    }
+  ],
+  "allByteExact": true,
+  "rationalBpmVectorPresent": true,
+  "schemaVersion": "r2-3d-rust-evidence-v1",
+  "classA": [
+    {
+      "id": "N-PITCH-S1",
+      "operation": "member midiNote +1",
+      "expected": "changed",
+      "fingerprintChanged": true
+    },
+    {
+      "id": "N-PITCH-S2",
+      "operation": "spelling C4->B#3 with identical midiNote",
+      "expected": "changed",
+      "fingerprintChanged": true
+    },
+    {
+      "id": "N-FP-S1 scope.partId",
+      "operation": "single-field tamper",
+      "expected": "changed",
+      "fingerprintChanged": true
+    },
+    {
+      "id": "N-FP-S1 scope.hand",
+      "operation": "single-field tamper",
+      "expected": "changed",
+      "fingerprintChanged": true
+    },
+    {
+      "id": "N-FP-S1 repeatSelection",
+      "operation": "single-field tamper",
+      "expected": "changed",
+      "fingerprintChanged": true
+    },
+    {
+      "id": "N-FP-S1 bpm",
+      "operation": "single-field tamper",
+      "expected": "changed",
+      "fingerprintChanged": true
+    },
+    {
+      "id": "N-FP-S1 ticksPerQuarter",
+      "operation": "single-field tamper",
+      "expected": "changed",
+      "fingerprintChanged": true
+    },
+    {
+      "id": "N-FP-S1 countInBeats",
+      "operation": "single-field tamper",
+      "expected": "changed",
+      "fingerprintChanged": true
+    },
+    {
+      "id": "N-FP-S1 plannerVersion",
+      "operation": "single-field tamper",
+      "expected": "changed",
+      "fingerprintChanged": true
+    },
+    {
+      "id": "N-FP-S1 scoreRevisionId",
+      "operation": "single-field tamper",
+      "expected": "changed",
+      "fingerprintChanged": true
+    },
+    {
+      "id": "N-FP-S1 normalizerVersion",
+      "operation": "single-field tamper",
+      "expected": "changed",
+      "fingerprintChanged": true
+    },
+    {
+      "id": "N-FP-S2",
+      "operation": "consistent internal event-ID re-encoding, semantics unchanged (full chain)",
+      "expected": "invariant",
+      "fingerprintChanged": false
+    }
+  ]
+}

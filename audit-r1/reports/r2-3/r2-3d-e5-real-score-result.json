@@ -1,0 +1,30 @@
+{
+ "executed": true,
+ "filePath": "D:\\123\\score-latest.musicxml",
+ "fileSha256": "2654f28396448762febc969e69765cf4f928ea4b4b7f1dd4f02321a5bf65b935",
+ "fileSizeBytes": 588536,
+ "counts": {
+  "measures": 113,
+  "occurrences": 1579,
+  "groups": 1018,
+  "atoms": 1018,
+  "scoreEvents": 1579
+ },
+ "capabilities": [
+  "chords",
+  "multi_staff",
+  "multi_voice",
+  "ties",
+  "tuplets"
+ ],
+ "capabilitiesExact": true,
+ "rustFingerprintStable": true,
+ "rustFingerprint": "plan-v1:sha256:8a66ac7265ebd6019eca6c3463406e5f5a3226dcef151f0e104ebd824740de03",
+ "tsFingerprintEqual": true,
+ "scoreEventUsExactCheck": "per-note targetOnsetUs/targetDurationUs verified field-exact against TS in E2/E6 (zero tolerance)",
+ "provenance": {
+  "note": "Third-party OMR score, gitignored by policy; NOT committed. Present in the author local workspace only.",
+  "localPathUsed": "D:\\123\\score-latest.musicxml",
+  "acquisition": "Local third-party file retained from the R1 audit runs; not distributable via the repository."
+ }
+}

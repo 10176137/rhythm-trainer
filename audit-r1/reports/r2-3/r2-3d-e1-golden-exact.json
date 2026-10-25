@@ -1,0 +1,5484 @@
+{
+ "schemaVersion": "r2-3d-e1-golden-exact-v1",
+ "checks": [
+  {
+   "path": "occurrences.0.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.step",
+   "expected": "C",
+   "actual": "C",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.midiNote",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.spelling",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.playbackIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.playbackBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.beatInMeasure",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.step",
+   "expected": "D",
+   "actual": "D",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.midiNote",
+   "expected": 62,
+   "actual": 62,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.spelling",
+   "expected": "D4",
+   "actual": "D4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.playbackIndex",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.playbackBeat",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.beatInMeasure",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.step",
+   "expected": "E",
+   "actual": "E",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.midiNote",
+   "expected": 64,
+   "actual": 64,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.spelling",
+   "expected": "E4",
+   "actual": "E4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.playbackIndex",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.sourceOrdinal",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.playbackBeat",
+   "expected": "3/1",
+   "actual": "3/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.beatInMeasure",
+   "expected": "3/1",
+   "actual": "3/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.step",
+   "expected": "F",
+   "actual": "F",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.midiNote",
+   "expected": 65,
+   "actual": 65,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.spelling",
+   "expected": "F4",
+   "actual": "F4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.playbackIndex",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.locator.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.playbackBeat",
+   "expected": "4/1",
+   "actual": "4/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.durationBeat",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.pitch.step",
+   "expected": "G",
+   "actual": "G",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.pitch.midiNote",
+   "expected": 67,
+   "actual": 67,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.pitch.spelling",
+   "expected": "G4",
+   "actual": "G4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.playbackIndex",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "groups.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.0.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.pitches.0",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "groups.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.1.playbackBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.pitches.0",
+   "expected": "D4",
+   "actual": "D4",
+   "equal": true
+  },
+  {
+   "path": "groups.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.beatInMeasure",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.2.playbackBeat",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.pitches.0",
+   "expected": "E4",
+   "actual": "E4",
+   "equal": true
+  },
+  {
+   "path": "groups.2.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.2.beatInMeasure",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.2.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.3.playbackBeat",
+   "expected": "3/1",
+   "actual": "3/1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.sourceOrdinal",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.pitches.0",
+   "expected": "F4",
+   "actual": "F4",
+   "equal": true
+  },
+  {
+   "path": "groups.3.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.3.beatInMeasure",
+   "expected": "3/1",
+   "actual": "3/1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.3.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.4.playbackBeat",
+   "expected": "4/1",
+   "actual": "4/1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.members.0.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.4.members.0.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.4.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.pitches.0",
+   "expected": "G4",
+   "actual": "G4",
+   "equal": true
+  },
+  {
+   "path": "groups.4.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.4.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.4.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.durationBeat",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "atoms.0.startTick",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.beat",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.startTick",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.beat",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.startTick",
+   "expected": 1920,
+   "actual": 1920,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.beat",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.startTick",
+   "expected": 2880,
+   "actual": 2880,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.beat",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "atoms.4.startTick",
+   "expected": 3840,
+   "actual": 3840,
+   "equal": true
+  },
+  {
+   "path": "atoms.4.durationTicks",
+   "expected": 1920,
+   "actual": 1920,
+   "equal": true
+  },
+  {
+   "path": "atoms.4.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "atoms.4.beat",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.pitch",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.targetOnsetUs",
+   "expected": 3000000,
+   "actual": 3000000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.targetDurationUs",
+   "expected": 750000,
+   "actual": 750000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.pitch",
+   "expected": 62,
+   "actual": 62,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.targetOnsetUs",
+   "expected": 3750000,
+   "actual": 3750000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.targetDurationUs",
+   "expected": 750000,
+   "actual": 750000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.pitch",
+   "expected": 64,
+   "actual": 64,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.targetOnsetUs",
+   "expected": 4500000,
+   "actual": 4500000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.targetDurationUs",
+   "expected": 750000,
+   "actual": 750000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.sourceOrdinal",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.pitch",
+   "expected": 65,
+   "actual": 65,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.targetOnsetUs",
+   "expected": 5250000,
+   "actual": 5250000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.targetDurationUs",
+   "expected": 750000,
+   "actual": 750000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.locator.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.measure",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.pitch",
+   "expected": 67,
+   "actual": 67,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.targetOnsetUs",
+   "expected": 6000000,
+   "actual": 6000000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.targetDurationUs",
+   "expected": 1500000,
+   "actual": 1500000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "plan.occurrenceCount",
+   "expected": 5,
+   "actual": 5,
+   "equal": true
+  },
+  {
+   "path": "plan.groupCount",
+   "expected": 5,
+   "actual": 5,
+   "equal": true
+  },
+  {
+   "path": "measures.count",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.step",
+   "expected": "C",
+   "actual": "C",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.midiNote",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.spelling",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.playbackIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.step",
+   "expected": "E",
+   "actual": "E",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.midiNote",
+   "expected": 64,
+   "actual": 64,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.spelling",
+   "expected": "E4",
+   "actual": "E4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.playbackIndex",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.step",
+   "expected": "G",
+   "actual": "G",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.midiNote",
+   "expected": 67,
+   "actual": 67,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.spelling",
+   "expected": "G4",
+   "actual": "G4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.playbackIndex",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.sourceOrdinal",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.playbackBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.beatInMeasure",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.step",
+   "expected": "C",
+   "actual": "C",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.midiNote",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.spelling",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.playbackIndex",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "groups.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.0.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.1.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.1.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.1.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.1.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.2.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.2.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.2.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.2.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.pitches.0",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "groups.0.pitches.1",
+   "expected": "E4",
+   "actual": "E4",
+   "equal": true
+  },
+  {
+   "path": "groups.0.pitches.2",
+   "expected": "G4",
+   "actual": "G4",
+   "equal": true
+  },
+  {
+   "path": "groups.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.1.playbackBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.sourceOrdinal",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.pitches.0",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "groups.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.beatInMeasure",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "atoms.0.startTick",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.beat",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.startTick",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.beat",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.pitch",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.targetOnsetUs",
+   "expected": 2400000,
+   "actual": 2400000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.targetDurationUs",
+   "expected": 600000,
+   "actual": 600000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.pitch",
+   "expected": 64,
+   "actual": 64,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.targetOnsetUs",
+   "expected": 2400000,
+   "actual": 2400000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.targetDurationUs",
+   "expected": 600000,
+   "actual": 600000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.pitch",
+   "expected": 67,
+   "actual": 67,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.targetOnsetUs",
+   "expected": 2400000,
+   "actual": 2400000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.targetDurationUs",
+   "expected": 600000,
+   "actual": 600000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.sourceOrdinal",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.pitch",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.targetOnsetUs",
+   "expected": 3000000,
+   "actual": 3000000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.targetDurationUs",
+   "expected": 600000,
+   "actual": 600000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "plan.occurrenceCount",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "plan.groupCount",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "measures.count",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.durationBeat",
+   "expected": "4/1",
+   "actual": "4/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.step",
+   "expected": "C",
+   "actual": "C",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.midiNote",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.spelling",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.isTieOnset",
+   "expected": true,
+   "actual": true,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.playbackIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.0.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.pitches.0",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "groups.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.durationBeat",
+   "expected": "4/1",
+   "actual": "4/1",
+   "equal": true
+  },
+  {
+   "path": "atoms.0.startTick",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.durationTicks",
+   "expected": 3840,
+   "actual": 3840,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.beat",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.pitch",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.targetOnsetUs",
+   "expected": 2000000,
+   "actual": 2000000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.targetDurationUs",
+   "expected": 2000000,
+   "actual": 2000000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "plan.occurrenceCount",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "plan.groupCount",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "measures.count",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.durationBeat",
+   "expected": "1/3",
+   "actual": "1/3",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.step",
+   "expected": "C",
+   "actual": "C",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.midiNote",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.spelling",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.playbackIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.playbackBeat",
+   "expected": "1/3",
+   "actual": "1/3",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.durationBeat",
+   "expected": "1/3",
+   "actual": "1/3",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.beatInMeasure",
+   "expected": "1/3",
+   "actual": "1/3",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.step",
+   "expected": "D",
+   "actual": "D",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.midiNote",
+   "expected": 62,
+   "actual": 62,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.spelling",
+   "expected": "D4",
+   "actual": "D4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.playbackIndex",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.playbackBeat",
+   "expected": "2/3",
+   "actual": "2/3",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.durationBeat",
+   "expected": "1/3",
+   "actual": "1/3",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.beatInMeasure",
+   "expected": "2/3",
+   "actual": "2/3",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.step",
+   "expected": "E",
+   "actual": "E",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.midiNote",
+   "expected": 64,
+   "actual": 64,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.spelling",
+   "expected": "E4",
+   "actual": "E4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.playbackIndex",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.sourceOrdinal",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.playbackBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.beatInMeasure",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.step",
+   "expected": "G",
+   "actual": "G",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.midiNote",
+   "expected": 67,
+   "actual": 67,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.spelling",
+   "expected": "G4",
+   "actual": "G4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.playbackIndex",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "groups.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.0.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.pitches.0",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "groups.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.durationBeat",
+   "expected": "1/3",
+   "actual": "1/3",
+   "equal": true
+  },
+  {
+   "path": "groups.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.1.playbackBeat",
+   "expected": "1/3",
+   "actual": "1/3",
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.pitches.0",
+   "expected": "D4",
+   "actual": "D4",
+   "equal": true
+  },
+  {
+   "path": "groups.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.beatInMeasure",
+   "expected": "1/3",
+   "actual": "1/3",
+   "equal": true
+  },
+  {
+   "path": "groups.1.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.durationBeat",
+   "expected": "1/3",
+   "actual": "1/3",
+   "equal": true
+  },
+  {
+   "path": "groups.2.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.2.playbackBeat",
+   "expected": "2/3",
+   "actual": "2/3",
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.pitches.0",
+   "expected": "E4",
+   "actual": "E4",
+   "equal": true
+  },
+  {
+   "path": "groups.2.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.2.beatInMeasure",
+   "expected": "2/3",
+   "actual": "2/3",
+   "equal": true
+  },
+  {
+   "path": "groups.2.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.2.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.durationBeat",
+   "expected": "1/3",
+   "actual": "1/3",
+   "equal": true
+  },
+  {
+   "path": "groups.3.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.3.playbackBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.sourceOrdinal",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.pitches.0",
+   "expected": "G4",
+   "actual": "G4",
+   "equal": true
+  },
+  {
+   "path": "groups.3.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.3.beatInMeasure",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.3.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "atoms.0.startTick",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.durationTicks",
+   "expected": 320,
+   "actual": 320,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.beat",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.startTick",
+   "expected": 320,
+   "actual": 320,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.durationTicks",
+   "expected": 320,
+   "actual": 320,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.beat",
+   "expected": 1.3333333333333333,
+   "actual": 1.3333333333333333,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.startTick",
+   "expected": 640,
+   "actual": 640,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.durationTicks",
+   "expected": 320,
+   "actual": 320,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.beat",
+   "expected": 1.6666666666666665,
+   "actual": 1.6666666666666665,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.startTick",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.beat",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.pitch",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.targetOnsetUs",
+   "expected": 4000000,
+   "actual": 4000000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.targetDurationUs",
+   "expected": 333333,
+   "actual": 333333,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.pitch",
+   "expected": 62,
+   "actual": 62,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.targetOnsetUs",
+   "expected": 4333333,
+   "actual": 4333333,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.targetDurationUs",
+   "expected": 333333,
+   "actual": 333333,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.pitch",
+   "expected": 64,
+   "actual": 64,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.targetOnsetUs",
+   "expected": 4666667,
+   "actual": 4666667,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.targetDurationUs",
+   "expected": 333333,
+   "actual": 333333,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.sourceOrdinal",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.pitch",
+   "expected": 67,
+   "actual": 67,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.targetOnsetUs",
+   "expected": 5000000,
+   "actual": 5000000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.targetDurationUs",
+   "expected": 1000000,
+   "actual": 1000000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "plan.occurrenceCount",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "plan.groupCount",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "measures.count",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.step",
+   "expected": "C",
+   "actual": "C",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.midiNote",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.pitch.spelling",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.0.playbackIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.playbackBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.beatInMeasure",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.step",
+   "expected": "D",
+   "actual": "D",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.midiNote",
+   "expected": 62,
+   "actual": 62,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.pitch.spelling",
+   "expected": "D4",
+   "actual": "D4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.1.playbackIndex",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.playbackBeat",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.beatInMeasure",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.step",
+   "expected": "E",
+   "actual": "E",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.midiNote",
+   "expected": 64,
+   "actual": 64,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.pitch.spelling",
+   "expected": "E4",
+   "actual": "E4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.2.playbackIndex",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.playbackBeat",
+   "expected": "3/1",
+   "actual": "3/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.step",
+   "expected": "F",
+   "actual": "F",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.midiNote",
+   "expected": 65,
+   "actual": 65,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.pitch.spelling",
+   "expected": "F4",
+   "actual": "F4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.3.playbackIndex",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.locator.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.locator.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.playbackBeat",
+   "expected": "4/1",
+   "actual": "4/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.beatInMeasure",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.pitch.step",
+   "expected": "G",
+   "actual": "G",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.pitch.midiNote",
+   "expected": 67,
+   "actual": 67,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.pitch.spelling",
+   "expected": "G4",
+   "actual": "G4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.4.playbackIndex",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.locator.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.locator.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.playbackBeat",
+   "expected": "5/1",
+   "actual": "5/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.beatInMeasure",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.staffNumber",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.pitch.step",
+   "expected": "A",
+   "actual": "A",
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.pitch.alter",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.pitch.octave",
+   "expected": 4,
+   "actual": 4,
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.pitch.midiNote",
+   "expected": 69,
+   "actual": 69,
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.pitch.spelling",
+   "expected": "A4",
+   "actual": "A4",
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.isTieOnset",
+   "expected": false,
+   "actual": false,
+   "equal": true
+  },
+  {
+   "path": "occurrences.5.playbackIndex",
+   "expected": 5,
+   "actual": 5,
+   "equal": true
+  },
+  {
+   "path": "groups.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.0.playbackBeat",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.pitches.0",
+   "expected": "C4",
+   "actual": "C4",
+   "equal": true
+  },
+  {
+   "path": "groups.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.0.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.0.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.1.playbackBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.1.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.pitches.0",
+   "expected": "D4",
+   "actual": "D4",
+   "equal": true
+  },
+  {
+   "path": "groups.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.beatInMeasure",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.1.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.1.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.2.playbackBeat",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "groups.2.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.pitches.0",
+   "expected": "E4",
+   "actual": "E4",
+   "equal": true
+  },
+  {
+   "path": "groups.2.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.2.beatInMeasure",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.2.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.2.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.3.playbackBeat",
+   "expected": "3/1",
+   "actual": "3/1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.3.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.pitches.0",
+   "expected": "F4",
+   "actual": "F4",
+   "equal": true
+  },
+  {
+   "path": "groups.3.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.3.beatInMeasure",
+   "expected": "0/1",
+   "actual": "0/1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.3.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.3.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.4.playbackBeat",
+   "expected": "4/1",
+   "actual": "4/1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.members.0.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.4.members.0.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.4.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.pitches.0",
+   "expected": "G4",
+   "actual": "G4",
+   "equal": true
+  },
+  {
+   "path": "groups.4.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.4.beatInMeasure",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.4.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.4.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "groups.5.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "groups.5.playbackBeat",
+   "expected": "5/1",
+   "actual": "5/1",
+   "equal": true
+  },
+  {
+   "path": "groups.5.members.0.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "groups.5.members.0.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.5.members.0.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "groups.5.members.0.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.5.pitches.0",
+   "expected": "A4",
+   "actual": "A4",
+   "equal": true
+  },
+  {
+   "path": "groups.5.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "groups.5.beatInMeasure",
+   "expected": "2/1",
+   "actual": "2/1",
+   "equal": true
+  },
+  {
+   "path": "groups.5.staffNumbers.0",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "groups.5.voiceIds.0",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "groups.5.durationBeat",
+   "expected": "1/1",
+   "actual": "1/1",
+   "equal": true
+  },
+  {
+   "path": "atoms.0.startTick",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.0.beat",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.startTick",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.1.beat",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.startTick",
+   "expected": 1920,
+   "actual": 1920,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.bar",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.2.beat",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.startTick",
+   "expected": 2880,
+   "actual": 2880,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "atoms.3.beat",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "atoms.4.startTick",
+   "expected": 3840,
+   "actual": 3840,
+   "equal": true
+  },
+  {
+   "path": "atoms.4.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.4.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "atoms.4.beat",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "atoms.5.startTick",
+   "expected": 4800,
+   "actual": 4800,
+   "equal": true
+  },
+  {
+   "path": "atoms.5.durationTicks",
+   "expected": 960,
+   "actual": 960,
+   "equal": true
+  },
+  {
+   "path": "atoms.5.bar",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "atoms.5.beat",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.pitch",
+   "expected": 60,
+   "actual": 60,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.targetOnsetUs",
+   "expected": 2666667,
+   "actual": 2666667,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.targetDurationUs",
+   "expected": 666667,
+   "actual": 666667,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.0.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.pitch",
+   "expected": 62,
+   "actual": 62,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.targetOnsetUs",
+   "expected": 3333334,
+   "actual": 3333334,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.targetDurationUs",
+   "expected": 666667,
+   "actual": 666667,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.1.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.measureOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.measure",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.pitch",
+   "expected": 64,
+   "actual": 64,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.targetOnsetUs",
+   "expected": 4000000,
+   "actual": 4000000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.targetDurationUs",
+   "expected": 666667,
+   "actual": 666667,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.2.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.sourceOrdinal",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.measure",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.pitch",
+   "expected": 65,
+   "actual": 65,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.targetOnsetUs",
+   "expected": 4666667,
+   "actual": 4666667,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.targetDurationUs",
+   "expected": 666667,
+   "actual": 666667,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.3.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.locator.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.locator.sourceOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.measure",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.pitch",
+   "expected": 67,
+   "actual": 67,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.targetOnsetUs",
+   "expected": 5333334,
+   "actual": 5333334,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.targetDurationUs",
+   "expected": 666667,
+   "actual": 666667,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.4.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.5.locator.partId",
+   "expected": "P1",
+   "actual": "P1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.5.locator.measureOrdinal",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.5.locator.sourceOrdinal",
+   "expected": 3,
+   "actual": 3,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.5.locator.voiceId",
+   "expected": "1",
+   "actual": "1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.5.passIndex",
+   "expected": 0,
+   "actual": 0,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.5.measure",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.5.pitch",
+   "expected": 69,
+   "actual": 69,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.5.targetOnsetUs",
+   "expected": 6000000,
+   "actual": 6000000,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.5.targetDurationUs",
+   "expected": 666667,
+   "actual": 666667,
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.5.partId",
+   "expected": "staff-1:voice-1",
+   "actual": "staff-1:voice-1",
+   "equal": true
+  },
+  {
+   "path": "scoreEvents.5.parseConfidence",
+   "expected": 1,
+   "actual": 1,
+   "equal": true
+  },
+  {
+   "path": "plan.occurrenceCount",
+   "expected": 6,
+   "actual": 6,
+   "equal": true
+  },
+  {
+   "path": "plan.groupCount",
+   "expected": 6,
+   "actual": 6,
+   "equal": true
+  },
+  {
+   "path": "measures.count",
+   "expected": 2,
+   "actual": 2,
+   "equal": true
+  }
+ ],
+ "allExact": true
+}
