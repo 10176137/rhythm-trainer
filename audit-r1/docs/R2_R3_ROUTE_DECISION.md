@@ -227,7 +227,7 @@ P1–P5 属于 R1 收尾，P6–P8 属于 R2 设计。
 
 **R2-2 Parity Harness 与固定用例**：**CLOSED**（2026-10-25 用户批准，`f64e88d` 关闭；经四轮复审修复，历程与最终证据见 `R2_2_PARITY_HARNESS_IMPLEMENTATION_REPORT.md` §11）——TS 侧差分比较器、15 冻结 case、A/B/C/V 四类验收测试、真实谱门禁、16 份机器可读报告；G5 时间语义正式裁决为冻结协议（`TargetOnsetUs = CountInUs + roundHalfUp(offset)`）。
 
-**R2-3 Rust planner 实施**：**已获批进入**（2026-10-25）——尚未动工。验收靶场与判据执行器已就绪（R2-1 规则 + R2-2 harness）；须按 TS_RUST_PARITY_GATE_V1 §8 交付全部七条证据后才允许 `RHYTHM_PLANNER=rust` 切换生产权威。
+**R2-3 Rust planner 实施**：**进行中**（2026-10-25 更新）——a1 PASS、a2 验收通过、a3 复审放行（七轮修复）、**R2-3b planner 语义移植二轮 PASS**（build_plan_v1 + 15 case 冻结语料对拍 + NAPI 双跑面）；R2-3c（NAPI 双跑接入 `diffCandidates` + 独立 expected 对照 + 机器可读报告）进行中。验收靶场与判据执行器已就绪（R2-1 规则 + R2-2 harness）；**双跑链路通过不等于迁移门禁通过**——仍须按 TS_RUST_PARITY_GATE_V1 §8 交付全部七条证据后才允许 `RHYTHM_PLANNER=rust` 切换生产权威。
 
 ---
 

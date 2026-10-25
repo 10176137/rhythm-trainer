@@ -1,9 +1,14 @@
-# R2-3 工程任务卡（v4——按三轮复审意见修订，提交于 `r2-3-rust-planner` 分支）
+# R2-3 工程任务卡（v6——按阶段复审裁决同步状态；提交于 `r2-3-rust-planner` 分支）
 
-**状态：** v5；**a1 PASS（四轮复审）；a2 已放行并实施**（范围四项：time.rs 公式/num-bigint/config 边界/§3.5 加法——document.rs 完整校验移至 a3）；a3 未放行。
+**状态：** v6；**a1 PASS（四轮复审）；a2 验收通过（五轮复审）；a3 复审放行（七轮修复，2a93574）；R2-3b planner 语义移植 PASS（二轮复审，0898c9b→2d77cc6）；R2-3c NAPI 双跑链路进行中**（60af861 交付 NAPI 入口/ParityCandidate 适配/15 case 双跑，补独立 expected 对照与机器可读报告）。
 **基线：** `main` @ `ba6d3c4`；本分支自该点创建。
 **上位约束：** R2-1 `TS_RUST_PARITY_GATE_V1.md`（Frozen @ 838cd9b）、R2-2 关闭报告 §11、路线决策 §5.1。
 **工作方式：** 全程在本分支提交。分支已推送远端供 GitHub 审查（用户确立的审查模式）；**main 不动、不合入**。
+
+**v6 变更摘要**（仅阶段状态与变更记录同步，不改任何冻结定义/范围）：
+1. 阶段状态对齐实际提交链：a3 经七轮修复后复审放行（2a93574）；R2-3b 交付（0898c9b）经首轮 REQUEST CHANGES（range-loop×1 planId 边界差异）修复后二轮 PASS（2d77cc6）。
+2. R2-3c 范围按用户任务卡定稿：NAPI 入口（保留可识别错误码）→ ParityCandidate 适配（剥离运行时字段/保留 runtimeIds/wireMs 记 not-applicable）→ 15 case 双跑接入 `diffCandidates`（**TS 与 Rust 分别对照独立 expected/golden 真值，禁止仅 TS↔Rust 互比**）→ 机器可读双跑报告（逐 case L1/L2/L3、阻断错误码、版本信息；语义/未分类差异不可忽略，失败非零退出）。
+3. 复审方法论入卡：15 case corpus 通过**不能替代规范边界值的独立检查**（loop×1 漏测即例证）。
 
 **v5 变更摘要**（相对 v4；四轮复审批准 a1、同步 a2 范围）：§4.2 重写为四项范围（time.rs 公式/num-bigint 全程精确/config 输入边界/§3.5 最终加法），**document.rs 完整校验移至 a3**；a3 定义相应更新。原 v4 摘要：**v4 变更摘要**（相对 v3/b6c2b9f，全部来自三轮复审意见）：
 1. **§2.2/§2.3 `scoreFingerprint` 字段来源修正**（C-12，关键）：v3 写"从输入 document 的 fingerprint 字段携带"——**ScoreDocumentV1 顶层不存在 `fingerprint` 字段**（Schema `additionalProperties:false`）。正确规则（三轮复审 §二 五步）：源指纹在 **`document.source.sourceFingerprint`**（格式 `sha256:` + 64 位小写 hex）；`build_plan_v1` 读取它、**验证格式、去 `sha256:` 前缀**得 64hex，写入 `PlannerOutput.scoreFingerprint`；门禁比较 `plan.scoreFingerprint == report.fingerprint`（后者即裸 64hex，TS 投影 :178 同格式）；`project_score_document_v1` 的文档/报告绑定检查使用**同一规范化规则**（去前缀后比较），不比较不存在的 `document.fingerprint`。
@@ -215,15 +220,15 @@ D = beat.den  × bpm.numerator
 
 **新增文件**：`contract_v1/rational.rs`（RationalV1 + BigInt 精确运算）、`contract_v1/time.rs`、`contract_v1/config.rs`；对应测试 `tests/contract_v1_time.rs` 或并入现有测试文件。既有 6 向量/117 项测试零回归。**依赖新增：`num-bigint 0.5.1`**（§1 已列）。
 
-### 4.3 R2-3a3——**未放行**（范围在 a2 完成复审后明确）
+### 4.3 R2-3a3——**复审放行**（2026-10-25，七轮修复后；见提交链 d8369f0→518ed41→d7c3a7c→0f9a449→2a93574）
 
 内容：**`document.rs` 完整 ScoreDocumentV1 校验清单**（自 a2 范围移入）+ `project_score_document_v1`（含 C-12 规范化绑定检查）+ payload 全量校验 + 门禁 `plan_fingerprint_v1_gate`。
 
-### 4.3 R2-3a3——**未放行**（前置阻断）
+### 4.4 R2-3b/c/d——状态
 
-阻断项：scoreFingerprint 接口（v3 已在 §2.2/§2.3 完成——复审确认后即解除）+ a2 通过。内容：`project_score_document_v1` + payload 全量校验 + 门禁 `plan_fingerprint_v1_gate`。
-
-### 4.4 R2-3b/c/d——维持 v2 定义（§2.3 PlannerOutput / 差分接入 / 证据包），受 a2/a3 门控。
+- **R2-3b（PASS，二轮复审）**：`contract_v1/planner.rs` `build_plan_v1` 完整 planner 语义（range/loop/tie/chord/排序/hand 过滤/atoms/逐音 scoreEvents/PlannerOutput §2.3）+ 冻结语料对拍（`rust-parity-input/` 15 case）+ **a3 gate isTieOnset 缺陷修复**（corpus 对拍抓获）；首轮阻断项（range-loop×1 planId）已修复（2d77cc6）。复审确认：corpus 通过不能替代规范边界值独立检查。
+- **R2-3c（进行中）**：按 v6 变更摘要第 2 条范围执行；NAPI 入口/适配层/双跑已交付（60af861），独立 expected 对照与机器可读报告补齐中。**R2-3c 完成不等于迁移门禁通过**。
+- **R2-3d（未放行）**：§8 七证据（真实谱回归、A/B/C/V 验收、正式归档）——生产切换前提。
 
 ## 5. 硬性约束（全程有效）
 
