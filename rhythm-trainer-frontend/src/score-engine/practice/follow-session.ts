@@ -48,6 +48,10 @@ export interface FollowNoteResult {
   remainingPitches: readonly string[];
   completedTarget?: FollowTargetResult;
   report?: FollowReport;
+  /** Server-owned progress snapshot; absent on the browser oracle. */
+  progressIndex?: number;
+  progressTotal?: number;
+  completedCount?: number;
 }
 
 export interface FollowSessionOptions {

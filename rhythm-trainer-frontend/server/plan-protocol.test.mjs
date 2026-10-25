@@ -260,6 +260,97 @@ describe('R2-3h: plan protocol over the real engine server', () => {
     });
   }, 30000);
 
+  it('starts Follow from the server-issued plan and commits a Follow Take with Rust provenance', async () => {
+    const requestId = 'plan-follow-start';
+    const plan = await request(socket, {
+      protocolVersion: 1,
+      type: 'plan-request',
+      requestId,
+      mode: 'follow',
+      document: CORPUS.document,
+      report: CORPUS.report,
+      config: CONFIG,
+    }, 'plan-response', requestId);
+    expect(plan.ok).toBe(true);
+
+    const started = await request(socket, {
+      protocolVersion: 1,
+      type: 'follow-start',
+      planRequestId: requestId,
+      bpm: CONFIG.bpm.numerator,
+      plannerAuthority: 'rust',
+      scoreFingerprint: plan.scoreFingerprint,
+      configSnapshot: { modeId: 'score', tempo: CONFIG.bpm.numerator, profile: 'standard' },
+      modeId: 'score',
+      timingToleranceMs: 60,
+      chordSpreadToleranceMs: 50,
+    }, 'follow-started');
+    expect(started.targetSource).toBe('server-plan');
+    expect(started.plannerAuthority).toBe('rust');
+    expect(started.plannerVersion).toBe('rust-planner-1');
+    expect(started.planFingerprint).toBe(plan.planFingerprint);
+    expect(started.total).toBe(plan.plan.groups.length);
+
+    const occurrenceById = new Map(plan.plan.occurrences.map((occurrence) => [occurrence.occurrenceId, occurrence]));
+    const firstGroup = plan.plan.groups[0];
+    const firstPitch = occurrenceById.get(firstGroup.occurrenceIds[0]).pitch.midiNote;
+    const event = await request(socket, {
+      protocolVersion: 1,
+      type: 'follow-note',
+      note: firstPitch,
+      atMs: 100,
+    }, 'follow-event');
+    expect(event.result.advanced).toBe(true);
+
+    const report = await request(socket, {
+      protocolVersion: 1,
+      type: 'follow-finish',
+    }, 'follow-report');
+    expect(report.endReason).toBe('completed');
+    expect(report.persisted).toBe(true);
+    expect(report.report.completedTargets).toBe(1);
+
+    const record = JSON.parse(readFileSync(
+      path.join(DATA_DIR, 'takes', `${report.takeId}.json`), 'utf8'));
+    expect(record).toMatchObject({
+      takeId: report.takeId,
+      context: {
+        plannerAuthority: 'rust',
+        plannerVersion: 'rust-planner-1',
+        planFingerprint: plan.planFingerprint,
+        planRunId: plan.plan.runtimeIds.planId,
+      },
+      assessment: {
+        trustworthy: true,
+        scoreStatus: 'FOLLOW_ONLY',
+        scope: 'follow',
+        strictTiming: false,
+      },
+    });
+    expect(record.assessment.timelineReport).toBeUndefined();
+    expect(record.evidence.captureDiagnostics.targetSource).toBe('server-plan');
+
+    const list = await (await fetch(`http://127.0.0.1:${PORT}/api/takes`)).json();
+    expect(list.items.find((item) => item.takeId === report.takeId)).toMatchObject({
+      reportKind: 'follow',
+      plannerAuthority: 'rust',
+      plannerVersion: 'rust-planner-1',
+      planFingerprint: plan.planFingerprint,
+      scoreStatus: 'FOLLOW_ONLY',
+    });
+
+    // The server-issued plan context is consumed exactly once.
+    await expect(request(socket, {
+      protocolVersion: 1,
+      type: 'follow-start',
+      planRequestId: requestId,
+      bpm: CONFIG.bpm.numerator,
+      plannerAuthority: 'rust',
+      scoreFingerprint: plan.scoreFingerprint,
+      modeId: 'score',
+    }, 'follow-started')).rejects.toThrow(/不存在或已过期/);
+  }, 30000);
+
   it('rejects a Rust start without the server-issued plan context or with forged provenance', async () => {
     const plan = await request(socket, {
       protocolVersion: 1,

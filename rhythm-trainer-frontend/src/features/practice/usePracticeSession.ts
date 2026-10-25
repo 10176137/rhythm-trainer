@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EngineBridge } from '../../services/engineBridge';
 import type { PlanRequestInput, PlannerStatus } from '../../services/engineBridge';
 import type { RustPlanResponse } from '../../score-engine/plan/rust-plan';
-import type { DurationEvaluationPolicy, EngineAtom, EngineCaptureDiagnostics, EngineDurationReport, EngineIngestMidiPacket, EngineProfile, EngineJudgment, EngineReport, EngineScoringConfig, EngineScoreEvent, EngineSessionScoreReport, EngineScoreStatus, EngineTarget, EngineTimingAnalysis } from '../../types/engine';
+import type { DurationEvaluationPolicy, EngineAtom, EngineCaptureDiagnostics, EngineDurationReport, EngineIngestMidiPacket, EngineProfile, EngineJudgment, EngineReport, EngineScoringConfig, EngineScoreEvent, EngineSessionScoreReport, EngineScoreStatus, EngineTarget, EngineTimingAnalysis, FollowEventMessage, FollowReportMessage, FollowStartRequest, FollowStartedMessage } from '../../types/engine';
 import type { HandSelection, SessionStatus } from '../../types/practice';
 import type { RetryComparison, TeachingPrescription } from '../../types/teaching';
 import { Metronome, buildBeatClicks } from './metronome';
@@ -80,6 +80,12 @@ export interface UsePracticeSessionOptions {
   }) => void;
   /** Client-side lookup for the expected pitch of a target (hint only). */
   expectedNotesFor?: (targetIndex: number) => { midiNote: number; noteName: string }[] | null;
+  /** Server-authoritative Follow events; the UI only renders them. */
+  onFollowStarted?: (message: FollowStartedMessage) => void;
+  onFollowEvent?: (message: FollowEventMessage) => void;
+  onFollowReport?: (message: FollowReportMessage) => void;
+  /** The engine connection dropped while a Follow Take was live. */
+  onFollowAborted?: (message: string) => void;
   /** R2-3h-R1: the engine socket closed — any cached planner authority is
    * stale and must be discarded by the caller. */
   onEngineDisconnected?: () => void;
@@ -127,6 +133,8 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   const metronomeRef = useRef<Metronome | null>(null);
   const originRef = useRef<number | null>(null);
   const captureEpochRef = useRef<number | null>(null);
+  /** A server-side Follow Take is live (start accepted, report not yet seen). */
+  const followActiveRef = useRef(false);
   const seqRef = useRef(0);
   const targetsRef = useRef<PracticeTarget[]>([]);
   const tickTimerRef = useRef<number | null>(null);
@@ -304,12 +312,27 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         setRetryComparison(message.retryComparison ?? null);
         setStatus('completed');
       },
+      onFollowStarted: (message) => {
+        followActiveRef.current = true;
+        optionsRef.current.onFollowStarted?.(message);
+      },
+      onFollowEvent: (message) => {
+        optionsRef.current.onFollowEvent?.(message);
+      },
+      onFollowReport: (message) => {
+        followActiveRef.current = false;
+        optionsRef.current.onFollowReport?.(message);
+      },
       onError: (message) => {
         stopTickTimer();
         setError(message);
         optionsRef.current.onError?.(message);
       },
       onDisconnected: () => {
+        if (followActiveRef.current) {
+          followActiveRef.current = false;
+          optionsRef.current.onFollowAborted?.('与引擎服务的连接已断开，跟手练习已终止。');
+        }
         if (originRef.current !== null && statusRef.current !== 'completed') {
           setStatus('idle');
           stopTickTimer();
@@ -326,7 +349,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   }, [rescheduleMetronome, startTickTimer]);
 
   const begin = useCallback(async (request: BeginRequest) => {
-    if (active) return;
+    if (active || followActiveRef.current) return;
     setError(null);
     bpmRef.current = request.bpm;
     metronomeEnabledRef.current = request.metronomeEnabled !== false;
@@ -402,6 +425,10 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   const reset = useCallback(() => {
     stopTickTimer();
     metronomeRef.current?.stopAll();
+    if (followActiveRef.current) {
+      followActiveRef.current = false;
+      bridgeRef.current?.followAbandon();
+    }
     if (originRef.current !== null) {
       bridgeRef.current?.finish(); // archive whatever the session collected
     }
@@ -459,6 +486,53 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     await bridge.connect();
     return bridge.requestPlan(input);
   }, [ensureBridge]);
+
+  /**
+   * Follow's authoritative runtime lives on the engine service (Rust
+   * NativeFollowRuntime). The browser sends the plan projection/context and
+   * only renders the returned events and report.
+   */
+  const startFollow = useCallback(async (request: Omit<FollowStartRequest, 'type'>): Promise<FollowStartedMessage> => {
+    if (active) throw new Error('已有进行中的时间线练习，无法开始跟手练习');
+    const bridge = ensureBridge();
+    await bridge.connect();
+    followActiveRef.current = true;
+    try {
+      return await bridge.startFollow(request);
+    } catch (error) {
+      followActiveRef.current = false;
+      throw error;
+    }
+  }, [active, ensureBridge]);
+
+  const sendFollowNote = useCallback((note: number, atMs: number): boolean => {
+    if (!followActiveRef.current) return false;
+    if (!Number.isInteger(note) || note < 0 || note > 127) return false;
+    if (!Number.isFinite(atMs) || atMs < 0) return false;
+    bridgeRef.current?.followNote(note, atMs);
+    return true;
+  }, []);
+
+  const pauseFollow = useCallback((atMs?: number) => {
+    if (!followActiveRef.current) return;
+    bridgeRef.current?.followPause(atMs);
+  }, []);
+
+  const resumeFollow = useCallback((atMs?: number) => {
+    if (!followActiveRef.current) return;
+    bridgeRef.current?.followResume(atMs);
+  }, []);
+
+  const finishFollow = useCallback(() => {
+    if (!followActiveRef.current) return;
+    bridgeRef.current?.followFinish();
+  }, []);
+
+  const abandonFollow = useCallback(() => {
+    if (!followActiveRef.current) return;
+    followActiveRef.current = false;
+    bridgeRef.current?.followAbandon();
+  }, []);
 
   /** Free play: a local recording session with no engine targets and no scoring. */
   const beginFreePlay = useCallback(() => {
@@ -582,6 +656,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     error, liveStats, nextUnmatchedIndex,
     begin, pause, resume, finish, reset, beginFreePlay, finishFreePlay, ingestPacket, getExpectedNote, getCaptureEpoch,
     getPlannerStatus, requestPlannerPlan,
+    startFollow, sendFollowNote, pauseFollow, resumeFollow, finishFollow, abandonFollow,
     originPerfMs: originRef.current,
   };
 }

@@ -8,6 +8,12 @@ use rhythm_core::take::{
     ProfileSnapshotId, ScoreFingerprint, SessionError, SourceId, StampedMidiPacket, TakeCommand, TakeId,
     TransitionReceipt,
 };
+use rhythm_core::follow::{
+    FollowGroup as CoreFollowGroup, FollowNoteResult as CoreFollowNoteResult,
+    FollowOptions as CoreFollowOptions, FollowPitch as CoreFollowPitch,
+    FollowReport as CoreFollowReport, FollowRuntime, FollowTargetResult as CoreFollowTargetResult,
+    FollowWrongNote as CoreFollowWrongNote,
+};
 use rhythm_core::{
     assess_durations, assess_presses_with_pauses, build_schedule, decode_ingest_packet, diagnose_timing,
     recommend_exercise, track_key_lifecycles, AtomKind, ClockQuality, DecodedMidiEvent,
@@ -1031,6 +1037,227 @@ impl NativeSession {
 
     #[napi]
     pub fn state(&self) -> String { self.inner.state().as_str().to_string() }
+}
+
+// ---------------------------------------------------------------------------
+// Follow mode: self-paced authoritative runtime (Rust port of FollowSession).
+
+#[napi(object)]
+pub struct JsFollowPitch {
+    pub midi_note: u32,
+    pub spelling: String,
+}
+
+#[napi(object)]
+pub struct JsFollowGroup {
+    pub group_id: String,
+    pub bar: u32,
+    pub playback_beat: f64,
+    pub pitches: Vec<JsFollowPitch>,
+}
+
+#[napi(object)]
+pub struct JsFollowWrongNote {
+    pub midi_note: u32,
+    pub at_ms: f64,
+}
+
+#[napi(object)]
+pub struct JsFollowTargetResult {
+    pub target_id: String,
+    pub bar: u32,
+    pub expected_pitches: Vec<String>,
+    pub matched_pitches: Vec<String>,
+    pub wrong_notes: Vec<JsFollowWrongNote>,
+    pub duplicate_notes: u32,
+    pub completed: bool,
+    pub standard: bool,
+    pub first_correct_at_ms: Option<f64>,
+    pub completion_at_ms: Option<f64>,
+    pub chord_spread_ms: Option<f64>,
+    pub interval_error_ms: Option<f64>,
+    pub interval_judged: bool,
+}
+
+#[napi(object)]
+pub struct JsFollowTimingSummary {
+    pub samples: u32,
+    pub mean_signed_ms: Option<f64>,
+    pub mean_absolute_ms: Option<f64>,
+    pub standard_deviation_ms: Option<f64>,
+}
+
+#[napi(object)]
+pub struct JsFollowReport {
+    pub strict_timing: bool,
+    pub total_targets: u32,
+    pub completed_targets: u32,
+    pub standard_targets: u32,
+    pub pending_target_id: Option<String>,
+    pub wrong_note_count: u32,
+    pub extra_note_count: u32,
+    pub duplicate_note_count: u32,
+    pub timing: JsFollowTimingSummary,
+    pub targets: Vec<JsFollowTargetResult>,
+}
+
+#[napi(object)]
+pub struct JsFollowNoteResult {
+    pub kind: String,
+    pub target_id: Option<String>,
+    pub advanced: bool,
+    pub expected_pitches: Vec<String>,
+    pub remaining_pitches: Vec<String>,
+    pub completed_target: Option<JsFollowTargetResult>,
+    pub report: Option<JsFollowReport>,
+    pub progress_index: u32,
+    pub progress_total: u32,
+    pub completed_count: u32,
+}
+
+#[napi(object)]
+pub struct JsFollowProgress {
+    pub index: u32,
+    pub total: u32,
+    pub completed: u32,
+    pub current_group_id: Option<String>,
+    pub is_complete: bool,
+}
+
+fn to_follow_pitch(pitch: JsFollowPitch) -> napi::Result<CoreFollowPitch> {
+    if pitch.midi_note > 127 {
+        return Err(napi_error("follow pitch midiNote must be within 0..=127"));
+    }
+    Ok(CoreFollowPitch { midi_note: pitch.midi_note as u8, spelling: pitch.spelling })
+}
+
+fn to_js_follow_wrong_note(note: CoreFollowWrongNote) -> JsFollowWrongNote {
+    JsFollowWrongNote { midi_note: u32::from(note.midi_note), at_ms: note.at_ms }
+}
+
+fn to_js_follow_target(target: CoreFollowTargetResult) -> JsFollowTargetResult {
+    JsFollowTargetResult {
+        target_id: target.target_id,
+        bar: target.bar,
+        expected_pitches: target.expected_pitches,
+        matched_pitches: target.matched_pitches,
+        wrong_notes: target.wrong_notes.into_iter().map(to_js_follow_wrong_note).collect(),
+        duplicate_notes: target.duplicate_notes as u32,
+        completed: target.completed,
+        standard: target.standard,
+        first_correct_at_ms: target.first_correct_at_ms,
+        completion_at_ms: target.completion_at_ms,
+        chord_spread_ms: target.chord_spread_ms,
+        interval_error_ms: target.interval_error_ms,
+        interval_judged: target.interval_judged,
+    }
+}
+
+fn to_js_follow_report(report: CoreFollowReport) -> JsFollowReport {
+    JsFollowReport {
+        strict_timing: report.strict_timing,
+        total_targets: report.total_targets as u32,
+        completed_targets: report.completed_targets as u32,
+        standard_targets: report.standard_targets as u32,
+        pending_target_id: report.pending_target_id,
+        wrong_note_count: report.wrong_note_count as u32,
+        extra_note_count: report.extra_note_count as u32,
+        duplicate_note_count: report.duplicate_note_count as u32,
+        timing: JsFollowTimingSummary {
+            samples: report.timing.samples as u32,
+            mean_signed_ms: report.timing.mean_signed_ms,
+            mean_absolute_ms: report.timing.mean_absolute_ms,
+            standard_deviation_ms: report.timing.standard_deviation_ms,
+        },
+        targets: report.targets.into_iter().map(to_js_follow_target).collect(),
+    }
+}
+
+fn to_js_follow_note(result: CoreFollowNoteResult) -> JsFollowNoteResult {
+    JsFollowNoteResult {
+        kind: result.kind,
+        target_id: result.target_id,
+        advanced: result.advanced,
+        expected_pitches: result.expected_pitches,
+        remaining_pitches: result.remaining_pitches,
+        completed_target: result.completed_target.map(to_js_follow_target),
+        report: result.report.map(to_js_follow_report),
+        progress_index: result.progress_index as u32,
+        progress_total: result.progress_total as u32,
+        completed_count: result.completed_count as u32,
+    }
+}
+
+#[napi]
+pub struct NativeFollowRuntime {
+    inner: FollowRuntime,
+}
+
+#[napi]
+impl NativeFollowRuntime {
+    #[napi(constructor)]
+    pub fn new(
+        groups: Vec<JsFollowGroup>,
+        bpm: f64,
+        timing_tolerance_ms: Option<f64>,
+        chord_spread_tolerance_ms: Option<f64>,
+    ) -> napi::Result<Self> {
+        let groups = groups
+            .into_iter()
+            .map(|group| {
+                Ok(CoreFollowGroup {
+                    group_id: group.group_id,
+                    bar: group.bar,
+                    playback_beat: group.playback_beat,
+                    pitches: group
+                        .pitches
+                        .into_iter()
+                        .map(to_follow_pitch)
+                        .collect::<napi::Result<Vec<_>>>()?,
+                })
+            })
+            .collect::<napi::Result<Vec<_>>>()?;
+        let options = CoreFollowOptions {
+            bpm,
+            timing_tolerance_ms: timing_tolerance_ms.unwrap_or(60.0),
+            chord_spread_tolerance_ms: chord_spread_tolerance_ms.unwrap_or(50.0),
+        };
+        let inner = FollowRuntime::new(groups, options).map_err(napi_error)?;
+        Ok(Self { inner })
+    }
+
+    #[napi(js_name = "pushNote")]
+    pub fn push_note(&mut self, midi_note: u32, at_ms: f64) -> napi::Result<JsFollowNoteResult> {
+        if midi_note > 127 {
+            return Err(napi_error("follow note must be within 0..=127"));
+        }
+        self.inner
+            .push_note(midi_note as u8, at_ms)
+            .map(to_js_follow_note)
+            .map_err(napi_error)
+    }
+
+    #[napi(js_name = "invalidateNextInterval")]
+    pub fn invalidate_next_interval(&mut self) {
+        self.inner.invalidate_next_interval();
+    }
+
+    #[napi]
+    pub fn finish(&self) -> JsFollowReport {
+        to_js_follow_report(self.inner.finish())
+    }
+
+    #[napi]
+    pub fn progress(&self) -> JsFollowProgress {
+        let (index, total) = self.inner.progress();
+        JsFollowProgress {
+            index: index as u32,
+            total: total as u32,
+            completed: self.inner.completed_count() as u32,
+            current_group_id: self.inner.current_group().map(|group| group.group_id.clone()),
+            is_complete: self.inner.is_complete(),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

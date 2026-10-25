@@ -4,9 +4,14 @@ interface Props {
   report: FollowReport;
 }
 
-function formatMs(value: number | null): string {
-  if (value === null) return '—';
+function formatMs(value: number | null | undefined): string {
+  if (value == null) return '—';
   return `${value > 0 ? '+' : ''}${Math.round(value)} ms`;
+}
+
+function formatAbsMs(value: number | null | undefined): string {
+  if (value == null) return '—';
+  return `${Math.round(Math.abs(value))} ms`;
 }
 
 function targetStatus(target: FollowTargetResult): string {
@@ -35,9 +40,9 @@ export default function FollowReportPanel({ report }: Props) {
         <div><span>错误音</span><strong className={report.wrongNoteCount ? 'text-bad' : ''}>{report.wrongNoteCount}</strong></div>
         <div><span>额外音</span><strong>{report.extraNoteCount}</strong></div>
         <div><span>重复音</span><strong>{report.duplicateNoteCount}</strong></div>
-        <div><span>节奏 MAE</span><strong>{formatMs(report.timing.meanAbsoluteMs)}</strong><small>{report.timing.samples} 个干净间隔</small></div>
+        <div><span>节奏 MAE</span><strong>{formatAbsMs(report.timing.meanAbsoluteMs)}</strong><small>{report.timing.samples} 个干净间隔</small></div>
         <div><span>平均偏差</span><strong>{formatMs(report.timing.meanSignedMs)}</strong><small>正 = 偏晚</small></div>
-        <div><span>节奏标准差</span><strong>{formatMs(report.timing.standardDeviationMs)}</strong></div>
+        <div><span>节奏标准差</span><strong>{formatAbsMs(report.timing.standardDeviationMs)}</strong></div>
       </div>
       {report.targets.length > 0 ? (
         <div className="follow-targets">
@@ -49,7 +54,7 @@ export default function FollowReportPanel({ report }: Props) {
               <span>{target.expectedPitches.join(' / ')}</span>
               <span className={target.standard ? 'text-good' : target.completed ? 'text-warn' : 'muted-text'}>{targetStatus(target)}</span>
               <span>{target.intervalJudged ? formatMs(target.intervalErrorMs) : '首个目标'}</span>
-              <span>{target.chordSpreadMs === null ? '—' : `${Math.round(target.chordSpreadMs)} ms`}</span>
+              <span>{target.chordSpreadMs == null ? '—' : `${Math.round(target.chordSpreadMs)} ms`}</span>
             </div>
           ))}
         </div>

@@ -4,6 +4,7 @@ pub mod contract_v1;
 mod duration;
 mod error;
 mod events;
+pub mod follow;
 mod matcher;
 mod midi;
 mod replay;

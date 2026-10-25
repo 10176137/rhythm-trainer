@@ -50,6 +50,10 @@ const QUEUE_CAPACITY = 512;
 const FINALIZATION_GRACE_MS = 80;
 // Mode/profile validation moved to server/mode-config.mjs (single authority).
 const SCHEMA_VERSION = 1;
+// Bounded record of the authoritative Follow input stream so a Take can be
+// replayed deterministically. A normal exercise is far below this; a stuck
+// key producing endless wrong notes is truncated and marked as such.
+const FOLLOW_INPUT_LIMIT = 20000;
 // Pass rule (product heuristic, same threshold as the core's prescription):
 // clean input, no miss/extra, mean absolute error within 30 ms.
 const PASS_MAE_MS = 30.0;
@@ -339,27 +343,72 @@ function sessionSummaryFromRecord(record) {
 }
 
 function takeSummary(take) {
-  const timeline = take.assessment?.timelineReport ?? {};
-  const summary = sessionSummaryFromRecord({
-    ...timeline,
+  const timeline = take.assessment?.timelineReport ?? null;
+  const follow = take.assessment?.followReport ?? null;
+  const reportKind = timeline ? 'timeline' : follow ? 'follow' : 'unavailable';
+  const base = {
     sessionId: take.takeId,
-    finishedAtIso: take.lifecycle?.finishedAtIso ?? timeline.finishedAtIso,
-    modeId: take.lifecycle?.modeId ?? timeline.modeId,
-    scoreFingerprint: take.score?.scoreFingerprint ?? null,
-    playbackPlanId: take.context?.planRunId ?? timeline.playbackPlanId ?? null,
-    plannerAuthority: take.context?.plannerAuthority ?? null,
-    plannerVersion: take.context?.plannerVersion ?? null,
-    planFingerprint: take.context?.planFingerprint ?? null,
-  });
-  return {
-    ...summary,
     takeId: take.takeId,
+    reportKind,
     endReason: take.lifecycle?.endReason ?? null,
     scoreStatus: take.assessment?.scoreStatus ?? null,
     scoreId: take.score?.scoreId ?? null,
     scoreSnapshotRef: take.score?.scoreSnapshotRef ?? null,
     legacySessionId: take.legacy?.sessionId ?? null,
+    finishedAtIso: take.lifecycle?.finishedAtIso ?? null,
+    modeId: take.lifecycle?.modeId ?? 'unknown',
+    bpm: take.context?.practiceConfigSnapshot?.tempo ?? null,
+    profile: take.context?.practiceConfigSnapshot?.profile ?? null,
+    trustworthy: !!take.assessment?.trustworthy,
+    interrupted: take.lifecycle?.endReason === 'interrupted',
+    scoreFingerprint: take.score?.scoreFingerprint ?? null,
+    playbackPlanId: take.context?.planRunId ?? null,
+    plannerAuthority: take.context?.plannerAuthority ?? null,
+    plannerVersion: take.context?.plannerVersion ?? null,
+    planFingerprint: take.context?.planFingerprint ?? null,
+    sourceReportId: null,
+    prescriptionId: null,
+    takeTemplateId: null,
+    takeTemplateName: null,
   };
+  if (follow) {
+    const total = follow.totalTargets ?? 0;
+    return {
+      ...base,
+      targetCount: total,
+      perfectCount: 0,
+      goodCount: 0,
+      missCount: 0,
+      extraCount: follow.extraNoteCount ?? 0,
+      // Follow has no fixed-clock hit rate; keep the Timeline field at 0 and
+      // expose completion separately so no consumer mistakes it for strict
+      // Perfect/Good/Miss scoring.
+      targetHitRate: 0,
+      followCompletionRate: total > 0 ? (follow.completedTargets ?? 0) / total : 0,
+      meanSignedMs: follow.timing?.meanSignedMs ?? null,
+      meanAbsoluteMs: follow.timing?.meanAbsoluteMs ?? null,
+      followCompletedTargets: follow.completedTargets ?? 0,
+      followStandardTargets: follow.standardTargets ?? 0,
+      followWrongNoteCount: follow.wrongNoteCount ?? 0,
+      followExtraNoteCount: follow.extraNoteCount ?? 0,
+      followDuplicateNoteCount: follow.duplicateNoteCount ?? 0,
+      followTimingSamples: follow.timing?.samples ?? 0,
+    };
+  }
+  const summary = sessionSummaryFromRecord({
+    ...(timeline ?? {}),
+    sessionId: take.takeId,
+    finishedAtIso: base.finishedAtIso,
+    modeId: base.modeId,
+    bpm: base.bpm,
+    profile: base.profile,
+    scoreFingerprint: base.scoreFingerprint,
+    playbackPlanId: base.playbackPlanId,
+    plannerAuthority: base.plannerAuthority,
+    plannerVersion: base.plannerVersion,
+    planFingerprint: base.planFingerprint,
+  });
+  return { ...base, ...summary, sessionId: take.takeId };
 }
 
 function listAllTakes() {
@@ -964,6 +1013,7 @@ let activeNodeSink = null;
 // could each create a NativeSession while the global Node MIDI sink silently
 // follows whichever started last.
 let activeTakeLease = null;
+let activeFollowLease = null;
 
 midiAdapter.onEvent((event) => {
   broadcast({ type: 'midi-event', event });
@@ -1062,6 +1112,10 @@ wss.on('connection', (socket) => {
   // take lifecycle, capture generations and quarantine counters; the scoring
   // engine stays per-Take.
   let coordinator = null;   // addon.NativeTakeCoordinator
+  // Follow mode runtime (self-paced, no fixed clock; no session.begin).
+  let followRuntime = null; // addon.NativeFollowRuntime
+  let followContext = null;
+  let followFinalized = null; // { takeId, report, persisted } for idempotent finish
   // R2-3i/domain: plans issued on THIS connection, keyed by requestId. The
   // Take binds to this server-held context; client-sent provenance is never
   // treated as the source of truth for a Rust plan.
@@ -1326,7 +1380,272 @@ wss.on('connection', (socket) => {
     pauseExcludedFromScore = 0;
   }
 
+  /**
+   * Normalizes Follow targets projected from a plan. A server-issued Rust
+   * plan is preferred, but the default rts launch still plans in the browser;
+   * in that case the server validates the projection it is given and records
+   * its provenance as a client plan projection (never as a Rust plan).
+   */
+  function normalizeFollowGroups(value) {
+    if (!Array.isArray(value) || value.length === 0) throw new Error('跟手计划没有目标');
+    if (value.length > 20000) throw new Error('跟手目标数量超出上限');
+    const seenGroupIds = new Set();
+    let previousBeat = -Infinity;
+    return value.map((group) => {
+      const groupId = typeof group?.groupId === 'string' ? group.groupId.trim() : '';
+      if (!groupId || groupId.length > 200) throw new Error('跟手目标缺少合法 groupId');
+      if (seenGroupIds.has(groupId)) throw new Error(`跟手目标 groupId 重复: ${groupId}`);
+      seenGroupIds.add(groupId);
+      const bar = Number(group.bar);
+      if (!Number.isInteger(bar) || bar < 1) throw new Error(`跟手目标 ${groupId} 的 bar 非法`);
+      const playbackBeat = Number(group.playbackBeat);
+      if (!Number.isFinite(playbackBeat) || playbackBeat < 0) {
+        throw new Error(`跟手目标 ${groupId} 的 playbackBeat 非法`);
+      }
+      if (playbackBeat < previousBeat) throw new Error('跟手目标顺序与计划不一致');
+      previousBeat = playbackBeat;
+      if (!Array.isArray(group.pitches) || group.pitches.length === 0) {
+        throw new Error(`跟手目标 ${groupId} 没有可映射的 MIDI 音高`);
+      }
+      const seenNotes = new Set();
+      const pitches = [];
+      for (const pitch of group.pitches) {
+        const midiNote = Number(pitch?.midiNote);
+        const spelling = typeof pitch?.spelling === 'string' ? pitch.spelling : '';
+        if (!Number.isInteger(midiNote) || midiNote < 0 || midiNote > 127) {
+          throw new Error(`跟手目标 ${groupId} 含非法 MIDI 音高`);
+        }
+        if (!spelling) throw new Error(`跟手目标 ${groupId} 的音名缺失`);
+        // Both hands can notate the same key at the same onset. Follow asks
+        // for that key once, not twice; the group's scoreEventIds still mark
+        // every notated member when it advances.
+        if (seenNotes.has(midiNote)) continue;
+        seenNotes.add(midiNote);
+        pitches.push({ midiNote, spelling });
+      }
+      return { groupId, bar, playbackBeat, pitches };
+    });
+  }
+
+  function normalizeFollowTarget(target) {
+    return {
+      ...target,
+      duplicateNotes: target.duplicateNotes ?? 0,
+      firstCorrectAtMs: target.firstCorrectAtMs ?? null,
+      completionAtMs: target.completionAtMs ?? null,
+      chordSpreadMs: target.chordSpreadMs ?? null,
+      intervalErrorMs: target.intervalErrorMs ?? null,
+      intervalJudged: !!target.intervalJudged,
+      standard: !!target.standard,
+      completed: !!target.completed,
+      wrongNotes: Array.isArray(target.wrongNotes) ? target.wrongNotes : [],
+      matchedPitches: Array.isArray(target.matchedPitches) ? target.matchedPitches : [],
+      expectedPitches: Array.isArray(target.expectedPitches) ? target.expectedPitches : [],
+    };
+  }
+
+  function normalizeFollowReport(report) {
+    const timing = report?.timing ?? {};
+    return {
+      strictTiming: false,
+      totalTargets: report?.totalTargets ?? 0,
+      completedTargets: report?.completedTargets ?? 0,
+      standardTargets: report?.standardTargets ?? 0,
+      pendingTargetId: report?.pendingTargetId ?? null,
+      wrongNoteCount: report?.wrongNoteCount ?? 0,
+      extraNoteCount: report?.extraNoteCount ?? 0,
+      duplicateNoteCount: report?.duplicateNoteCount ?? 0,
+      timing: {
+        samples: timing.samples ?? 0,
+        meanSignedMs: timing.meanSignedMs ?? null,
+        meanAbsoluteMs: timing.meanAbsoluteMs ?? null,
+        standardDeviationMs: timing.standardDeviationMs ?? null,
+      },
+      targets: Array.isArray(report?.targets) ? report.targets.map(normalizeFollowTarget) : [],
+    };
+  }
+
+  function normalizeFollowNoteResult(result) {
+    return {
+      ...result,
+      targetId: result.targetId ?? null,
+      advanced: !!result.advanced,
+      expectedPitches: Array.isArray(result.expectedPitches) ? result.expectedPitches : [],
+      remainingPitches: Array.isArray(result.remainingPitches) ? result.remainingPitches : [],
+      completedTarget: result.completedTarget ? normalizeFollowTarget(result.completedTarget) : null,
+      report: result.report ? normalizeFollowReport(result.report) : null,
+      progressIndex: result.progressIndex ?? 0,
+      progressTotal: result.progressTotal ?? 0,
+      completedCount: result.completedCount ?? 0,
+    };
+  }
+
+  /**
+   * Follow finalizer: one authoritative Take, never a fake Timeline report.
+   * The Rust FollowRuntime owns target progression and the report; Node only
+   * allocates the storage id, snapshots the score/config and writes the Take.
+   */
+  function finalizeFollowTake({ interrupted = false, report: suppliedReport = null } = {}) {
+    if (!followRuntime || !followContext) {
+      return followFinalized;
+    }
+    const context = followContext;
+    const report = normalizeFollowReport(suppliedReport ?? followRuntime.finish());
+    const scoreSnapshotRef = ensureScoreSnapshot(context.scoreId, context.scoreFingerprint);
+    const endReason = interrupted ? 'interrupted' : 'completed';
+    const pauseIntervals = context.pauseIntervals.map((interval) => ({ ...interval }));
+    if (context.pausedAtMs !== null) {
+      // Finished while paused: keep the open interval instead of pretending
+      // the pause ended at the finish timestamp.
+      pauseIntervals.push({ startMs: context.pausedAtMs, endMs: null });
+    }
+    const followInputsTruncated = context.inputs.length > FOLLOW_INPUT_LIMIT;
+    const followInputs = context.inputs
+      .slice(0, FOLLOW_INPUT_LIMIT)
+      .map((input) => ({ midiNote: input.midiNote, atMs: input.atMs }));
+    const takeRecord = {
+      schemaVersion: 1,
+      takeId: context.takeId,
+      score: {
+        scoreId: context.scoreId ?? null,
+        scoreFingerprint: context.scoreFingerprint ?? null,
+        scoreSnapshotRef,
+      },
+      lifecycle: {
+        startedAtIso: context.startedAtIso,
+        finishedAtIso: new Date().toISOString(),
+        endReason,
+        modeId: context.modeId,
+      },
+      context: {
+        practiceConfigSnapshot: context.configSnapshot,
+        plannerAuthority: context.plan.authority,
+        plannerVersion: context.plan.plannerVersion,
+        planFingerprint: context.plan.planFingerprint,
+        planSnapshotRef: null,
+        planRunId: context.plan.planRunId,
+      },
+      evidence: {
+        traceRef: null,
+        journalRef: null,
+        pauseIntervals,
+        // The normalized target schedule used for grading. The plan itself is
+        // not persisted, so this is the authoritative basis for replay.
+        followGroups: context.plan.groups,
+        followBpm: context.plan.bpm,
+        followTimingToleranceMs: context.timingToleranceMs,
+        followChordSpreadToleranceMs: context.chordSpreadToleranceMs,
+        // Deterministic replay input. Pause/resume decisions are carried by
+        // pauseIntervals; everything else is the accepted Note On stream.
+        followInputs,
+        followInputsTruncated,
+        captureDiagnostics: {
+          mode: 'follow',
+          runtimeId: context.runtimeId,
+          targetSource: context.plan.targetSource,
+          timingToleranceMs: context.timingToleranceMs,
+          chordSpreadToleranceMs: context.chordSpreadToleranceMs,
+          inputHealth: midiAdapter.getStatus().inputHealth ?? 'unknown',
+          followInputCount: context.inputs.length,
+          pausedIntervals: pauseIntervals.length,
+        },
+      },
+      assessment: {
+        trustworthy: !interrupted,
+        scoreStatus: 'FOLLOW_ONLY',
+        // Follow is self-paced: the report must never be read as a
+        // fixed-clock Timeline strict score.
+        scope: 'follow',
+        strictTiming: false,
+        followReport: report,
+      },
+      engineDiagnostics: {
+        practiceSessionId: null,
+        engineTakeId: context.runtimeId,
+        takeIndex: 1,
+        takeSnapshot: null,
+      },
+    };
+    let persisted = false;
+    let created = false;
+    let persistenceError = null;
+    try {
+      const written = writeTakeOnce(takeRecord);
+      persisted = written.persisted;
+      created = written.created;
+    } catch (error) {
+      persistenceError = String((error && error.message) || error);
+      console.error('[engine] Follow Take 保存失败:', persistenceError);
+    }
+    followFinalized = { takeId: context.takeId, report, persisted, persistenceError, endReason };
+    followRuntime = null;
+    followContext = null;
+    if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
+    if (activeFollowLease?.socket === socket) activeFollowLease = null;
+    return { ...followFinalized, created };
+  }
+
+  function handleFollowNote(midiNote, atMs) {
+    if (!followRuntime || !followContext) {
+      send({ type: 'error', message: '没有进行中的跟手练习' });
+      return null;
+    }
+    let result;
+    try {
+      result = normalizeFollowNoteResult(followRuntime.pushNote(midiNote, atMs));
+      if (followContext.inputs.length <= FOLLOW_INPUT_LIMIT) {
+        followContext.inputs.push({ midiNote, atMs });
+      }
+    } catch (error) {
+      send({ type: 'error', message: String((error && error.message) || error) });
+      return null;
+    }
+    send({
+      type: 'follow-event',
+      takeId: followContext.takeId,
+      note: midiNote,
+      atMs,
+      result,
+      progress: followRuntime.progress(),
+    });
+    if (result.report) {
+      const finalized = finalizeFollowTake({ report: result.report });
+      send({
+        type: 'follow-report',
+        takeId: finalized.takeId,
+        report: finalized.report,
+        persisted: finalized.persisted,
+        persistenceError: finalized.persistenceError,
+        endReason: finalized.endReason,
+        progress: { index: result.progressTotal, total: result.progressTotal, completed: result.completedCount },
+      });
+    }
+    return result;
+  }
+
   function handleNodeMidiEvent(event) {
+    if (followRuntime && followContext) {
+      if (followContext.pausedAtMs !== null) return; // paused: ignore live input
+      const adapterStatus = midiAdapter.getStatus();
+      if (event.connectionGeneration !== adapterStatus.generation) return;
+      const bytes = Array.from(event.rawData ?? []);
+      const status = bytes[0] ?? 0;
+      const command = status & 0xf0;
+      const midiNote = bytes[1] ?? 0;
+      const velocity = bytes[2] ?? 0;
+      if (command !== 0x90 || velocity === 0) return; // Follow advances on Note On only
+      const mapped = mapNodeEventToSession({
+        capturedAtMonotonicMs: event.capturedAtMonotonicMs,
+        offsetServerMinusClientMs: clockOffsetServerMinusClientMs,
+        sessionOriginClientPerfMs,
+      });
+      if (!mapped || mapped.atSessionMs < 0) {
+        send({ type: 'error', message: 'MIDI 时钟尚未就绪，跟手输入未处理' });
+        return;
+      }
+      handleFollowNote(midiNote, mapped.atSessionMs);
+      return;
+    }
     if (!native || !meta || !activeTake) return;
     const adapterStatus = midiAdapter.getStatus();
     if (event.connectionGeneration !== adapterStatus.generation) {
@@ -1408,6 +1727,14 @@ wss.on('connection', (socket) => {
 
   socket.on('close', () => {
     if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
+    if (followRuntime && followContext) {
+      try {
+        finalizeFollowTake({ interrupted: true });
+      } catch (err) {
+        console.error('[engine] 跟手断连结算失败:', String((err && err.message) || err));
+      }
+    }
+    if (activeFollowLease?.socket === socket) activeFollowLease = null;
     // Switching browser/device closes this socket. Finalize the captured Take
     // into an explicit untrusted history record instead of losing it. This is
     // persistence of the interrupted attempt, not cross-device Take resumption.
@@ -1479,6 +1806,28 @@ wss.on('connection', (socket) => {
             config: msg.config,
             mode: msg.mode,
           });
+          const occurrenceById = new Map(
+            response.plan.occurrences.map((occurrence) => [occurrence.occurrenceId, occurrence]),
+          );
+          const followGroups = response.plan.groups.map((group, index) => {
+            const beat = String(group.playbackBeat).split('/').map(Number);
+            const pitches = group.occurrenceIds
+              .map((occurrenceId) => occurrenceById.get(occurrenceId))
+              .filter((occurrence) => occurrence && occurrence.pitch && occurrence.pitch.midiNote !== null)
+              .map((occurrence) => ({
+                midiNote: occurrence.pitch.midiNote,
+                spelling: occurrence.pitch.spelling,
+              }));
+            return {
+              groupId: response.plan.runtimeIds.groupIds[index],
+              bar: group.bar,
+              playbackBeat: beat[0] / beat[1],
+              pitches,
+            };
+          });
+          const bpm = msg.config && msg.config.bpm
+            ? Number(msg.config.bpm.numerator) / Number(msg.config.bpm.denominator)
+            : null;
           issuedPlans.set(requestId, {
             mode: msg.mode,
             authority: response.plannerAuthority,
@@ -1486,6 +1835,8 @@ wss.on('connection', (socket) => {
             planFingerprint: response.planFingerprint,
             scoreFingerprint: response.scoreFingerprint,
             planRunId: response.plan.runtimeIds.planId,
+            groups: followGroups,
+            bpm,
             createdAt: Date.now(),
           });
           if (issuedPlans.size > 20) {
@@ -1586,6 +1937,213 @@ wss.on('connection', (socket) => {
         }
         break;
       }
+      case 'follow-start': {
+        if (activeFollowLease && activeFollowLease.socket !== socket) {
+          throw new Error('另一个设备有进行中的跟手练习，请先结束那一轮或等待其断连保存');
+        }
+        if (activeTakeLease || native || activeTake) throw new Error('已有进行中的练习轮次，请先结束当前轮次');
+        if (followRuntime) throw new Error('已有进行中的跟手练习');
+        const planRequestId = typeof msg.planRequestId === 'string' && msg.planRequestId.trim() !== ''
+          ? msg.planRequestId
+          : null;
+        let plan;
+        if (planRequestId) {
+          const issued = issuedPlans.get(planRequestId);
+          issuedPlans.delete(planRequestId);
+          if (!issued || Date.now() - issued.createdAt > 10 * 60 * 1000) {
+            throw new Error('跟手计划上下文不存在或已过期，请重新请求计划');
+          }
+          if (issued.mode !== 'follow') throw new Error('计划上下文不是 follow 计划');
+          if (msg.scoreFingerprint !== undefined && msg.scoreFingerprint !== issued.scoreFingerprint) {
+            throw new Error('计划上下文与当前曲谱指纹不一致');
+          }
+          const groups = normalizeFollowGroups(issued.groups);
+          plan = {
+            groups,
+            bpm: issued.bpm,
+            scoreFingerprint: issued.scoreFingerprint,
+            authority: issued.authority,
+            plannerVersion: issued.plannerVersion,
+            planFingerprint: issued.planFingerprint,
+            planRunId: issued.planRunId,
+            targetSource: 'server-plan',
+          };
+        } else {
+          // Default rts launches plan in the browser. The Follow RUNTIME is
+          // still the server's Rust implementation; the projection is
+          // validated here and its provenance is recorded honestly (it is
+          // NOT labelled as a Rust plan).
+          if (msg.plannerAuthority !== 'rts') {
+            throw new Error('跟手启动缺少服务端计划上下文');
+          }
+          const groups = normalizeFollowGroups(msg.groups);
+          const bpm = Number(msg.bpm);
+          const scoreFingerprint = typeof msg.scoreFingerprint === 'string' && msg.scoreFingerprint
+            ? msg.scoreFingerprint
+            : null;
+          plan = {
+            groups,
+            bpm,
+            scoreFingerprint,
+            authority: 'rts',
+            plannerVersion: typeof msg.plannerVersion === 'string' && msg.plannerVersion
+              ? msg.plannerVersion
+              : null,
+            planFingerprint: null,
+            planRunId: null,
+            targetSource: 'client-plan-projection',
+          };
+        }
+        if (!Number.isFinite(plan.bpm) || plan.bpm < 20 || plan.bpm > 300) {
+          throw new Error('跟手计划缺少有效 BPM');
+        }
+        const timingToleranceMs = Number(msg.timingToleranceMs);
+        const chordSpreadToleranceMs = Number(msg.chordSpreadToleranceMs);
+        const resolvedTimingToleranceMs = Number.isFinite(timingToleranceMs) && timingToleranceMs >= 0
+          ? timingToleranceMs
+          : 60;
+        const resolvedChordSpreadToleranceMs = Number.isFinite(chordSpreadToleranceMs) && chordSpreadToleranceMs >= 0
+          ? chordSpreadToleranceMs
+          : 50;
+        const scoreId = safeId(msg.scoreId || '') || null;
+        if (scoreId && plan.scoreFingerprint) {
+          const entry = scoreLibrary.get(scoreId);
+          const libraryFingerprint = entry?.importReportSummary?.fingerprint ?? null;
+          if (libraryFingerprint && libraryFingerprint !== plan.scoreFingerprint) {
+            throw new Error('跟手计划与所存曲谱指纹不一致');
+          }
+        }
+        const configSnapshot = msg.configSnapshot && typeof msg.configSnapshot === 'object' && !Array.isArray(msg.configSnapshot)
+          ? msg.configSnapshot
+          : null;
+        const parsedStartedAt = typeof msg.startedAtIso === 'string' && !Number.isNaN(Date.parse(msg.startedAtIso))
+          ? msg.startedAtIso
+          : new Date().toISOString();
+        const runtime = new addon.NativeFollowRuntime(
+          plan.groups,
+          plan.bpm,
+          resolvedTimingToleranceMs,
+          resolvedChordSpreadToleranceMs,
+        );
+        const takeId = `take-${randomUUID()}`;
+        const runtimeId = `follow-${randomUUID()}`;
+        followRuntime = runtime;
+        followContext = {
+          takeId,
+          runtimeId,
+          plan,
+          scoreId,
+          scoreFingerprint: plan.scoreFingerprint,
+          configSnapshot,
+          startedAtIso: parsedStartedAt,
+          modeId: typeof msg.modeId === 'string' && msg.modeId ? msg.modeId : 'score',
+          timingToleranceMs: resolvedTimingToleranceMs,
+          chordSpreadToleranceMs: resolvedChordSpreadToleranceMs,
+          pauseIntervals: [],
+          pausedAtMs: null,
+          inputs: [],
+        };
+        followFinalized = null;
+        activeFollowLease = { socket, takeId };
+        activeNodeSink = handleNodeMidiEvent;
+        // Hardware note times are mapped from the Node monotonic clock onto
+        // this session origin. Simulated/browser notes carry atMs explicitly.
+        sessionOriginClientPerfMs = Number.isFinite(Number(msg.basePerfMs))
+          ? Number(msg.basePerfMs)
+          : null;
+        send({
+          type: 'follow-started',
+          takeId,
+          runtimeId,
+          progress: runtime.progress(),
+          total: plan.groups.length,
+          scoreFingerprint: plan.scoreFingerprint,
+          plannerAuthority: plan.authority,
+          plannerVersion: plan.plannerVersion,
+          planFingerprint: plan.planFingerprint,
+          targetSource: plan.targetSource,
+        });
+        break;
+      }
+      case 'follow-note': {
+        if (!followRuntime || !followContext) throw new Error('没有进行中的跟手练习');
+        if (followContext.pausedAtMs !== null) throw new Error('跟手练习已暂停');
+        const note = Number(msg.note);
+        const atMs = Number(msg.atMs);
+        if (!Number.isInteger(note) || note < 0 || note > 127) throw new Error('follow note 需在 0–127');
+        if (!Number.isFinite(atMs) || atMs < 0) throw new Error('follow note 时间非法');
+        handleFollowNote(note, atMs);
+        break;
+      }
+      case 'follow-pause': {
+        if (!followContext) throw new Error('没有进行中的跟手练习');
+        const atMs = Number(msg.atMs);
+        if (!Number.isFinite(atMs) || atMs < 0) throw new Error('follow pause 时间非法');
+        if (followContext.pausedAtMs === null) {
+          followContext.pausedAtMs = atMs;
+        }
+        send({ type: 'follow-paused', takeId: followContext.takeId });
+        break;
+      }
+      case 'follow-resume': {
+        if (!followContext) throw new Error('没有进行中的跟手练习');
+        const atMs = Number(msg.atMs);
+        if (!Number.isFinite(atMs) || atMs < 0) throw new Error('follow resume 时间非法');
+        if (followContext.pausedAtMs !== null && atMs < followContext.pausedAtMs) {
+          throw new Error('follow resume 早于 pause');
+        }
+        if (followContext.pausedAtMs !== null) {
+          followContext.pauseIntervals.push({ startMs: followContext.pausedAtMs, endMs: atMs });
+          followContext.pausedAtMs = null;
+        }
+        followRuntime?.invalidateNextInterval();
+        send({ type: 'follow-resumed', takeId: followContext.takeId });
+        break;
+      }
+      case 'follow-finish': {
+        if (!followRuntime && followFinalized) {
+          send({
+            type: 'follow-report',
+            takeId: followFinalized.takeId,
+            report: followFinalized.report,
+            persisted: followFinalized.persisted,
+            persistenceError: followFinalized.persistenceError,
+            endReason: followFinalized.endReason,
+          });
+          break;
+        }
+        if (!followRuntime || !followContext) throw new Error('没有进行中的跟手练习');
+        const finalized = finalizeFollowTake();
+        send({
+          type: 'follow-report',
+          takeId: finalized.takeId,
+          report: finalized.report,
+          persisted: finalized.persisted,
+          persistenceError: finalized.persistenceError,
+          endReason: finalized.endReason,
+          progress: (() => {
+            const report = finalized.report;
+            return { index: report.completedTargets, total: report.totalTargets, completed: report.completedTargets };
+          })(),
+        });
+        break;
+      }
+      case 'follow-abandon': {
+        // Leaving/resetting a live Follow keeps an explicit untrusted Take
+        // (same rule as a disconnected Timeline Take) instead of silently
+        // discarding it. No runtime means there is nothing to abandon.
+        if (!followRuntime || !followContext) break;
+        const finalized = finalizeFollowTake({ interrupted: true });
+        send({
+          type: 'follow-report',
+          takeId: finalized.takeId,
+          report: finalized.report,
+          persisted: finalized.persisted,
+          persistenceError: finalized.persistenceError,
+          endReason: finalized.endReason,
+        });
+        break;
+      }
       case 'start': {
         // One active Take at a time across all browsers. Replacing a live Take
         // silently would discard its trace/report and make MIDI ownership
@@ -1595,6 +2153,12 @@ wss.on('connection', (socket) => {
             throw new Error('另一个设备有进行中的练习，请先结束那一轮或等待其断连保存');
           }
           activeTakeLease = null;
+        }
+        if (followRuntime || (activeFollowLease && activeFollowLease.socket === socket)) {
+          throw new Error('已有进行中的跟手练习，请先结束当前轮次');
+        }
+        if (activeFollowLease && activeFollowLease.socket !== socket) {
+          throw new Error('另一个设备有进行中的跟手练习，请先结束那一轮或等待其断连保存');
         }
         if (native) throw new Error('已有进行中的练习轮次，请先结束当前轮次');
         rawNotes = [];

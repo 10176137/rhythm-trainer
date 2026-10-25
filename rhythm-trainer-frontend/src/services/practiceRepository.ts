@@ -11,9 +11,19 @@ import type {
   EngineStats,
 } from '../types/engine';
 import type { RetryComparison, TeachingPrescription } from '../types/teaching';
+import type { FollowReport } from '../score-engine/practice/follow-session';
+
+export type TakeReportKind = 'timeline' | 'follow' | 'unavailable';
 
 export interface SessionSummary {
   sessionId: string;
+  takeId?: string;
+  reportKind?: TakeReportKind;
+  endReason?: 'completed' | 'interrupted' | string | null;
+  scoreStatus?: string | null;
+  scoreId?: string | null;
+  scoreSnapshotRef?: string | null;
+  legacySessionId?: string | null;
   interrupted?: boolean;
   finishedAtIso: string;
   modeId: string;
@@ -28,6 +38,13 @@ export interface SessionSummary {
   targetHitRate: number;
   meanSignedMs: number | null;
   meanAbsoluteMs: number | null;
+  followCompletedTargets?: number;
+  followStandardTargets?: number;
+  followCompletionRate?: number;
+  followWrongNoteCount?: number;
+  followExtraNoteCount?: number;
+  followDuplicateNoteCount?: number;
+  followTimingSamples?: number;
   scoreFingerprint?: string | null;
   playbackPlanId?: string | null;
   plannerAuthority?: 'rts' | 'rust' | null;
@@ -77,6 +94,51 @@ export interface SessionDetail {
   retryComparison?: RetryComparison | null;
 }
 
+export interface TakeRecordDetail {
+  schemaVersion: number;
+  takeId: string;
+  score: {
+    scoreId: string | null;
+    scoreFingerprint: string | null;
+    scoreSnapshotRef: string | null;
+  };
+  lifecycle: {
+    startedAtIso: string | null;
+    finishedAtIso: string | null;
+    endReason: 'completed' | 'interrupted' | string;
+    modeId: string;
+  };
+  context: {
+    practiceConfigSnapshot: Record<string, unknown> | null;
+    plannerAuthority: 'rts' | 'rust' | null;
+    plannerVersion: string | null;
+    planFingerprint: string | null;
+    planSnapshotRef: string | null;
+    planRunId: string | null;
+  };
+  evidence: {
+    traceRef: string | null;
+    journalRef: string | null;
+    pauseIntervals: unknown[];
+    captureDiagnostics: Record<string, unknown> | null;
+  };
+  assessment: {
+    trustworthy: boolean;
+    scoreStatus: string;
+    scope?: 'follow' | string;
+    strictTiming?: boolean;
+    timelineReport?: SessionDetail | null;
+    followReport?: FollowReport | null;
+  };
+  engineDiagnostics?: Record<string, unknown> | null;
+  legacy?: {
+    source: string;
+    sessionId: string;
+    engineTakeId: string | null;
+    practiceSessionId: string | null;
+  } | null;
+}
+
 export interface SkillSnapshot {
   skillId: string;
   state: string;
@@ -108,6 +170,16 @@ export const practiceRepository = {
 
   getSession(sessionId: string): Promise<SessionDetail> {
     return getJson(`/api/sessions/${encodeURIComponent(sessionId)}`);
+  },
+
+  /** Unified history: Timeline and Follow Takes, plus read-only legacy
+   * sessions adapted on the server. */
+  listTakes(limit = 50): Promise<{ items: SessionSummary[] }> {
+    return getJson(`/api/takes?limit=${limit}`);
+  },
+
+  getTake(takeId: string): Promise<TakeRecordDetail> {
+    return getJson(`/api/takes/${encodeURIComponent(takeId)}`);
   },
 
   getProfile(): Promise<ProfileResponse> {

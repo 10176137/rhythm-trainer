@@ -14,6 +14,10 @@ import type {
   DurationEvaluationPolicy,
   EngineIngestMidiPacket,
   EngineScoreEvent,
+  FollowEventMessage,
+  FollowReportMessage,
+  FollowStartRequest,
+  FollowStartedMessage,
 } from '../types/engine';
 import type { HandSelection } from '../types/practice';
 import type { TeachingPrescription } from '../types/teaching';
@@ -50,6 +54,9 @@ export interface EngineHandlers {
   onPaused: () => void;
   onResumed: (deltaMs: number) => void;
   onReport: (message: EngineReportMessage) => void;
+  onFollowStarted?: (message: FollowStartedMessage) => void;
+  onFollowEvent?: (message: FollowEventMessage) => void;
+  onFollowReport?: (message: FollowReportMessage) => void;
   onError: (message: string) => void;
   onDisconnected: () => void;
 }
@@ -73,6 +80,11 @@ export class EngineBridge {
     reject: (error: Error) => void;
     timer: ReturnType<typeof setTimeout>;
   }> = [];
+  private pendingFollowStart: {
+    resolve: (message: FollowStartedMessage) => void;
+    reject: (error: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  } | null = null;
   private requestSeq = 0;
 
   constructor(handlers: EngineHandlers) {
@@ -142,9 +154,37 @@ export class EngineBridge {
           case 'report':
             this.handlers.onReport(message);
             break;
-          case 'error':
+          case 'follow-started': {
+            const waiter = this.pendingFollowStart;
+            this.pendingFollowStart = null;
+            if (waiter) {
+              clearTimeout(waiter.timer);
+              waiter.resolve(message);
+            }
+            this.handlers.onFollowStarted?.(message);
+            break;
+          }
+          case 'follow-event':
+            this.handlers.onFollowEvent?.(message);
+            break;
+          case 'follow-report':
+            this.handlers.onFollowReport?.(message);
+            break;
+          case 'error': {
+            // A failed follow-start has no dedicated error frame; reject the
+            // pending start so the launch path can surface one message and
+            // clear its optimistic UI. Other errors stay in the normal
+            // onError channel.
+            const waiter = this.pendingFollowStart;
+            if (waiter) {
+              this.pendingFollowStart = null;
+              clearTimeout(waiter.timer);
+              waiter.reject(new Error(message.message));
+              break;
+            }
             this.handlers.onError(message.message);
             break;
+          }
           case 'planner-status': {
             const waiter = this.pendingStatus.shift();
             if (waiter) {
@@ -180,6 +220,11 @@ export class EngineBridge {
       waiter.reject(new Error(message));
     }
     this.pendingStatus = [];
+    if (this.pendingFollowStart) {
+      clearTimeout(this.pendingFollowStart.timer);
+      this.pendingFollowStart.reject(new Error(message));
+      this.pendingFollowStart = null;
+    }
   }
 
   /** Routes a plan-response strictly by requestId; anything unknown or
@@ -259,6 +304,56 @@ export class EngineBridge {
         config: input.config,
       } as never);
     });
+  }
+
+  /**
+   * Starts the server-authoritative Follow runtime. The plan context may be a
+   * server-issued Rust plan (`planRequestId`) or the validated default-rts
+   * projection (`groups`); the server decides and records which one it used.
+   * Resolves only on `follow-started`, so a rejected start never leaves the
+   * UI believing a session exists.
+   */
+  startFollow(input: Omit<FollowStartRequest, 'type'>, timeoutMs = 10000): Promise<FollowStartedMessage> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+        reject(new Error('ENGINE_UNAVAILABLE: 引擎服务未连接，无法开始跟手练习'));
+        return;
+      }
+      if (this.pendingFollowStart) {
+        const previous = this.pendingFollowStart;
+        this.pendingFollowStart = null;
+        clearTimeout(previous.timer);
+        previous.reject(new Error('FOLLOW_START_SUPERSEDED: 新的跟手启动取代了上一次'));
+      }
+      const timer = setTimeout(() => {
+        if (this.pendingFollowStart?.timer === timer) {
+          this.pendingFollowStart = null;
+          reject(new Error(`FOLLOW_START_TIMEOUT: ${timeoutMs}ms 内未收到跟手启动确认`));
+        }
+      }, timeoutMs);
+      this.pendingFollowStart = { resolve, reject, timer };
+      this.send({ ...input, type: 'follow-start', protocolVersion: 1 } as never);
+    });
+  }
+
+  followNote(note: number, atMs: number) {
+    this.send({ type: 'follow-note', note, atMs });
+  }
+
+  followPause(atMs?: number) {
+    this.send({ type: 'follow-pause', ...(atMs != null ? { atMs } : {}) });
+  }
+
+  followResume(atMs?: number) {
+    this.send({ type: 'follow-resume', ...(atMs != null ? { atMs } : {}) });
+  }
+
+  followFinish() {
+    this.send({ type: 'follow-finish' });
+  }
+
+  followAbandon() {
+    this.send({ type: 'follow-abandon' });
   }
 
   /** 10 lightweight four-timestamp samples; the server keeps the low-RTT one. */

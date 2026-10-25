@@ -40,6 +40,7 @@ import {
 } from './score-engine/playback/reference-playback-plan';
 import { FollowSession, type FollowNoteResult, type FollowReport } from './score-engine/practice/follow-session';
 import type { PlaybackGroup } from './score-engine/domain/types';
+import { toNumber } from './score-engine/domain/rational';
 import { WebAudioEngineAdapter } from './features/playback/audioEngineAdapter';
 import {
   ReferencePlaybackController,
@@ -81,7 +82,7 @@ import {
   savePracticeSettings,
   type PersistedPracticeSettings,
 } from './features/practice/practiceSettings';
-import type { EngineRawMidiPacket } from './types/engine';
+import type { EngineRawMidiPacket, FollowEventMessage, FollowGroupRequest, FollowReportMessage } from './types/engine';
 import type { TargetedPracticeStartRequest, TeachingPrescription } from './types/teaching';
 import type { DurationEvaluationPolicy, FeedbackMessage, FeedbackMode, HandSelection, JudgmentProfile, MidiPerformanceEvent, PracticeConfig, PracticeModeId, SessionStatus } from './types/practice';
 
@@ -101,14 +102,35 @@ function engineModeFor(config: PracticeConfig): PracticeModeId {
   return 'score';
 }
 
+/** Follow plan projection sent to the engine. This is presentation input;
+ * the server validates it and records it as a client projection, never as a
+ * Rust plan. */
+function toFollowGroupRequests(groups: readonly PlaybackGroup[]): FollowGroupRequest[] {
+  return groups.map((group) => ({
+    groupId: group.groupId,
+    bar: group.bar,
+    playbackBeat: toNumber(group.playbackBeat),
+    pitches: group.pitches
+      .filter((pitch): pitch is typeof pitch & { midiNote: number } => pitch.midiNote !== null)
+      .map((pitch) => ({ midiNote: pitch.midiNote, spelling: pitch.spelling })),
+  }));
+}
+
 export default function App() {
   const [initialSettings] = useState(loadPracticeSettings);
   const [staffMappingOverrides, setStaffMappingOverrides] = useState<Record<number, 'left' | 'right'>>({});
   const [handMappings, setHandMappings] = useState<Record<string, HandMappingV1>>(() => {
     const raw = initialSettings.handMappings ?? {};
     const out: Record<string, HandMappingV1> = {};
-    for (const [fingerprint, parts] of Object.entries(raw)) {
-      if (!Array.isArray(parts)) continue;
+    for (const [fingerprint, value] of Object.entries(raw)) {
+      // Canonical persisted form is the parts array. Accept the earlier
+      // whole-HandMappingV1 shape too so a stored confirmation is not lost.
+      const parts = Array.isArray(value)
+        ? value
+        : value && typeof value === 'object' && Array.isArray((value as { parts?: unknown }).parts)
+          ? (value as { parts: unknown[] }).parts
+          : null;
+      if (!parts) continue;
       out[fingerprint] = { schemaVersion: 1, mappingVersion: 'hand-mapping-1', source: 'user', parts: parts as HandMappingV1['parts'] };
     }
     return out;
@@ -123,7 +145,9 @@ export default function App() {
         savePracticeSettings({
           config: persisted.config,
           metronomeOn: persisted.metronomeOn,
-          handMappings: next as unknown as Record<string, unknown[]>,
+          handMappings: Object.fromEntries(
+            Object.entries(next).map(([key, value]) => [key, value.parts]),
+          ),
         });
       } catch { /* best effort */ }
       return next;
@@ -187,7 +211,8 @@ export default function App() {
     currentGroup: PlaybackGroup | null;
     last: FollowNoteResult | null;
   } | null>(null);
-  const followSessionRef = useRef<FollowSession | null>(null);
+  const followGroupsRef = useRef<readonly PlaybackGroup[]>([]);
+  const followStartSeqRef = useRef(0);
   const guideSessionRef = useRef<FollowSession | null>(null);
   /** R2-3h: the server's planner authority, fetched once (null = unknown).
    * The browser keeps NO second switch; rust is only used when the server
@@ -353,7 +378,7 @@ export default function App() {
       referencePlaybackRef.current?.setGain(systemAudioRef.current ? 1 : 0);
       if (config.advanceMode !== 'timeline') {
         addFeedback('系统伴弹使用固定时间', '系统需要连续演奏，已切换为「固定时间」推进；当前练习请重置后重新开始。', 'neutral');
-      } else if (session.active || followStatusRef.current === 'running' || followStatusRef.current === 'paused') {
+      } else if (session.active || followStatusRef.current === 'running' || followStatusRef.current === 'paused' || followStatusRef.current === 'processing') {
         addFeedback('系统伴弹将在下次生效', '当前练习已在进行中；请结束后重新开始以启动参考播放。', 'neutral');
       }
     } else {
@@ -369,6 +394,73 @@ export default function App() {
     if (prepTimerRef.current !== null) window.clearTimeout(prepTimerRef.current);
     systemPlayerRef.current?.close();
   }, []);
+
+  /**
+   * Renders one authoritative Follow event from the engine service. The
+   * browser does not advance a cursor, match pitches or compute timing.
+   */
+  const handleFollowEvent = useCallback((message: FollowEventMessage) => {
+    if (configRef.current.advanceMode !== 'follow') return;
+    if (followStatusRef.current !== 'running') return;
+    const result = message.result;
+    const currentIndex = Number.isInteger(message.progress?.index)
+      ? message.progress.index
+      : result.progressIndex ?? 0;
+    const total = Number.isInteger(message.progress?.total)
+      ? message.progress.total
+      : result.progressTotal ?? 0;
+    const completed = Number.isInteger(message.progress?.completed)
+      ? message.progress.completed
+      : result.completedCount ?? 0;
+    setFollowView({
+      index: currentIndex,
+      total,
+      completed,
+      currentGroup: followGroupsRef.current[currentIndex] ?? null,
+      last: result,
+    });
+    if (result.kind === 'wrong') {
+      setPitchMismatch(true);
+      addFeedback('音高不正确，光标等待', `目标是 ${result.expectedPitches.join(' / ')}，你按的是 ${noteForMidi(message.note)}。光标会停在当前音，重新按对即可。`, 'warning');
+    } else if (result.kind === 'partial') {
+      addFeedback('和弦还差音', `还差 ${result.remainingPitches.join(' / ')}；补齐后光标才会前进。`, 'neutral');
+    } else if (result.kind === 'duplicate') {
+      addFeedback('重复按键', '这个音已经在当前目标里了；等光标前进后再弹下一个目标。', 'neutral');
+    } else if (result.kind === 'correct' || result.kind === 'complete') {
+      setPitchMismatch(false);
+      setFollowPulse((value) => value + 1);
+      markUserNotes(planGroupsRef.current[Math.max(0, currentIndex - 1)]);
+      const standard = result.completedTarget?.standard;
+      if (standard === false) {
+        addFeedback('已推进，但有偏差', '音高已对上；节奏或和弦间距超出当前档位容差，结果已记录。', 'warning');
+      }
+    } else if (result.kind === 'extra') {
+      addFeedback('目标已完成后的输入', '光标已经到结尾；这次输入只记录为额外音符。', 'neutral');
+    }
+  }, [addFeedback, markUserNotes]);
+
+  /** The service has committed the Follow Take (or finalized it interrupted). */
+  const handleFollowReport = useCallback((message: FollowReportMessage) => {
+    if (configRef.current.advanceMode !== 'follow') return;
+    if (followStatusRef.current === 'idle' || followStatusRef.current === 'completed') return;
+    const report = message.report;
+    followStatusRef.current = 'completed';
+    setFollowStatus('completed');
+    setFollowReport(report);
+    setFollowView((prev) => prev ? {
+      ...prev,
+      index: report.completedTargets,
+      total: report.totalTargets,
+      completed: report.completedTargets,
+      currentGroup: followGroupsRef.current[report.completedTargets] ?? null,
+    } : prev);
+    addFeedback(
+      message.endReason === 'interrupted' ? '跟手练习已中断' : '跟手练习完成',
+      `标准 ${report.standardTargets} / 完成 ${report.completedTargets} / 目标 ${report.totalTargets}；错误音 ${report.wrongNoteCount}，额外音 ${report.extraNoteCount}。${message.endReason === 'interrupted' ? '本轮记为不可信 Take。' : '已保存为一个 Follow Take。'}跟手模式不使用固定时间 strict 评分。`,
+      message.endReason === 'interrupted' ? 'warning' : 'success',
+    );
+    setHistoryRefresh((value) => value + 1);
+  }, [addFeedback]);
 
   const session = usePracticeSession({
     onJudgment: (judgment) => {
@@ -408,6 +500,13 @@ export default function App() {
           'warning',
         );
       });
+    },
+    // The server's Rust FollowRuntime is the only source of Follow events.
+    onFollowEvent: handleFollowEvent,
+    onFollowReport: handleFollowReport,
+    onFollowAborted: (message) => {
+      addFeedback('跟手练习已中断', message, 'warning');
+      clearFollowSession();
     },
     // R2-3h-R1: the authority cache belonged to the connection that closed.
     onEngineDisconnected: () => {
@@ -498,58 +597,107 @@ export default function App() {
   };
 
   const clearFollowSession = () => {
-    followSessionRef.current = null;
+    // Invalidate any in-flight follow-start acknowledgement, then let the
+    // service commit an interrupted Take (no-op when nothing is live).
+    followStartSeqRef.current += 1;
+    followGroupsRef.current = [];
+    session.abandonFollow();
     followStatusRef.current = 'idle';
     setFollowStatus('idle');
     setFollowReport(null);
     setFollowView(null);
   };
 
-  const handleFollowNote = useCallback((midiNote: number): boolean => {
-    if (configRef.current.advanceMode !== 'follow') return false;
-    if (followStatusRef.current !== 'running') return false;
-    const follow = followSessionRef.current;
-    if (!follow) return false;
-    const atMs = displayStartRef.current !== null ? performance.now() - displayStartRef.current : 0;
-    const targetIndex = follow.progress.index;
-    const result = follow.handleNoteOn(midiNote, atMs);
+  /**
+   * Starts the server-authoritative Follow runtime. The projection/context is
+   * sent with the request; the server validates it, owns progression and
+   * commits exactly one Follow Take. UI state changes only after the
+   * service confirms the start.
+   */
+  const beginServerFollow = (args: {
+    groups: readonly PlaybackGroup[];
+    bpm: number;
+    planRequestId?: string;
+    scoreFingerprint: string | null;
+    plannerAuthority: 'rts' | 'rust';
+    plannerVersion?: string | null;
+    planFingerprint?: string | null;
+    scoreId?: string | null;
+    configSnapshot: Record<string, unknown>;
+    modeId: string;
+    timingToleranceMs: number;
+    statusLabel: string;
+  }) => {
+    const seq = ++followStartSeqRef.current;
+    const origin = performance.now();
+    displayStartRef.current = origin;
+    elapsedBeforePauseRef.current = 0;
+    followGroupsRef.current = args.groups;
+    expectedNotesRef.current = args.groups.map((group) => group.pitches.map((pitch) => ({
+      midiNote: pitch.midiNote ?? 0,
+      noteName: pitch.spelling,
+    })));
+    planGroupsRef.current = args.groups.map((group) => [...group.scoreEventIds]);
     setFollowView({
-      index: follow.progress.index,
-      total: follow.progress.total,
-      completed: follow.completedCount,
-      currentGroup: follow.currentGroup,
-      last: result,
+      index: 0,
+      total: args.groups.length,
+      completed: 0,
+      currentGroup: args.groups[0] ?? null,
+      last: null,
     });
-    if (result.kind === 'wrong') {
-      setPitchMismatch(true);
-      addFeedback('音高不正确，光标等待', `目标是 ${result.expectedPitches.join(' / ')}，你按的是 ${noteForMidi(midiNote)}。光标会停在当前音，重新按对即可。`, 'warning');
-    } else if (result.kind === 'partial') {
-      addFeedback('和弦还差音', `还差 ${result.remainingPitches.join(' / ')}；补齐后光标才会前进。`, 'neutral');
-    } else if (result.kind === 'duplicate') {
-      addFeedback('重复按键', '这个音已经在当前目标里了；等光标前进后再弹下一个目标。', 'neutral');
-    } else if (result.kind === 'correct' || result.kind === 'complete') {
-      setPitchMismatch(false);
-      setFollowPulse((value) => value + 1);
-      markUserNotes(planGroupsRef.current[targetIndex]);
-      const standard = result.completedTarget?.standard;
-      if (standard === false) {
-        addFeedback('已推进，但有偏差', '音高已对上；节奏或和弦间距超出当前档位容差，结果已记录。', 'warning');
+    setFollowReport(null);
+    setEvents([]); setInputNote('—'); setPitchMismatch(false); setElapsed(0);
+    followStatusRef.current = 'idle';
+    setFollowStatus('idle');
+    void session.startFollow({
+      ...(args.planRequestId
+        ? { planRequestId: args.planRequestId }
+        : { groups: toFollowGroupRequests(args.groups) }),
+      bpm: args.bpm,
+      plannerAuthority: args.plannerAuthority,
+      plannerVersion: args.plannerVersion ?? null,
+      planFingerprint: args.planFingerprint ?? null,
+      scoreFingerprint: args.scoreFingerprint,
+      scoreId: args.scoreId ?? null,
+      configSnapshot: args.configSnapshot,
+      startedAtIso: new Date().toISOString(),
+      basePerfMs: origin,
+      modeId: args.modeId,
+      timingToleranceMs: args.timingToleranceMs,
+      chordSpreadToleranceMs: 50,
+    }).then((started) => {
+      if (seq !== followStartSeqRef.current) {
+        session.abandonFollow();
+        return;
       }
-    } else if (result.kind === 'extra') {
-      addFeedback('目标已完成后的输入', '光标已经到结尾；这次输入只记录为额外音符。', 'neutral');
-    }
-    if (result.report) {
-      followStatusRef.current = 'completed';
-      setFollowStatus('completed');
-      setFollowReport(result.report);
+      if (configRef.current.advanceMode !== 'follow') {
+        session.abandonFollow();
+        return;
+      }
+      const index = Number.isInteger(started.progress?.index) ? started.progress.index : 0;
+      followStatusRef.current = 'running';
+      setFollowStatus('running');
+      setFollowView((prev) => prev ? {
+        index,
+        total: started.progress?.total ?? args.groups.length,
+        completed: started.progress?.completed ?? 0,
+        currentGroup: args.groups[index] ?? null,
+        last: null,
+      } : prev);
       addFeedback(
-        '跟手练习完成',
-        `标准 ${result.report.standardTargets} / 完成 ${result.report.completedTargets} / 目标 ${result.report.totalTargets}；错误音 ${result.report.wrongNoteCount}，额外音 ${result.report.extraNoteCount}。跟手模式不使用固定时间 strict 评分。`,
-        'success',
+        `${args.statusLabel}已开始`,
+        `${args.groups.length} 个起音目标；光标只在弹对当前目标后前进。结果由引擎结算为一个 Follow Take，不是固定时间 strict 成绩。`,
+        'neutral',
       );
-    }
+      setStarting(false);
+    }).catch((error) => {
+      if (seq !== followStartSeqRef.current) return;
+      clearFollowSession();
+      setStarting(false);
+      addFeedback('无法开始跟手练习', error instanceof Error ? error.message : String(error), 'warning');
+    });
     return true;
-  }, [addFeedback]);
+  };
 
   /** User-paced green cursor while the system duet plays on the fixed clock. */
   const handleGuideNote = useCallback((midiNote: number) => {
@@ -610,7 +758,10 @@ export default function App() {
     setPitchMismatch(false);
     if (configRef.current.modeId === 'free') return;
     if (configRef.current.advanceMode === 'follow') {
-      if (!isRelease) handleFollowNote(midiNote);
+      if (!isRelease && followStatusRef.current === 'running') {
+        const atMs = displayStartRef.current !== null ? performance.now() - displayStartRef.current : 0;
+        session.sendFollowNote(midiNote, atMs);
+      }
       return;
     }
     if (!isRelease && configRef.current.advanceMode === 'timeline') {
@@ -632,7 +783,7 @@ export default function App() {
         addFeedback('音高提示', `${targetText}你按的是 ${noteForMidi(midiNote)}。音高不计入节奏评分,但会影响音乐效果。`, 'warning');
       }
     }
-  }, [addFeedback, handleFollowNote, handleGuideNote, session]);
+  }, [addFeedback, handleGuideNote, session]);
 
 
   // Re-render the countdown readout while counting in.
@@ -837,7 +988,9 @@ export default function App() {
     if (event.messageType !== 'note-on') return;
     setPitchMismatch(false);
     if (configRef.current.advanceMode === 'follow') {
-      handleFollowNote(midiNote);
+      // The engine service routes hardware Note On straight into the Rust
+      // FollowRuntime and returns a follow-event. Sending follow-note here
+      // would count the same key twice.
       return;
     }
     // Node MIDI is ingested server-side for scoring; the browser-side guide
@@ -855,7 +1008,7 @@ export default function App() {
         addFeedback('音高提示', `${targetText}你按的是 ${noteForMidi(midiNote)}。音高不计入节奏评分，但会影响音乐效果。`, 'warning');
       }
     }
-  }, [addFeedback, handleFollowNote, handleGuideNote]);
+  }, [addFeedback, handleGuideNote]);
 
   const handleDeviceStatus = useCallback((status: MidiAdapterStatus) => {
     setDeviceHealth(status.inputHealth);
@@ -1115,23 +1268,23 @@ export default function App() {
         const toleranceMs = launchConfig.profile === 'strict' ? 30 : launchConfig.profile === 'relaxed' ? 100 : 60;
 
         if (mode === 'follow') {
-          // Follow consumes groups/occurrences only and never calls session.begin.
-          const follow = new FollowSession(parsed.groups, launchConfig.tempo, {
+          // Follow consumes groups/occurrences only and never calls
+          // session.begin. The server issues the plan context and owns the
+          // Rust FollowRuntime + Take finalization.
+          beginServerFollow({
+            groups: parsed.groups,
+            bpm: launchConfig.tempo,
+            planRequestId: response.requestId,
+            scoreFingerprint: response.scoreFingerprint ?? boundFingerprint,
+            plannerAuthority: 'rust',
+            plannerVersion: response.plannerVersion,
+            planFingerprint: response.planFingerprint,
+            scoreId: activeLibraryId ?? null,
+            configSnapshot: launchConfig as unknown as Record<string, unknown>,
+            modeId: context.engineMode,
             timingToleranceMs: toleranceMs,
-            chordSpreadToleranceMs: 50,
+            statusLabel: '跟手等待模式（引擎计划）',
           });
-          followSessionRef.current = follow;
-          followStatusRef.current = 'running';
-          setFollowStatus('running');
-          setFollowReport(null);
-          setFollowView({ index: 0, total: follow.progress.total, completed: 0, currentGroup: follow.currentGroup, last: null });
-          setEvents([]); setInputNote('—'); setPitchMismatch(false); setElapsed(0);
-          addFeedback(
-            '跟手等待模式已开始（引擎计划）',
-            `${parsed.groups.length} 个起音目标；光标只在弹对当前目标后前进，不会自动走。节奏按你相邻正确起音的间隔记录。`,
-            'neutral',
-          );
-          setStarting(false);
           return true as const;
         }
 
@@ -1203,7 +1356,7 @@ export default function App() {
     targetedSource?: TargetedLaunchSource,
     takeTemplateId: string | null = appliedTakeTemplateId,
   ) => {
-    if (session.active || starting || followStatusRef.current === 'running' || followStatusRef.current === 'paused') return false;
+    if (session.active || starting || followStatusRef.current === 'running' || followStatusRef.current === 'paused' || followStatusRef.current === 'processing') return false;
     const config = overrideConfig ?? configRef.current;
     if (targetedSource && !(config.modeId === 'loop' || (config.modeId === 'score' && config.loopEnabled))) return false;
     if (targetedSource && (!scoreDoc.engine || scoreDoc.engine.fingerprint !== targetedSource.scoreFingerprint)) {
@@ -1377,20 +1530,23 @@ export default function App() {
           return false;
         }
         const toleranceMs = config.profile === 'strict' ? 30 : config.profile === 'relaxed' ? 100 : 60;
-        const follow = new FollowSession(scoped.plan.groups, config.tempo, {
+        // Default rts path: the plan is still the TS projection, but the
+        // authoritative Follow runtime and report are the server's Rust
+        // implementation. The Take records the real provenance (rts plan +
+        // client projection), never "rust plan".
+        beginServerFollow({
+          groups: scoped.plan.groups,
+          bpm: config.tempo,
+          scoreFingerprint: scoped.plan.scoreFingerprint ?? scoreDoc.engine?.fingerprint ?? null,
+          plannerAuthority: 'rts',
+          plannerVersion: TS_PLANNER_VERSION,
+          planFingerprint: null,
+          scoreId: activeLibraryId ?? null,
+          configSnapshot: config as unknown as Record<string, unknown>,
+          modeId: engineMode,
           timingToleranceMs: toleranceMs,
-          chordSpreadToleranceMs: 50,
+          statusLabel: '跟手等待模式',
         });
-        followSessionRef.current = follow;
-        followStatusRef.current = 'running';
-        setFollowStatus('running');
-        setFollowReport(null);
-        setFollowView({ index: 0, total: follow.progress.total, completed: 0, currentGroup: follow.currentGroup, last: null });
-        expectedNotesRef.current = scoped.plan.groups.map((group) => group.pitches.map((pitch) => ({ midiNote: pitch.midiNote ?? 0, noteName: pitch.spelling })));
-        planGroupsRef.current = scoped.plan.groups.map((group) => [...group.scoreEventIds]);
-        setEvents([]); setInputNote('—'); setPitchMismatch(false); setElapsed(0);
-        addFeedback('跟手等待模式已开始', `${scoped.plan.groups.length} 个起音目标；光标只在弹对当前目标后前进，不会自动走。节奏按你相邻正确起音的间隔记录。`, 'neutral');
-        setStarting(false);
         return true;
       } catch (error) {
         setStarting(false);
@@ -1676,6 +1832,10 @@ export default function App() {
     if (config.advanceMode === 'follow') {
       if (followStatusRef.current !== 'running') return;
       elapsedBeforePauseRef.current = elapsed;
+      const pausedAtMs = displayStartRef.current !== null
+        ? performance.now() - displayStartRef.current
+        : undefined;
+      session.pauseFollow(pausedAtMs);
       followStatusRef.current = 'paused';
       setFollowStatus('paused');
       addFeedback('跟手练习已暂停', '光标停在当前目标；继续后不会自动前进，弹对当前目标才会推进。', 'neutral');
@@ -1692,8 +1852,10 @@ export default function App() {
   const resumePractice = () => {
     if (config.advanceMode === 'follow') {
       if (followStatusRef.current !== 'paused') return;
-      displayStartRef.current = performance.now() - elapsedBeforePauseRef.current * 1000;
-      followSessionRef.current?.invalidateNextInterval();
+      const resumedAtMs = displayStartRef.current !== null
+        ? performance.now() - displayStartRef.current
+        : undefined;
+      session.resumeFollow(resumedAtMs);
       followStatusRef.current = 'running';
       setFollowStatus('running');
       addFeedback('跟手练习已继续', '光标仍在当前目标，弹对后才会前进；暂停后的下一个间隔不计入节奏统计。', 'neutral');
@@ -1709,14 +1871,15 @@ export default function App() {
 
   const finishPractice = () => {
     if (config.advanceMode === 'follow') {
-      const follow = followSessionRef.current;
-      if (!follow || followStatusRef.current === 'idle' || followStatusRef.current === 'completed') return;
-      const report = follow.finish();
-      followStatusRef.current = 'completed';
-      setFollowStatus('completed');
-      setFollowReport(report);
-      setFollowView((prev) => prev ? { ...prev, currentGroup: follow.currentGroup } : prev);
-      addFeedback('跟手练习已结束', `标准 ${report.standardTargets} / 完成 ${report.completedTargets} / 目标 ${report.totalTargets}；错误音 ${report.wrongNoteCount}，额外音 ${report.extraNoteCount}。这不是固定时间 strict 成绩。`, report.standardTargets === report.completedTargets && report.completedTargets > 0 ? 'success' : 'warning');
+      if (followStatusRef.current === 'idle'
+        || followStatusRef.current === 'processing'
+        || followStatusRef.current === 'completed') return;
+      // The service computes and commits the Follow report; this button only
+      // asks for that finalization. Duplicate finishes return the same Take.
+      session.finishFollow();
+      followStatusRef.current = 'processing';
+      setFollowStatus('processing');
+      addFeedback('正在结算跟手练习', '引擎正在计算 Follow 报告并写入一个 Take，稍候展示结果。', 'neutral');
       return;
     }
     if (session.status === 'idle' || session.status === 'processing' || session.status === 'completed') return;
@@ -1832,7 +1995,7 @@ export default function App() {
   }, [practiceInProgress, reportUnsaved]);
 
   const resetPractice = () => {
-    const followActive = followStatusRef.current === 'running' || followStatusRef.current === 'paused';
+    const followActive = followStatusRef.current === 'running' || followStatusRef.current === 'paused' || followStatusRef.current === 'processing';
     if ((session.active || followActive) && !window.confirm('正在练习,确定要重置并丢弃当前会话进度吗?')) return;
     pendingTargetedLaunchRef.current = null;
     cancelPrep();
@@ -1852,7 +2015,7 @@ export default function App() {
   };
 
   const applyScoreDocument = (doc: ScoreDocument, feedbackTitle: string): boolean => {
-    const followActive = followStatusRef.current === 'running' || followStatusRef.current === 'paused';
+    const followActive = followStatusRef.current === 'running' || followStatusRef.current === 'paused' || followStatusRef.current === 'processing';
     if ((session.active || followActive) && !window.confirm('当前练习正在进行。切换乐谱会结束并重置本次会话，是否继续?')) return false;
     scoreSelectionVersionRef.current += 1;
     cancelPrep();
@@ -2068,7 +2231,7 @@ export default function App() {
       return;
     }
     if (prepRemain !== null || starting || session.active
-      || followStatus === 'running' || followStatus === 'paused') {
+      || followStatus === 'running' || followStatus === 'paused' || followStatus === 'processing') {
       setTakeTemplateError('当前还有进行中的练习，不能通过链接切换 Take。');
       return;
     }
@@ -2334,7 +2497,7 @@ export default function App() {
       if (route?.id !== 'workbench') navigate('/workbench');
       return;
     }
-    const followActive = followStatusRef.current === 'running' || followStatusRef.current === 'paused';
+    const followActive = followStatusRef.current === 'running' || followStatusRef.current === 'paused' || followStatusRef.current === 'processing';
     if ((session.active || followActive) && !window.confirm('当前练习正在进行。切换模式会结束本次会话并创建新的练习,是否继续?')) return;
     cancelPrep();
     setAppliedTakeTemplateId(null);

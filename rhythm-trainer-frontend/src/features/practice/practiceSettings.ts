@@ -111,6 +111,11 @@ export function serializePracticeSettings(settings: PersistedPracticeSettings): 
     version: STORAGE_VERSION,
     config: preferences,
     metronomeOn: settings.metronomeOn,
+    // P1-4: an explicitly confirmed staff->hand mapping is user evidence; it
+    // must survive a reload exactly like the other practice preferences.
+    ...(settings.handMappings && Object.keys(settings.handMappings).length > 0
+      ? { handMappings: settings.handMappings }
+      : {}),
   });
 }
 

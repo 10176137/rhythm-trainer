@@ -4,6 +4,7 @@
 
 import type { HandSelection } from './practice';
 import type { RetryComparison, TeachingPrescription } from './teaching';
+import type { FollowNoteResult, FollowReport } from '../score-engine/practice/follow-session';
 
 export type EngineProfile = 'strict' | 'standard' | 'relaxed';
 
@@ -483,6 +484,83 @@ export interface EngineScoringConfig {
   notApplicable: string[];
 }
 
+/** Follow wire types. The Rust FollowRuntime on the engine service owns
+ * target progression and the report; the browser only renders these. */
+export interface FollowPitchRequest {
+  midiNote: number;
+  spelling: string;
+}
+
+export interface FollowGroupRequest {
+  groupId: string;
+  bar: number;
+  /** Quarter-note beat from the playback origin. */
+  playbackBeat: number;
+  pitches: FollowPitchRequest[];
+}
+
+export interface FollowProgress {
+  index: number;
+  total: number;
+  completed: number;
+  currentGroupId?: string | null;
+  isComplete?: boolean;
+}
+
+export interface FollowStartedMessage {
+  type: 'follow-started';
+  takeId: string;
+  runtimeId: string;
+  progress: FollowProgress;
+  total: number;
+  scoreFingerprint: string | null;
+  plannerAuthority: 'rts' | 'rust' | null;
+  plannerVersion: string | null;
+  planFingerprint: string | null;
+  targetSource: 'server-plan' | 'client-plan-projection';
+}
+
+export interface FollowEventMessage {
+  type: 'follow-event';
+  takeId: string;
+  note: number;
+  atMs: number;
+  result: FollowNoteResult;
+  progress: FollowProgress;
+}
+
+export interface FollowReportMessage {
+  type: 'follow-report';
+  takeId: string;
+  report: FollowReport;
+  persisted: boolean;
+  persistenceError: string | null;
+  endReason: 'completed' | 'interrupted';
+  progress?: FollowProgress;
+}
+
+export interface FollowStartRequest {
+  type: 'follow-start';
+  /** Present when the plan was issued by the server (rust planner path). */
+  planRequestId?: string;
+  /** Required for the default rts path: the plan projection is validated by
+   * the server and recorded as a client projection, never as a Rust plan. */
+  groups?: FollowGroupRequest[];
+  bpm: number;
+  plannerAuthority: 'rts' | 'rust';
+  plannerVersion?: string | null;
+  planFingerprint?: string | null;
+  scoreFingerprint?: string | null;
+  scoreId?: string | null;
+  configSnapshot?: Record<string, unknown> | null;
+  startedAtIso?: string;
+  /** Browser performance.now() at session zero, for hardware note mapping. */
+  basePerfMs?: number;
+  modeId?: string;
+  timingToleranceMs?: number;
+  chordSpreadToleranceMs?: number;
+}
+
 export type EngineServerMessage =
   | {
       type: 'started'; bpm: number; profile: EngineProfile; countInBeats: number;
@@ -524,6 +602,9 @@ export type EngineServerMessage =
       plan?: unknown;
       error?: { code: string; message: string };
     }
+  | FollowStartedMessage
+  | FollowEventMessage
+  | FollowReportMessage
   | { type: 'error'; message: string };
 
 export interface EngineStartRequest {
@@ -576,4 +657,10 @@ export type EngineClientMessage =
       report: unknown;
       config: unknown;
     }
+  | (FollowStartRequest & { protocolVersion?: number })
+  | { type: 'follow-note'; note: number; atMs: number }
+  | { type: 'follow-pause'; atMs?: number }
+  | { type: 'follow-resume'; atMs?: number }
+  | { type: 'follow-finish' }
+  | { type: 'follow-abandon' }
   | { type: 'finish' };

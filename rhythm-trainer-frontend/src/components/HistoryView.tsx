@@ -1,11 +1,13 @@
-// Practice history view: lists persisted sessions from the engine service,
-// expandable to the full engine replay report. The UI only presents stored
-// engine output.
+// Practice history view: lists unified Takes from the engine service. The UI
+// only presents stored engine output. Timeline Takes render the existing
+// report; Follow Takes render the server's Follow report and are never
+// dressed up as fixed-clock strict scores.
 
 import { useCallback, useEffect, useState } from 'react';
 import ReportPanel from './ReportPanel';
+import FollowReportPanel from './FollowReportPanel';
 import { practiceRepository, MODE_CN, fmtSigned, fmtAbs } from '../services/practiceRepository';
-import type { SessionDetail, SessionSummary } from '../services/practiceRepository';
+import type { SessionSummary, TakeRecordDetail } from '../services/practiceRepository';
 import type { EngineReport } from '../types/engine';
 import type { EngineTimingAnalysis } from '../types/engine';
 import type { HandSelection } from '../types/practice';
@@ -34,28 +36,28 @@ export default function HistoryView({
   const [items, setItems] = useState<SessionSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<SessionDetail | null>(null);
+  const [detail, setDetail] = useState<TakeRecordDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const load = useCallback(() => {
-    practiceRepository.listSessions(50)
+    practiceRepository.listTakes(50)
       .then((res) => setItems(res.items))
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, []);
 
   useEffect(() => { load(); }, [load, refreshKey]);
 
-  const toggle = async (sessionId: string) => {
-    if (expandedId === sessionId) {
+  const toggle = async (takeId: string) => {
+    if (expandedId === takeId) {
       setExpandedId(null);
       setDetail(null);
       return;
     }
-    setExpandedId(sessionId);
+    setExpandedId(takeId);
     setDetail(null);
     setDetailLoading(true);
     try {
-      setDetail(await practiceRepository.getSession(sessionId));
+      setDetail(await practiceRepository.getTake(takeId));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -73,6 +75,15 @@ export default function HistoryView({
     return <section className="card history-card"><p className="history-empty">还没有练习记录——完成一次练习后,报告会自动保存在本机。</p></section>;
   }
 
+  const timeline = detail?.assessment?.timelineReport ?? null;
+  const followReport = detail?.assessment?.followReport ?? null;
+  const snapshot = detail?.context?.practiceConfigSnapshot ?? null;
+  const snapshotTempo = snapshot && typeof snapshot.tempo === 'number' ? snapshot.tempo : null;
+  const provenanceAuthority = detail?.context?.plannerAuthority ?? timeline?.plannerAuthority ?? null;
+  const provenanceVersion = detail?.context?.plannerVersion ?? timeline?.plannerVersion ?? null;
+  const provenanceFingerprint = detail?.context?.planFingerprint ?? timeline?.planFingerprint ?? null;
+  const provenanceRunId = detail?.context?.planRunId ?? timeline?.playbackPlanId ?? null;
+
   return (
     <section className="card history-card">
       <div className="card-heading">
@@ -83,67 +94,103 @@ export default function HistoryView({
         <button className="text-button" onClick={load}>重新整理</button>
       </div>
       <div className="history-list">
-        {items.map((item) => (
-          <div className="history-item" key={item.sessionId}>
-            <button className="history-row" onClick={() => toggle(item.sessionId)}>
-              <span className="history-date">{fmtTime(item.finishedAtIso)}</span>
-              <span className="history-mode">{MODE_CN[item.modeId] ?? item.modeId}</span>
-              {item.plannerAuthority === 'rust' && <span className="badge badge-ok">Rust 计划</span>}
-              {item.plannerAuthority === 'rts' && <span className="badge">RTS 计划</span>}
-              {item.sourceReportId && <span className="badge badge-ok">复练</span>}
-              {item.takeTemplateName && <span className="badge history-take-badge" title={item.takeTemplateName}>Take</span>}
-              {item.interrupted && <span className="badge badge-bad">中断</span>}
-              <span className="history-meta">{item.bpm ?? '—'} BPM</span>
-              <span className="history-meta">{Math.round((item.targetHitRate ?? 0) * 100)}% 命中</span>
-              <span className="history-meta">MAE {fmtAbs(item.meanAbsoluteMs)}</span>
-              <span className="history-meta">偏差 {fmtSigned(item.meanSignedMs)}</span>
-              <span className={`badge ${item.trustworthy ? 'badge-ok' : 'badge-bad'}`}>{item.trustworthy ? '可信' : '不可信'}</span>
-              <span className="history-arrow">{expandedId === item.sessionId ? '▾' : '▸'}</span>
-            </button>
-            {expandedId === item.sessionId && (
-              <div className="history-detail">
-                {detailLoading && <p className="history-empty">载入报告中…</p>}
-                {detail?.takeTemplateName && (
-                  <p className="history-take-link">关联 Take：{detail.takeTemplateName}</p>
+        {items.map((item) => {
+          const rowId = item.takeId ?? item.sessionId;
+          const isFollow = item.reportKind === 'follow';
+          return (
+            <div className="history-item" key={rowId}>
+              <button className="history-row" onClick={() => toggle(rowId)}>
+                <span className="history-date">{fmtTime(item.finishedAtIso)}</span>
+                <span className="history-mode">{MODE_CN[item.modeId] ?? item.modeId}</span>
+                {isFollow && <span className="badge">Follow</span>}
+                {item.plannerAuthority === 'rust' && <span className="badge badge-ok">Rust 计划</span>}
+                {item.plannerAuthority === 'rts' && <span className="badge">RTS 计划</span>}
+                {item.sourceReportId && <span className="badge badge-ok">复练</span>}
+                {item.takeTemplateName && <span className="badge history-take-badge" title={item.takeTemplateName}>Take</span>}
+                {item.endReason === 'interrupted' && <span className="badge badge-bad">中断</span>}
+                <span className="history-meta">{item.bpm ?? '—'} BPM</span>
+                {isFollow ? (
+                  <>
+                    <span className="history-meta">{item.followCompletedTargets ?? 0}/{item.targetCount ?? 0} 目标</span>
+                    <span className="history-meta">标准 {item.followStandardTargets ?? 0}</span>
+                    <span className="history-meta">错误音 {item.followWrongNoteCount ?? 0}</span>
+                    <span className="history-meta">节奏 MAE {fmtAbs(item.meanAbsoluteMs)}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="history-meta">{Math.round((item.targetHitRate ?? 0) * 100)}% 命中</span>
+                    <span className="history-meta">MAE {fmtAbs(item.meanAbsoluteMs)}</span>
+                    <span className="history-meta">偏差 {fmtSigned(item.meanSignedMs)}</span>
+                  </>
                 )}
-                {detail && (detail.plannerAuthority || detail.planFingerprint || detail.playbackPlanId) && (
-                  <p className="history-take-link">
-                    规划器：{detail.plannerAuthority ?? '未记录'}
-                    {detail.plannerVersion ? ` · ${detail.plannerVersion}` : ''}
-                    {detail.planFingerprint ? ` · 计划指纹 ${detail.planFingerprint}` : ''}
-                    {detail.playbackPlanId ? ` · 运行 ID ${detail.playbackPlanId}` : ''}
-                  </p>
-                )}
-                {detail && detail.report && (
-                  <ReportPanel
-                    report={detail.report as EngineReport}
-                    analysis={detail.analysis as EngineTimingAnalysis | { error: string } | null}
-                    durations={detail.durations ?? null}
-                    scoreV1={detail.scoreV1 ?? null}
-                    scoreStatus={detail.scoreStatus ?? null}
-                    scoringConfig={detail.scoringConfig ?? null}
-                    scoreConfigVersion={detail.scoreConfigVersion ?? null}
-                    scoreAlgorithmVersion={detail.scoreAlgorithmVersion ?? null}
-                    scoreInputNoteCount={detail.scoreInputNoteCount ?? 0}
-                    scoreUnmappedNoteCount={detail.scoreUnmappedNoteCount ?? 0}
-                    pauseAdjusted={detail.pauseAdjusted ?? false}
-                    sessionId={detail.sessionId}
-                    takeId={detail.takeId ?? null}
-                    scoreFingerprint={detail.scoreFingerprint ?? null}
-                    activeScoreFingerprint={activeScoreFingerprint}
-                    scoreBarCount={detail.scoreBarCount ?? null}
-                    practiceBpm={detail.bpm ?? 72}
-                    practiceHand={storedHand(detail.hand)}
-                    retryComparison={detail.retryComparison ?? null}
-                    onStartTargetedPractice={onStartTargetedPractice}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+                <span className={`badge ${item.trustworthy ? 'badge-ok' : 'badge-bad'}`}>{item.trustworthy ? '可信' : '不可信'}</span>
+                <span className="history-arrow">{expandedId === rowId ? '▾' : '▸'}</span>
+              </button>
+              {expandedId === rowId && (
+                <div className="history-detail">
+                  {detailLoading && <p className="history-empty">载入报告中…</p>}
+                  {!detailLoading && detail && (
+                    <>
+                      <p className="history-take-link">
+                        Take {detail.takeId} · {detail.lifecycle.modeId} · {detail.lifecycle.endReason === 'interrupted' ? '中断' : '完成'}
+                        {detail.legacy?.sessionId ? ` · 旧记录 ${detail.legacy.sessionId}` : ''}
+                      </p>
+                      {timeline?.takeTemplateName && (
+                        <p className="history-take-link">关联 Take：{timeline.takeTemplateName}</p>
+                      )}
+                      {(provenanceAuthority || provenanceFingerprint || provenanceRunId) && (
+                        <p className="history-take-link">
+                          规划器：{provenanceAuthority ?? '未记录'}
+                          {provenanceVersion ? ` · ${provenanceVersion}` : ''}
+                          {provenanceFingerprint ? ` · 计划指纹 ${provenanceFingerprint}` : ''}
+                          {provenanceRunId ? ` · 运行 ID ${provenanceRunId}` : ''}
+                        </p>
+                      )}
+                      {followReport && (
+                        <>
+                          <p className="history-take-link">
+                            评估范围：Follow（自定步速）· 由引擎服务 Rust FollowRuntime 结算
+                            {detail.assessment.trustworthy ? '' : ' · 不可信'}
+                          </p>
+                          <FollowReportPanel report={followReport} />
+                        </>
+                      )}
+                      {timeline?.report && (
+                        <ReportPanel
+                          report={timeline.report as EngineReport}
+                          analysis={timeline.analysis as EngineTimingAnalysis | { error: string } | null}
+                          durations={timeline.durations ?? null}
+                          scoreV1={timeline.scoreV1 ?? null}
+                          scoreStatus={timeline.scoreStatus ?? null}
+                          scoringConfig={timeline.scoringConfig ?? null}
+                          scoreConfigVersion={timeline.scoreConfigVersion ?? null}
+                          scoreAlgorithmVersion={timeline.scoreAlgorithmVersion ?? null}
+                          scoreInputNoteCount={timeline.scoreInputNoteCount ?? 0}
+                          scoreUnmappedNoteCount={timeline.scoreUnmappedNoteCount ?? 0}
+                          pauseAdjusted={timeline.pauseAdjusted ?? false}
+                          sessionId={timeline.sessionId ?? detail.takeId}
+                          takeId={detail.takeId}
+                          scoreFingerprint={detail.score?.scoreFingerprint ?? timeline.scoreFingerprint ?? null}
+                          activeScoreFingerprint={activeScoreFingerprint}
+                          scoreBarCount={timeline.scoreBarCount ?? null}
+                          practiceBpm={timeline.bpm ?? snapshotTempo ?? 72}
+                          practiceHand={storedHand(timeline.hand)}
+                          retryComparison={timeline.retryComparison ?? null}
+                          onStartTargetedPractice={onStartTargetedPractice}
+                        />
+                      )}
+                      {!followReport && !timeline?.report && (
+                        <p className="history-empty">该 Take 没有可展示的报告。</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
-      <p className="report-footnote">记录以 JSON 原子写入本机引擎服务数据目录;原始击打事件保留在报告内,可作确定性重放。</p>
+      <p className="report-footnote">记录以 JSON 原子写入本机引擎服务数据目录;原始击打事件保留在报告内,可作确定性重放。Follow 记录只保存自定步速报告,不生成时间线 strict 成绩。</p>
     </section>
   );
 }

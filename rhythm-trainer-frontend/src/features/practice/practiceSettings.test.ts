@@ -88,6 +88,27 @@ describe('practiceSettings', () => {
     expect(loaded.metronomeOn).toBe(false);
   });
 
+  it('persists an explicitly confirmed staff->hand mapping across reloads', () => {
+    const storage = memoryStorage();
+    savePracticeSettings({
+      config: { ...defaultPracticeSettings.config },
+      metronomeOn: true,
+      handMappings: {
+        'fp-1': [
+          { staffNumber: 1, hand: 'right' },
+          { staffNumber: 2, hand: 'left' },
+        ],
+      },
+    }, storage);
+    const loaded = loadPracticeSettings(storage);
+    expect(loaded.handMappings).toEqual({
+      'fp-1': [
+        { staffNumber: 1, hand: 'right' },
+        { staffNumber: 2, hand: 'left' },
+      ],
+    });
+  });
+
   it('serializes only versioned preferences and tolerates blocked storage', () => {
     const serialized = serializePracticeSettings(defaultPracticeSettings);
     expect(JSON.parse(serialized)).toMatchObject({ version: 1, metronomeOn: true });

@@ -292,6 +292,72 @@ export interface JsMasteryAttempt {
   transferTest: boolean
   delayedRetest: boolean
 }
+export interface JsFollowPitch {
+  midiNote: number
+  spelling: string
+}
+export interface JsFollowGroup {
+  groupId: string
+  bar: number
+  playbackBeat: number
+  pitches: Array<JsFollowPitch>
+}
+export interface JsFollowWrongNote {
+  midiNote: number
+  atMs: number
+}
+export interface JsFollowTargetResult {
+  targetId: string
+  bar: number
+  expectedPitches: Array<string>
+  matchedPitches: Array<string>
+  wrongNotes: Array<JsFollowWrongNote>
+  duplicateNotes: number
+  completed: boolean
+  standard: boolean
+  firstCorrectAtMs?: number
+  completionAtMs?: number
+  chordSpreadMs?: number
+  intervalErrorMs?: number
+  intervalJudged: boolean
+}
+export interface JsFollowTimingSummary {
+  samples: number
+  meanSignedMs?: number
+  meanAbsoluteMs?: number
+  standardDeviationMs?: number
+}
+export interface JsFollowReport {
+  strictTiming: boolean
+  totalTargets: number
+  completedTargets: number
+  standardTargets: number
+  pendingTargetId?: string
+  wrongNoteCount: number
+  extraNoteCount: number
+  duplicateNoteCount: number
+  timing: JsFollowTimingSummary
+  targets: Array<JsFollowTargetResult>
+}
+export interface JsFollowNoteResult {
+  kind: string
+  targetId?: string
+  advanced: boolean
+  expectedPitches: Array<string>
+  remainingPitches: Array<string>
+  completedTarget?: JsFollowTargetResult
+  report?: JsFollowReport
+  progressIndex: number
+  progressTotal: number
+  completedCount: number
+}
+export interface JsFollowProgress {
+  index: number
+  total: number
+  completed: number
+  currentGroupId?: string
+  isComplete: boolean
+}
 export interface JsTakeStart {
   practiceSessionId: string
   takeId: string
@@ -529,6 +595,13 @@ export declare class NativeStudentModel {
    */
   snapshot(): Array<JsSkillProgress>
   skillCount(): number
+}
+export declare class NativeFollowRuntime {
+  constructor(groups: Array<JsFollowGroup>, bpm: number, timingToleranceMs?: number | undefined | null, chordSpreadToleranceMs?: number | undefined | null)
+  pushNote(midiNote: number, atMs: number): JsFollowNoteResult
+  invalidateNextInterval(): void
+  finish(): JsFollowReport
+  progress(): JsFollowProgress
 }
 export declare class NativeTakeCoordinator {
   constructor(sessionId: string, scoreFingerprint: string, profileSnapshotId: string)
