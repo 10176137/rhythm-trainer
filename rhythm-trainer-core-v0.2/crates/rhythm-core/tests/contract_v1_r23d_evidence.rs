@@ -34,11 +34,12 @@ fn load_vectors() -> serde_json::Map<String, Value> {
     parsed["vectors"].as_object().expect("vectors object").clone()
 }
 
-/// E3: byte-exact recomputation of ALL committed vectors, with per-vector
-/// evidence (input name, computed canonical bytes, computed hash, frozen
-/// expectations, comparison states).
+/// E3 + E4-A in ONE test = ONE writer: Rust integration tests run in
+/// parallel by default, and two tests writing the same evidence file raced
+/// (review finding 3). Collection order is sequential here and the file is
+/// written once via temp-file + atomic rename — never truncated mid-flight.
 #[test]
-fn e3_committed_vectors_reproduce_byte_exact_with_evidence() {
+fn e3_vectors_and_e4a_sensitivity_evidence() {
     let vectors = load_vectors();
     let mut entries = Vec::new();
     let mut all_exact = true;
@@ -70,11 +71,30 @@ fn e3_committed_vectors_reproduce_byte_exact_with_evidence() {
     assert!(rational_bpm_present, "V-rational-bpm must exist for §7 coverage");
     assert!(all_exact, "E3: every vector must reproduce byte-exact");
 
-    serde_json::to_writer_pretty(
-        std::fs::File::create(EVIDENCE_PATH).expect("create evidence file"),
-        &json!({ "vectors": entries, "allByteExact": all_exact, "rationalBpmVectorPresent": rational_bpm_present }),
-    )
-    .expect("write E3 evidence");
+    let class_a = collect_class_a();
+    assert!(class_a.iter().all(|item: &Value| {
+        item["fingerprintChanged"] == (item["expected"] == "changed")
+    }), "E4-A: every matrix item must behave as frozen");
+
+    write_evidence_atomic(&json!({
+        "schemaVersion": "r2-3d-rust-evidence-v1",
+        "vectors": entries,
+        "allByteExact": all_exact,
+        "rationalBpmVectorPresent": rational_bpm_present,
+        "classA": class_a,
+    }));
+}
+
+/// Atomic evidence write: temp file in the same directory + rename.
+fn write_evidence_atomic(value: &Value) {
+    let evidence_path = std::path::Path::new(EVIDENCE_PATH);
+    let temp_path = evidence_path.with_extension("json.tmp");
+    {
+        let mut file = std::fs::File::create(&temp_path).expect("create temp evidence file");
+        serde_json::to_writer_pretty(&mut file, value).expect("write evidence");
+        file.sync_all().expect("flush evidence");
+    }
+    std::fs::rename(&temp_path, evidence_path).expect("atomic evidence rename");
 }
 
 fn base_payload() -> Value {
@@ -83,8 +103,7 @@ fn base_payload() -> Value {
 }
 
 /// E4-A: the frozen sensitivity/invariance matrix over the committed payload.
-#[test]
-fn e4a_fingerprint_sensitivity_and_invariance_matrix() {
+fn collect_class_a() -> Vec<Value> {
     let base = base_payload();
     let baseline = compute_plan_fingerprint_v1(&mut base.clone()).expect("baseline fingerprint");
 
@@ -201,18 +220,5 @@ fn e4a_fingerprint_sensitivity_and_invariance_matrix() {
             if expected_changed { "change" } else { "stay invariant" }
         );
     }
-
-    // Merge into the shared evidence file (E3 writes it too; the file is
-    // regenerated atomically on every full test run).
-    let mut evidence = std::fs::read_to_string(EVIDENCE_PATH)
-        .ok()
-        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
-        .unwrap_or_else(|| json!({}));
-    evidence["schemaVersion"] = json!("r2-3d-rust-evidence-v1");
-    evidence["classA"] = json!(class_a);
-    serde_json::to_writer_pretty(
-        std::fs::File::create(EVIDENCE_PATH).expect("rewrite evidence"),
-        &evidence,
-    )
-    .expect("write E4-A evidence");
+    class_a
 }

@@ -36,11 +36,17 @@ fn is_integer_number(value: &Value) -> Option<f64> {
 /// events, or `None` when the candidate is acceptable. Never returns
 /// empty-plan/warning outcomes: rejection is the only failure mode
 /// (fail-closed per the parity gate §6/C).
+///
+/// Fail-closed on structure too: a non-array or otherwise malformed payload
+/// is a rejection (`invalid_target_pitch` — the candidate-rejection code of
+/// the frozen four), never a silent "no violation".
 pub fn validate_candidate_score_events(
     events: &Value,
     options: &CandidateValidationOptions,
 ) -> Option<&'static str> {
-    let list = events.as_array()?;
+    let Some(list) = events.as_array() else {
+        return Some(INVALID_TARGET_PITCH);
+    };
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
     for event in list {
         let score_event_id = event.get("scoreEventId").and_then(Value::as_str).unwrap_or_default();
@@ -137,5 +143,27 @@ mod tests {
 
         // Range-loop legal repetition lives OUTSIDE one scoring array (§3.0):
         // the validator only sees one array, so cross-array repeats never hit it.
+    }
+
+    #[test]
+    fn structure_errors_fail_closed_never_pass() {
+        // A malformed payload must be REJECTED, never read as "no violation"
+        // (review finding: `as_array()?` fail-open).
+        for malformed in [
+            json!("not an array"),
+            json!(null),
+            json!({ "scoreEventId": "a" }),
+            json!(5),
+        ] {
+            assert_eq!(
+                validate_candidate_score_events(&malformed, &Default::default()),
+                Some(INVALID_TARGET_PITCH),
+                "malformed candidate {:?} must be rejected",
+                malformed
+            );
+        }
+        // An empty array is a legal (vacuously valid) candidate — the empty
+        // PLAN rejection lives at the payload/gate layer, not here.
+        assert_eq!(validate_candidate_score_events(&json!([]), &Default::default()), None);
     }
 }

@@ -68,10 +68,41 @@ function corpus(caseId: string): { document: unknown; report: unknown; config: u
     join(root, 'audit-r1', 'fixtures', 'parity-cases', 'rust-parity-input', `${caseId}.json`), 'utf8'));
 }
 
-function rustCandidate(config: ParityCaseConfig, document: unknown, report: unknown): ParityCandidate {
-  const result = JSON.parse(native.buildParityCandidateV1(
+interface RustMeta {
+  planStrictAllowed: boolean;
+  planIssues: Array<{ code: string; blocksStrict: boolean }>;
+  scopeCodes: string[];
+  missingEventIds: string[];
+  atomIssueCodes: string[];
+}
+
+function rustFull(config: ParityCaseConfig, document: unknown, report: unknown): { candidate: ParityCandidate; meta: RustMeta } {
+  return JSON.parse(native.buildParityCandidateV1(
     JSON.stringify(document), JSON.stringify(report), JSON.stringify(config)));
-  return result.candidate as ParityCandidate;
+}
+
+function rustCandidate(config: ParityCaseConfig, document: unknown, report: unknown): ParityCandidate {
+  return rustFull(config, document, report).candidate;
+}
+
+/** Expected-outcome checks for ONE side against the frozen case-index entry. */
+function outcomeChecks(
+  expectedOutcome: { planStatus: 'strict' | 'blocked'; issueCodes?: string[]; fingerprintErrorCode?: string; scopeCodes?: string[] },
+  side: { planStrictAllowed: boolean; planIssues: Array<{ code: string }>; scopeCodes: string[]; fingerprintErrorCode: string | null },
+): { planStatusMatch: boolean; issueCodesMatch: boolean | null; fingerprintErrorCodeMatch: boolean | null; scopeCodesMatch: boolean | null } {
+  const sameSet = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join(',') === [...b].sort().join(',');
+  return {
+    planStatusMatch: side.planStrictAllowed === (expectedOutcome.planStatus === 'strict'),
+    issueCodesMatch: expectedOutcome.issueCodes
+      ? sameSet(side.planIssues.map((issue) => issue.code), expectedOutcome.issueCodes)
+      : null,
+    fingerprintErrorCodeMatch: expectedOutcome.fingerprintErrorCode !== undefined
+      ? side.fingerprintErrorCode === expectedOutcome.fingerprintErrorCode
+      : side.fingerprintErrorCode === null,
+    scopeCodesMatch: expectedOutcome.scopeCodes
+      ? sameSet(side.scopeCodes, expectedOutcome.scopeCodes)
+      : null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -118,9 +149,19 @@ function fieldChecks(expected: unknown, actual: unknown, layer: string): FieldCh
 interface CaseResult {
   caseId: string;
   l1FingerprintMatch: boolean;
-  tsVsExpected: { pass: boolean; diffCount: number };
-  rustVsExpected: { pass: boolean; diffCount: number };
+  tsFingerprint: string | null;
+  rustFingerprint: string | null;
+  fingerprintErrorCode: string | null;
+  tsVsExpected: { pass: boolean; diffCount: number; categories: Record<string, number>; diffs: ParityDiff[] };
+  rustVsExpected: { pass: boolean; diffCount: number; categories: Record<string, number>; diffs: ParityDiff[] };
   l3InvariantsPass: boolean;
+  l3Invariants: Array<{ check: string; status: string }>;
+  expectedOutcome: {
+    frozen: { planStatus: 'strict' | 'blocked'; issueCodes?: string[]; fingerprintErrorCode?: string; scopeCodes?: string[] };
+    ts: ReturnType<typeof outcomeChecks>;
+    rust: ReturnType<typeof outcomeChecks>;
+    allMatch: boolean;
+  };
   semanticPoints: string[];
 }
 
@@ -160,13 +201,18 @@ interface E5Result {
   filePath?: string;
   fileSha256?: string;
   fileSizeBytes?: number;
+  /** Direct measure count from the IMPORTED SCORE (not derived from the plan). */
+  importedMeasureCount?: number;
   counts?: { measures: number; occurrences: number; groups: number; atoms: number; scoreEvents: number };
   capabilities?: string[];
   capabilitiesExact?: boolean;
   rustFingerprintStable?: boolean;
   rustFingerprint?: string | null;
   tsFingerprintEqual?: boolean;
-  scoreEventUsExactCheck?: string;
+  /** Full TS↔Rust candidate diff (frozen predicate; zero tolerance on µs). */
+  l2?: { pass: boolean; diffCount: number; categories: Record<string, number>; diffs: ParityDiff[] };
+  /** L3 exact-integer invariants over the Rust real-score candidate. */
+  l3?: { pass: boolean; invariants: Array<{ check: string; status: string }> };
 }
 
 // ---------------------------------------------------------------------------
@@ -176,7 +222,7 @@ interface E5Result {
 let e1Checks: FieldCheck[] = [];
 let e1AllExact = true;
 const e2Results: CaseResult[] = [];
-const e4BFaults: Array<{ faultId: string; detected: boolean; classifiedCorrectly: boolean; pathPrefixOk: boolean; reportFails: boolean }> = [];
+const e4BFaults: Array<{ faultId: string; detected: boolean; classifiedCorrectly: boolean; pathPrefixOk: boolean; reportFails: boolean; diffs: ParityDiff[] }> = [];
 let e5Result: E5Result = { executed: false, reason: 'not executed yet' };
 
 beforeAll(() => {
@@ -236,10 +282,10 @@ beforeAll(() => {
     const record = corpus(bundle.caseId);
 
     const ts = buildTsCandidate(xml, fileName, config);
-    const rust = rustCandidate(config, record.document, record.report);
+    const rust = rustFull(config, record.document, record.report);
 
     const tsDiff = diffCandidates(expected, ts.candidate);
-    const rustDiff = diffCandidates(expected, rust);
+    const rustDiff = diffCandidates(expected, rust.candidate);
     const tsCategories = categorize(tsDiff);
     const rustCategories = categorize(rustDiff);
 
@@ -259,13 +305,43 @@ beforeAll(() => {
       ? rustErrorCode === ts.fingerprintErrorCode
       : ts.fingerprintErrorCode === null && rustFingerprint === ts.fingerprint;
 
-    const invariants = computeL3Invariants(rust, config);
-    e2Results.push({
+    const invariants = computeL3Invariants(rust.candidate, config);
+    const tsOutcome = outcomeChecks(bundle.expectedOutcome, {
+      planStrictAllowed: ts.planStrictAllowed,
+      planIssues: ts.planIssues,
+      scopeCodes: ts.scopeCodes,
+      fingerprintErrorCode: ts.fingerprintErrorCode,
+    });
+    const rustOutcome = outcomeChecks(bundle.expectedOutcome, {
+      planStrictAllowed: rust.meta.planStrictAllowed,
+      planIssues: rust.meta.planIssues,
+      scopeCodes: rust.meta.scopeCodes,
+      fingerprintErrorCode: rustErrorCode,
+    });    e2Results.push({
       caseId: bundle.caseId,
       l1FingerprintMatch: l1Match,
-      tsVsExpected: { pass: reportPasses(tsCategories), diffCount: tsDiff.length },
-      rustVsExpected: { pass: reportPasses(rustCategories), diffCount: rustDiff.length },
+      tsFingerprint: ts.fingerprint,
+      rustFingerprint,
+      fingerprintErrorCode: rustErrorCode,
+      tsVsExpected: {
+        pass: reportPasses(tsCategories), diffCount: tsDiff.length,
+        categories: tsCategories, diffs: tsDiff,
+      },
+      rustVsExpected: {
+        pass: reportPasses(rustCategories), diffCount: rustDiff.length,
+        categories: rustCategories, diffs: rustDiff,
+      },
       l3InvariantsPass: invariants.every((check) => check.status === 'pass'),
+      l3Invariants: invariants.map(({ check, status }) => ({ check, status })),
+      expectedOutcome: {
+        frozen: bundle.expectedOutcome,
+        ts: tsOutcome,
+        rust: rustOutcome,
+        allMatch: tsOutcome.planStatusMatch && rustOutcome.planStatusMatch
+          && tsOutcome.issueCodesMatch !== false && rustOutcome.issueCodesMatch !== false
+          && tsOutcome.fingerprintErrorCodeMatch !== false && rustOutcome.fingerprintErrorCodeMatch !== false
+          && tsOutcome.scopeCodesMatch !== false && rustOutcome.scopeCodesMatch !== false,
+      },
       semanticPoints: SEMANTIC_POINT_MAP[bundle.caseId] ?? [],
     });
   }
@@ -344,6 +420,7 @@ beforeAll(() => {
       classifiedCorrectly: (categories['semantic-defect'] ?? 0) > 0,
       pathPrefixOk: diffs.some((diff) => diff.category === 'semantic-defect' && diff.path.startsWith(spec.expectedPathPrefix)),
       reportFails: !reportPasses(categories),
+      diffs,
     });
   }
 
@@ -403,8 +480,10 @@ beforeAll(() => {
         filePath: REAL_SCORE_PATH,
         fileSha256: sha256(raw),
         fileSizeBytes: Buffer.byteLength(raw),
+        // Direct count from the IMPORTED SCORE, not from plan outputs.
+        importedMeasureCount: imported.scoreDocument.parts[0].measures.length,
         counts: {
-          measures: new Set(plan1.occurrences.map((occurrence: { bar: number }) => occurrence.bar)).size,
+          measures: imported.scoreDocument.parts[0].measures.length,
           occurrences: plan1.occurrences.length,
           groups: plan1.groups.length,
           atoms: plan1.atoms.length,
@@ -416,7 +495,24 @@ beforeAll(() => {
         rustFingerprintStable: fingerprint1 === fingerprint2,
         rustFingerprint: fingerprint1,
         tsFingerprintEqual: fingerprint1 === tsFingerprint,
-        scoreEventUsExactCheck: 'per-note targetOnsetUs/targetDurationUs verified field-exact against TS in E2/E6 (zero tolerance)',
+      };
+      // L2: the full TS↔Rust candidate diff on the real score (frozen
+      // predicate — any semantic/unclassified difference fails) and L3:
+      // exact-integer invariants over the Rust candidate.
+      const tsRun = buildTsCandidate(raw, 'real-score.musicxml', config);
+      const rust = rustCandidate(config, projected.dto, imported.importReport);
+      const realScoreDiffs = diffCandidates(tsRun.candidate, rust);
+      const realScoreCategories = categorize(realScoreDiffs);
+      const realScoreInvariants = computeL3Invariants(rust, config);
+      e5Result.l2 = {
+        pass: reportPasses(realScoreCategories) && realScoreDiffs.length === 0,
+        diffCount: realScoreDiffs.length,
+        categories: realScoreCategories,
+        diffs: realScoreDiffs,
+      };
+      e5Result.l3 = {
+        pass: realScoreInvariants.every((check) => check.status === 'pass'),
+        invariants: realScoreInvariants.map(({ check, status }) => ({ check, status })),
       };
     } else {
       e5Result = { executed: false, reason: 'real score failed to import' };
@@ -460,16 +556,22 @@ describe('R2-3d §8 migration evidence', () => {
     const rustEvidence = JSON.parse(readFileSync(
       join(REPORT_DIR, 'r2-3d-rust-evidence.json'), 'utf8'));
     const e2AllPass = e2Results.every((result) => result.l1FingerprintMatch
-      && result.tsVsExpected.pass && result.rustVsExpected.pass && result.l3InvariantsPass);
+      && result.tsVsExpected.pass && result.rustVsExpected.pass && result.l3InvariantsPass
+      && result.expectedOutcome.allMatch);
     const e4bAllPass = e4BFaults.every((fault) => fault.detected && fault.classifiedCorrectly
-      && fault.pathPrefixOk && fault.reportFails);
+      && fault.pathPrefixOk && fault.reportFails && fault.diffs.length > 0);
     const e5Pass = e5Result.executed === true
+      && e5Result.importedMeasureCount === 113
       && e5Result.capabilitiesExact === true
       && e5Result.rustFingerprintStable === true
       && e5Result.tsFingerprintEqual === true
+      && e5Result.counts?.measures === 113
       && e5Result.counts?.occurrences === 1579
       && e5Result.counts?.groups === 1018
-      && e5Result.counts?.atoms === 1018;
+      && e5Result.counts?.atoms === 1018
+      && e5Result.counts?.scoreEvents === 1579
+      && e5Result.l2?.pass === true
+      && e5Result.l3?.pass === true;
 
     const items = [
       {
@@ -508,9 +610,20 @@ describe('R2-3d §8 migration evidence', () => {
       },
       {
         id: 'E6', name: 'this report: per-case diffs, versions, both-side SHAs, fail-evidence-on-disk',
-        status: 'PASS',
+        // E6 passes ONLY if the archived content is structurally complete
+        // (review finding 2): per-case full diff arrays on BOTH comparison
+        // directions, frozen expectedOutcome verdicts, E4-B captured diffs,
+        // E5 real-score L2/L3 — never a hard-coded PASS.
+        status: e2Results.length === 15
+          && e2Results.every((result) => Array.isArray(result.tsVsExpected.diffs)
+            && Array.isArray(result.rustVsExpected.diffs)
+            && Array.isArray(result.l3Invariants)
+            && result.expectedOutcome.allMatch)
+          && e4BFaults.every((fault) => Array.isArray(fault.diffs) && fault.diffs.length > 0)
+          && (e5Result.l2 ? Array.isArray(e5Result.l2.diffs) : e5Result.executed === false)
+          ? 'PASS' : 'FAIL',
         evidence: 'audit-r1/reports/r2-3/r2-3d-migration-evidence-v1.json',
-        detail: 'written before the verdict; failing runs keep their evidence',
+        detail: 'written before the verdict; failing runs keep their evidence; structural completeness is verified, not assumed',
       },
     ];
     const blocked = items.filter((item) => item.status === 'BLOCKED');
