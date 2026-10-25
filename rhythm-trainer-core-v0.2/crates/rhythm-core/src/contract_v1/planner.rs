@@ -893,3 +893,46 @@ fn locator_json(occurrence: &PlannedOccurrence) -> Value {
     }
     Value::Object(locator)
 }
+
+/// R2-3c: the PlannerOutput projected onto the frozen ParityCandidate shape
+/// the TS `diffCandidates` comparator consumes (parity-diff.ts): occurrences
+/// drop the runtime keys (occurrenceId/scoreEventId live in runtimeIds and
+/// scoreEvents.runtimeOccurrenceId), groups drop the member id lists (TS
+/// CanonicalGroup carries locators only). Returns `{ candidate, meta }` —
+/// meta mirrors the TS TsCandidateResult's planner-domain fields so the
+/// dual-run harness can assert them without re-deriving.
+pub fn build_parity_candidate_v1(
+    document_json: &Value,
+    report_json: &Value,
+    config_json: &Value,
+) -> Result<Value, ContractError> {
+    let plan = build_plan_v1(document_json, report_json, config_json)?;
+    let strip_keys = |value: &Value, keys: &[&str]| {
+        let mut object = value.clone();
+        if let Some(map) = object.as_object_mut() {
+            for key in keys {
+                map.remove(*key);
+            }
+        }
+        object
+    };
+    let candidate = json!({
+        "side": "rust-planner",
+        "kind": "candidate",
+        "occurrences": plan["occurrences"].as_array().expect("occurrences array")
+            .iter().map(|occurrence| strip_keys(occurrence, &["occurrenceId", "scoreEventId"])).collect::<Vec<_>>(),
+        "groups": plan["groups"].as_array().expect("groups array")
+            .iter().map(|group| strip_keys(group, &["occurrenceIds", "scoreEventIds"])).collect::<Vec<_>>(),
+        "atoms": plan["atoms"].clone(),
+        "scoreEvents": plan["scoreEvents"].clone(),
+        "runtimeIds": plan["runtimeIds"].clone(),
+    });
+    let meta = json!({
+        "planStrictAllowed": plan["planStrictAllowed"].clone(),
+        "planIssues": plan["planIssues"].clone(),
+        "scopeCodes": plan["scopeCodes"].clone(),
+        "missingEventIds": plan["missingEventIds"].clone(),
+        "atomIssueCodes": plan["atomIssueCodes"].clone(),
+    });
+    Ok(json!({ "candidate": candidate, "meta": meta }))
+}

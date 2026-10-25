@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 rhythm-core = { path = "../../crates/rhythm-core" }
 napi = { version = "2", default-features = false, features = ["napi8"] }
 napi-derive = "2"
+serde_json = "1"
 
 [build-dependencies]
 napi-build = "2"

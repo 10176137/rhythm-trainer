@@ -1815,3 +1815,56 @@ pub fn js_score_performance(
         practice_ranges,
     })
 }
+
+// ---------------------------------------------------------------------------
+// R2-3c: contract_v1 planner dual-run surface (JSON-in / JSON-out; the JSON
+// integers pass through untouched — task card C-4). These exports are ADDITIVE
+// to the production surface above; no existing export changes behavior.
+// Errors surface as `"<CODE>: <message>"` (ContractError Display), so the
+// harness can match frozen error codes.
+// ---------------------------------------------------------------------------
+
+fn parse_json(text: &str, field: &str) -> napi::Result<serde_json::Value> {
+    serde_json::from_str(text).map_err(|error| napi_error(format!("{field} is not valid JSON: {error}")))
+}
+
+fn contract_result(value: Result<serde_json::Value, rhythm_core::contract_v1::ContractError>) -> napi::Result<String> {
+    value.map(|value| value.to_string()).map_err(|error| napi_error(error.to_string()))
+}
+
+/// Builds the PlannerOutput (task card §2.3) from the frozen ScoreDocumentV1,
+/// ImportReportV1 and parity-case config JSON instances.
+#[napi]
+pub fn build_plan_v1(document_json: String, report_json: String, config_json: String) -> napi::Result<String> {
+    let document = parse_json(&document_json, "document")?;
+    let report = parse_json(&report_json, "report")?;
+    let config = parse_json(&config_json, "config")?;
+    contract_result(rhythm_core::contract_v1::build_plan_v1(&document, &report, &config))
+}
+
+/// Builds the frozen ParityCandidate projection ({ candidate, meta }) that
+/// feeds the TS `diffCandidates` comparator in the dual-run harness.
+#[napi]
+pub fn build_parity_candidate_v1(document_json: String, report_json: String, config_json: String) -> napi::Result<String> {
+    let document = parse_json(&document_json, "document")?;
+    let report = parse_json(&report_json, "report")?;
+    let config = parse_json(&config_json, "config")?;
+    contract_result(rhythm_core::contract_v1::build_parity_candidate_v1(&document, &report, &config))
+}
+
+/// The mandatory a3 fingerprint gate over a PlannerOutput.
+#[napi]
+pub fn plan_fingerprint_v1_gate(
+    document_json: String,
+    report_json: String,
+    plan_json: String,
+    config_json: String,
+) -> napi::Result<String> {
+    let document = parse_json(&document_json, "document")?;
+    let report = parse_json(&report_json, "report")?;
+    let plan = parse_json(&plan_json, "plan")?;
+    let config = parse_json(&config_json, "config")?;
+    rhythm_core::contract_v1::plan_fingerprint_v1_gate(&document, &report, &plan, &config)
+        .map(|fingerprint| fingerprint)
+        .map_err(|error| napi_error(error.to_string()))
+}

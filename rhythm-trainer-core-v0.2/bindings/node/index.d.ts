@@ -520,3 +520,12 @@ export declare class NativeTakeCoordinator {
   snapshot(): JsTakeSnapshot
   sessionId(): string
 }
+
+/**
+ * R2-3c contract_v1 planner dual-run surface (JSON-in / JSON-out).
+ * Errors reject with `"<CODE>: <message>"` — the frozen ContractError code.
+ * Additive exports only: the production surface above is unchanged.
+ */
+export function buildPlanV1(documentJson: string, reportJson: string, configJson: string): string
+export function buildParityCandidateV1(documentJson: string, reportJson: string, configJson: string): string
+export function planFingerprintV1Gate(documentJson: string, reportJson: string, planJson: string, configJson: string): string

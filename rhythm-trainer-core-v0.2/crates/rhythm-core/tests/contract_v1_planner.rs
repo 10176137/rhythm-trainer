@@ -15,7 +15,7 @@
 
 use rhythm_core::contract_v1::document::compute_score_revision_id;
 use rhythm_core::contract_v1::{
-    build_plan_v1, plan_fingerprint_v1_gate, validate_score_document_v1,
+    build_parity_candidate_v1, build_plan_v1, plan_fingerprint_v1_gate, validate_score_document_v1,
 };
 use serde_json::{json, Value};
 
@@ -33,31 +33,6 @@ fn corpus_files() -> Vec<std::path::PathBuf> {
         .collect();
     files.sort();
     files
-}
-
-/// Projects the PlannerOutput onto the ParityCandidate shape: occurrences
-/// drop the runtime keys (occurrenceId/scoreEventId live in runtimeIds and
-/// scoreEvents.runtimeOccurrenceId) and groups drop the member id lists
-/// (TS CanonicalGroup carries locators only); everything else compares as-is.
-fn project_plan_to_candidate(plan: &Value) -> Value {
-    let strip = |value: &Value, keys: &[&str]| {
-        let mut object = value.clone();
-        if let Some(map) = object.as_object_mut() {
-            for key in keys {
-                map.remove(*key);
-            }
-        }
-        object
-    };
-    json!({
-        "occurrences": plan["occurrences"].as_array().expect("occurrences array")
-            .iter().map(|occurrence| strip(occurrence, &["occurrenceId", "scoreEventId"])).collect::<Vec<_>>(),
-        "groups": plan["groups"].as_array().expect("groups array")
-            .iter().map(|group| strip(group, &["occurrenceIds", "scoreEventIds"])).collect::<Vec<_>>(),
-        "atoms": plan["atoms"].clone(),
-        "scoreEvents": plan["scoreEvents"].clone(),
-        "runtimeIds": plan["runtimeIds"].clone(),
-    })
 }
 
 fn assert_section_eq(case_id: &str, section: &str, expected: &Value, actual: &Value) {
@@ -99,10 +74,14 @@ fn frozen_corpus_matches_the_ts_pipeline_field_by_field() {
         let issues = validate_score_document_v1(document);
         assert!(issues.is_empty(), "{case_id}: corpus document must be clean: {issues:?}");
 
-        // THE planner call under test.
+        // THE planner calls under test: the gate takes the PlannerOutput, the
+        // parity candidate is the frozen ParityCandidate projection (R2-3c
+        // dual-run shape — same function the NAPI surface exports).
         let plan = build_plan_v1(document, report, config)
             .unwrap_or_else(|error| panic!("{case_id}: build_plan_v1 failed: {} ({})", error.code, error));
-        let candidate = project_plan_to_candidate(&plan);
+        let projected = build_parity_candidate_v1(document, report, config)
+            .unwrap_or_else(|error| panic!("{case_id}: candidate projection failed: {} ({})", error.code, error));
+        let candidate = &projected["candidate"];
         // atoms[].beat is a DISPLAY field (R2-1 §3.3): the authoritative
         // diffCandidates records its differences as serialization-only and
         // never a truth source — serde_json's float parsing can differ by one
@@ -129,12 +108,12 @@ fn frozen_corpus_matches_the_ts_pipeline_field_by_field() {
         }
 
         // Planner-domain metadata: issues, scope codes, hand-filter misses,
-        // atom blockers, strict flag.
-        assert_eq!(plan["planStrictAllowed"], meta["planStrictAllowed"], "{case_id}: planStrictAllowed");
-        assert_eq!(plan["planIssues"], meta["planIssues"], "{case_id}: planIssues");
-        assert_eq!(plan["scopeCodes"], meta["scopeCodes"], "{case_id}: scopeCodes");
-        assert_eq!(plan["missingEventIds"], meta["missingEventIds"], "{case_id}: missingEventIds");
-        assert_eq!(plan["atomIssueCodes"], meta["atomIssueCodes"], "{case_id}: atomIssueCodes");
+        // atom blockers, strict flag (from the candidate's meta projection).
+        assert_eq!(projected["meta"]["planStrictAllowed"], meta["planStrictAllowed"], "{case_id}: planStrictAllowed");
+        assert_eq!(projected["meta"]["planIssues"], meta["planIssues"], "{case_id}: planIssues");
+        assert_eq!(projected["meta"]["scopeCodes"], meta["scopeCodes"], "{case_id}: scopeCodes");
+        assert_eq!(projected["meta"]["missingEventIds"], meta["missingEventIds"], "{case_id}: missingEventIds");
+        assert_eq!(projected["meta"]["atomIssueCodes"], meta["atomIssueCodes"], "{case_id}: atomIssueCodes");
 
         // L1: the a3 gate over the RUST plan must reproduce the TS gate's
         // fingerprint byte-for-byte — or its exact error code when blocked.

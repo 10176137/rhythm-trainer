@@ -24,7 +24,7 @@ pub use error::ContractError;
 pub use fingerprint::{canonical_bytes, compute_plan_fingerprint_v1, sha256_hex};
 pub use gate::{build_payload, plan_fingerprint_v1_gate};
 pub use payload::PlanFingerprintPayloadV1;
-pub use planner::build_plan_v1;
+pub use planner::{build_parity_candidate_v1, build_plan_v1};
 pub use project::project_score_document_v1;
 pub use rational::RationalV1;
 pub use time::{beat_to_microseconds, count_in_beats, target_onset_us};
