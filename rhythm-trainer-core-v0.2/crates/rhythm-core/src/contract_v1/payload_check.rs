@@ -297,7 +297,8 @@ pub fn validate_plan_fingerprint_payload_v1(payload: &Value) -> Vec<Issue> {
                             if part.is_empty() || measure.is_none() || ordinal.is_none() {
                                 issues.push(issue("invalid_member", "sourceLocator must carry partId/measureOrdinal/sourceOrdinal"));
                             } else {
-                                let key = format!("{part}:{measure:?}:{ordinal:?}");
+                                let voice = locator.get("voiceId").and_then(Value::as_str).unwrap_or("");
+                            let key = format!("{part}:{measure:?}:{ordinal:?}:{voice}");
                                 if !locators.insert(key.clone()) {
                                     issues.push(issue("duplicate_member_locator",
                                         format!("member locator duplicated: {key}")));

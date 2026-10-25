@@ -23,6 +23,81 @@ fn issue(code: &str, message: impl Into<String>) -> Issue {
     Issue { code: code.to_string(), message: message.into() }
 }
 
+
+/// Schema-tier violation (TS routes these through AJV as schema_violation).
+fn schema_violation(message: impl Into<String>) -> Issue {
+    issue("schema_violation", message)
+}
+
+fn check_integer_bounds(value: Option<&Value>, context: &str, min: i64, max: Option<i64>, issues: &mut Vec<Issue>) {
+    match value.and_then(Value::as_i64) {
+        None => issues.push(schema_violation(format!("{context}: must be an integer"))),
+        Some(v) => {
+            if v < min {
+                issues.push(schema_violation(format!("{context}: must be >= {min}")));
+            } else if let Some(max) = max {
+                if v > max {
+                    issues.push(schema_violation(format!("{context}: must be <= {max}")));
+                }
+            }
+        }
+    }
+}
+
+fn check_string_field(value: Option<&Value>, context: &str, min_len: usize, issues: &mut Vec<Issue>) {
+    let ok = value.and_then(Value::as_str).map(|s| s.len() >= min_len).unwrap_or(false);
+    if !ok {
+        issues.push(schema_violation(format!("{context}: must be a string of length >= {min_len}")));
+    }
+}
+
+fn check_boolean_field(value: Option<&Value>, context: &str, issues: &mut Vec<Issue>) {
+    if !value.map(Value::is_boolean).unwrap_or(false) {
+        issues.push(schema_violation(format!("{context}: must be a boolean")));
+    }
+}
+
+fn check_enum(value: Option<&Value>, allowed: &[&str], context: &str, issues: &mut Vec<Issue>) {
+    let actual = value.and_then(Value::as_str);
+    if !actual.map(|v| allowed.contains(&v)).unwrap_or(false) {
+        issues.push(schema_violation(format!(
+            "{context}: must be one of {} (got {})",
+            allowed.join("|"),
+            value.map(|v| v.to_string()).unwrap_or_else(|| "missing".into())
+        )));
+    }
+}
+
+fn check_string_array(value: Option<&Value>, context: &str, issues: &mut Vec<Issue>) {
+    match value {
+        Some(Value::Array(items)) => {
+            for item in items {
+                if !item.is_string() {
+                    issues.push(schema_violation(format!("{context}: items must be strings")));
+                    return;
+                }
+            }
+        }
+        _ => issues.push(schema_violation(format!("{context}: must be an array of strings"))),
+    }
+}
+
+/// Closed-object gate: reports unexpected + missing fields, returns whether
+/// the value is an object (callers skip field checks when false).
+fn check_object_shape(
+    value: &Value,
+    allowed: &[&str],
+    context: &str,
+    issues: &mut Vec<Issue>,
+) -> bool {
+    if !is_object(value) {
+        issues.push(schema_violation(format!("{context} must be an object")));
+        return false;
+    }
+    check_closed_keys(value, allowed, context, issues);
+    check_required_keys(value, allowed, context, issues);
+    true
+}
 pub fn is_object(value: &Value) -> bool {
     value.is_object()
 }
@@ -168,11 +243,16 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
     }
     match dto.get("capabilities") {
         Some(Value::Array(capabilities)) => {
+            let mut seen = std::collections::HashSet::new();
             for capability in capabilities {
-                let ok = capability.as_str().map(|c| CAPABILITY_ENUM.contains(&c)).unwrap_or(false);
+                let name = capability.as_str();
+                let ok = name.map(|c| CAPABILITY_ENUM.contains(&c)).unwrap_or(false);
                 if !ok {
                     issues.push(issue("unknown_capability",
                         format!("capability not in frozen enum: {}", capability)));
+                }
+                if !seen.insert(capability.to_string()) {
+                    issues.push(schema_violation("capabilities: items must be unique"));
                 }
             }
         }
@@ -202,6 +282,7 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
         } else if !part_ids.insert(part_id.to_string()) {
             issues.push(issue("duplicate_part_id", format!("partId duplicated: {part_id}")));
         }
+        check_string_field(part.get("name"), "part.name", 0, &mut issues);
         check_positive_integer(&part["staves"], "part.staves", 1, &mut issues);
         let measures = match part.get("measures") {
             Some(Value::Array(measures)) => measures.clone(),
@@ -237,6 +318,44 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
             if !measure.get("implicit").map(Value::is_boolean).unwrap_or(false) {
                 issues.push(issue("invalid_implicit", "measure.implicit must be boolean"));
             }
+
+            // MeasureAttributesV1 (frozen schema: all five fields required, closed).
+            if let Some(attributes) = measure.get("attributes") {
+                const ATTR_ALLOWED: [&str; 5] = ["divisions", "time", "key", "staves", "clefs"];
+                if check_object_shape(attributes, &ATTR_ALLOWED, "measure.attributes", &mut issues) {
+                    check_integer_bounds(attributes.get("divisions"), "measure.attributes.divisions", 1, None, &mut issues);
+                    if let Some(time) = attributes.get("time") {
+                        const TIME_ALLOWED: [&str; 2] = ["beats", "beatType"];
+                        if check_object_shape(time, &TIME_ALLOWED, "measure.attributes.time", &mut issues) {
+                            check_integer_bounds(time.get("beats"), "measure.attributes.time.beats", 1, None, &mut issues);
+                            check_integer_bounds(time.get("beatType"), "measure.attributes.time.beatType", 1, None, &mut issues);
+                        }
+                    }
+                    if let Some(key) = attributes.get("key") {
+                        const KEY_ALLOWED: [&str; 2] = ["fifths", "mode"];
+                        if check_object_shape(key, &KEY_ALLOWED, "measure.attributes.key", &mut issues) {
+                            check_integer_bounds(key.get("fifths"), "measure.attributes.key.fifths", -7, Some(7), &mut issues);
+                            check_string_field(key.get("mode"), "measure.attributes.key.mode", 0, &mut issues);
+                        }
+                    }
+                    check_integer_bounds(attributes.get("staves"), "measure.attributes.staves", 1, None, &mut issues);
+                    match attributes.get("clefs") {
+                        Some(Value::Array(clefs)) => {
+                            for clef in clefs {
+                                const CLEF_ALLOWED: [&str; 3] = ["staffNumber", "sign", "line"];
+                                if check_object_shape(clef, &CLEF_ALLOWED, "measure.attributes.clefs[]", &mut issues) {
+                                    check_integer_bounds(clef.get("staffNumber"), "measure.attributes.clefs[].staffNumber", 1, None, &mut issues);
+                                    check_string_field(clef.get("sign"), "measure.attributes.clefs[].sign", 1, &mut issues);
+                                    check_integer_bounds(clef.get("line"), "measure.attributes.clefs[].line", 1, None, &mut issues);
+                                }
+                            }
+                        }
+                        _ => issues.push(schema_violation("measure.attributes.clefs must be an array")),
+                    }
+                }
+            } else {
+                issues.push(issue("missing_field", "measure.attributes is required (frozen schema)"));
+            }
             check_rational(measure.get("startBeat").unwrap_or(&Value::Null), "measure.startBeat", &mut issues);
             check_rational(measure.get("durationBeat").unwrap_or(&Value::Null), "measure.durationBeat", &mut issues);
             match measure.get("events") {
@@ -261,15 +380,45 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
                 _ => issues.push(issue("invalid_events", "measure.events must be an array")),
             }
             match measure.get("barlines") {
-                Some(Value::Array(_)) => {}
+                Some(Value::Array(barlines)) => {
+                    for barline in barlines {
+                        const BARLINE_ALLOWED: [&str; 4] = ["location", "barStyle", "repeat", "ending"];
+                        if check_object_shape(barline, &BARLINE_ALLOWED, "measure.barlines[]", &mut issues) {
+                            check_string_field(barline.get("location"), "measure.barlines[].location", 0, &mut issues);
+                            check_string_field(barline.get("barStyle"), "measure.barlines[].barStyle", 0, &mut issues);
+                            if let Some(repeat) = barline.get("repeat") {
+                                const REPEAT_ALLOWED: [&str; 3] = ["direction", "times", "afterJump"];
+                                if check_object_shape(repeat, &REPEAT_ALLOWED, "measure.barlines[].repeat", &mut issues) {
+                                    check_enum(repeat.get("direction"), &["forward", "backward"],
+                                        "measure.barlines[].repeat.direction", &mut issues);
+                                    check_integer_bounds(repeat.get("times"), "measure.barlines[].repeat.times", 1, None, &mut issues);
+                                    check_boolean_field(repeat.get("afterJump"), "measure.barlines[].repeat.afterJump", &mut issues);
+                                }
+                            }
+                            if let Some(ending) = barline.get("ending") {
+                                const ENDING_ALLOWED: [&str; 2] = ["number", "type"];
+                                if check_object_shape(ending, &ENDING_ALLOWED, "measure.barlines[].ending", &mut issues) {
+                                    check_string_field(ending.get("number"), "measure.barlines[].ending.number", 0, &mut issues);
+                                    check_enum(ending.get("type"), &["start", "stop", "discontinue"],
+                                        "measure.barlines[].ending.type", &mut issues);
+                                }
+                            }
+                        }
+                    }
+                }
                 _ => issues.push(issue("invalid_barlines", "measure.barlines must be an array")),
             }
             match measure.get("capabilities") {
                 Some(Value::Array(capabilities)) => {
+                    let mut seen = std::collections::HashSet::new();
                     for capability in capabilities {
-                        if capability.as_str() != Some("chords") && capability.as_str() != Some("tuplets") {
+                        let name = capability.as_str();
+                        if name != Some("chords") && name != Some("tuplets") {
                             issues.push(issue("unknown_capability",
                                 format!("measure capability not in enum: {capability}")));
+                        }
+                        if !seen.insert(capability.to_string()) {
+                            issues.push(schema_violation("measure capabilities: items must be unique"));
                         }
                     }
                 }
@@ -356,6 +505,7 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
                     continue;
                 }
                 check_closed_keys(mark, &["measureOrdinal", "beat", "bpm", "kind"], "tempoMark", &mut issues);
+                check_integer_bounds(mark.get("measureOrdinal"), "tempoMark.measureOrdinal", 1, None, &mut issues);
                 check_rational(mark.get("beat").unwrap_or(&Value::Null), "tempoMark.beat", &mut issues);
                 check_rational(mark.get("bpm").unwrap_or(&Value::Null), "tempoMark.bpm", &mut issues);
                 if mark.get("kind").and_then(Value::as_str) != Some("metronome")

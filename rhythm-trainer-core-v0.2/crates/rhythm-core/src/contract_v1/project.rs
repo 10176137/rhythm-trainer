@@ -60,23 +60,47 @@ pub fn project_score_document_v1(
             format!("document fingerprint {source_fingerprint_prefixed} does not match report fingerprint {report_fingerprint}")));
     }
 
-    // Closed capability enums on both the document and the report.
+    // Closed capability enums on both the document and the report. Missing
+    // fields, non-array values and non-string entries are ALL rejections —
+    // silently treating them as empty would be a fail-open (fifth-round-style
+    // review discipline: a project() that looks successful must never be one).
     let mut capabilities: Vec<String> = Vec::new();
-    for (where_, value) in [("capability", document.get("capabilities")), ("report capability", report.get("capabilities"))] {
-        if let Some(list) = value.and_then(Value::as_array) {
-            for capability in list {
-                let Some(name) = capability.as_str() else {
-                    return Err(err("UNKNOWN_CAPABILITY",
-                        format!("{where_} not in frozen enum: {capability}")));
-                };
-                if !CAPABILITY_ENUM.contains(&name) {
-                    return Err(err("UNKNOWN_CAPABILITY",
-                        format!("{where_} not in frozen enum: {name}")));
-                }
-                if !capabilities.iter().any(|existing| existing == name) {
-                    capabilities.push(name.to_string());
-                }
-            }
+    let document_capabilities = document.get("capabilities").ok_or_else(|| {
+        err("UNKNOWN_CAPABILITY", "document.capabilities missing")
+    })?;
+    let Value::Array(document_list) = document_capabilities else {
+        return Err(err("UNKNOWN_CAPABILITY",
+            "document.capabilities must be an array"));
+    };
+    for capability in document_list {
+        let Some(name) = capability.as_str() else {
+            return Err(err("UNKNOWN_CAPABILITY",
+                format!("capability not in frozen enum: {capability}")));
+        };
+        if !CAPABILITY_ENUM.contains(&name) {
+            return Err(err("UNKNOWN_CAPABILITY",
+                format!("capability not in frozen enum: {name}")));
+        }
+        capabilities.push(name.to_string());
+    }
+    let report_capabilities = report.get("capabilities").ok_or_else(|| {
+        err("UNKNOWN_CAPABILITY", "report.capabilities missing")
+    })?;
+    let Value::Array(report_list) = report_capabilities else {
+        return Err(err("UNKNOWN_CAPABILITY",
+            "report.capabilities must be an array"));
+    };
+    for capability in report_list {
+        let Some(name) = capability.as_str() else {
+            return Err(err("UNKNOWN_CAPABILITY",
+                format!("report capability not in frozen enum: {capability}")));
+        };
+        if !CAPABILITY_ENUM.contains(&name) {
+            return Err(err("UNKNOWN_CAPABILITY",
+                format!("report capability not in frozen enum: {name}")));
+        }
+        if !capabilities.iter().any(|existing| existing == name) {
+            capabilities.push(name.to_string());
         }
     }
     capabilities.sort();

@@ -337,3 +337,162 @@ fn rust_payload_matches_the_ts_built_payload_object() {
         "Rust payload must equal the TS-built payload object"
     );
 }
+
+
+// ---- Fifth-follow-up: projection fail-open closure + locator voiceId ----
+
+fn payload_codes(value: &Value) -> Vec<String> {
+    validate_plan_fingerprint_payload_v1(value).into_iter().map(|issue| issue.code).collect()
+}
+
+#[test]
+fn gate_rejects_missing_or_mistyped_capabilities() {
+    let fixture = load_fixture();
+
+    // document.capabilities removed.
+    let mut no_caps = fixture["document"].clone();
+    no_caps.as_object_mut().unwrap().remove("capabilities");
+    let error = plan_fingerprint_v1_gate(
+        &no_caps, &fixture["report"], &fixture["plannerOutput"], &fixture["config"],
+    )
+    .expect_err("missing document capabilities must fail closed");
+    assert_eq!(error.code, "UNKNOWN_CAPABILITY");
+
+    // document.capabilities wrong type.
+    let mut bad_type = fixture["document"].clone();
+    bad_type["capabilities"] = Value::String("chords".into());
+    let error = plan_fingerprint_v1_gate(
+        &bad_type, &fixture["report"], &fixture["plannerOutput"], &fixture["config"],
+    )
+    .expect_err("mistyped document capabilities must fail closed");
+    assert_eq!(error.code, "UNKNOWN_CAPABILITY");
+
+    // report.capabilities removed and mistyped.
+    let mut no_report_caps = fixture["report"].clone();
+    no_report_caps.as_object_mut().unwrap().remove("capabilities");
+    let error = plan_fingerprint_v1_gate(
+        &fixture["document"], &no_report_caps, &fixture["plannerOutput"], &fixture["config"],
+    )
+    .expect_err("missing report capabilities must fail closed");
+    assert_eq!(error.code, "UNKNOWN_CAPABILITY");
+
+    let mut bad_report_caps = fixture["report"].clone();
+    bad_report_caps["capabilities"] = Value::from(7);
+    let error = plan_fingerprint_v1_gate(
+        &fixture["document"], &bad_report_caps, &fixture["plannerOutput"], &fixture["config"],
+    )
+    .expect_err("mistyped report capabilities must fail closed");
+    assert_eq!(error.code, "UNKNOWN_CAPABILITY");
+}
+
+#[test]
+fn schema_tier_gaps_are_reported_by_the_validator() {
+    let fixture = load_fixture();
+    let base = fixture["document"].clone();
+    fn codes(value: &Value) -> Vec<String> {
+        validate_score_document_v1(value).into_iter().map(|i| i.code).collect()
+    }
+
+    // measure.attributes missing entirely.
+    let mut no_attributes = base.clone();
+    no_attributes["parts"][0]["measures"][0].as_object_mut().unwrap().remove("attributes");
+    let attributes_codes = payload_codes(&no_attributes);
+    assert!(attributes_codes.contains(&"missing_field".to_string()), "codes: {attributes_codes:?}");
+
+    // attributes missing divisions.
+    let mut no_divisions = base.clone();
+    no_divisions["parts"][0]["measures"][0]["attributes"]
+        .as_object_mut().unwrap().remove("divisions");
+    assert!(codes(&no_divisions).contains(&"missing_field".to_string()));
+
+    // divisions out of range (schema tier: minimum 1).
+    let mut zero_divisions = base.clone();
+    zero_divisions["parts"][0]["measures"][0]["attributes"]["divisions"] = Value::from(0);
+    assert!(codes(&zero_divisions).contains(&"schema_violation".to_string()));
+
+    // time missing beatType.
+    let mut no_beat_type = base.clone();
+    no_beat_type["parts"][0]["measures"][0]["attributes"]["time"]
+        .as_object_mut().unwrap().remove("beatType");
+    assert!(codes(&no_beat_type).contains(&"missing_field".to_string()));
+
+    // key.fifths out of the frozen -7..=7 range.
+    let mut bad_fifths = base.clone();
+    bad_fifths["parts"][0]["measures"][0]["attributes"]["key"]["fifths"] = Value::from(8);
+    assert!(codes(&bad_fifths).contains(&"schema_violation".to_string()));
+
+    // clef missing sign.
+    let mut no_sign = base.clone();
+    no_sign["parts"][0]["measures"][0]["attributes"]["clefs"][0]
+        .as_object_mut().unwrap().remove("sign");
+    assert!(payload_codes(&no_sign).contains(&"missing_field".to_string()));
+
+    // barline repeat with an unknown direction.
+    let mut bad_direction = base.clone();
+    bad_direction["parts"][0]["measures"][0]["barlines"] = serde_json::json!([
+        { "repeat": { "direction": "sideways" } }
+    ]);
+    assert!(codes(&bad_direction).contains(&"schema_violation".to_string()));
+
+    // barline ending with an unknown type.
+    let mut bad_ending = base.clone();
+    bad_ending["parts"][0]["measures"][0]["barlines"] = serde_json::json!([
+        { "ending": { "type": "pause" } }
+    ]);
+    assert!(codes(&bad_ending).contains(&"schema_violation".to_string()));
+
+    // A1/A2 fixes must not disturb the legal fixture.
+    let base_codes = codes(&base);
+    assert!(base_codes.is_empty(), "legal fixture must stay clean: {base_codes:?}");
+}
+
+// A3: payload member locator identity includes voiceId — same
+// partId/measureOrdinal/sourceOrdinal with a different voiceId is a
+// DIFFERENT member (TS locatorKey uses voiceId ?? '').
+#[test]
+fn payload_locator_identity_includes_voice_id() {
+    let member = |voice: &str| serde_json::json!({
+        "sourceLocator": { "partId": "P1", "measureOrdinal": 1, "sourceOrdinal": 1, "voiceId": voice },
+        "pitch": { "midiNote": 60, "spelling": "C4" },
+        "durationBeat": { "numerator": 1, "denominator": 1 }
+    });
+    let payload_for = |members: Value| serde_json::json!({
+        "fingerprintSchemaVersion": 1,
+        "plannerVersion": "parity-harness-1",
+        "scoreRevisionId": "score-revision-v1:sha256:3b7309c75e2c549a6b532568fdbe6cf5befc35d60d3bb15f7b2c34585bfa0b3d",
+        "normalizerVersion": "normalizer-1",
+        "supportProfileVersion": "musicxml-v1.0",
+        "scope": {
+            "partId": "P1",
+            "range": { "startMeasureOrdinal": 1, "endMeasureOrdinal": 1 },
+            "hand": "both",
+            "handMapping": { "schemaVersion": 1, "mappingVersion": "hand-mapping-1", "source": "user",
+                "parts": [{ "partId": "P1", "staves": [{ "staffNumber": 1, "hand": "right" }] }] }
+        },
+        "repeatSelection": { "kind": "none" },
+        "tempo": {
+            "bpm": { "numerator": 80, "denominator": 1 }, "ticksPerQuarter": 960,
+            "countInBeats": { "numerator": 4, "denominator": 1 }, "timeOrigin": "playback-start"
+        },
+        "targetGroups": [{
+            "groupIndex": 0, "passIndex": 0, "bar": 1,
+            "onsetBeatFromRangeStart": { "numerator": 0, "denominator": 1 },
+            "durationBeat": { "numerator": 1, "denominator": 1 },
+            "beatInMeasure": { "numerator": 0, "denominator": 1 },
+            "staffNumbers": [1], "voiceIds": ["1", "2"],
+            "members": members
+        }]
+    });
+
+    // Same full quadruple twice -> duplicate_member_locator.
+    let duplicated = serde_json::json!([member("1"), member("1")]);
+    let codes: Vec<String> = validate_plan_fingerprint_payload_v1(&payload_for(duplicated))
+        .into_iter().map(|issue| issue.code).collect();
+    assert!(codes.contains(&"duplicate_member_locator".to_string()), "codes: {codes:?}");
+
+    // Different voiceId only -> the TS locatorKey differs -> NO duplicate.
+    let distinct_voices = serde_json::json!([member("1"), member("2")]);
+    let codes: Vec<String> = validate_plan_fingerprint_payload_v1(&payload_for(distinct_voices))
+        .into_iter().map(|issue| issue.code).collect();
+    assert!(!codes.contains(&"duplicate_member_locator".to_string()), "codes: {codes:?}");
+}
