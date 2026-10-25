@@ -1,18 +1,18 @@
 {
  "schemaVersion": "r2-3d-migration-evidence-v1",
- "generatedAt": "2026-10-25T13:44:07.904Z",
+ "generatedAt": "2026-10-25T14:00:03.097Z",
  "command": "npx vitest run src/score-engine/parity/r2-3d-evidence.test.ts (+ cargo test contract_v1_r23d_evidence, acceptance suites)",
- "verifiedCodeSha": "9c11dc84ca538d5e6b9ed25739b600405ab469c5",
+ "verifiedCodeSha": "d36d707a782cb90842311e413daaa7f97c527e4a",
  "sides": {
   "ts": {
    "pipeline": "buildTsCandidate (live)",
    "plannerVersion": "parity-harness-1",
-   "gitSha": "9c11dc84ca538d5e6b9ed25739b600405ab469c5"
+   "gitSha": "d36d707a782cb90842311e413daaa7f97c527e4a"
   },
   "rust": {
    "pipeline": "build_plan_v1 via NAPI (live)",
    "plannerVersion": "parity-harness-1",
-   "gitSha": "9c11dc84ca538d5e6b9ed25739b600405ab469c5"
+   "gitSha": "d36d707a782cb90842311e413daaa7f97c527e4a"
   },
   "note": "single repo: one commit pins both TS and Rust sources"
  },
@@ -5510,15 +5510,72 @@
    {
     "caseId": "A4-multivoice",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:84ab007a8c2a2a0d1c5b4316a6791036604eed7f4d3b1d776132c197a508f71d",
+    "rustFingerprint": "plan-v1:sha256:84ab007a8c2a2a0d1c5b4316a6791036604eed7f4d3b1d776132c197a508f71d",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 A4: multi-voice same onset"
     ]
@@ -5526,15 +5583,72 @@
    {
     "caseId": "A9-mixed-duration",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:97875afe2ad7a00b6439207ead1008c4a380a9deb6674c0d8e7e0564c7370f66",
+    "rustFingerprint": "plan-v1:sha256:97875afe2ad7a00b6439207ead1008c4a380a9deb6674c0d8e7e0564c7370f66",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 A9: same onset, mixed durations (group = longest member)"
     ]
@@ -5542,15 +5656,72 @@
    {
     "caseId": "G1-A10-loop-x2",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:af3900c4bfaa47ec442dacb204674de425051eabdc7603b46e16fedf83b8362c",
+    "rustFingerprint": "plan-v1:sha256:af3900c4bfaa47ec442dacb204674de425051eabdc7603b46e16fedf83b8362c",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 G1+A10: range-loop ×2 (pass offset, unique occurrenceId per pass)"
     ]
@@ -5558,15 +5729,72 @@
    {
     "caseId": "G1-A10-loop-x3",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:56746cd7698c7f9bb8d174d6b56eea7451c0fc3bb8fedf9a30556a215f664797",
+    "rustFingerprint": "plan-v1:sha256:56746cd7698c7f9bb8d174d6b56eea7451c0fc3bb8fedf9a30556a215f664797",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 G1+A10: range-loop ×3"
     ]
@@ -5574,15 +5802,72 @@
    {
     "caseId": "G1-A5-range-m2",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:0d2453632a532907a7196486c286575f940a2365ddb949e9c75b37a55c40747a",
+    "rustFingerprint": "plan-v1:sha256:0d2453632a532907a7196486c286575f940a2365ddb949e9c75b37a55c40747a",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 G1+A5: range re-basing (m2)"
     ]
@@ -5590,15 +5875,72 @@
    {
     "caseId": "G1-base",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:1ef79b9ca10910dfa7f8d3e66e6cd06dee7a466ae9d00af4717705f0e454510c",
+    "rustFingerprint": "plan-v1:sha256:1ef79b9ca10910dfa7f8d3e66e6cd06dee7a466ae9d00af4717705f0e454510c",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 hand truth G1 (manual golden)"
     ]
@@ -5606,15 +5948,72 @@
    {
     "caseId": "G1-rational-bpm",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:ea10410f4a98984241e67cadeb3e59249a88380d877938c2fe248ed8f3f69eb4",
+    "rustFingerprint": "plan-v1:sha256:ea10410f4a98984241e67cadeb3e59249a88380d877938c2fe248ed8f3f69eb4",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 vectors row: non-integer rational BPM (175/2) parity side"
     ]
@@ -5622,15 +6021,72 @@
    {
     "caseId": "G2-base",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:ce18e0cfe05c474874648c7571cc0450bf62918077a2f579137573fc991c80ad",
+    "rustFingerprint": "plan-v1:sha256:ce18e0cfe05c474874648c7571cc0450bf62918077a2f579137573fc991c80ad",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 hand truth G2 (manual golden)"
     ]
@@ -5638,15 +6094,72 @@
    {
     "caseId": "G3-base",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:47df4d0b17bf14795357555b42a19e23be9d9cc1bb6a98e5286da803cc39d4ce",
+    "rustFingerprint": "plan-v1:sha256:47df4d0b17bf14795357555b42a19e23be9d9cc1bb6a98e5286da803cc39d4ce",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 hand truth G3 (tie)"
     ]
@@ -5654,15 +6167,76 @@
    {
     "caseId": "G3-range-m2",
     "l1FingerprintMatch": true,
+    "tsFingerprint": null,
+    "rustFingerprint": null,
+    "fingerprintErrorCode": "PAYLOAD_VALIDATION_FAILED",
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "blocked",
+      "issueCodes": [
+       "no_playable_notes"
+      ],
+      "fingerprintErrorCode": "PAYLOAD_VALIDATION_FAILED"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": true,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": true,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 G3 tie × range edge: tie START OUTSIDE range — continuation emits no occurrence, no re-anchor"
     ]
@@ -5670,15 +6244,72 @@
    {
     "caseId": "G4-base",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:a52614ebee8abc463f8f5c4003bc3361a0adfdd2772f429463e9b56db90a485e",
+    "rustFingerprint": "plan-v1:sha256:a52614ebee8abc463f8f5c4003bc3361a0adfdd2772f429463e9b56db90a485e",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 hand truth G4"
     ]
@@ -5686,15 +6317,72 @@
    {
     "caseId": "G5-base",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:ae7293cd39836316548709d5f441901354dc317c4b45206999f5a1708591335b",
+    "rustFingerprint": "plan-v1:sha256:ae7293cd39836316548709d5f441901354dc317c4b45206999f5a1708591335b",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 G5 non-4/4 row"
     ]
@@ -5702,15 +6390,72 @@
    {
     "caseId": "G6-A3-base",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:f67fd6e87c2d28997639b2f5624ca9dbdb5ec5a1f178f1e259c2405e3d10715c",
+    "rustFingerprint": "plan-v1:sha256:f67fd6e87c2d28997639b2f5624ca9dbdb5ec5a1f178f1e259c2405e3d10715c",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 G2 chord × hand row: same-onset chord, hand=both",
      "§7 A3 backup double-staff"
@@ -5719,15 +6464,72 @@
    {
     "caseId": "G6-A3-hand-left",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:904251663e9535508731bc2598593308b85bf68215488339241905d1dec0515d",
+    "rustFingerprint": "plan-v1:sha256:904251663e9535508731bc2598593308b85bf68215488339241905d1dec0515d",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 G1+A5: hand left (group members/duration reduced)"
     ]
@@ -5735,15 +6537,72 @@
    {
     "caseId": "G6-A3-hand-right",
     "l1FingerprintMatch": true,
+    "tsFingerprint": "plan-v1:sha256:9c540ca249535e157c84e131aaff08d7efd2114297e2ddbe78e04e6393365255",
+    "rustFingerprint": "plan-v1:sha256:9c540ca249535e157c84e131aaff08d7efd2114297e2ddbe78e04e6393365255",
+    "fingerprintErrorCode": null,
     "tsVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "rustVsExpected": {
      "pass": true,
-     "diffCount": 0
+     "diffCount": 0,
+     "categories": {
+      "identity-mapping": 0,
+      "serialization-only": 0,
+      "time-rounding": 0,
+      "semantic-defect": 0,
+      "unsupported-behavior": 0,
+      "unclassified": 0
+     },
+     "diffs": []
     },
     "l3InvariantsPass": true,
+    "l3Invariants": [
+     {
+      "check": "onset-group set == atom onset set (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "atom nominal duration == longest member duration (exact µs)",
+      "status": "pass"
+     },
+     {
+      "check": "scoreEvents measure set == atom bar set",
+      "status": "pass"
+     },
+     {
+      "check": "atom ticks are exact integers on the PPQ grid",
+      "status": "pass"
+     }
+    ],
+    "expectedOutcome": {
+     "frozen": {
+      "planStatus": "strict"
+     },
+     "ts": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "rust": {
+      "planStatusMatch": true,
+      "issueCodesMatch": null,
+      "fingerprintErrorCodeMatch": true,
+      "scopeCodesMatch": null
+     },
+     "allMatch": true
+    },
     "semanticPoints": [
      "§7 G1+A5: hand right"
     ]
@@ -5891,42 +6750,155 @@
     "detected": true,
     "classifiedCorrectly": true,
     "pathPrefixOk": true,
-    "reportFails": true
+    "reportFails": true,
+    "diffs": [
+     {
+      "path": "occurrences[P1:m1:e1:v1:p0].pitch.midiNote",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1",
+      "left": 60,
+      "right": 61
+     }
+    ]
    },
    {
     "faultId": "N-COUNT-F1",
     "detected": true,
     "classifiedCorrectly": true,
     "pathPrefixOk": true,
-    "reportFails": true
+    "reportFails": true,
+    "diffs": [
+     {
+      "path": "occurrences[P1:m2:e1:v1:p0].presence",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1",
+      "left": "absent",
+      "right": "present"
+     },
+     {
+      "path": "runtimeIds.occurrenceIds[1]",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1 (runtime ID structural rules)",
+      "left": "defined",
+      "right": "missing"
+     }
+    ]
    },
    {
     "faultId": "N-COUNT-F2",
     "detected": true,
     "classifiedCorrectly": true,
     "pathPrefixOk": true,
-    "reportFails": true
+    "reportFails": true,
+    "diffs": [
+     {
+      "path": "occurrences[P1:m2:e2:v1:p0].presence",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1",
+      "left": "absent",
+      "right": "present"
+     },
+     {
+      "path": "runtimeIds.occurrenceIds[5]",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1 (runtime ID structural rules)",
+      "left": "defined",
+      "right": "missing"
+     }
+    ]
    },
    {
     "faultId": "N-COUNT-F3",
     "detected": true,
     "classifiedCorrectly": true,
     "pathPrefixOk": true,
-    "reportFails": true
+    "reportFails": true,
+    "diffs": [
+     {
+      "path": "occurrences[P1:m1:e4:v1:p0].presence",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1",
+      "left": "present",
+      "right": "missing"
+     }
+    ]
    },
    {
     "faultId": "N-COUNT-F4",
     "detected": true,
     "classifiedCorrectly": true,
     "pathPrefixOk": true,
-    "reportFails": true
+    "reportFails": true,
+    "diffs": [
+     {
+      "path": "groups[p0@0/1].members.length",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.2",
+      "left": 2,
+      "right": 1
+     },
+     {
+      "path": "groups[p0@0/1].pitches",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.2",
+      "left": [
+       "C4",
+       "E4"
+      ],
+      "right": [
+       "C4"
+      ]
+     },
+     {
+      "path": "groups[p0@0/1].voiceIds",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.2",
+      "left": [
+       "1",
+       "2"
+      ],
+      "right": [
+       "1"
+      ]
+     }
+    ]
    },
    {
     "faultId": "N-COV-F1",
     "detected": true,
     "classifiedCorrectly": true,
     "pathPrefixOk": true,
-    "reportFails": true
+    "reportFails": true,
+    "diffs": [
+     {
+      "path": "atoms[tick=3840].presence",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.3",
+      "left": "present",
+      "right": "missing"
+     },
+     {
+      "path": "groups[p0@4/1].presence",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.2",
+      "left": "present",
+      "right": "missing"
+     },
+     {
+      "path": "occurrences[P1:m2:e1:v1:p0].presence",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.1",
+      "left": "present",
+      "right": "missing"
+     },
+     {
+      "path": "scoreEvents[P1:m2:e1:v1:p0].presence",
+      "category": "semantic-defect",
+      "ruleRef": "TS_RUST_PARITY_GATE_V1 §3.4/§3.5",
+      "left": "present",
+      "right": "missing"
+     }
+    ]
    }
   ],
   "classC": {
@@ -5944,6 +6916,7 @@
   "filePath": "D:\\123\\score-latest.musicxml",
   "fileSha256": "2654f28396448762febc969e69765cf4f928ea4b4b7f1dd4f02321a5bf65b935",
   "fileSizeBytes": 588536,
+  "importedMeasureCount": 113,
   "counts": {
    "measures": 113,
    "occurrences": 1579,
@@ -5962,7 +6935,40 @@
   "rustFingerprintStable": true,
   "rustFingerprint": "plan-v1:sha256:8a66ac7265ebd6019eca6c3463406e5f5a3226dcef151f0e104ebd824740de03",
   "tsFingerprintEqual": true,
-  "scoreEventUsExactCheck": "per-note targetOnsetUs/targetDurationUs verified field-exact against TS in E2/E6 (zero tolerance)",
+  "l2": {
+   "pass": true,
+   "diffCount": 0,
+   "categories": {
+    "identity-mapping": 0,
+    "serialization-only": 0,
+    "time-rounding": 0,
+    "semantic-defect": 0,
+    "unsupported-behavior": 0,
+    "unclassified": 0
+   },
+   "diffs": []
+  },
+  "l3": {
+   "pass": true,
+   "invariants": [
+    {
+     "check": "onset-group set == atom onset set (exact µs)",
+     "status": "pass"
+    },
+    {
+     "check": "atom nominal duration == longest member duration (exact µs)",
+     "status": "pass"
+    },
+    {
+     "check": "scoreEvents measure set == atom bar set",
+     "status": "pass"
+    },
+    {
+     "check": "atom ticks are exact integers on the PPQ grid",
+     "status": "pass"
+    }
+   ]
+  },
   "provenance": {
    "note": "Third-party OMR score, gitignored by policy; NOT committed. Present in the author local workspace only.",
    "localPathUsed": "D:\\123\\score-latest.musicxml",
@@ -6011,7 +7017,7 @@
     "name": "this report: per-case diffs, versions, both-side SHAs, fail-evidence-on-disk",
     "status": "PASS",
     "evidence": "audit-r1/reports/r2-3/r2-3d-migration-evidence-v1.json",
-    "detail": "written before the verdict; failing runs keep their evidence"
+    "detail": "written before the verdict; failing runs keep their evidence; structural completeness is verified, not assumed"
    }
   ],
   "verdict": "READY_FOR_SEPARATE_SWITCH_REVIEW",

@@ -3,6 +3,7 @@
  "filePath": "D:\\123\\score-latest.musicxml",
  "fileSha256": "2654f28396448762febc969e69765cf4f928ea4b4b7f1dd4f02321a5bf65b935",
  "fileSizeBytes": 588536,
+ "importedMeasureCount": 113,
  "counts": {
   "measures": 113,
   "occurrences": 1579,
@@ -21,7 +22,40 @@
  "rustFingerprintStable": true,
  "rustFingerprint": "plan-v1:sha256:8a66ac7265ebd6019eca6c3463406e5f5a3226dcef151f0e104ebd824740de03",
  "tsFingerprintEqual": true,
- "scoreEventUsExactCheck": "per-note targetOnsetUs/targetDurationUs verified field-exact against TS in E2/E6 (zero tolerance)",
+ "l2": {
+  "pass": true,
+  "diffCount": 0,
+  "categories": {
+   "identity-mapping": 0,
+   "serialization-only": 0,
+   "time-rounding": 0,
+   "semantic-defect": 0,
+   "unsupported-behavior": 0,
+   "unclassified": 0
+  },
+  "diffs": []
+ },
+ "l3": {
+  "pass": true,
+  "invariants": [
+   {
+    "check": "onset-group set == atom onset set (exact µs)",
+    "status": "pass"
+   },
+   {
+    "check": "atom nominal duration == longest member duration (exact µs)",
+    "status": "pass"
+   },
+   {
+    "check": "scoreEvents measure set == atom bar set",
+    "status": "pass"
+   },
+   {
+    "check": "atom ticks are exact integers on the PPQ grid",
+    "status": "pass"
+   }
+  ]
+ },
  "provenance": {
   "note": "Third-party OMR score, gitignored by policy; NOT committed. Present in the author local workspace only.",
   "localPathUsed": "D:\\123\\score-latest.musicxml",

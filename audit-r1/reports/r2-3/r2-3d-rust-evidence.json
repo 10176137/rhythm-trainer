@@ -1,4 +1,5 @@
 {
+  "schemaVersion": "r2-3d-rust-evidence-v1",
   "vectors": [
     {
       "vector": "V-single",
@@ -57,7 +58,6 @@
   ],
   "allByteExact": true,
   "rationalBpmVectorPresent": true,
-  "schemaVersion": "r2-3d-rust-evidence-v1",
   "classA": [
     {
       "id": "N-PITCH-S1",
