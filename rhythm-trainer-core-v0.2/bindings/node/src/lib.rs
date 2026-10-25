@@ -1910,3 +1910,24 @@ pub fn validate_candidate_score_events_json(
     };
     Ok(rhythm_core::contract_v1::validate_candidate_score_events(&events, &options).map(String::from))
 }
+
+/// R2-3g channel: the frozen time-conversion primitive (integer µs from a
+/// reduced rational beat + reduced rational BPM), exposed for the planner
+/// service's scoreEvents↔groups time-consistency checks.
+#[napi]
+pub fn beat_to_microseconds_json(beat_json: String, bpm_json: String) -> napi::Result<i64> {
+    use rhythm_core::contract_v1::RationalV1;
+    let parse = |text: &str, field: &str| -> napi::Result<RationalV1> {
+        let value = parse_json(text, field)?;
+        Ok(RationalV1 {
+            numerator: value.get("numerator").and_then(|v| v.as_i64())
+                .ok_or_else(|| napi_error(format!("{field}.numerator missing")))?,
+            denominator: value.get("denominator").and_then(|v| v.as_i64())
+                .ok_or_else(|| napi_error(format!("{field}.denominator missing")))?,
+        })
+    };
+    let beat = parse(&beat_json, "beat")?;
+    let bpm = parse(&bpm_json, "bpm")?;
+    rhythm_core::contract_v1::beat_to_microseconds(&beat, &bpm)
+        .map_err(|error| napi_error(error.to_string()))
+}

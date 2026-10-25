@@ -496,6 +496,12 @@ export declare function canonicalBytesJson(payloadJson: string): string
  * (non-array) payloads are REJECTED, never read as "no violation".
  */
 export declare function validateCandidateScoreEventsJson(eventsJson: string, atomBars?: Array<number> | undefined | null, prescriptionRange?: Array<number> | undefined | null): string | null
+/**
+ * R2-3g channel: the frozen time-conversion primitive (integer µs from a
+ * reduced rational beat + reduced rational BPM), exposed for the planner
+ * service's scoreEvents↔groups time-consistency checks.
+ */
+export declare function beatToMicrosecondsJson(beatJson: string, bpmJson: string): number
 export declare class NativeSession {
   constructor(targets: Array<JsTarget>, queueCapacity: number, finalizationGraceMs: number)
   start(): void

@@ -234,3 +234,17 @@ A/B/C 三方案九维对比与可证伪条件维持 R2-3f §8 不变。R1 的逐
 ## 10. 边界
 
 本 ADR（R1 修订）仍是**设计决策文档**：不实现开关与五步服务端路径、不修改任何生产代码/NAPI/协议/Schema/Gate/golden/向量/历史证据、不授权切换/灰度/合并 main。未解决问题清单为空——架构方案可进入下一张接入实现任务卡（范围 = GAP-1 开关 + §2.2 五步服务端封装 + §5 解析层 + §9 验收），逐项复审后仍须独立切换评审与用户单独授权。
+
+---
+
+## 11. R2-3g 实现约束（随第一阶段实现补充的实际代码决策）
+
+第一阶段实现（`server/planner-service.mjs` + `server/planner-service.test.mjs` + NAPI `beatToMicrosecondsJson`）落地了以下**实际代码约束**，作为本 ADR 的修订部分：
+
+1. **多 Part 拒绝**：`document.parts.length > 1` → `MULTI_PART_PLANNER_UNSUPPORTED` 拒绝（Rust planner 的多 Part 严格场景未经验证，绝不返回可能混合 Part 的计划）。多 Part 支持需后续任务卡。
+2. **plannerVersion 允许列表**：服务端信任值 `RUST_PLANNER_VERSION = 'rust-planner-1'`；请求携带不匹配值 → `INVALID_PLANNER_VERSION` 拒绝；缺失 → 注入信任值。生成、门禁、响应使用同一版本。
+3. **开关语义**：authority 来自显式参数 → `RHYTHM_PLANNER` env → 默认 `'rts'`（rust 路径默认关闭）；非法值 `INVALID_PLANNER_AUTHORITY` fail-closed；`rts` 下调用 rust 链路 → `PLANNER_PATH_DISABLED`（无 TS 回退）。
+4. **会话守卫**：`assertTimelineUsable`（strictAllowed ∧ scopeCodes 空 ∧ missingEventIds 空 ∧ atomIssueCodes 空 ∧ atoms 非空且数==groups ∧ scoreEvents 数/ID/measure 覆盖一致 ∧ planFingerprint 格式合法）与 `assertFollowUsable`（strictAllowed ∧ scopeCodes 空 ∧ missingEventIds 空 ∧ groups/occurrences 引用完整 ∧ planFingerprint）——follow **不**检查 atoms/scoreEvents（其不消费）。任一失败 → coded 拒绝，绝不补齐/取整/回退。
+5. **时间一致性原语**：`beatToMicrosecondsJson`（NAPI，冻结 time-conversion-v1）供 scoreEvents onset/duration 与 groups playbackBeat 的逐事件精确校验。
+
+验收：`server/planner-service.test.mjs` 10/10（真实 NAPI、无 plan mock；含真实谱端到端 1579/1018/1018/1579 + 指纹稳定 + timeline 守卫通过；真实谱 fixture 为本地 gitignored 文件，非 CI 可复跑——边界照旧标注）。
