@@ -11,9 +11,13 @@
 // disabled Rust path NEVER falls back to the TS planner — the caller
 // receives a coded rejection instead of a plan.
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
+// Native-ESM-safe module directory resolution (review finding 1):
+// __dirname does not exist in ESM; derive it from import.meta.url.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 
 const native = require(path.join(ROOT, 'rhythm-trainer-core-v0.2', 'bindings', 'node'));
@@ -136,6 +140,169 @@ export function usToMs(canonicalUs) {
   return canonicalUs / 1000;
 }
 
+/** Parses a reduced "n/d" canonical beat into {numerator, denominator}. */
+function parseBeatText(text, field) {
+  const match = /^(-?\d+)\/([1-9]\d*)$/.exec(String(text));
+  if (!match) throw new PlannerGateError('PLAN_SHAPE_INVALID', `${field}: malformed rational '${text}'`);
+  return { numerator: Number(match[1]), denominator: Number(match[2]) };
+}
+
+const beatJson = (beat) => JSON.stringify(beat);
+const bpmJsonOf = (bpm) => JSON.stringify(bpm);
+
+/**
+ * Deep timeline verification (review finding 2) against the plan's OWN
+ * trusted generation config, using the frozen Rust time primitive:
+ *  - scoreEvent.runtimeOccurrenceId <-> occurrence bijection;
+ *  - targetOnsetUs === countInUs + beatToMicroseconds(playbackBeat, bpm);
+ *  - targetDurationUs === beatToMicroseconds(durationBeat, bpm);
+ *  - every group's atom startTick/durationTicks === playbackBeat/durationBeat
+ *    scaled onto the ticksPerQuarter grid, exactly;
+ *  - no duplicate/missing/unmappable events.
+ * Runs on the SERVER path (verifyPlanIntegrity) before a plan is released —
+ * not only in tests. Any failure is a coded rejection; nothing is rounded,
+ * patched or degraded.
+ */
+export function verifyTimelineSemantics(plan, config) {
+  const failures = [];
+  const bpmText = bpmJsonOf(config.bpm);
+  const us = (beatText, field) => {
+    try {
+      return native.beatToMicrosecondsJson(beatJson(parseBeatText(beatText, field)), bpmText);
+    } catch (error) {
+      failures.push(`${field}:time-primitive:${error.message.split(':')[0]}`);
+      return null;
+    }
+  };
+  const beatTicks = (beatText, field) => {
+    const { numerator, denominator } = parseBeatText(beatText, field);
+    const scaled = numerator * config.ticksPerQuarter;
+    if (scaled % denominator !== 0) {
+      // Off-grid durations are the planner's OWN tick_grid_rounding case:
+      // the atom is legitimately MISSING and atomIssueCodes already rejects
+      // strict practice. Record it as informational, not a hard mismatch.
+      failures.push(`${field}:off-grid`);
+      return null;
+    }
+    return scaled / denominator;
+  };
+
+  const occurrences = plan.occurrences ?? [];
+  const scoreEvents = plan.scoreEvents ?? [];
+  const occurrenceById = new Map(occurrences.map((occurrence) => [occurrence.occurrenceId, occurrence]));
+  const seenEventIds = new Set();
+
+  if (scoreEvents.length !== occurrences.length) {
+    failures.push(`scoreEvents:count:${scoreEvents.length}!=${occurrences.length}`);
+  }
+  for (const event of scoreEvents) {
+    if (seenEventIds.has(event.runtimeOccurrenceId)) failures.push(`scoreEvents:duplicate:${event.runtimeOccurrenceId}`);
+    seenEventIds.add(event.runtimeOccurrenceId);
+    const occurrence = occurrenceById.get(event.runtimeOccurrenceId);
+    if (!occurrence) {
+      failures.push(`scoreEvents:dangling:${event.runtimeOccurrenceId}`);
+      continue;
+    }
+    const expectedOnset = us(occurrence.playbackBeat, `occurrence[${occurrence.occurrenceId}].playbackBeat`);
+    if (expectedOnset !== null && event.targetOnsetUs !== config.countInUs + expectedOnset) {
+      failures.push(`scoreEvents[${event.runtimeOccurrenceId}].targetOnsetUs:${event.targetOnsetUs}!=${config.countInUs + expectedOnset}`);
+    }
+    const expectedDuration = us(occurrence.durationBeat, `occurrence[${occurrence.occurrenceId}].durationBeat`);
+    if (expectedDuration !== null && event.targetDurationUs !== expectedDuration) {
+      failures.push(`scoreEvents[${event.runtimeOccurrenceId}].targetDurationUs:${event.targetDurationUs}!=${expectedDuration}`);
+    }
+  }
+  for (const occurrence of occurrences) {
+    if (!seenEventIds.has(occurrence.occurrenceId)) failures.push(`scoreEvents:missing:${occurrence.occurrenceId}`);
+  }
+
+  // Group <-> atom: exactly one atom per group, ticks exact. This layer is
+  // enforced only when the planner itself reports NO atom issues — when
+  // atomIssueCodes is non-empty the affected atoms are legitimately missing
+  // and strict practice is already rejected via the atom-issue guard; the
+  // verifier must not turn that planner-honest state into a different error.
+  const groups = plan.groups ?? [];
+  const atoms = plan.atoms ?? [];
+  const atomIssues = plan.atomIssueCodes ?? [];
+  if (atomIssues.length === 0) {
+    if (atoms.length !== groups.length) failures.push(`atoms:count:${atoms.length}!=${groups.length}`);
+    const seenAtomBeats = new Set();
+    for (const atom of atoms) {
+      const matched = groups.find((group) => {
+        const start = beatTicks(group.playbackBeat, 'group.playbackBeat');
+        const duration = beatTicks(group.durationBeat, 'group.durationBeat');
+        return start === atom.startTick && duration === atom.durationTicks && group.bar === atom.bar;
+      });
+      if (!matched) {
+        failures.push(`atom[startTick=${atom.startTick}]:no-exact-group`);
+      } else {
+        const groupKey = `${matched.passIndex}@${matched.playbackBeat}`;
+        if (seenAtomBeats.has(groupKey)) failures.push(`atom:duplicate-group:${groupKey}`);
+        seenAtomBeats.add(groupKey);
+      }
+    }
+    if (atoms.length === groups.length) {
+      for (const group of groups) {
+        const groupKey = `${group.passIndex}@${group.playbackBeat}`;
+        if (!seenAtomBeats.has(groupKey)) failures.push(`atom:missing-group:${groupKey}`);
+      }
+    }
+  }
+  if (failures.length > 0) {
+    throw new PlannerGateError('TIMELINE_SEMANTICS_REJECTED', failures.slice(0, 8).join('; '));
+  }
+  return true;
+}
+
+/**
+ * Follow cross-reference verification (review finding 3) between group
+ * occurrenceIds / scoreEventIds / members and the occurrences array.
+ * Atoms/scoreEvents stay OUT of the follow gate (not consumed).
+ */
+export function verifyFollowCrossReferences(plan) {
+  const failures = [];
+  const occurrences = plan.occurrences ?? [];
+  const groups = plan.groups ?? [];
+  const occurrenceById = new Map(occurrences.map((occurrence) => [occurrence.occurrenceId, occurrence]));
+  const locatorKey = (locator) => `${locator.partId}:m${locator.measureOrdinal}:e${locator.sourceOrdinal}:v${locator.voiceId ?? ''}`;
+  const referenced = new Map(); // occurrenceId -> count
+
+  for (const group of groups) {
+    const label = `group[${group.passIndex}@${group.playbackBeat}]`;
+    if (group.occurrenceIds.length !== group.members.length
+      || group.occurrenceIds.length !== group.scoreEventIds.length) {
+      failures.push(`${label}:member-count`);
+    }
+    const within = new Set();
+    for (let index = 0; index < group.occurrenceIds.length; index += 1) {
+      const occurrenceId = group.occurrenceIds[index];
+      if (within.has(occurrenceId)) failures.push(`${label}:duplicate-ref:${occurrenceId}`);
+      within.add(occurrenceId);
+      const occurrence = occurrenceById.get(occurrenceId);
+      if (!occurrence) {
+        failures.push(`${label}:dangling:${occurrenceId}`);
+        continue;
+      }
+      referenced.set(occurrenceId, (referenced.get(occurrenceId) ?? 0) + 1);
+      if (occurrence.scoreEventId !== group.scoreEventIds[index]) {
+        failures.push(`${label}:scoreEventId-mismatch:${group.scoreEventIds[index]}!=${occurrence.scoreEventId}`);
+      }
+      if (locatorKey(group.members[index]) !== locatorKey(occurrence.locator)) {
+        failures.push(`${label}:locator-mismatch`);
+      }
+    }
+  }
+  for (const occurrence of occurrences) {
+    const count = referenced.get(occurrence.occurrenceId) ?? 0;
+    if (count === 0) failures.push(`occurrence:unreferenced:${occurrence.occurrenceId}`);
+    if (count > 1) failures.push(`occurrence:multi-referenced:${occurrence.occurrenceId}x${count}`);
+  }
+  if (failures.length > 0) {
+    throw new PlannerGateError('FOLLOW_CROSSREF_REJECTED', failures.slice(0, 8).join('; '));
+  }
+  return true;
+}
+
 /**
  * Creates the planner service bound to one authority. The default authority
  * comes from RHYTHM_PLANNER (default 'rts') — the rust path is disabled
@@ -180,6 +347,17 @@ export function createPlannerService({ authority = resolvePlannerAuthority(), na
 
       // Step 1: build the canonical plan (document gate + C-12 + planning).
       const plan = JSON.parse(nativeModule.buildPlanV1(documentJson, reportJson, configJson));
+      // Step 1b: server-side deep integrity verification against the SAME
+      // trusted config — timeline semantics (time/identity/ticks) and the
+      // follow cross-reference invariants. A failure rejects the plan with a
+      // coded error BEFORE any response is assembled (review findings 2/3).
+      try {
+        verifyTimelineSemantics(plan, trustedConfig);
+        verifyFollowCrossReferences(plan);
+      } catch (error) {
+        if (!(error instanceof PlannerGateError)) throw error;
+        throw error;
+      }
       // Step 2: the SEPARATE frozen fingerprint gate over the verbatim plan
       // with the SAME inputs — exactly once, success required.
       const planFingerprint = nativeModule.planFingerprintV1Gate(

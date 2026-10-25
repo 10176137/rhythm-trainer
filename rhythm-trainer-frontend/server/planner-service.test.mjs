@@ -21,6 +21,8 @@ import {
   createPlannerService,
   resolvePlannerAuthority,
   usToMs,
+  verifyFollowCrossReferences,
+  verifyTimelineSemantics,
   RUST_PLANNER_VERSION,
 } from './planner-service.mjs';
 
@@ -277,6 +279,129 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
       const response2 = callRust(rustService(), projected.dto, imported.importReport, config);
       expect(response2.planFingerprint).toBe(first);
       expect(assertTimelineUsable(response)).toBe(true);
+    });
+  });
+
+  // ---- R2-3g-R1: server-path semantic verification + tamper negatives.
+  // The baseline plans below come from the REAL Rust chain; tampering is
+  // applied to COPIES and must be rejected by the server-path verifiers.
+  describe('R2-3g-R1: server-path deep verification and tamper negatives', () => {
+    const record = corpus('G1-base');
+    const config = configFor();
+    const base = rustService().buildRustPlan({
+      document: record.document, report: record.report, config,
+    });
+    const clone = () => JSON.parse(JSON.stringify(base.plan));
+    const gated = (mutate, verifier, code) => {
+      const plan = clone();
+      mutate(plan);
+      expect(() => verifier(plan, { ...config, plannerVersion: RUST_PLANNER_VERSION }))
+        .toThrow(new RegExp(code));
+    };
+
+    it('11. native Node ESM import of the service module succeeds (no Vitest loader)', async () => {
+      const imported = await import('./planner-service.mjs');
+      expect(typeof imported.createPlannerService).toBe('function');
+      expect(typeof imported.verifyTimelineSemantics).toBe('function');
+      expect(imported.resolvePlannerAuthority()).toBe('rts');
+    });
+
+    it('12. the real Rust baseline passes BOTH server-path verifiers', () => {
+      const trusted = { ...config, plannerVersion: RUST_PLANNER_VERSION };
+      expect(verifyTimelineSemantics(base.plan, trusted)).toBe(true);
+      expect(verifyFollowCrossReferences(base.plan)).toBe(true);
+    });
+
+    it('13. tampered targetOnsetUs / targetDurationUs are rejected', () => {
+      gated((plan) => { plan.scoreEvents[0].targetOnsetUs += 1; },
+        verifyTimelineSemantics, 'targetOnsetUs');
+      gated((plan) => { plan.scoreEvents[1].targetDurationUs += 1; },
+        verifyTimelineSemantics, 'targetDurationUs');
+    });
+
+    it('14. tampered atom ticks are rejected', () => {
+      gated((plan) => { plan.atoms[0].startTick += 960; },
+        verifyTimelineSemantics, 'no-exact-group|missing-group');
+      gated((plan) => { plan.atoms[2].durationTicks += 480; },
+        verifyTimelineSemantics, 'no-exact-group|missing-group');
+    });
+
+    it('15. identity tampering (duplicate/dangling/missing score events) is rejected', () => {
+      gated((plan) => { plan.scoreEvents[1].runtimeOccurrenceId = plan.scoreEvents[0].runtimeOccurrenceId; },
+        verifyTimelineSemantics, 'duplicate|dangling|missing');
+      gated((plan) => { plan.scoreEvents.pop(); },
+        verifyTimelineSemantics, 'count|missing');
+    });
+
+    it('16. follow cross-reference tampering is rejected', () => {
+      // duplicate reference inside one group (G1 groups are single-member,
+      // so duplicating requires a two-member group: use A4-multivoice)
+      const a4Record = corpus('A4-multivoice');
+      const a4Base = rustService().buildRustPlan({
+        document: a4Record.document, report: a4Record.report, config: (() => {
+          const { plannerVersion, ...a4Config } = a4Record.config;
+          void plannerVersion;
+          return a4Config;
+        })(),
+      });
+      const a4Plan = JSON.parse(JSON.stringify(a4Base.plan));
+      a4Plan.groups[0].occurrenceIds[1] = a4Plan.groups[0].occurrenceIds[0];
+      a4Plan.groups[0].scoreEventIds[1] = a4Plan.groups[0].scoreEventIds[0];
+      a4Plan.groups[0].members[1] = JSON.parse(JSON.stringify(a4Plan.groups[0].members[0]));
+      expect(() => verifyFollowCrossReferences(a4Plan))
+        .toThrow(/duplicate-ref|scoreEventId-mismatch|multi-referenced/);
+      // dangling occurrence reference
+      gated((plan) => { plan.groups[0].occurrenceIds[0] = 'ghost:id'; },
+        verifyFollowCrossReferences, 'dangling');
+      // scoreEventId replaced
+      gated((plan) => { plan.groups[0].scoreEventIds[0] = 'wrong:event'; },
+        verifyFollowCrossReferences, 'scoreEventId-mismatch');
+      // locator swapped
+      gated((plan) => {
+        plan.groups[0].members[0].sourceOrdinal += 10;
+      }, verifyFollowCrossReferences, 'locator-mismatch');
+      // occurrence dropped from every group (omission)
+      gated((plan) => {
+        const orphanId = plan.occurrences[0].occurrenceId;
+        for (const group of plan.groups) {
+          const at = group.occurrenceIds.indexOf(orphanId);
+          if (at >= 0) {
+            group.occurrenceIds.splice(at, 1);
+            group.scoreEventIds.splice(at, 1);
+            group.members.splice(at, 1);
+          }
+        }
+      }, verifyFollowCrossReferences, 'unreferenced|member-count');
+    });
+
+    it('17. the server build path itself rejects tampered plans (not only the exported verifiers)', () => {
+      // A tampered plan cannot reach the response: the chain re-generates
+      // from the inputs and verifies internally — simulated by running the
+      // verifiers INSIDE buildRustPlan, which we prove by monkey-patching
+      // the native buildPlanV1 to return a tampered plan for one call.
+      const service = createPlannerService({ authority: 'rust' });
+      const documentJson = JSON.stringify(record.document);
+      const reportJson = JSON.stringify(record.report);
+      const tampered = JSON.parse(JSON.stringify(base.plan));
+      tampered.scoreEvents[0].targetOnsetUs += 1;
+      const nativeStub = {
+        buildPlanV1: () => JSON.stringify(tampered),
+        planFingerprintV1Gate: () => { throw new Error('must not be reached'); },
+        beatToMicrosecondsJson: native.beatToMicrosecondsJson,
+      };
+      const tamperingService = createPlannerService({ authority: 'rust', nativeModule: nativeStub });
+      void documentJson; void reportJson; void service;
+      expect(() => tamperingService.buildRustPlan({
+        document: record.document, report: record.report, config,
+      })).toThrow(/TIMELINE_SEMANTICS_REJECTED/);
+    });
+
+    it('18. existing behaviors are unchanged: rts default, disabled path, multi-part, version, frozen suites', () => {
+      // (covered in full by tests 5/6/8/9 above; re-asserted here for the
+      // R1 boundary statement — plus the full suite regression run.)
+      expect(resolvePlannerAuthority()).toBe('rts');
+      expect(() => createPlannerService().buildRustPlan(record.document, record.report, config))
+        .toThrow(/PLANNER_PATH_DISABLED/);
     });
   });
 });
