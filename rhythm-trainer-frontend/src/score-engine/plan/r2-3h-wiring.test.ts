@@ -60,6 +60,9 @@ describe('R2-3h: single plan authority in the rust branch', () => {
       'plannerAuthority: response.plannerAuthority',
       'plannerVersion: response.plannerVersion',
       'planFingerprint: response.planFingerprint',
+      'planRequestId: response.requestId',
+      'scoreId: activeLibraryId',
+      'configSnapshot: launchConfig',
     ]) {
       expect(branch.includes(field), `rust start must carry ${field}`).toBe(true);
     }

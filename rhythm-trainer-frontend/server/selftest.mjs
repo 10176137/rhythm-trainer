@@ -1783,8 +1783,9 @@ async function scenarioTakeLifecycle() {
   const first = await client.next('started');
   check('started 下发会话与 Take 身份',
     typeof first.practiceSessionId === 'string' && first.practiceSessionId.length > 0
-    && first.takeId === 'take-1' && first.takeIndex === 1,
-    JSON.stringify({ practiceSessionId: first.practiceSessionId, takeId: first.takeId, takeIndex: first.takeIndex }));
+    && typeof first.takeId === 'string' && first.takeId.startsWith('take-') && first.takeId !== 'take-1'
+    && first.engineTakeId === 'take-1' && first.takeIndex === 1,
+    JSON.stringify({ practiceSessionId: first.practiceSessionId, takeId: first.takeId, engineTakeId: first.engineTakeId, takeIndex: first.takeIndex }));
 
   // A second start while the Take is live must be rejected, not replace it.
   client.send(startPayload());
@@ -1810,8 +1811,9 @@ async function scenarioTakeLifecycle() {
     second.practiceSessionId === first.practiceSessionId
     && second.takeIndex === 2
     && second.takeId !== first.takeId
+    && second.engineTakeId === 'take-2'
     && second.captureEpoch === first.captureEpoch + 1,
-    JSON.stringify({ practiceSessionId: second.practiceSessionId, takeId: second.takeId, takeIndex: second.takeIndex, epoch: second.captureEpoch }));
+    JSON.stringify({ practiceSessionId: second.practiceSessionId, takeId: second.takeId, engineTakeId: second.engineTakeId, takeIndex: second.takeIndex, epoch: second.captureEpoch }));
   client.send({ type: 'tick', nowMs: second.targets[1].atMs + 500 });
   client.send({ type: 'finish' });
   const report2 = await client.next('report');
@@ -1822,8 +1824,7 @@ async function scenarioTakeLifecycle() {
   const detail = await (await fetch(`http://127.0.0.1:${PORT}/api/sessions/${latest.sessionId}`)).json();
   check('会话 JSON 保存 practiceSessionId/takeId',
     detail.practiceSessionId === first.practiceSessionId && detail.takeId === second.takeId,
-    JSON.stringify({ practiceSessionId: detail.practiceSessionId, takeId: detail.takeId }));
-  check('会话 JSON 保存 Take 快照', !!detail.takeSnapshot && detail.takeSnapshot.takeState === 'finalizing',
+    JSON.stringify({ practiceSessionId: detail.practiceSessionId, takeId: detail.takeId }));  check('会话 JSON 保存 Take 快照', !!detail.takeSnapshot && detail.takeSnapshot.takeState === 'finalizing',
     JSON.stringify(detail.takeSnapshot));
   client.close();
 }
@@ -2075,7 +2076,7 @@ async function main() {
     await scenarioSingleActiveTakeLease();
     await scenarioErrors();
     check('profile.json 已写入数据目录', fs.existsSync(path.join(dataDir, 'profile.json')));
-    check('会话 JSON 落盘', fs.readdirSync(path.join(dataDir, 'sessions')).length >= 5);
+    check('Take JSON 落盘', fs.readdirSync(path.join(dataDir, 'takes')).length >= 5);
   } finally {
     child.kill();
     try { fs.rmSync(dataDir, { recursive: true, force: true }); } catch { /* best effort */ }

@@ -24,6 +24,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { randomUUID } from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { NodeMidiAdapter } from './midi/adapter.mjs';
 import { createJulusianBackend } from './midi/julusian-backend.mjs';
@@ -118,6 +119,8 @@ console.log(`[engine] planner authority = ${plannerService.authority} (plannerVe
 const DATA_DIR = process.env.RHYTHM_DATA_DIR
   || path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'rhythm-trainer-frontend');
 const SESSIONS_DIR = path.join(DATA_DIR, 'sessions');
+const TAKES_DIR = path.join(DATA_DIR, 'takes');
+const SCORE_SNAPSHOTS_DIR = path.join(DATA_DIR, 'score-snapshots');
 const TRACES_DIR = path.join(DATA_DIR, 'traces');
 const JOURNALS_DIR = path.join(DATA_DIR, 'journals');
 const SCORES_DIR = path.join(DATA_DIR, 'scores');
@@ -140,6 +143,8 @@ function safeId(value) {
 }
 
 ensureDirSync(SESSIONS_DIR);
+ensureDirSync(TAKES_DIR);
+ensureDirSync(SCORE_SNAPSHOTS_DIR);
 ensureDirSync(TRACES_DIR);
 ensureDirSync(JOURNALS_DIR);
 ensureDirSync(SCORES_DIR);
@@ -183,6 +188,216 @@ function readSessionRecord(id) {
   if (!fs.existsSync(file)) return null;
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function listTakeFiles() {
+  return fs.readdirSync(TAKES_DIR).filter((f) => f.endsWith('.json') && safeId(f.slice(0, -5)));
+}
+
+function readTakeRecord(id) {
+  const clean = safeId(id);
+  if (!clean) return null;
+  const file = path.join(TAKES_DIR, `${clean}.json`);
+  if (!fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Flattens a TakeRecordV1 back to the legacy /api/sessions shape. The old
+ * history/report/targeted-practice UI keeps working without reading the new
+ * nested structure, and the session id is the Take's global id.
+ */
+function takeToLegacySession(take) {
+  const timeline = take?.assessment?.timelineReport;
+  if (!timeline) return null;
+  const sessionId = take.legacy?.sessionId ?? take.takeId;
+  return {
+    ...timeline,
+    sessionId,
+    takeId: take.takeId,
+    scoreFingerprint: take.score?.scoreFingerprint ?? timeline.scoreFingerprint ?? null,
+    playbackPlanId: timeline.playbackPlanId ?? take.context?.planRunId ?? null,
+    plannerAuthority: take.context?.plannerAuthority ?? timeline.plannerAuthority ?? null,
+    plannerVersion: take.context?.plannerVersion ?? timeline.plannerVersion ?? null,
+    planFingerprint: take.context?.planFingerprint ?? timeline.planFingerprint ?? null,
+    scoreId: take.score?.scoreId ?? timeline.scoreId ?? null,
+    scoreSnapshotRef: take.score?.scoreSnapshotRef ?? timeline.scoreSnapshotRef ?? null,
+    startedAtIso: take.lifecycle?.startedAtIso ?? timeline.startedAtIso ?? null,
+    endReason: take.lifecycle?.endReason ?? timeline.endReason ?? null,
+  };
+}
+
+/** Read-only adapter for pre-Take sessions. Never invents missing provenance. */
+function legacyToTakeRecord(record) {
+  const legacySessionId = record.sessionId;
+  const takeId = `legacy-${legacySessionId}`;
+  return {
+    schemaVersion: 1,
+    takeId,
+    score: {
+      scoreId: record.scoreId ?? null,
+      scoreFingerprint: record.scoreFingerprint ?? null,
+      scoreSnapshotRef: record.scoreSnapshotRef ?? null,
+    },
+    lifecycle: {
+      startedAtIso: record.startedAtIso ?? record.finishedAtIso ?? null,
+      finishedAtIso: record.finishedAtIso ?? null,
+      endReason: record.interrupted ? 'interrupted' : 'completed',
+      modeId: record.modeId ?? 'unknown',
+    },
+    context: {
+      practiceConfigSnapshot: record.configSnapshot ?? null,
+      plannerAuthority: record.plannerAuthority ?? null,
+      plannerVersion: record.plannerVersion ?? null,
+      planFingerprint: record.planFingerprint ?? null,
+      planSnapshotRef: null,
+      planRunId: record.playbackPlanId ?? null,
+    },
+    evidence: {
+      traceRef: record.traceId ?? null,
+      journalRef: record.journal?.journalId ?? null,
+      pauseIntervals: Array.isArray(record.pauseSegments) ? record.pauseSegments : [],
+      captureDiagnostics: record.captureDiagnostics ?? null,
+    },
+    assessment: {
+      trustworthy: !!record.report?.trustworthy,
+      scoreStatus: record.scoreStatus ?? 'UNAVAILABLE',
+      timelineReport: record,
+    },
+    legacy: {
+      source: 'sessions-json',
+      sessionId: legacySessionId,
+      engineTakeId: record.takeId ?? null,
+      practiceSessionId: record.practiceSessionId ?? null,
+    },
+    engineDiagnostics: {
+      practiceSessionId: record.practiceSessionId ?? null,
+      engineTakeId: record.takeId ?? null,
+      takeIndex: record.takeIndex ?? null,
+      takeSnapshot: record.takeSnapshot ?? null,
+    },
+  };
+}
+
+/** Resolve a business id across new Takes and legacy sessions. */
+function readAnyRecord(id) {
+  const take = readTakeRecord(id);
+  if (take) return takeToLegacySession(take);
+  if (typeof id === 'string' && id.startsWith('legacy-')) {
+    return readSessionRecord(id.slice('legacy-'.length));
+  }
+  return readSessionRecord(id);
+}
+
+function readTakeById(id) {
+  const direct = readTakeRecord(id);
+  if (direct) return direct;
+  if (typeof id === 'string' && id.startsWith('legacy-')) {
+    const legacy = readSessionRecord(id.slice('legacy-'.length));
+    return legacy ? legacyToTakeRecord(legacy) : null;
+  }
+  // Keep a direct legacy session id readable on the Take endpoint too.
+  const legacy = readSessionRecord(id);
+  return legacy ? legacyToTakeRecord(legacy) : null;
+}
+
+function sessionSummaryFromRecord(record) {
+  const report = record.report;
+  return {
+    sessionId: record.sessionId,
+    interrupted: !!record.interrupted,
+    finishedAtIso: record.finishedAtIso,
+    modeId: record.modeId,
+    bpm: record.bpm ?? null,
+    profile: record.profile ?? null,
+    trustworthy: report && report.trustworthy,
+    targetCount: report ? report.targetCount : 0,
+    perfectCount: report ? report.stats.perfectCount : 0,
+    goodCount: report ? report.stats.goodCount : 0,
+    missCount: report ? report.stats.missCount : 0,
+    extraCount: report ? report.stats.extraCount : 0,
+    targetHitRate: report ? report.stats.targetHitRate : 0,
+    meanSignedMs: report ? report.stats.meanSignedMs ?? null : null,
+    meanAbsoluteMs: report ? report.stats.meanAbsoluteMs ?? null : null,
+    scoreFingerprint: record.scoreFingerprint ?? null,
+    playbackPlanId: record.playbackPlanId ?? null,
+    plannerAuthority: record.plannerAuthority ?? null,
+    plannerVersion: record.plannerVersion ?? null,
+    planFingerprint: record.planFingerprint ?? null,
+    sourceReportId: record.sourceReportId ?? null,
+    prescriptionId: record.prescriptionId ?? null,
+    takeTemplateId: record.takeTemplateId ?? null,
+    takeTemplateName: record.takeTemplateName ?? null,
+  };
+}
+
+function takeSummary(take) {
+  const timeline = take.assessment?.timelineReport ?? {};
+  const summary = sessionSummaryFromRecord({
+    ...timeline,
+    sessionId: take.takeId,
+    finishedAtIso: take.lifecycle?.finishedAtIso ?? timeline.finishedAtIso,
+    modeId: take.lifecycle?.modeId ?? timeline.modeId,
+    scoreFingerprint: take.score?.scoreFingerprint ?? null,
+    playbackPlanId: take.context?.planRunId ?? timeline.playbackPlanId ?? null,
+    plannerAuthority: take.context?.plannerAuthority ?? null,
+    plannerVersion: take.context?.plannerVersion ?? null,
+    planFingerprint: take.context?.planFingerprint ?? null,
+  });
+  return {
+    ...summary,
+    takeId: take.takeId,
+    endReason: take.lifecycle?.endReason ?? null,
+    scoreStatus: take.assessment?.scoreStatus ?? null,
+    scoreId: take.score?.scoreId ?? null,
+    scoreSnapshotRef: take.score?.scoreSnapshotRef ?? null,
+    legacySessionId: take.legacy?.sessionId ?? null,
+  };
+}
+
+function listAllTakes() {
+  const takes = listTakeFiles()
+    .map((file) => readTakeRecord(file.slice(0, -5)))
+    .filter(Boolean);
+  const legacy = listSessionFiles()
+    .map((file) => readSessionRecord(file.slice(0, -5)))
+    .filter(Boolean)
+    .map(legacyToTakeRecord);
+  return [...takes, ...legacy]
+    .sort((a, b) => String(b.lifecycle?.finishedAtIso ?? '').localeCompare(String(a.lifecycle?.finishedAtIso ?? '')));
+}
+
+function writeTakeOnce(record) {
+  const clean = safeId(record.takeId);
+  if (!clean) throw new Error('takeId 非法');
+  const file = path.join(TAKES_DIR, `${clean}.json`);
+  // A repeated finalization must never replace the first authoritative Take.
+  if (fs.existsSync(file)) return { created: false, persisted: true };
+  atomicWriteJson(file, record);
+  return { created: true, persisted: true };
+}
+
+/** Content-addressed snapshot so a replaced score cannot rewrite history. */
+function ensureScoreSnapshot(scoreId, fingerprint) {
+  if (!scoreId || !fingerprint) return null;
+  try {
+    const entry = scoreLibrary.get(scoreId);
+    const actual = entry?.importReportSummary?.fingerprint;
+    if (!entry || actual !== fingerprint) return null;
+    const file = path.join(SCORE_SNAPSHOTS_DIR, `${fingerprint}.musicxml`);
+    if (!fs.existsSync(file)) {
+      const tmp = `${file}.tmp`;
+      fs.writeFileSync(tmp, entry.xml, 'utf8');
+      fs.renameSync(tmp, file);
+    }
+    return `score-snapshots/${fingerprint}.musicxml`;
   } catch {
     return null;
   }
@@ -550,36 +765,14 @@ async function handleApi(req, res, urlPath, query) {
   }
   if (urlPath === '/api/sessions') {
     const limit = Math.min(Number(query.get('limit')) || 50, 200);
-    const items = listSessionFiles()
-      .map((f) => {
-        const record = readSessionRecord(f.slice(0, -5));
-        if (!record) return null;
-        return {
-          sessionId: record.sessionId,
-          interrupted: !!record.interrupted,
-          finishedAtIso: record.finishedAtIso,
-          modeId: record.modeId,
-          bpm: record.bpm,
-          profile: record.profile,
-          trustworthy: record.report && record.report.trustworthy,
-          targetCount: record.report ? record.report.targetCount : 0,
-          perfectCount: record.report ? record.report.stats.perfectCount : 0,
-          goodCount: record.report ? record.report.stats.goodCount : 0,
-          missCount: record.report ? record.report.stats.missCount : 0,
-          extraCount: record.report ? record.report.stats.extraCount : 0,
-          targetHitRate: record.report ? record.report.stats.targetHitRate : 0,
-          meanSignedMs: record.report ? record.report.stats.meanSignedMs ?? null : null,
-          meanAbsoluteMs: record.report ? record.report.stats.meanAbsoluteMs ?? null : null,
-          scoreFingerprint: record.scoreFingerprint ?? null,
-          playbackPlanId: record.playbackPlanId ?? null,
-          plannerAuthority: record.plannerAuthority ?? null,
-          plannerVersion: record.plannerVersion ?? null,
-          planFingerprint: record.planFingerprint ?? null,
-          sourceReportId: record.sourceReportId ?? null,
-          prescriptionId: record.prescriptionId ?? null,
-          takeTemplateId: record.takeTemplateId ?? null,
-          takeTemplateName: record.takeTemplateName ?? null,
-        };
+    const items = listAllTakes()
+      .map((take) => {
+        const legacy = takeToLegacySession(take);
+        return legacy ? {
+          ...sessionSummaryFromRecord(legacy),
+          takeId: take.takeId,
+          endReason: take.lifecycle?.endReason ?? null,
+        } : null;
       })
       .filter(Boolean)
       .sort((a, b) => (a.finishedAtIso < b.finishedAtIso ? 1 : -1))
@@ -587,9 +780,25 @@ async function handleApi(req, res, urlPath, query) {
     sendJson(res, 200, { schemaVersion: SCHEMA_VERSION, items });
     return;
   }
+  if (urlPath === '/api/takes') {
+    const limit = Math.min(Number(query.get('limit')) || 50, 200);
+    const items = listAllTakes().map(takeSummary).slice(0, limit);
+    sendJson(res, 200, { schemaVersion: SCHEMA_VERSION, items });
+    return;
+  }
+  const takeMatch = urlPath.match(/^\/api\/takes\/([A-Za-z0-9_-]+)$/);
+  if (takeMatch) {
+    const take = readTakeById(takeMatch[1]);
+    if (!take) {
+      sendJson(res, 404, { error: 'take not found' });
+      return;
+    }
+    sendJson(res, 200, take);
+    return;
+  }
   const sessionMatch = urlPath.match(/^\/api\/sessions\/([A-Za-z0-9_-]+)$/);
   if (sessionMatch) {
-    const record = readSessionRecord(sessionMatch[1]);
+    const record = readAnyRecord(sessionMatch[1]);
     if (!record) {
       sendJson(res, 404, { error: 'session not found' });
       return;
@@ -643,7 +852,7 @@ async function handleApi(req, res, urlPath, query) {
   }
   const replayMatch = urlPath.match(/^\/api\/sessions\/([A-Za-z0-9_-]+)\/replay$/);
   if (replayMatch) {
-    const record = readSessionRecord(replayMatch[1]);
+    const record = readAnyRecord(replayMatch[1]);
     if (!record || !record.traceId) {
       sendJson(res, 404, { error: 'session or trace not found' });
       return;
@@ -680,15 +889,9 @@ async function handleApi(req, res, urlPath, query) {
   }
   if (urlPath === '/api/profile') {
     const skills = studentModel.snapshot();
-    const files = listSessionFiles();
-    let sessions = 0;
-    let trustworthySessions = 0;
-    for (const f of files) {
-      const record = readSessionRecord(f.slice(0, -5));
-      if (!record) continue;
-      sessions += 1;
-      if (record.report && record.report.trustworthy) trustworthySessions += 1;
-    }
+    const takes = listAllTakes();
+    const sessions = takes.length;
+    const trustworthySessions = takes.filter((take) => take.assessment?.trustworthy).length;
     sendJson(res, 200, { schemaVersion: SCHEMA_VERSION, skills, totals: { sessions, trustworthySessions } });
     return;
   }
@@ -859,6 +1062,10 @@ wss.on('connection', (socket) => {
   // take lifecycle, capture generations and quarantine counters; the scoring
   // engine stays per-Take.
   let coordinator = null;   // addon.NativeTakeCoordinator
+  // R2-3i/domain: plans issued on THIS connection, keyed by requestId. The
+  // Take binds to this server-held context; client-sent provenance is never
+  // treated as the source of truth for a Rust plan.
+  const issuedPlans = new Map();
   let activeTake = null;    // { takeId, captureEpoch, practiceSessionId, takeIndex }
   let traceRecorder = null; // TakeTraceRecorder for the active take
   let takeJournal = null;   // TakeJournal for the active take
@@ -1272,6 +1479,18 @@ wss.on('connection', (socket) => {
             config: msg.config,
             mode: msg.mode,
           });
+          issuedPlans.set(requestId, {
+            mode: msg.mode,
+            authority: response.plannerAuthority,
+            plannerVersion: response.plannerVersion,
+            planFingerprint: response.planFingerprint,
+            scoreFingerprint: response.scoreFingerprint,
+            planRunId: response.plan.runtimeIds.planId,
+            createdAt: Date.now(),
+          });
+          if (issuedPlans.size > 20) {
+            issuedPlans.delete(issuedPlans.keys().next().value);
+          }
           send({ type: 'plan-response', requestId, ok: true, ...response });
         } catch (error) {
           // Failures stay code-identifiable and are NEVER dressed up as a
@@ -1423,34 +1642,74 @@ wss.on('connection', (socket) => {
             throw new Error('请求声称使用语义计划（playbackPlanId），但缺少 scoreEvents；拒绝降级为仅节拍练习');
           }
         }
-        // R2-3i: planner provenance is persisted with the Take. It is
-        // self-reported by the client, so validate shape and fail closed on a
-        // malformed Rust claim instead of writing a half-identified record.
-        const plannerAuthority = msg.plannerAuthority === 'rts' || msg.plannerAuthority === 'rust'
-          ? msg.plannerAuthority
-          : null;
-        if (msg.plannerAuthority !== undefined && plannerAuthority === null) {
-          throw new Error('plannerAuthority 必须是 rts 或 rust');
-        }
-        const plannerVersion = typeof msg.plannerVersion === 'string' && msg.plannerVersion.trim() !== ''
+        // Domain model: provenance is bound to a plan this server issued on
+        // this connection. Client-sent authority/version/fingerprint are only
+        // checked for consistency; they are never the source of truth for a
+        // Rust plan. A missing/expired/foreign plan context fails closed.
+        const clientAuthority = msg.plannerAuthority === undefined
+          ? null
+          : (msg.plannerAuthority === 'rts' || msg.plannerAuthority === 'rust' ? msg.plannerAuthority : 'invalid');
+        if (clientAuthority === 'invalid') throw new Error('plannerAuthority 必须是 rts 或 rust');
+        const clientPlannerVersion = typeof msg.plannerVersion === 'string' && msg.plannerVersion.trim() !== ''
           ? msg.plannerVersion
           : null;
-        if (msg.plannerVersion !== undefined && plannerVersion === null) {
+        if (msg.plannerVersion !== undefined && clientPlannerVersion === null) {
           throw new Error('plannerVersion 提供了但格式非法');
         }
-        const planFingerprint = typeof msg.planFingerprint === 'string'
+        const clientPlanFingerprint = typeof msg.planFingerprint === 'string'
           && /^plan-v1:sha256:[0-9a-f]{64}$/.test(msg.planFingerprint)
           ? msg.planFingerprint
           : null;
-        if (msg.planFingerprint !== undefined && planFingerprint === null) {
+        if (msg.planFingerprint !== undefined && clientPlanFingerprint === null) {
           throw new Error('planFingerprint 提供了但格式非法');
         }
-        if (plannerAuthority === 'rust') {
-          if (!scoreFingerprint) throw new Error('plannerAuthority=rust 缺少 scoreFingerprint');
-          if (!plannerVersion) throw new Error('plannerAuthority=rust 缺少 plannerVersion');
-          if (!planFingerprint) throw new Error('plannerAuthority=rust 缺少 planFingerprint');
-          if (!playbackPlanId) throw new Error('plannerAuthority=rust 缺少计划运行 ID（playbackPlanId）');
+        const planRequestId = typeof msg.planRequestId === 'string' && msg.planRequestId.trim() !== ''
+          ? msg.planRequestId
+          : null;
+        let plannerAuthority = null;
+        let plannerVersion = null;
+        let planFingerprint = null;
+        if (plannerService.authority === 'rust') {
+          if (!planRequestId) throw new Error('Rust 计划启动缺少 planRequestId');
+          const issued = issuedPlans.get(planRequestId);
+          issuedPlans.delete(planRequestId);
+          if (!issued || Date.now() - issued.createdAt > 10 * 60 * 1000) {
+            throw new Error('计划上下文不存在或已过期，请重新请求计划');
+          }
+          if (issued.mode !== 'timeline') throw new Error('计划上下文不是 timeline 计划');
+          if (!scoreFingerprint || issued.scoreFingerprint !== scoreFingerprint) {
+            throw new Error('计划上下文与当前曲谱指纹不一致');
+          }
+          if (!playbackPlanId || issued.planRunId !== playbackPlanId) {
+            throw new Error('计划上下文与当前计划运行 ID 不一致');
+          }
+          if (clientAuthority !== null && clientAuthority !== 'rust') {
+            throw new Error('客户端声称的规划权威与服务端不一致');
+          }
+          if (clientPlannerVersion !== null && clientPlannerVersion !== issued.plannerVersion) {
+            throw new Error('客户端声称的 plannerVersion 与服务端计划不一致');
+          }
+          if (clientPlanFingerprint !== null && clientPlanFingerprint !== issued.planFingerprint) {
+            throw new Error('客户端声称的 planFingerprint 与服务端计划不一致');
+          }
+          plannerAuthority = 'rust';
+          plannerVersion = issued.plannerVersion;
+          planFingerprint = issued.planFingerprint;
+        } else {
+          if (clientAuthority !== null && clientAuthority !== 'rts') {
+            throw new Error('客户端声称的规划权威与服务端不一致');
+          }
+          if (clientPlanFingerprint !== null) {
+            throw new Error('rts 路径不接受 planFingerprint');
+          }
+          plannerAuthority = 'rts';
+          plannerVersion = clientPlannerVersion;
+          planFingerprint = null;
         }
+        const scoreId = safeId(msg.scoreId || '');
+        const configSnapshot = msg.configSnapshot && typeof msg.configSnapshot === 'object' && !Array.isArray(msg.configSnapshot)
+          ? msg.configSnapshot
+          : null;
         const hand = msg.hand === 'both' || msg.hand === 'right' || msg.hand === 'left' ? msg.hand : null;
         const scoreBarCountValue = Number(msg.scoreBarCount);
         const scoreBarCount = Number.isInteger(scoreBarCountValue) && scoreBarCountValue > 0
@@ -1481,7 +1740,7 @@ wss.on('connection', (socket) => {
           if (!sourceReportId || !sourceTakeId || !prescriptionId || !prescription) {
             throw new Error('复练任务缺少 sourceReportId/sourceTakeId/prescriptionId/prescription');
           }
-          const sourceRecord = readSessionRecord(sourceReportId);
+          const sourceRecord = readAnyRecord(sourceReportId);
           if (!sourceRecord) throw new Error('找不到来源报告，不能创建复练任务');
           if (!sourceRecord.takeId || sourceRecord.takeId !== sourceTakeId) {
             throw new Error('来源 Take 与来源报告不匹配');
@@ -1674,9 +1933,17 @@ wss.on('connection', (socket) => {
         native = nextNative;
         activeTake = {
           takeId: take.takeId,
+          businessTakeId: `take-${randomUUID()}`,
+          startedAtIso: new Date().toISOString(),
           captureEpoch: take.captureEpoch,
           practiceSessionId: take.practiceSessionId,
           takeIndex: take.takeIndex,
+          scoreId,
+          configSnapshot,
+          plannerAuthority,
+          plannerVersion,
+          planFingerprint,
+          planRequestId,
         };
         activeTakeLease = {
           socket,
@@ -1776,7 +2043,8 @@ wss.on('connection', (socket) => {
           takeTemplateName: takeTemplate?.name ?? null,
           captureEpoch: take.captureEpoch,
           practiceSessionId: take.practiceSessionId,
-          takeId: take.takeId,
+          takeId: activeTake.businessTakeId,
+          engineTakeId: take.takeId,
           takeIndex: take.takeIndex,
           scoringConfig,
         });
@@ -2229,12 +2497,19 @@ wss.on('connection', (socket) => {
       },
     };
 
-    // Persist the session record, then update the rule-based mastery model.
-    const sessionId = `s-${Date.now()}-${++sessionIdCounter}`;
+    // Persist one authoritative Take record (never a PracticeSession aggregate).
+    const businessTakeId = finishedTake?.businessTakeId ?? `take-${randomUUID()}`;
+    const sessionId = businessTakeId;
+    const startedAtIso = finishedTake?.startedAtIso ?? null;
+    const scoreSnapshotRef = ensureScoreSnapshot(meta?.scoreId, meta?.scoreFingerprint);
     const record = {
       schemaVersion: SCHEMA_VERSION,
       sessionId,
+      takeId: businessTakeId,
+      engineTakeId: finishedTake ? finishedTake.takeId : null,
       interrupted,
+      endReason: interrupted ? 'interrupted' : (report.state === 'invalid' ? 'failed' : 'completed'),
+      startedAtIso,
       finishedAtIso: new Date().toISOString(),
       modeId: meta ? meta.modeId : 'unknown',
       bpm: meta ? meta.bpm : null,
@@ -2242,6 +2517,10 @@ wss.on('connection', (socket) => {
       assisted: meta ? !!meta.assisted : false,
       durationPolicy: meta ? meta.durationPolicy : null,
       scoreEvents: meta ? meta.scoreEvents : null,
+      scoreId: meta?.scoreId ?? null,
+      scoreSnapshotRef,
+      configSnapshot: meta?.configSnapshot ?? null,
+      planRequestId: meta?.planRequestId ?? null,
       // Traceability: the exact effective config this Take was scored with.
       scoringConfig: meta ? meta.scoringConfig : null,
       scoringConfigVersion: meta?.scoringConfig?.configVersion ?? null,
@@ -2267,7 +2546,6 @@ wss.on('connection', (socket) => {
       countInBeats: meta ? meta.countInBeats : null,
       ticksPerQuarter: meta ? meta.ticksPerQuarter : null,
       practiceSessionId: finishedTake ? finishedTake.practiceSessionId : null,
-      takeId: finishedTake ? finishedTake.takeId : null,
       takeIndex: finishedTake ? finishedTake.takeIndex : null,
       takeSnapshot,
       trace: traceInfo,
@@ -2288,40 +2566,90 @@ wss.on('connection', (socket) => {
     };
     if (meta?.sourceReportId) {
       record.retryComparison = buildRetryComparison(
-        readSessionRecord(meta.sourceReportId),
+        readAnyRecord(meta.sourceReportId),
         record,
       );
     }
+    const takeRecord = {
+      schemaVersion: 1,
+      takeId: businessTakeId,
+      score: {
+        scoreId: meta?.scoreId ?? null,
+        scoreFingerprint: meta?.scoreFingerprint ?? null,
+        scoreSnapshotRef,
+      },
+      lifecycle: {
+        startedAtIso,
+        finishedAtIso: record.finishedAtIso,
+        endReason: record.endReason,
+        modeId: record.modeId,
+      },
+      context: {
+        practiceConfigSnapshot: meta?.configSnapshot ?? null,
+        plannerAuthority: record.plannerAuthority,
+        plannerVersion: record.plannerVersion,
+        planFingerprint: record.planFingerprint,
+        planSnapshotRef: null,
+        planRunId: record.playbackPlanId ?? null,
+      },
+      evidence: {
+        traceRef: record.traceId ?? null,
+        journalRef: record.journal?.journalId ?? null,
+        pauseIntervals: pauseSegments.map((segment) => ({
+          startMs: segment.startSession,
+          endMs: segment.endSession ?? null,
+        })),
+        captureDiagnostics: record.captureDiagnostics,
+      },
+      assessment: {
+        trustworthy: !!record.report?.trustworthy,
+        scoreStatus: record.scoreStatus,
+        timelineReport: record,
+      },
+      engineDiagnostics: {
+        practiceSessionId: record.practiceSessionId,
+        engineTakeId: finishedTake ? finishedTake.takeId : null,
+        takeIndex: record.takeIndex ?? null,
+        takeSnapshot: record.takeSnapshot ?? null,
+      },
+    };
     let recordPersisted = true;
+    let takeCreated = false;
     let persistenceError = null;
     try {
-      atomicWriteJson(path.join(SESSIONS_DIR, `${sessionId}.json`), record);
+      const written = writeTakeOnce(takeRecord);
+      recordPersisted = written.persisted;
+      takeCreated = written.created;
     } catch (err) {
       recordPersisted = false;
       persistenceError = String((err && err.message) || err);
-      console.error('[engine] 会话保存失败:', persistenceError);
+      console.error('[engine] Take 保存失败:', persistenceError);
     }
 
     try {
-      const stats = report.stats;
-      // Degraded/disconnected input is not the user's rhythm error, but the
-      // attempt must not count toward mastery evidence either.
-      const healthClean = captureDiagnostics.inputHealth === 'healthy';
-      const passed = !!report.trustworthy
-        && healthClean
-        && stats.missCount === 0
-        && stats.extraCount === 0
-        && stats.meanAbsoluteMs != null
-        && stats.meanAbsoluteMs <= PASS_MAE_MS;
-      studentModel.observeAttempt(record.modeId, {
-        passed,
-        trustworthy: !!report.trustworthy && healthClean,
-        targetCount: report.targetCount,
-        assisted: record.assisted,
-        transferTest: false,   // transfer testing not implemented yet — honest default
-        delayedRetest: false,
-      });
-      persistProfile();
+      // Profile is a derived cache: only consume a newly committed Take.
+      // A duplicate finalization must not add the same evidence twice.
+      if (recordPersisted && takeCreated) {
+        const stats = report.stats;
+        // Degraded/disconnected input is not the user's rhythm error, but the
+        // attempt must not count toward mastery evidence either.
+        const healthClean = captureDiagnostics.inputHealth === 'healthy';
+        const passed = !!report.trustworthy
+          && healthClean
+          && stats.missCount === 0
+          && stats.extraCount === 0
+          && stats.meanAbsoluteMs != null
+          && stats.meanAbsoluteMs <= PASS_MAE_MS;
+        studentModel.observeAttempt(record.modeId, {
+          passed,
+          trustworthy: !!report.trustworthy && healthClean,
+          targetCount: report.targetCount,
+          assisted: record.assisted,
+          transferTest: false,   // transfer testing not implemented yet — honest default
+          delayedRetest: false,
+        });
+        persistProfile();
+      }
     } catch (err) {
       console.error('[engine] 学习档案更新失败:', String((err && err.message) || err));
     }
@@ -2347,8 +2675,13 @@ wss.on('connection', (socket) => {
       persisted: recordPersisted,
       persistenceError,
       practiceSessionId: finishedTake ? finishedTake.practiceSessionId : null,
-      takeId: finishedTake ? finishedTake.takeId : null,
+      takeId: businessTakeId,
+      engineTakeId: finishedTake ? finishedTake.takeId : null,
       takeIndex: finishedTake ? finishedTake.takeIndex : null,
+      startedAtIso,
+      endReason: record.endReason,
+      scoreId: meta?.scoreId ?? null,
+      scoreSnapshotRef,
       takeSnapshot,
       traceId: traceInfo ? traceInfo.traceId : null,
       trace: traceInfo,

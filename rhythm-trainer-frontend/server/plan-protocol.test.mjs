@@ -157,7 +157,8 @@ describe('R2-3h: plan protocol over the real engine server', () => {
     }
   });
 
-  it('persists Rust planner provenance from the plan response through start to disk and history APIs', async () => {    const requestId = 'plan-provenance';
+  it('persists Rust planner provenance from the plan response through start to disk and history APIs', async () => {
+    const requestId = 'plan-provenance';
     const plan = await request(socket, {
       protocolVersion: 1,
       type: 'plan-request',
@@ -182,9 +183,11 @@ describe('R2-3h: plan protocol over the real engine server', () => {
       scoreEvents: engineScoreEventsFor(plan),
       scoreFingerprint: plan.scoreFingerprint,
       playbackPlanId: plan.plan.runtimeIds.planId,
+      planRequestId: plan.requestId,
       plannerAuthority: plan.plannerAuthority,
       plannerVersion: plan.plannerVersion,
       planFingerprint: plan.planFingerprint,
+      configSnapshot: { modeId: 'score', tempo: CONFIG.bpm.numerator, hand: 'both' },
       hand: 'both',
       scoreBarCount: CORPUS.document.parts[0].measures.length,
       assisted: false,
@@ -199,16 +202,23 @@ describe('R2-3h: plan protocol over the real engine server', () => {
     expect(report.plannerVersion).toBe('rust-planner-1');
     expect(report.planFingerprint).toBe(plan.planFingerprint);
     expect(report.playbackPlanId).toBe(plan.plan.runtimeIds.planId);
+    expect(report.takeId).toBe(report.sessionId);
 
-    const onDisk = JSON.parse(readFileSync(
-      path.join(DATA_DIR, 'sessions', `${report.sessionId}.json`), 'utf8'));
-    expect(onDisk).toMatchObject({
-      plannerAuthority: 'rust',
-      plannerVersion: 'rust-planner-1',
-      planFingerprint: plan.planFingerprint,
-      playbackPlanId: plan.plan.runtimeIds.planId,
-      scoreFingerprint: plan.scoreFingerprint,
+    const takeOnDisk = JSON.parse(readFileSync(
+      path.join(DATA_DIR, 'takes', `${report.takeId}.json`), 'utf8'));
+    expect(takeOnDisk).toMatchObject({
+      takeId: report.takeId,
+      score: { scoreFingerprint: plan.scoreFingerprint },
+      lifecycle: { endReason: 'completed', modeId: 'score' },
+      context: {
+        plannerAuthority: 'rust',
+        plannerVersion: 'rust-planner-1',
+        planFingerprint: plan.planFingerprint,
+        planRunId: plan.plan.runtimeIds.planId,
+        practiceConfigSnapshot: { modeId: 'score', tempo: CONFIG.bpm.numerator, hand: 'both' },
+      },
     });
+    expect(takeOnDisk.assessment.timelineReport.plannerAuthority).toBe('rust');
 
     const list = await (await fetch(`http://127.0.0.1:${PORT}/api/sessions`)).json();
     const summary = list.items.find((item) => item.sessionId === report.sessionId);
@@ -228,23 +238,83 @@ describe('R2-3h: plan protocol over the real engine server', () => {
       playbackPlanId: plan.plan.runtimeIds.planId,
       scoreFingerprint: plan.scoreFingerprint,
     });
+
+    const takeList = await (await fetch(`http://127.0.0.1:${PORT}/api/takes`)).json();
+    const takeSummary = takeList.items.find((item) => item.takeId === report.takeId);
+    expect(takeSummary).toMatchObject({
+      takeId: report.takeId,
+      plannerAuthority: 'rust',
+      plannerVersion: 'rust-planner-1',
+      planFingerprint: plan.planFingerprint,
+      playbackPlanId: plan.plan.runtimeIds.planId,
+    });
+    const takeDetail = await (await fetch(
+      `http://127.0.0.1:${PORT}/api/takes/${report.takeId}`)).json();
+    expect(takeDetail).toMatchObject({
+      takeId: report.takeId,
+      context: {
+        plannerAuthority: 'rust',
+        plannerVersion: 'rust-planner-1',
+        planFingerprint: plan.planFingerprint,
+      },
+    });
   }, 30000);
 
-  it('reads legacy sessions without provenance without fabricating it', async () => {
-    const sessionsDir = path.join(DATA_DIR, 'sessions');
-    const newest = readdirSync(sessionsDir).find((name) => name.endsWith('.json'));
-    expect(newest).toBeTruthy();
-    const source = JSON.parse(readFileSync(path.join(sessionsDir, newest), 'utf8'));
+  it('rejects a Rust start without the server-issued plan context or with forged provenance', async () => {
+    const plan = await request(socket, {
+      protocolVersion: 1,
+      type: 'plan-request',
+      requestId: 'plan-context-guard',
+      mode: 'timeline',
+      document: CORPUS.document,
+      report: CORPUS.report,
+      config: CONFIG,
+    }, 'plan-response', 'plan-context-guard');
+    expect(plan.ok).toBe(true);
+    const baseStart = {
+      protocolVersion: 1,
+      type: 'start',
+      modeId: 'score',
+      bpm: CONFIG.bpm.numerator,
+      profile: 'standard',
+      countInBeats: 4,
+      ticksPerQuarter: 960,
+      atoms: plan.plan.atoms,
+      scoreEvents: engineScoreEventsFor(plan),
+      scoreFingerprint: plan.scoreFingerprint,
+      playbackPlanId: plan.plan.runtimeIds.planId,
+      plannerAuthority: 'rust',
+      plannerVersion: plan.plannerVersion,
+      planFingerprint: plan.planFingerprint,
+      hand: 'both',
+      assisted: false,
+    };
+    await expect(request(socket, baseStart, 'started')).rejects.toThrow(/planRequestId/);
+    await expect(request(socket, {
+      ...baseStart,
+      planRequestId: plan.requestId,
+      plannerVersion: 'client-forged-version',
+    }, 'started')).rejects.toThrow(/plannerVersion/);
+  });
+
+  it('reads legacy sessions without provenance and exposes them as legacy Takes', async () => {
+    const takesDir = path.join(DATA_DIR, 'takes');
+    const newestTake = readdirSync(takesDir).find((name) => name.endsWith('.json'));
+    expect(newestTake).toBeTruthy();
+    const take = JSON.parse(readFileSync(path.join(takesDir, newestTake), 'utf8'));
+    const source = take.assessment.timelineReport;
     const legacy = {
       ...source,
       sessionId: 's-old-format',
+      takeId: 'take-1',
       finishedAtIso: '2020-01-01T00:00:00.000Z',
+      interrupted: false,
     };
     delete legacy.plannerAuthority;
     delete legacy.plannerVersion;
     delete legacy.planFingerprint;
     delete legacy.playbackPlanId;
-    writeFileSync(path.join(sessionsDir, 's-old-format.json'), JSON.stringify(legacy));
+    writeFileSync(path.join(DATA_DIR, 'sessions', 's-old-format.json'), JSON.stringify(legacy));
 
     const detail = await (await fetch(`http://127.0.0.1:${PORT}/api/sessions/s-old-format`)).json();
     expect(detail.sessionId).toBe('s-old-format');
@@ -260,6 +330,14 @@ describe('R2-3h: plan protocol over the real engine server', () => {
     expect(summary.plannerVersion).toBeNull();
     expect(summary.planFingerprint).toBeNull();
     expect(summary.playbackPlanId).toBeNull();
+
+    const legacyTake = await (await fetch(
+      `http://127.0.0.1:${PORT}/api/takes/legacy-s-old-format`)).json();
+    expect(legacyTake.takeId).toBe('legacy-s-old-format');
+    expect(legacyTake.legacy).toMatchObject({ source: 'sessions-json', sessionId: 's-old-format' });
+    expect(legacyTake.context.plannerAuthority).toBeNull();
+    expect(legacyTake.context.plannerVersion).toBeNull();
+    expect(legacyTake.context.planFingerprint).toBeNull();
   });
 
   it('rejects a missing/invalid mode with a coded response (never a plan)', async () => {

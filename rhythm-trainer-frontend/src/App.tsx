@@ -1157,6 +1157,10 @@ export default function App() {
           durationPolicy: launchConfig.durationPolicy,
           scoreFingerprint: engineDoc.fingerprint,
           playbackPlanId: response.plan.runtimeIds.planId,
+          // The server binds this Take to the plan context it issued.
+          planRequestId: response.requestId,
+          scoreId: activeLibraryId ?? undefined,
+          configSnapshot: launchConfig as unknown as Record<string, unknown>,
           // R2-3i: bind the persisted Take to the exact plan response.
           plannerAuthority: response.plannerAuthority,
           plannerVersion: response.plannerVersion,
@@ -1526,6 +1530,8 @@ export default function App() {
       durationPolicy: config.durationPolicy,
       ...(scoreDoc.engine ? { scoreFingerprint: scoreDoc.engine.fingerprint } : {}),
       ...(playbackPlanId ? { playbackPlanId } : {}),
+      scoreId: activeLibraryId ?? undefined,
+      configSnapshot: config as unknown as Record<string, unknown>,
       // R2-3i: the TS path is also provenance-bearing; it has no plan
       // fingerprint by design (the frozen gate only covers the Rust plan).
       plannerAuthority: 'rts',

@@ -294,6 +294,9 @@ export class EngineBridge {
     durationPolicy?: DurationEvaluationPolicy;
     scoreFingerprint?: string;
     playbackPlanId?: string;
+    planRequestId?: string;
+    scoreId?: string;
+    configSnapshot?: Record<string, unknown>;
     plannerAuthority?: 'rts' | 'rust';
     plannerVersion?: string;
     planFingerprint?: string;

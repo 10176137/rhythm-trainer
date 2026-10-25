@@ -49,6 +49,10 @@ export interface BeginRequest {
   durationPolicy?: DurationEvaluationPolicy;
   scoreFingerprint?: string;
   playbackPlanId?: string;
+  /** R2-3i/domain: server-trusted plan context and record context. */
+  planRequestId?: string;
+  scoreId?: string;
+  configSnapshot?: Record<string, unknown>;
   /** R2-3i: provenance of the plan that produced this Take. */
   plannerAuthority?: 'rts' | 'rust';
   plannerVersion?: string;
@@ -347,6 +351,9 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         assisted: request.assisted,
         scoreFingerprint: request.scoreFingerprint,
         playbackPlanId: request.playbackPlanId,
+        planRequestId: request.planRequestId,
+        scoreId: request.scoreId,
+        configSnapshot: request.configSnapshot,
         plannerAuthority: request.plannerAuthority,
         plannerVersion: request.plannerVersion,
         planFingerprint: request.planFingerprint,
