@@ -472,10 +472,17 @@ pub fn build_plan_v1(
         range_duration_beat = add_rational(&range_duration_beat, &duration)?;
     }
 
+    // planId branch follows repeatSelection.KIND (playback-planner.ts :107-113):
+    // range-loop reads `loop{count}` even when count == 1 — a legal config
+    // (1..=32) whose IDs must not silently read `once`.
     let plan_id = format!(
         "plan:{}:m{start}-{end}:{}:{PLANNER_VERSION}",
         &score_fingerprint[..16],
-        if passes > 1 { format!("loop{passes}") } else { "once".to_string() },
+        if config.repeat_selection.kind == "range-loop" {
+            format!("loop{passes}")
+        } else {
+            "once".to_string()
+        },
     );
 
     // 4. Plan issues (strict blockers), TS order (:115-131, :208-214).

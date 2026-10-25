@@ -483,6 +483,47 @@ fn hand_filter_keeps_indices_and_drops_empty_groups() {
 }
 
 #[test]
+fn runtime_ids_follow_the_repeat_kind_not_the_pass_count() {
+    // Review blocking case: TS branches the planId on repeatSelection.KIND
+    // (playback-planner.ts :107-113), so a LEGAL range-loop count of 1 must
+    // read `loop1` — never `once`. The ID propagates into occurrenceIds and
+    // groupIds, so this is a runtime-identity difference, not cosmetic.
+    let events = json!([note_event("e1", 1, 1, "0/1", "1/1", 1, "1", 60, "C4")]);
+    let document = minimal_document(events);
+
+    // kind "none" -> the `once` segment.
+    let none_plan = build_plan_v1(&document, &minimal_report(),
+        &config_for("both", 1, 1, json!({ "kind": "none" }), 3_000_000))
+        .expect("none plan builds");
+    let none_plan_id = none_plan["runtimeIds"]["planId"].as_str().expect("planId");
+    assert!(none_plan_id.contains(":once:"), "kind none must read once: {none_plan_id}");
+
+    // kind "range-loop" count 1 -> the `loop1` segment.
+    let loop_one = build_plan_v1(&document, &minimal_report(),
+        &config_for("both", 1, 1, json!({ "kind": "range-loop", "count": 1 }), 3_000_000))
+        .expect("range-loop x1 plan builds");
+    let loop_plan_id = loop_one["runtimeIds"]["planId"].as_str().expect("planId");
+    assert!(loop_plan_id.contains(":loop1:"), "range-loop x1 must read loop1: {loop_plan_id}");
+    assert_ne!(none_plan_id, loop_plan_id, "the two configs must never share a planId");
+
+    // The planId propagates into EVERY runtime ID of the loop plan.
+    let occurrences = loop_one["occurrences"].as_array().expect("occurrences");
+    assert_eq!(occurrences.len(), 1, "count=1 still yields exactly one pass");
+    assert_eq!(occurrences[0]["passIndex"], Value::from(0));
+    let expected_occurrence_id = format!("{loop_plan_id}:p0:e1");
+    assert_eq!(occurrences[0]["occurrenceId"], Value::String(expected_occurrence_id.clone()),
+        "occurrenceId embeds the loop1 planId");
+    assert_eq!(loop_one["runtimeIds"]["occurrenceIds"], json!([expected_occurrence_id]));
+    let expected_group_id = format!("{loop_plan_id}:g0:0/1");
+    assert_eq!(loop_one["runtimeIds"]["groupIds"], json!([expected_group_id]),
+        "groupId embeds the loop1 planId");
+
+    // The `once` plan likewise propagates its own segment.
+    assert!(none_plan["occurrences"][0]["occurrenceId"].as_str().expect("occurrenceId").starts_with(none_plan_id));
+    assert_eq!(none_plan["runtimeIds"]["groupIds"], json!([format!("{none_plan_id}:g0:0/1")]));
+}
+
+#[test]
 fn hand_scope_issues_are_reported_per_the_frozen_codes() {
     // A mapping that misses the part entirely -> hand_mapping_incomplete, and
     // the hand filter drops every occurrence (none mapped) -> empty groups.
