@@ -6,7 +6,7 @@
 // fingerprint gate are all real.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import WebSocket from 'ws';
@@ -15,6 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const REPO = path.resolve(ROOT, '..');
 const PORT = 8791 + Math.floor(Math.random() * 40);
+const DATA_DIR = path.join(ROOT, 'node_modules', '.cache', `r2-3h-test-${PORT}`);
 const CORPUS = JSON.parse(readFileSync(
   path.join(REPO, 'audit-r1', 'fixtures', 'parity-cases', 'rust-parity-input', 'G1-base.json'), 'utf8'));
 const { plannerVersion, ...CONFIG } = CORPUS.config;
@@ -62,7 +63,16 @@ function request(ws, message, replyType, requestId) {
     const onMessage = (raw) => {
       let parsed;
       try { parsed = JSON.parse(String(raw)); } catch { return; }
-      if (parsed.type !== replyType) return;
+      if (parsed.type !== replyType) {
+        // Surface a server rejection instead of waiting for a reply that can
+        // never arrive (e.g. a malformed start payload).
+        if (parsed.type === 'error' && replyType !== 'error') {
+          clearTimeout(timer);
+          ws.off('message', onMessage);
+          reject(new Error(`server error: ${parsed.message}`));
+        }
+        return;
+      }
       if (requestId !== undefined && parsed.requestId !== requestId) return;
       clearTimeout(timer);
       ws.off('message', onMessage);
@@ -73,6 +83,27 @@ function request(ws, message, replyType, requestId) {
   });
 }
 
+/** Converts the Rust plan's scoreEvents to the frozen EngineScoreEvent wire
+ * shape (the same one-shot µs→ms projection the browser performs). */
+function engineScoreEventsFor(reply) {
+  const occurrences = new Map(reply.plan.occurrences.map((occurrence) => [occurrence.occurrenceId, occurrence]));
+  return reply.plan.scoreEvents.map((event) => {
+    const occurrence = occurrences.get(event.runtimeOccurrenceId);
+    if (!occurrence) throw new Error(`missing occurrence ${event.runtimeOccurrenceId}`);
+    const [numerator, denominator] = String(occurrence.playbackBeat).split('/').map(Number);
+    return {
+      scoreEventId: event.runtimeOccurrenceId,
+      measure: event.measure,
+      beatPosition: numerator / denominator,
+      pitch: event.pitch,
+      targetOnsetMs: event.targetOnsetUs / 1000,
+      targetDurationMs: event.targetDurationUs / 1000,
+      partId: event.partId,
+      parseConfidence: event.parseConfidence,
+    };
+  });
+}
+
 beforeAll(async () => {
   server = spawn(process.execPath, [path.join(ROOT, 'server', 'engine-server.mjs')], {
     cwd: ROOT,
@@ -80,7 +111,7 @@ beforeAll(async () => {
       ...process.env,
       PORT: String(PORT),
       RHYTHM_PLANNER: 'rust',
-      RHYTHM_DATA_DIR: path.join(ROOT, 'node_modules', '.cache', `r2-3h-test-${PORT}`),
+      RHYTHM_DATA_DIR: DATA_DIR,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -124,6 +155,111 @@ describe('R2-3h: plan protocol over the real engine server', () => {
       expect(reply.plan.atoms).toHaveLength(5);
       expect(reply.plan.scoreEvents).toHaveLength(5);
     }
+  });
+
+  it('persists Rust planner provenance from the plan response through start to disk and history APIs', async () => {    const requestId = 'plan-provenance';
+    const plan = await request(socket, {
+      protocolVersion: 1,
+      type: 'plan-request',
+      requestId,
+      mode: 'timeline',
+      document: CORPUS.document,
+      report: CORPUS.report,
+      config: CONFIG,
+    }, 'plan-response', requestId);
+    expect(plan.ok).toBe(true);
+    expect(plan.planFingerprint).toMatch(/^plan-v1:sha256:[0-9a-f]{64}$/);
+
+    const started = await request(socket, {
+      protocolVersion: 1,
+      type: 'start',
+      modeId: 'score',
+      bpm: CONFIG.bpm.numerator,
+      profile: 'standard',
+      countInBeats: 4,
+      ticksPerQuarter: 960,
+      atoms: plan.plan.atoms,
+      scoreEvents: engineScoreEventsFor(plan),
+      scoreFingerprint: plan.scoreFingerprint,
+      playbackPlanId: plan.plan.runtimeIds.planId,
+      plannerAuthority: plan.plannerAuthority,
+      plannerVersion: plan.plannerVersion,
+      planFingerprint: plan.planFingerprint,
+      hand: 'both',
+      scoreBarCount: CORPUS.document.parts[0].measures.length,
+      assisted: false,
+    }, 'started');
+    expect(started.targets.length).toBeGreaterThan(0);
+    const last = started.targets[started.targets.length - 1];
+    socket.send(JSON.stringify({ protocolVersion: 1, type: 'tick', nowMs: (last?.atMs ?? 0) + 1000 }));
+    const report = await request(socket, { protocolVersion: 1, type: 'finish' }, 'report');
+    expect(report.persisted).toBe(true);
+    expect(report.sessionId).toBeTruthy();
+    expect(report.plannerAuthority).toBe('rust');
+    expect(report.plannerVersion).toBe('rust-planner-1');
+    expect(report.planFingerprint).toBe(plan.planFingerprint);
+    expect(report.playbackPlanId).toBe(plan.plan.runtimeIds.planId);
+
+    const onDisk = JSON.parse(readFileSync(
+      path.join(DATA_DIR, 'sessions', `${report.sessionId}.json`), 'utf8'));
+    expect(onDisk).toMatchObject({
+      plannerAuthority: 'rust',
+      plannerVersion: 'rust-planner-1',
+      planFingerprint: plan.planFingerprint,
+      playbackPlanId: plan.plan.runtimeIds.planId,
+      scoreFingerprint: plan.scoreFingerprint,
+    });
+
+    const list = await (await fetch(`http://127.0.0.1:${PORT}/api/sessions`)).json();
+    const summary = list.items.find((item) => item.sessionId === report.sessionId);
+    expect(summary).toMatchObject({
+      plannerAuthority: 'rust',
+      plannerVersion: 'rust-planner-1',
+      planFingerprint: plan.planFingerprint,
+      playbackPlanId: plan.plan.runtimeIds.planId,
+      scoreFingerprint: plan.scoreFingerprint,
+    });
+    const detail = await (await fetch(
+      `http://127.0.0.1:${PORT}/api/sessions/${report.sessionId}`)).json();
+    expect(detail).toMatchObject({
+      plannerAuthority: 'rust',
+      plannerVersion: 'rust-planner-1',
+      planFingerprint: plan.planFingerprint,
+      playbackPlanId: plan.plan.runtimeIds.planId,
+      scoreFingerprint: plan.scoreFingerprint,
+    });
+  }, 30000);
+
+  it('reads legacy sessions without provenance without fabricating it', async () => {
+    const sessionsDir = path.join(DATA_DIR, 'sessions');
+    const newest = readdirSync(sessionsDir).find((name) => name.endsWith('.json'));
+    expect(newest).toBeTruthy();
+    const source = JSON.parse(readFileSync(path.join(sessionsDir, newest), 'utf8'));
+    const legacy = {
+      ...source,
+      sessionId: 's-old-format',
+      finishedAtIso: '2020-01-01T00:00:00.000Z',
+    };
+    delete legacy.plannerAuthority;
+    delete legacy.plannerVersion;
+    delete legacy.planFingerprint;
+    delete legacy.playbackPlanId;
+    writeFileSync(path.join(sessionsDir, 's-old-format.json'), JSON.stringify(legacy));
+
+    const detail = await (await fetch(`http://127.0.0.1:${PORT}/api/sessions/s-old-format`)).json();
+    expect(detail.sessionId).toBe('s-old-format');
+    expect(detail.plannerAuthority).toBeUndefined();
+    expect(detail.plannerVersion).toBeUndefined();
+    expect(detail.planFingerprint).toBeUndefined();
+    expect(detail.playbackPlanId).toBeUndefined();
+
+    const list = await (await fetch(`http://127.0.0.1:${PORT}/api/sessions`)).json();
+    const summary = list.items.find((item) => item.sessionId === 's-old-format');
+    expect(summary).toBeTruthy();
+    expect(summary.plannerAuthority).toBeNull();
+    expect(summary.plannerVersion).toBeNull();
+    expect(summary.planFingerprint).toBeNull();
+    expect(summary.playbackPlanId).toBeNull();
   });
 
   it('rejects a missing/invalid mode with a coded response (never a plan)', async () => {

@@ -449,6 +449,10 @@ export interface EngineReportMessage {
   coreAlgorithmVersion?: string | null;
   scoreFingerprint?: string | null;
   playbackPlanId?: string | null;
+  /** R2-3i: which planner produced this Take and its plan identity. */
+  plannerAuthority?: 'rts' | 'rust' | null;
+  plannerVersion?: string | null;
+  planFingerprint?: string | null;
   scoreImportStatus?: string | null;
   hand?: HandSelection | null;
   scoreBarCount?: number | null;

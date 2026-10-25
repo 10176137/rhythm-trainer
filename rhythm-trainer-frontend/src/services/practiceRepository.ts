@@ -28,6 +28,11 @@ export interface SessionSummary {
   targetHitRate: number;
   meanSignedMs: number | null;
   meanAbsoluteMs: number | null;
+  scoreFingerprint?: string | null;
+  playbackPlanId?: string | null;
+  plannerAuthority?: 'rts' | 'rust' | null;
+  plannerVersion?: string | null;
+  planFingerprint?: string | null;
   sourceReportId?: string | null;
   prescriptionId?: string | null;
   takeTemplateId?: string | null;
@@ -56,6 +61,10 @@ export interface SessionDetail {
   pauseAdjusted?: boolean;
   takeId?: string | null;
   scoreFingerprint?: string | null;
+  playbackPlanId?: string | null;
+  plannerAuthority?: 'rts' | 'rust' | null;
+  plannerVersion?: string | null;
+  planFingerprint?: string | null;
   hand?: string | null;
   scoreBarCount?: number | null;
   sourceReportId?: string | null;

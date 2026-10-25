@@ -35,7 +35,8 @@ export class PlaybackPlanError extends Error {
 }
 
 const MAX_LOOP_PASSES = 32;
-const PLANNER_VERSION = 'playback-planner-1.0.0';
+export const TS_PLANNER_VERSION = 'playback-planner-1.0.0';
+const PLANNER_VERSION = TS_PLANNER_VERSION;
 
 interface EventRef {
   event: ScoreEvent;

@@ -570,6 +570,11 @@ async function handleApi(req, res, urlPath, query) {
           targetHitRate: record.report ? record.report.stats.targetHitRate : 0,
           meanSignedMs: record.report ? record.report.stats.meanSignedMs ?? null : null,
           meanAbsoluteMs: record.report ? record.report.stats.meanAbsoluteMs ?? null : null,
+          scoreFingerprint: record.scoreFingerprint ?? null,
+          playbackPlanId: record.playbackPlanId ?? null,
+          plannerAuthority: record.plannerAuthority ?? null,
+          plannerVersion: record.plannerVersion ?? null,
+          planFingerprint: record.planFingerprint ?? null,
           sourceReportId: record.sourceReportId ?? null,
           prescriptionId: record.prescriptionId ?? null,
           takeTemplateId: record.takeTemplateId ?? null,
@@ -1418,6 +1423,34 @@ wss.on('connection', (socket) => {
             throw new Error('请求声称使用语义计划（playbackPlanId），但缺少 scoreEvents；拒绝降级为仅节拍练习');
           }
         }
+        // R2-3i: planner provenance is persisted with the Take. It is
+        // self-reported by the client, so validate shape and fail closed on a
+        // malformed Rust claim instead of writing a half-identified record.
+        const plannerAuthority = msg.plannerAuthority === 'rts' || msg.plannerAuthority === 'rust'
+          ? msg.plannerAuthority
+          : null;
+        if (msg.plannerAuthority !== undefined && plannerAuthority === null) {
+          throw new Error('plannerAuthority 必须是 rts 或 rust');
+        }
+        const plannerVersion = typeof msg.plannerVersion === 'string' && msg.plannerVersion.trim() !== ''
+          ? msg.plannerVersion
+          : null;
+        if (msg.plannerVersion !== undefined && plannerVersion === null) {
+          throw new Error('plannerVersion 提供了但格式非法');
+        }
+        const planFingerprint = typeof msg.planFingerprint === 'string'
+          && /^plan-v1:sha256:[0-9a-f]{64}$/.test(msg.planFingerprint)
+          ? msg.planFingerprint
+          : null;
+        if (msg.planFingerprint !== undefined && planFingerprint === null) {
+          throw new Error('planFingerprint 提供了但格式非法');
+        }
+        if (plannerAuthority === 'rust') {
+          if (!scoreFingerprint) throw new Error('plannerAuthority=rust 缺少 scoreFingerprint');
+          if (!plannerVersion) throw new Error('plannerAuthority=rust 缺少 plannerVersion');
+          if (!planFingerprint) throw new Error('plannerAuthority=rust 缺少 planFingerprint');
+          if (!playbackPlanId) throw new Error('plannerAuthority=rust 缺少计划运行 ID（playbackPlanId）');
+        }
         const hand = msg.hand === 'both' || msg.hand === 'right' || msg.hand === 'left' ? msg.hand : null;
         const scoreBarCountValue = Number(msg.scoreBarCount);
         const scoreBarCount = Number.isInteger(scoreBarCountValue) && scoreBarCountValue > 0
@@ -1675,6 +1708,9 @@ wss.on('connection', (socket) => {
           scoringConfig,
           scoreFingerprint,
           playbackPlanId,
+          plannerAuthority,
+          plannerVersion,
+          planFingerprint,
           scoreImportStatus,
           hand,
           scoreBarCount,
@@ -1708,6 +1744,9 @@ wss.on('connection', (socket) => {
           scoringConfig,
           scoreFingerprint,
           playbackPlanId,
+          plannerAuthority,
+          plannerVersion,
+          planFingerprint,
           scoreImportStatus,
           scoreEvents,
           hand,
@@ -2208,6 +2247,9 @@ wss.on('connection', (socket) => {
       scoringConfigVersion: meta?.scoringConfig?.configVersion ?? null,
       scoreFingerprint: meta?.scoreFingerprint ?? null,
       playbackPlanId: meta?.playbackPlanId ?? null,
+      plannerAuthority: meta?.plannerAuthority ?? null,
+      plannerVersion: meta?.plannerVersion ?? null,
+      planFingerprint: meta?.planFingerprint ?? null,
       scoreImportStatus: meta?.scoreImportStatus ?? null,
       hand: meta?.hand ?? null,
       scoreBarCount: meta?.scoreBarCount ?? null,
@@ -2316,6 +2358,9 @@ wss.on('connection', (socket) => {
       scoringConfigVersion: meta?.scoringConfig?.configVersion ?? null,
       scoreFingerprint: meta?.scoreFingerprint ?? null,
       playbackPlanId: meta?.playbackPlanId ?? null,
+      plannerAuthority: meta?.plannerAuthority ?? null,
+      plannerVersion: meta?.plannerVersion ?? null,
+      planFingerprint: meta?.planFingerprint ?? null,
       scoreImportStatus: meta?.scoreImportStatus ?? null,
       hand: meta?.hand ?? null,
       scoreBarCount: meta?.scoreBarCount ?? null,

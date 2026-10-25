@@ -17,7 +17,7 @@ import type { ScoreDocument } from './core/sampleScore';
 import { buildPracticePlan } from './features/score/practicePlan';
 import { practiceScoreDocument } from './features/score/practiceScore';
 import { applyHandMappingToLegacyNotes } from './score-engine/legacy-bridge';
-import { buildPlaybackPlan, scoreOccurrencesToEngineAtoms } from './score-engine/playback/playback-planner';
+import { buildPlaybackPlan, scoreOccurrencesToEngineAtoms, TS_PLANNER_VERSION } from './score-engine/playback/playback-planner';
 import { buildEngineScoreEvents } from './score-engine/playback/score-events';
 import { projectScoreDocumentV1 } from './score-engine/contract-v1/plan-fingerprint';
 import {
@@ -1157,6 +1157,10 @@ export default function App() {
           durationPolicy: launchConfig.durationPolicy,
           scoreFingerprint: engineDoc.fingerprint,
           playbackPlanId: response.plan.runtimeIds.planId,
+          // R2-3i: bind the persisted Take to the exact plan response.
+          plannerAuthority: response.plannerAuthority,
+          plannerVersion: response.plannerVersion,
+          planFingerprint: response.planFingerprint,
           scoreImportStatus: report.status,
           hand: launchConfig.hand,
           scoreBarCount: context.targetedSource?.scoreBarCount ?? scoreDoc.meta.barCount,
@@ -1522,6 +1526,10 @@ export default function App() {
       durationPolicy: config.durationPolicy,
       ...(scoreDoc.engine ? { scoreFingerprint: scoreDoc.engine.fingerprint } : {}),
       ...(playbackPlanId ? { playbackPlanId } : {}),
+      // R2-3i: the TS path is also provenance-bearing; it has no plan
+      // fingerprint by design (the frozen gate only covers the Rust plan).
+      plannerAuthority: 'rts',
+      plannerVersion: TS_PLANNER_VERSION,
       ...(scoreDoc.importReport ? { scoreImportStatus: scoreDoc.importReport.status } : {}),
       hand: config.hand,
       scoreBarCount: targetedSource?.scoreBarCount ?? scoreDoc.meta.barCount,

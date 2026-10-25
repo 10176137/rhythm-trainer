@@ -52,6 +52,19 @@ describe('R2-3h: single plan authority in the rust branch', () => {
     expect(freeBranch.includes('requestPlannerPlan')).toBe(false);
   });
 
+  it('the rust timeline start carries planner provenance', () => {
+    // R2-3i: the persisted Take must be bound to the plan response, not just
+    // to a plan id. These fields are consumed by session.begin and stored.
+    const branch = rustBranchSource();
+    for (const field of [
+      'plannerAuthority: response.plannerAuthority',
+      'plannerVersion: response.plannerVersion',
+      'planFingerprint: response.planFingerprint',
+    ]) {
+      expect(branch.includes(field), `rust start must carry ${field}`).toBe(true);
+    }
+  });
+
   it('the browser contract projection does not depend on Node builtins', () => {
     // R2-3h-R2: plan-fingerprint.ts is imported by App.tsx for the Rust plan
     // request. A node:crypto import is externalized by Vite and aborts the

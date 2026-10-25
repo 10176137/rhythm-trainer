@@ -49,6 +49,10 @@ export interface BeginRequest {
   durationPolicy?: DurationEvaluationPolicy;
   scoreFingerprint?: string;
   playbackPlanId?: string;
+  /** R2-3i: provenance of the plan that produced this Take. */
+  plannerAuthority?: 'rts' | 'rust';
+  plannerVersion?: string;
+  planFingerprint?: string;
   scoreImportStatus?: string;
   hand?: HandSelection;
   scoreBarCount?: number;
@@ -343,6 +347,9 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         assisted: request.assisted,
         scoreFingerprint: request.scoreFingerprint,
         playbackPlanId: request.playbackPlanId,
+        plannerAuthority: request.plannerAuthority,
+        plannerVersion: request.plannerVersion,
+        planFingerprint: request.planFingerprint,
         scoreImportStatus: request.scoreImportStatus,
         hand: request.hand,
         scoreBarCount: request.scoreBarCount,

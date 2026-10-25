@@ -88,6 +88,8 @@ export default function HistoryView({
             <button className="history-row" onClick={() => toggle(item.sessionId)}>
               <span className="history-date">{fmtTime(item.finishedAtIso)}</span>
               <span className="history-mode">{MODE_CN[item.modeId] ?? item.modeId}</span>
+              {item.plannerAuthority === 'rust' && <span className="badge badge-ok">Rust 计划</span>}
+              {item.plannerAuthority === 'rts' && <span className="badge">RTS 计划</span>}
               {item.sourceReportId && <span className="badge badge-ok">复练</span>}
               {item.takeTemplateName && <span className="badge history-take-badge" title={item.takeTemplateName}>Take</span>}
               {item.interrupted && <span className="badge badge-bad">中断</span>}
@@ -103,6 +105,14 @@ export default function HistoryView({
                 {detailLoading && <p className="history-empty">载入报告中…</p>}
                 {detail?.takeTemplateName && (
                   <p className="history-take-link">关联 Take：{detail.takeTemplateName}</p>
+                )}
+                {detail && (detail.plannerAuthority || detail.planFingerprint || detail.playbackPlanId) && (
+                  <p className="history-take-link">
+                    规划器：{detail.plannerAuthority ?? '未记录'}
+                    {detail.plannerVersion ? ` · ${detail.plannerVersion}` : ''}
+                    {detail.planFingerprint ? ` · 计划指纹 ${detail.planFingerprint}` : ''}
+                    {detail.playbackPlanId ? ` · 运行 ID ${detail.playbackPlanId}` : ''}
+                  </p>
                 )}
                 {detail && detail.report && (
                   <ReportPanel
