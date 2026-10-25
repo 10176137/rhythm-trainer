@@ -3,7 +3,9 @@
 
 use serde_json::Value;
 
-use crate::contract_v1::document::{check_closed_keys, check_required_keys, is_object, Issue};
+use crate::contract_v1::document::{
+    check_closed_keys, check_required_keys, is_64_lower_hex, is_object, Issue,
+};
 
 fn issue(code: &str, message: impl Into<String>) -> Issue {
     Issue { code: code.to_string(), message: message.into() }
@@ -14,6 +16,10 @@ fn check_rational(value: &Value, context: &str, issues: &mut Vec<Issue>) {
         issues.push(issue("invalid_rational", format!("{context}: not an object")));
         return;
     };
+    // RationalV1 is a CLOSED object: only numerator/denominator (schema
+    // additionalProperties: false — TS gets this tier from AJV; with no AJV
+    // here the port owns it directly).
+    check_closed_keys(value, &["numerator", "denominator"], context, issues);
     let Some(numerator) = map.get("numerator").and_then(Value::as_i64) else {
         issues.push(issue("invalid_rational", format!("{context}: numerator must be an integer")));
         return;
@@ -42,23 +48,47 @@ fn gcd(mut a: u64, mut b: u64) -> u64 {
     a
 }
 
-/// Full payload validation. `empty_plan` short-circuits (as in TS :1060).
+/// TS checkPositiveInteger over the JSON value domain (code invalid_integer).
+fn check_payload_positive_integer(value: Option<&Value>, context: &str, min: i64, issues: &mut Vec<Issue>) {
+    if !value.and_then(Value::as_i64).map(|v| v >= min).unwrap_or(false) {
+        issues.push(issue("invalid_integer", format!("{context}: must be an integer >= {min}")));
+    }
+}
+
+/// Full payload validation. `empty_plan` short-circuits (as in TS :1060);
+/// a wrong fingerprintSchemaVersion short-circuits FIRST (as in TS :925).
 pub fn validate_plan_fingerprint_payload_v1(payload: &Value) -> Vec<Issue> {
     let mut issues = Vec::new();
     if !is_object(payload) {
         return vec![issue("invalid_payload", "not an object")];
     }
+    if payload.get("fingerprintSchemaVersion").and_then(Value::as_i64) != Some(1) {
+        return vec![issue(
+            "unknown_schema_version",
+            format!(
+                "fingerprintSchemaVersion must be 1, got {}",
+                payload.get("fingerprintSchemaVersion").map(|v| v.to_string()).unwrap_or_default()
+            ),
+        )];
+    }
     const ROOT_ALLOWED: [&str; 9] = ["fingerprintSchemaVersion", "plannerVersion", "scoreRevisionId",
         "normalizerVersion", "supportProfileVersion", "scope", "repeatSelection", "tempo", "targetGroups"];
+    // repeatSelection is OPTIONAL in the frozen schema's root required list
+    // (TS checkRequiredKeys :931 lists only eight keys): allowed != required.
+    const ROOT_REQUIRED: [&str; 8] = ["fingerprintSchemaVersion", "plannerVersion", "scoreRevisionId",
+        "normalizerVersion", "supportProfileVersion", "scope", "tempo", "targetGroups"];
     check_closed_keys(payload, &ROOT_ALLOWED, "payload", &mut issues);
-    check_required_keys(payload, &ROOT_ALLOWED, "payload", &mut issues);
-    if payload.get("fingerprintSchemaVersion").and_then(Value::as_i64) != Some(1) {
-        issues.push(issue("invalid_payload", "fingerprintSchemaVersion must be 1"));
-    }
-    for key in ["plannerVersion", "scoreRevisionId", "normalizerVersion", "supportProfileVersion"] {
+    check_required_keys(payload, &ROOT_REQUIRED, "payload", &mut issues);
+    for key in ["plannerVersion", "normalizerVersion", "supportProfileVersion"] {
         if !payload.get(key).and_then(Value::as_str).map(|s| !s.is_empty()).unwrap_or(false) {
             issues.push(issue("missing_field", format!("{key} must be a non-empty string")));
         }
+    }
+    // scoreRevisionId carries the frozen revision-id pattern (TS :937).
+    match payload.get("scoreRevisionId").and_then(Value::as_str) {
+        Some(text) if text.starts_with("score-revision-v1:sha256:")
+            && is_64_lower_hex(&text["score-revision-v1:sha256:".len()..]) => {}
+        _ => issues.push(issue("invalid_revision_id", "scoreRevisionId does not match the frozen pattern")),
     }
 
     if let Some(scope) = payload.get("scope") {
@@ -97,7 +127,20 @@ pub fn validate_plan_fingerprint_payload_v1(payload: &Value) -> Vec<Issue> {
                 if !is_object(mapping) {
                     issues.push(issue("invalid_scope", "scope.handMapping must be an object"));
                 } else {
-                    check_closed_keys(mapping, &["schemaVersion", "mappingVersion", "source", "parts"], "handMapping", &mut issues);
+                    // All four fields are REQUIRED by the frozen schema; TS
+                    // routes the required tier through AJV, this port owns it.
+                    const MAPPING_KEYS: [&str; 4] = ["schemaVersion", "mappingVersion", "source", "parts"];
+                    check_closed_keys(mapping, &MAPPING_KEYS, "handMapping", &mut issues);
+                    check_required_keys(mapping, &MAPPING_KEYS, "handMapping", &mut issues);
+                    // mappingVersion: REQUIRED non-empty string. Absence is the
+                    // missing_field above; a present-but-invalid value is the
+                    // schema tier this port owns.
+                    match mapping.get("mappingVersion") {
+                        Some(Value::String(text)) if !text.is_empty() => {}
+                        Some(_) => issues.push(issue("schema_violation",
+                            "handMapping.mappingVersion must be a non-empty string")),
+                        None => {}
+                    }
                     if !matches!(mapping.get("source").and_then(Value::as_str), Some("user") | Some("score-metadata")) {
                         issues.push(issue("invalid_scope",
                             format!("handMapping.source must be user|score-metadata (got {})", mapping.get("source").map(|v| v.to_string()).unwrap_or_default())));
@@ -113,6 +156,9 @@ pub fn validate_plan_fingerprint_payload_v1(payload: &Value) -> Vec<Issue> {
                                     issues.push(issue("invalid_scope", "handMapping part must be an object"));
                                     continue;
                                 };
+                                // Mapping parts and their staff entries are CLOSED
+                                // objects (schema additionalProperties: false).
+                                check_closed_keys(part, &["partId", "staves"], "handMapping part", &mut issues);
                                 let Some(part_id) = part_object.get("partId").and_then(Value::as_str) else {
                                     issues.push(issue("invalid_scope", "handMapping part.partId must be a non-empty string"));
                                     continue;
@@ -134,6 +180,8 @@ pub fn validate_plan_fingerprint_payload_v1(payload: &Value) -> Vec<Issue> {
                                                     format!("handMapping part {part_id}: each staff needs staffNumber>=1 and hand left|right")));
                                                 continue;
                                             };
+                                            check_closed_keys(staff, &["staffNumber", "hand"],
+                                                "handMapping staff", &mut issues);
                                             let staff_number = staff_object.get("staffNumber").and_then(Value::as_i64);
                                             let hand = staff_object.get("hand").and_then(Value::as_str);
                                             let valid = matches!((staff_number, hand), (Some(n), Some(h)) if n >= 1 && (h == "left" || h == "right"));
@@ -251,15 +299,34 @@ pub fn validate_plan_fingerprint_payload_v1(payload: &Value) -> Vec<Issue> {
                 }
             }
         }
-        if let Some(staff_numbers) = group.get("staffNumbers") {
-            if !staff_numbers.is_array() {
-                issues.push(issue("invalid_group", "staffNumbers must be an array"));
+        // TargetGroupV1.passIndex (integer >= 0) and .bar (integer >= 1) are
+        // REQUIRED integers (TS checkPositiveInteger :1081-1082).
+        check_payload_positive_integer(group.get("passIndex"), "group.passIndex", 0, &mut issues);
+        check_payload_positive_integer(group.get("bar"), "group.bar", 1, &mut issues);
+        // staffNumbers: non-empty array of integers >= 1; voiceIds: non-empty
+        // array of strings. The hand-written TS layer enforces non-emptiness
+        // (:1086-1091), the item tier is AJV's — owned here directly.
+        match group.get("staffNumbers") {
+            Some(Value::Array(items)) if !items.is_empty() => {
+                for item in items {
+                    if item.as_i64().map(|v| v >= 1) != Some(true) {
+                        issues.push(issue("schema_violation",
+                            "targetGroup.staffNumbers: items must be integers >= 1"));
+                    }
+                }
             }
+            _ => issues.push(issue("invalid_group", "staffNumbers must be a non-empty array")),
         }
-        if let Some(voice_ids) = group.get("voiceIds") {
-            if !voice_ids.is_array() {
-                issues.push(issue("invalid_group", "voiceIds must be an array"));
+        match group.get("voiceIds") {
+            Some(Value::Array(items)) if !items.is_empty() => {
+                for item in items {
+                    if !item.is_string() {
+                        issues.push(issue("schema_violation",
+                            "targetGroup.voiceIds: items must be strings"));
+                    }
+                }
             }
+            _ => issues.push(issue("invalid_group", "voiceIds must be a non-empty array")),
         }
         check_rational(group.get("onsetBeatFromRangeStart").unwrap_or(&Value::Null),
             "targetGroup.onsetBeatFromRangeStart", &mut issues);

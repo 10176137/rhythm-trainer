@@ -690,3 +690,404 @@ fn gate_payload_missing_member_fields_are_rejected() {
     .expect_err("members without locator/pitch must fail closed");
     assert_eq!(error.code, "PAYLOAD_VALIDATION_FAILED");
 }
+
+
+// ---- Seventh-round follow-up: TieSpan id/eventIds typing, document-level
+// ---- sections out of the per-part loop, payload required/allowed split,
+// ---- handMapping completeness, TargetGroup required fields + arrays ----
+
+fn document_codes_of(value: &Value) -> Vec<String> {
+    validate_score_document_v1(value).into_iter().map(|issue| issue.code).collect()
+}
+
+fn payload_codes_of(value: &Value) -> Vec<String> {
+    validate_plan_fingerprint_payload_v1(value).into_iter().map(|issue| issue.code).collect()
+}
+
+/// The legal TieSpanV1 shape used by the positives below. `eventIds` must
+/// name events that actually exist in the document under test.
+fn legal_tie_span(first: &str, second: &str) -> Value {
+    serde_json::json!([
+        { "id": "tie:1", "pitchKey": "60:1", "eventIds": [first, second],
+          "startBeat": { "numerator": 0, "denominator": 1 },
+          "endBeat": { "numerator": 1, "denominator": 1 } }
+    ])
+}
+
+/// A two-part document whose tie span joins one event from EACH part. Under
+/// the pre-fix layout (document-level sections nested inside the per-part
+/// loop) the P2 events were not yet registered when tieSpans was checked
+/// after P1, so this legal document reported a spurious dangling_reference.
+fn two_part_cross_tie_document() -> Value {
+    let fixture = load_fixture();
+    let mut document = fixture["document"].clone();
+    let mut part1 = document["parts"][0].clone();
+    // A second P1 event: the tie span itself stays on the two e1 ends.
+    let mut second = part1["measures"][0]["events"][0].clone();
+    second["eventId"] = Value::String("fix:m1:e2".into());
+    second["source"]["sourceOrdinal"] = Value::from(2);
+    part1["measures"][0]["events"].as_array_mut().unwrap().push(second);
+    let first = part1["measures"][0]["events"][0].as_object_mut().unwrap();
+    first.insert("tieStart".into(), Value::Bool(true));
+    first.insert("tieStop".into(), Value::Bool(true));
+    first.insert("tieSpanId".into(), Value::String("tie:1".into()));
+
+    // P2 = a renamed deep copy of P1: new partId, renamed eventIds.
+    let mut part2 = part1.clone();
+    part2["partId"] = Value::String("P2".into());
+    part2["name"] = Value::String("Piano 2".into());
+    for measure in part2["measures"].as_array_mut().unwrap() {
+        for event in measure["events"].as_array_mut().unwrap() {
+            let renamed = event["eventId"].as_str().unwrap().replace("fix:", "fix2:");
+            event["eventId"] = Value::String(renamed);
+            event["source"]["partId"] = Value::String("P2".into());
+        }
+    }
+    let p2_first = part2["measures"][0]["events"][0].as_object_mut().unwrap();
+    p2_first.insert("tieStart".into(), Value::Bool(true));
+    p2_first.insert("tieStop".into(), Value::Bool(true));
+    p2_first.insert("tieSpanId".into(), Value::String("tie:1".into()));
+
+    document["parts"] = Value::Array(vec![part1, part2]);
+    document["tieSpans"] = legal_tie_span("fix:m1:e1", "fix2:m1:e1");
+    document
+}
+
+#[test]
+fn tie_span_id_requires_a_non_empty_string() {
+    let fixture = load_fixture();
+    let base = fixture["document"].clone();
+    // Two real events so eventIds reference legality never muddies the id
+    // assertions below.
+    let mut two_events = base.clone();
+    let mut second = two_events["parts"][0]["measures"][0]["events"][0].clone();
+    second["eventId"] = Value::String("fix:m1:e2".into());
+    second["source"]["sourceOrdinal"] = Value::from(2);
+    two_events["parts"][0]["measures"][0]["events"]
+        .as_array_mut().unwrap().push(second);
+
+    // Positive: a fully legal tie span still validates clean.
+    two_events["tieSpans"] = legal_tie_span("fix:m1:e1", "fix:m1:e2");
+    let codes = document_codes_of(&two_events);
+    assert!(codes.is_empty(), "legal tie span must stay clean: {codes:?}");
+
+    // Negative: numeric id — previously SILENTLY accepted.
+    let mut numeric = two_events.clone();
+    numeric["tieSpans"][0]["id"] = Value::from(5);
+    let codes = document_codes_of(&numeric);
+    assert!(codes.contains(&"schema_violation".to_string()), "codes: {codes:?}");
+
+    // Negative: empty-string id — previously silently accepted.
+    let mut empty_id = two_events.clone();
+    empty_id["tieSpans"][0]["id"] = Value::String(String::new());
+    let codes = document_codes_of(&empty_id);
+    assert!(codes.contains(&"schema_violation".to_string()), "codes: {codes:?}");
+
+    // Negative: missing id (required by the frozen schema).
+    let mut missing = two_events.clone();
+    missing["tieSpans"][0].as_object_mut().unwrap().remove("id");
+    let codes = document_codes_of(&missing);
+    assert!(codes.contains(&"missing_field".to_string()), "codes: {codes:?}");
+}
+
+#[test]
+fn tie_span_event_ids_items_are_typed_and_checked() {
+    let fixture = load_fixture();
+    let base = fixture["document"].clone();
+
+    // Negative: a non-string element is NEVER silently skipped — it violates
+    // the item schema and cannot name a known event.
+    let mut numeric_member = base.clone();
+    numeric_member["tieSpans"] = serde_json::json!([
+        { "id": "tie:1", "pitchKey": "60", "eventIds": ["fix:m1:e1", 5],
+          "startBeat": {"numerator": 0, "denominator": 1},
+          "endBeat": {"numerator": 1, "denominator": 1} }
+    ]);
+    let codes = document_codes_of(&numeric_member);
+    assert!(codes.contains(&"schema_violation".to_string()), "codes: {codes:?}");
+    assert!(codes.contains(&"dangling_reference".to_string()), "codes: {codes:?}");
+
+    // Negative: an empty-string element violates the item minLength.
+    let mut empty_member = base.clone();
+    empty_member["tieSpans"] = serde_json::json!([
+        { "id": "tie:1", "pitchKey": "60", "eventIds": ["fix:m1:e1", ""],
+          "startBeat": {"numerator": 0, "denominator": 1},
+          "endBeat": {"numerator": 1, "denominator": 1} }
+    ]);
+    let codes = document_codes_of(&empty_member);
+    assert!(codes.contains(&"schema_violation".to_string()), "codes: {codes:?}");
+
+    // Negative: fewer than two elements.
+    let mut single = base.clone();
+    single["tieSpans"] = serde_json::json!([
+        { "id": "tie:1", "pitchKey": "60", "eventIds": ["fix:m1:e1"],
+          "startBeat": {"numerator": 0, "denominator": 1},
+          "endBeat": {"numerator": 1, "denominator": 1} }
+    ]);
+    assert!(document_codes_of(&single).contains(&"invalid_tie_span".to_string()));
+}
+
+#[test]
+fn document_level_sections_run_once_after_all_parts() {
+    // Positive: a cross-part tie (P1 event + P2 event in one span, both ends
+    // claiming it back) validates CLEAN. This is the structural pin: with the
+    // tieSpans section nested in the per-part loop it produced a spurious
+    // dangling_reference for the not-yet-registered P2 event.
+    let cross_tie = two_part_cross_tie_document();
+    let codes = document_codes_of(&cross_tie);
+    assert!(codes.is_empty(), "cross-part tie document must be clean: {codes:?}");
+
+    // Positive: parts=[] is schema-legal on its own.
+    let fixture = load_fixture();
+    let mut emptied = fixture["document"].clone();
+    emptied["parts"] = Value::Array(vec![]);
+    let codes = document_codes_of(&emptied);
+    assert!(codes.is_empty(), "empty parts must stay clean: {codes:?}");
+
+    // Negative discriminator: with parts=[] a TAMPERED tieSpan must still be
+    // rejected. Pre-fix, the tieSpans section lived inside the per-part loop
+    // and an empty parts array skipped it entirely — a silent fail-open.
+    emptied["tieSpans"] = serde_json::json!([
+        { "id": "tie:ghost", "pitchKey": "60", "eventIds": ["ghost1", "ghost2"],
+          "startBeat": {"numerator": 0, "denominator": 1},
+          "endBeat": {"numerator": 1, "denominator": 1} }
+    ]);
+    let codes = document_codes_of(&emptied);
+    assert!(
+        codes.iter().filter(|code| *code == "dangling_reference").count() >= 1,
+        "tampered tieSpan with parts=[] must be reported: {codes:?}"
+    );
+}
+
+#[test]
+fn gate_rejects_tampered_tie_spans() {
+    let fixture = load_fixture();
+
+    // A numeric tieSpan id cannot reach a fingerprint through the gate.
+    let mut numeric_id = fixture["document"].clone();
+    numeric_id["tieSpans"] = serde_json::json!([
+        { "id": 5, "pitchKey": "60", "eventIds": ["fix:m1:e1", "fix:m1:e1"],
+          "startBeat": {"numerator": 0, "denominator": 1},
+          "endBeat": {"numerator": 1, "denominator": 1} }
+    ]);
+    let error = plan_fingerprint_v1_gate(
+        &numeric_id, &fixture["report"], &fixture["plannerOutput"], &fixture["config"],
+    )
+    .expect_err("numeric tieSpan id must fail closed");
+    assert_eq!(error.code, "DOCUMENT_VALIDATION_FAILED");
+
+    // parts=[] + tampered tieSpan: pre-fix the section never ran for an empty
+    // parts array; the formal gate must still reject.
+    let mut emptied = fixture["document"].clone();
+    emptied["parts"] = Value::Array(vec![]);
+    emptied["tieSpans"] = serde_json::json!([
+        { "id": "tie:ghost", "pitchKey": "60", "eventIds": ["ghost1", "ghost2"],
+          "startBeat": {"numerator": 0, "denominator": 1},
+          "endBeat": {"numerator": 1, "denominator": 1} }
+    ]);
+    let error = plan_fingerprint_v1_gate(
+        &emptied, &fixture["report"], &fixture["plannerOutput"], &fixture["config"],
+    )
+    .expect_err("tampered tieSpan with parts=[] must fail closed");
+    assert_eq!(error.code, "DOCUMENT_VALIDATION_FAILED");
+}
+
+fn baseline_payload() -> Value {
+    let fixture = load_fixture();
+    serde_json::json!({
+        "fingerprintSchemaVersion": 1,
+        "plannerVersion": "parity-harness-1",
+        "scoreRevisionId": fixture["document"]["scoreRevisionId"],
+        "normalizerVersion": "normalizer-1",
+        "supportProfileVersion": "musicxml-v1.0",
+        "scope": {
+            "partId": "P1",
+            "range": { "startMeasureOrdinal": 1, "endMeasureOrdinal": 1 },
+            "hand": "both",
+            "handMapping": { "schemaVersion": 1, "mappingVersion": "hand-mapping-1",
+                "source": "user",
+                "parts": [{ "partId": "P1", "staves": [{ "staffNumber": 1, "hand": "right" }] }] }
+        },
+        "repeatSelection": { "kind": "none" },
+        "tempo": {
+            "bpm": { "numerator": 80, "denominator": 1 }, "ticksPerQuarter": 960,
+            "countInBeats": { "numerator": 4, "denominator": 1 },
+            "timeOrigin": "playback-start"
+        },
+        "targetGroups": [{
+            "groupIndex": 0, "passIndex": 0, "bar": 1,
+            "onsetBeatFromRangeStart": { "numerator": 0, "denominator": 1 },
+            "durationBeat": { "numerator": 1, "denominator": 1 },
+            "beatInMeasure": { "numerator": 0, "denominator": 1 },
+            "staffNumbers": [1], "voiceIds": ["1"],
+            "members": [{
+                "sourceLocator": { "partId": "P1", "measureOrdinal": 1,
+                    "sourceOrdinal": 1, "voiceId": "1" },
+                "pitch": { "midiNote": 60, "spelling": "C4" },
+                "durationBeat": { "numerator": 1, "denominator": 1 },
+                "isTieOnset": false
+            }]
+        }]
+    })
+}
+
+#[test]
+fn repeat_selection_is_optional_and_rationals_are_closed() {
+    // Positive discriminator: repeatSelection ABSENT must validate clean.
+    // Pre-fix the root required list wrongly included it (allowed == required).
+    let mut optional = baseline_payload();
+    optional.as_object_mut().unwrap().remove("repeatSelection");
+    let codes = payload_codes_of(&optional);
+    assert!(codes.is_empty(), "absent repeatSelection must be legal: {codes:?}");
+
+    // Negative: RationalV1 is a CLOSED object — an extra key is reported.
+    let mut extra_bpm_key = baseline_payload();
+    extra_bpm_key["tempo"]["bpm"]["approx"] = Value::from(0.5);
+    let codes = payload_codes_of(&extra_bpm_key);
+    assert!(codes.contains(&"unexpected_field".to_string()), "codes: {codes:?}");
+
+    let mut extra_count_in = baseline_payload();
+    extra_count_in["tempo"]["countInBeats"]["hint"] = Value::String("4".into());
+    assert!(payload_codes_of(&extra_count_in).contains(&"unexpected_field".to_string()));
+
+    // Positive: the baseline (closed rationals) stays clean.
+    let codes = payload_codes_of(&baseline_payload());
+    assert!(codes.is_empty(), "baseline payload must validate cleanly: {codes:?}");
+}
+
+#[test]
+fn hand_mapping_completeness_is_enforced() {
+    // Negative: mappingVersion missing (required by the frozen schema).
+    let mut no_version = baseline_payload();
+    no_version["scope"]["handMapping"].as_object_mut().unwrap().remove("mappingVersion");
+    let codes = payload_codes_of(&no_version);
+    assert!(codes.contains(&"missing_field".to_string()), "codes: {codes:?}");
+
+    // Negative: mappingVersion present but mistyped / empty.
+    let mut numeric_version = baseline_payload();
+    numeric_version["scope"]["handMapping"]["mappingVersion"] = Value::from(7);
+    let codes = payload_codes_of(&numeric_version);
+    assert!(codes.contains(&"schema_violation".to_string()), "codes: {codes:?}");
+
+    let mut empty_version = baseline_payload();
+    empty_version["scope"]["handMapping"]["mappingVersion"] = Value::String(String::new());
+    assert!(payload_codes_of(&empty_version).contains(&"schema_violation".to_string()));
+
+    // Negative: a mapping part carries an extra field (additionalProperties).
+    let mut extra_part_field = baseline_payload();
+    extra_part_field["scope"]["handMapping"]["parts"][0]["label"] = Value::String("top".into());
+    let codes = payload_codes_of(&extra_part_field);
+    assert!(codes.contains(&"unexpected_field".to_string()), "codes: {codes:?}");
+
+    // Negative: a staff entry carries an extra field.
+    let mut extra_staff_field = baseline_payload();
+    extra_staff_field["scope"]["handMapping"]["parts"][0]["staves"][0]["brackets"] = Value::Bool(true);
+    assert!(payload_codes_of(&extra_staff_field).contains(&"unexpected_field".to_string()));
+
+    // Positive: the complete legal mapping stays clean.
+    let codes = payload_codes_of(&baseline_payload());
+    assert!(codes.is_empty(), "legal handMapping must stay clean: {codes:?}");
+}
+
+#[test]
+fn target_group_required_fields_and_member_arrays_are_enforced() {
+    let with_group = |patch: &dyn Fn(&mut Value)| {
+        let mut payload = baseline_payload();
+        patch(&mut payload);
+        payload_codes_of(&payload)
+    };
+
+    // passIndex: required, integer >= 0.
+    let codes = with_group(&|payload| {
+        payload["targetGroups"][0].as_object_mut().unwrap().remove("passIndex");
+    });
+    assert!(codes.contains(&"invalid_integer".to_string()), "codes: {codes:?}");
+    let codes = with_group(&|payload| {
+        payload["targetGroups"][0]["passIndex"] = Value::from(-1);
+    });
+    assert!(codes.contains(&"invalid_integer".to_string()), "codes: {codes:?}");
+
+    // bar: required, integer >= 1.
+    let codes = with_group(&|payload| {
+        payload["targetGroups"][0].as_object_mut().unwrap().remove("bar");
+    });
+    assert!(codes.contains(&"invalid_integer".to_string()), "codes: {codes:?}");
+    let codes = with_group(&|payload| {
+        payload["targetGroups"][0]["bar"] = Value::from(0);
+    });
+    assert!(codes.contains(&"invalid_integer".to_string()), "codes: {codes:?}");
+
+    // staffNumbers: non-empty array of integers >= 1.
+    let codes = with_group(&|payload| {
+        payload["targetGroups"][0]["staffNumbers"] = Value::Array(vec![]);
+    });
+    assert!(codes.contains(&"invalid_group".to_string()), "codes: {codes:?}");
+    let codes = with_group(&|payload| {
+        payload["targetGroups"][0].as_object_mut().unwrap().remove("staffNumbers");
+    });
+    assert!(codes.contains(&"invalid_group".to_string()), "codes: {codes:?}");
+    let codes = with_group(&|payload| {
+        payload["targetGroups"][0]["staffNumbers"] = serde_json::json!([0]);
+    });
+    assert!(codes.contains(&"schema_violation".to_string()), "codes: {codes:?}");
+    let codes = with_group(&|payload| {
+        payload["targetGroups"][0]["staffNumbers"] = serde_json::json!(["1"]);
+    });
+    assert!(codes.contains(&"schema_violation".to_string()), "codes: {codes:?}");
+
+    // voiceIds: non-empty array of strings.
+    let codes = with_group(&|payload| {
+        payload["targetGroups"][0]["voiceIds"] = Value::Array(vec![]);
+    });
+    assert!(codes.contains(&"invalid_group".to_string()), "codes: {codes:?}");
+    let codes = with_group(&|payload| {
+        payload["targetGroups"][0].as_object_mut().unwrap().remove("voiceIds");
+    });
+    assert!(codes.contains(&"invalid_group".to_string()), "codes: {codes:?}");
+    let codes = with_group(&|payload| {
+        payload["targetGroups"][0]["voiceIds"] = serde_json::json!([1]);
+    });
+    assert!(codes.contains(&"schema_violation".to_string()), "codes: {codes:?}");
+
+    // Positive: legal staffNumbers/voiceIds (the baseline) stay clean.
+    let codes = payload_codes_of(&baseline_payload());
+    assert!(codes.is_empty(), "baseline targetGroup must stay clean: {codes:?}");
+}
+
+#[test]
+fn payload_schema_version_and_revision_pattern_short_circuit() {
+    // A wrong fingerprintSchemaVersion short-circuits with exactly one issue
+    // (mirrors TS :925-927).
+    let mut wrong_version = baseline_payload();
+    wrong_version["fingerprintSchemaVersion"] = Value::from(2);
+    assert_eq!(payload_codes_of(&wrong_version), vec!["unknown_schema_version".to_string()]);
+
+    // scoreRevisionId must match the frozen revision-id pattern.
+    let mut bad_pattern = baseline_payload();
+    bad_pattern["scoreRevisionId"] = Value::String("score-revision-v1:sha256:nothex".into());
+    assert!(payload_codes_of(&bad_pattern).contains(&"invalid_revision_id".to_string()));
+
+    // A missing scoreRevisionId is both a missing key and a pattern failure
+    // (TS behaves identically: typeof undefined is not a pattern match).
+    let mut missing_revision = baseline_payload();
+    missing_revision.as_object_mut().unwrap().remove("scoreRevisionId");
+    let codes = payload_codes_of(&missing_revision);
+    assert!(codes.contains(&"missing_field".to_string()), "codes: {codes:?}");
+    assert!(codes.contains(&"invalid_revision_id".to_string()), "codes: {codes:?}");
+}
+
+#[test]
+fn locator_voice_id_absence_and_typing_stay_distinct() {
+    // Absent voiceId: legal — the frozen identity key uses voiceId ?? ''.
+    let mut absent = baseline_payload();
+    absent["targetGroups"][0]["members"][0]["sourceLocator"]
+        .as_object_mut().unwrap().remove("voiceId");
+    let codes = payload_codes_of(&absent);
+    assert!(codes.is_empty(), "absent locator voiceId must stay legal: {codes:?}");
+
+    // Present but non-string voiceId: a violation, never silently ''.
+    let mut numeric = baseline_payload();
+    numeric["targetGroups"][0]["members"][0]["sourceLocator"]["voiceId"] = Value::from(7);
+    let codes = payload_codes_of(&numeric);
+    assert!(codes.contains(&"invalid_member".to_string()), "codes: {codes:?}");
+}

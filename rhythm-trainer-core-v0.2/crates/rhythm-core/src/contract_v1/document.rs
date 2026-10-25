@@ -212,7 +212,7 @@ pub fn compute_score_revision_id(source_fingerprint_prefixed: &str, normalizer_v
     format!("score-revision-v1:sha256:{}", sha256_hex(payload.as_bytes()))
 }
 
-fn is_64_lower_hex(text: &str) -> bool {
+pub(crate) fn is_64_lower_hex(text: &str) -> bool {
     text.len() == 64 && text.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
 }
 
@@ -462,105 +462,140 @@ pub fn validate_score_document_v1(dto: &Value) -> Vec<Issue> {
                 }
             }
         }
+    }
 
-        match dto.get("tieSpans") {
-            Some(Value::Array(tie_spans)) => {
-                let mut tie_span_ids = std::collections::HashSet::new();
-                for span in tie_spans {
-                    const TIE_ALLOWED: [&str; 5] = ["id", "pitchKey", "eventIds", "startBeat", "endBeat"];
-                    const TIE_REQUIRED: [&str; 5] = TIE_ALLOWED;
-                    if !check_object_shape(span, &TIE_ALLOWED, &TIE_REQUIRED, "tieSpan", &mut issues) {
-                        continue;
-                    }
-                    if let Some(id) = span.get("id").and_then(Value::as_str) {
-                        if !tie_span_ids.insert(id.to_string()) {
+    // Document-level sections. These run ONCE, AFTER every part's events are
+    // registered — never inside the per-part loop: inside it, tie references
+    // could not resolve across parts, multi-part documents reported duplicated
+    // issues, and an empty parts array skipped the checks entirely.
+
+    match dto.get("tieSpans") {
+        Some(Value::Array(tie_spans)) => {
+            let mut tie_span_ids = std::collections::HashSet::new();
+            for span in tie_spans {
+                const TIE_ALLOWED: [&str; 5] = ["id", "pitchKey", "eventIds", "startBeat", "endBeat"];
+                const TIE_REQUIRED: [&str; 5] = TIE_ALLOWED;
+                if !check_object_shape(span, &TIE_ALLOWED, &TIE_REQUIRED, "tieSpan", &mut issues) {
+                    continue;
+                }
+                // TieSpanV1.id: REQUIRED non-empty string. The hand-written TS
+                // layer only dedups string ids; the type/length tier is what
+                // AJV enforces there — this port owns that tier directly.
+                match span.get("id") {
+                    Some(Value::String(id)) => {
+                        if id.is_empty() {
+                            issues.push(schema_violation("tieSpan.id must be a non-empty string"));
+                        }
+                        if !tie_span_ids.insert(id.clone()) {
                             issues.push(issue("duplicate_tie_span_id", format!("tieSpan id duplicated: {id}")));
                         }
                     }
-                    req_string(span.get("pitchKey"), "tieSpan.pitchKey", 1, &mut issues);
-                    match span.get("eventIds") {
-                        Some(Value::Array(span_member_ids)) if span_member_ids.len() >= 2 => {
-                            for span_member in span_member_ids {
-                                if let Some(id) = span_member.as_str() {
+                    Some(other) => issues.push(schema_violation(format!("tieSpan.id must be a string, got {other}"))),
+                    None => {} // absence already reported as missing_field
+                }
+                req_string(span.get("pitchKey"), "tieSpan.pitchKey", 1, &mut issues);
+                match span.get("eventIds") {
+                    Some(Value::Array(span_member_ids)) if span_member_ids.len() >= 2 => {
+                        for span_member in span_member_ids {
+                            match span_member.as_str() {
+                                Some(id) => {
+                                    if id.is_empty() {
+                                        issues.push(schema_violation(
+                                            "tieSpan.eventIds: items must be non-empty strings",
+                                        ));
+                                    }
                                     if !event_ids.contains(id) {
                                         issues.push(issue("dangling_reference",
                                             format!("tieSpan references unknown eventId: {id}")));
                                     }
                                 }
+                                // A non-string member is never silently skipped:
+                                // it violates the item schema and can never name a
+                                // known event (TS stringifies it into the probe).
+                                None => {
+                                    issues.push(schema_violation(format!(
+                                        "tieSpan.eventIds: items must be strings, got {span_member}"
+                                    )));
+                                    issues.push(issue("dangling_reference",
+                                        format!("tieSpan references unknown eventId: {span_member}")));
+                                }
                             }
                         }
-                        _ => issues.push(issue("invalid_tie_span", "tieSpan.eventIds must list at least 2 events")),
                     }
-                    check_rational(span.get("startBeat").unwrap_or(&Value::Null), "tieSpan.startBeat", &mut issues);
-                    check_rational(span.get("endBeat").unwrap_or(&Value::Null), "tieSpan.endBeat", &mut issues);
+                    _ => issues.push(issue("invalid_tie_span", "tieSpan.eventIds must list at least 2 events")),
                 }
-            }
-            _ => issues.push(issue("invalid_tie_spans", "tieSpans must be an array")),
-        }
-        // Bidirectional tie consistency.
-        let tie_spans_list = dto.get("tieSpans").and_then(Value::as_array).cloned().unwrap_or_default();
-        for part in &parts {
-            let Some(measures) = part.get("measures").and_then(Value::as_array) else { continue };
-            for measure in measures {
-                let Some(events) = measure.get("events").and_then(Value::as_array) else { continue };
-                for event in events {
-                    let Some(tie_span_id) = event.get("tieSpanId").and_then(Value::as_str) else { continue };
-                    let Some(event_id) = event.get("eventId").and_then(Value::as_str) else { continue };
-                    let Some(span) = tie_spans_list.iter().find(|span| span.get("id").and_then(Value::as_str) == Some(tie_span_id)) else {
-                        issues.push(issue("dangling_reference",
-                            format!("event {event_id} references unknown tieSpanId {tie_span_id}")));
-                        continue;
-                    };
-                    let member_ids = span.get("eventIds").and_then(Value::as_array).cloned().unwrap_or_default();
-                    let member = member_ids.iter().any(|v| v.as_str() == Some(event_id));
-                    if !member {
-                        issues.push(issue("tie_reference_mismatch",
-                            format!("event {event_id} claims tieSpanId {tie_span_id} but is not in its eventIds")));
-                    }
-                }
+                check_rational(span.get("startBeat").unwrap_or(&Value::Null), "tieSpan.startBeat", &mut issues);
+                check_rational(span.get("endBeat").unwrap_or(&Value::Null), "tieSpan.endBeat", &mut issues);
             }
         }
-        for span in &tie_spans_list {
-            let Some(event_ids) = span.get("eventIds").and_then(Value::as_array) else { continue };
-            let Some(span_id) = span.get("id").and_then(Value::as_str) else { continue };
-            for event_id in event_ids {
-                let Some(event_id) = event_id.as_str() else { continue };
-                if let Some(owner) = find_event_tie_span_id(dto, event_id) {
-                    if owner != span_id {
-                        issues.push(issue("tie_reference_mismatch",
-                            format!("tieSpan {span_id} lists {event_id} but that event claims tieSpanId {owner}")));
-                    }
+        _ => issues.push(issue("invalid_tie_spans", "tieSpans must be an array")),
+    }
+    // Bidirectional tie consistency.
+    let tie_spans_list = dto.get("tieSpans").and_then(Value::as_array).cloned().unwrap_or_default();
+    for part in &parts {
+        let Some(measures) = part.get("measures").and_then(Value::as_array) else { continue };
+        for measure in measures {
+            let Some(events) = measure.get("events").and_then(Value::as_array) else { continue };
+            for event in events {
+                let Some(tie_span_id) = event.get("tieSpanId").and_then(Value::as_str) else { continue };
+                let Some(event_id) = event.get("eventId").and_then(Value::as_str) else { continue };
+                let Some(span) = tie_spans_list.iter().find(|span| span.get("id").and_then(Value::as_str) == Some(tie_span_id)) else {
+                    issues.push(issue("dangling_reference",
+                        format!("event {event_id} references unknown tieSpanId {tie_span_id}")));
+                    continue;
+                };
+                let member_ids = span.get("eventIds").and_then(Value::as_array).cloned().unwrap_or_default();
+                let member = member_ids.iter().any(|v| v.as_str() == Some(event_id));
+                if !member {
+                    issues.push(issue("tie_reference_mismatch",
+                        format!("event {event_id} claims tieSpanId {tie_span_id} but is not in its eventIds")));
                 }
             }
         }
+    }
+    for span in &tie_spans_list {
+        let Some(member_ids) = span.get("eventIds").and_then(Value::as_array) else { continue };
+        let Some(span_id) = span.get("id").and_then(Value::as_str) else { continue };
+        for event_id in member_ids {
+            let Some(event_id) = event_id.as_str() else { continue };
+            if let Some(owner) = find_event_tie_span_id(dto, event_id) {
+                if owner != span_id {
+                    issues.push(issue("tie_reference_mismatch",
+                        format!("tieSpan {span_id} lists {event_id} but that event claims tieSpanId {owner}")));
+                }
+            }
+        }
+    }
 
-        match dto.get("tempoMarks") {
-            Some(Value::Array(tempo_marks)) => {
-                for mark in tempo_marks {
-                    const MARK_ALLOWED: [&str; 4] = ["measureOrdinal", "beat", "bpm", "kind"];
-                    const MARK_REQUIRED: [&str; 4] = MARK_ALLOWED;
-                    if !check_object_shape(mark, &MARK_ALLOWED, &MARK_REQUIRED, "tempoMark", &mut issues) {
-                        continue;
-                    }
-                    req_integer(mark.get("measureOrdinal"), "tempoMark.measureOrdinal", 1, None, &mut issues);
-                    check_rational(mark.get("beat").unwrap_or(&Value::Null), "tempoMark.beat", &mut issues);
-                    check_rational(mark.get("bpm").unwrap_or(&Value::Null), "tempoMark.bpm", &mut issues);
-                    check_enum(mark.get("kind"), &["metronome", "sound"], "tempoMark.kind", &mut issues);
+    match dto.get("tempoMarks") {
+        Some(Value::Array(tempo_marks)) => {
+            for mark in tempo_marks {
+                const MARK_ALLOWED: [&str; 4] = ["measureOrdinal", "beat", "bpm", "kind"];
+                const MARK_REQUIRED: [&str; 4] = MARK_ALLOWED;
+                if !check_object_shape(mark, &MARK_ALLOWED, &MARK_REQUIRED, "tempoMark", &mut issues) {
+                    continue;
                 }
+                req_integer(mark.get("measureOrdinal"), "tempoMark.measureOrdinal", 1, None, &mut issues);
+                check_rational(mark.get("beat").unwrap_or(&Value::Null), "tempoMark.beat", &mut issues);
+                check_rational(mark.get("bpm").unwrap_or(&Value::Null), "tempoMark.bpm", &mut issues);
+                check_enum(mark.get("kind"), &["metronome", "sound"], "tempoMark.kind", &mut issues);
             }
-            _ => issues.push(issue("invalid_tempo_marks", "tempoMarks must be an array")),
         }
+        _ => issues.push(issue("invalid_tempo_marks", "tempoMarks must be an array")),
+    }
 
-        if let (Some(revision), Some(source_fingerprint), Some(normalizer_version)) = (
-            dto.get("scoreRevisionId").and_then(Value::as_str),
-            dto.get("source").and_then(|source| source.get("sourceFingerprint")).and_then(Value::as_str),
-            dto.get("normalizerVersion").and_then(Value::as_str),
-        ) {
-            let expected = compute_score_revision_id(source_fingerprint, normalizer_version);
-            if revision != expected {
-                issues.push(issue("revision_id_mismatch",
-                    format!("scoreRevisionId does not match sha256(JCS({{sourceFingerprint, normalizerVersion}})): expected {expected}")));
-            }
+    // The revision id must equal the frozen formula over the document's own
+    // sourceFingerprint + normalizerVersion; a mismatched stamp is an identity
+    // forgery regardless of how well-formed the rest is.
+    if let (Some(revision), Some(source_fingerprint), Some(normalizer_version)) = (
+        dto.get("scoreRevisionId").and_then(Value::as_str),
+        dto.get("source").and_then(|source| source.get("sourceFingerprint")).and_then(Value::as_str),
+        dto.get("normalizerVersion").and_then(Value::as_str),
+    ) {
+        let expected = compute_score_revision_id(source_fingerprint, normalizer_version);
+        if revision != expected {
+            issues.push(issue("revision_id_mismatch",
+                format!("scoreRevisionId does not match sha256(JCS({{sourceFingerprint, normalizerVersion}})): expected {expected}")));
         }
     }
     issues
