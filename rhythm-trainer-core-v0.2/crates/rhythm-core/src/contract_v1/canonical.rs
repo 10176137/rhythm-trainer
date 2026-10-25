@@ -146,6 +146,6 @@ fn write_json_string(text: &str, out: &mut String) {
 }
 
 /// RFC 8785 key order: lexicographic over UTF-16 code units.
-fn utf16_code_unit_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+pub(crate) fn utf16_code_unit_cmp(a: &str, b: &str) -> std::cmp::Ordering {
     a.encode_utf16().cmp(b.encode_utf16())
 }

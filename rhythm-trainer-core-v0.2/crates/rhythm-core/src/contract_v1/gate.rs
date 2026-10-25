@@ -134,14 +134,22 @@ pub fn build_payload(
                 }
                 Some(_) => {}
             }
-            members.push(json!({
+            let mut member = json!({
                 "sourceLocator": occurrence.get("locator").cloned().unwrap_or(Value::Null),
                 "pitch": {
                     "midiNote": occurrence.get("pitch").and_then(|p| p.get("midiNote")).cloned().unwrap_or(Value::Null),
                     "spelling": occurrence.get("pitch").and_then(|p| p.get("spelling")).cloned().unwrap_or(Value::Null),
                 },
                 "durationBeat": parse_beat_text(occurrence.get("durationBeat").ok_or_else(|| err("OCCURRENCE_NOT_IN_PLAN", format!("occurrence {id} missing durationBeat")))?)?,
-            }));
+            });
+            // TS buildPlanFingerprintPayloadV1 :882 carries isTieOnset ONLY
+            // when true — a tie onset member changes the fingerprint (found
+            // by the R2-3b frozen-corpus diff on the tie case G3-base).
+            if occurrence.get("isTieOnset").and_then(Value::as_bool) == Some(true) {
+                member.as_object_mut().expect("member object just built")
+                    .insert("isTieOnset".to_string(), Value::Bool(true));
+            }
+            members.push(member);
         }
         // Pairing cross-check: each occurrence must carry exactly the paired
         // scoreEventId (same member order).

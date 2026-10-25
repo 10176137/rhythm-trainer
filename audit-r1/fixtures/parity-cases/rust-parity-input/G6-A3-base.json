@@ -1,0 +1,383 @@
+{
+ "caseId": "G6-A3-base",
+ "config": {
+  "partId": "P1",
+  "range": {
+   "startMeasureOrdinal": 1,
+   "endMeasureOrdinal": 1
+  },
+  "repeatSelection": {
+   "kind": "none"
+  },
+  "hand": "both",
+  "handMapping": {
+   "schemaVersion": 1,
+   "mappingVersion": "hand-mapping-1",
+   "source": "user",
+   "parts": [
+    {
+     "partId": "P1",
+     "staves": [
+      {
+       "staffNumber": 1,
+       "hand": "right"
+      },
+      {
+       "staffNumber": 2,
+       "hand": "left"
+      }
+     ]
+    }
+   ]
+  },
+  "bpm": {
+   "numerator": 80,
+   "denominator": 1
+  },
+  "ticksPerQuarter": 960,
+  "countInUs": 3000000,
+  "unsupportedNotationPolicy": "reject-strict",
+  "plannerVersion": "parity-harness-1"
+ },
+ "document": {
+  "schemaVersion": 1,
+  "normalizerVersion": "normalizer-1",
+  "supportProfileVersion": "musicxml-v1.0",
+  "scoreRevisionId": "score-revision-v1:sha256:b6121bb9f06bd79fb77cd69a8094d1b55119e77080080848fe427510d523498d",
+  "source": {
+   "format": "musicxml-partwise",
+   "sourceFingerprint": "sha256:9fae445ebcbd727f4c0b13e0ec4b86715073a9f13f5e955e165ea0f8cd546bf0"
+  },
+  "metadata": {
+   "workTitle": "G6 unison two staves",
+   "composer": ""
+  },
+  "parts": [
+   {
+    "partId": "P1",
+    "name": "Piano",
+    "staves": 2,
+    "measures": [
+     {
+      "ordinal": 1,
+      "printedNumber": "1",
+      "implicit": false,
+      "startBeat": {
+       "numerator": 0,
+       "denominator": 1
+      },
+      "durationBeat": {
+       "numerator": 4,
+       "denominator": 1
+      },
+      "attributes": {
+       "divisions": 1,
+       "time": {
+        "beats": 4,
+        "beatType": 4
+       },
+       "key": {
+        "fifths": 0,
+        "mode": "major"
+       },
+       "staves": 2,
+       "clefs": [
+        {
+         "staffNumber": 1,
+         "sign": "G",
+         "line": 2
+        },
+        {
+         "staffNumber": 2,
+         "sign": "F",
+         "line": 4
+        }
+       ]
+      },
+      "events": [
+       {
+        "eventId": "9fae445ebcbd727f:P1:m1:e1",
+        "kind": "note",
+        "source": {
+         "partId": "P1",
+         "measureOrdinal": 1,
+         "staffNumber": 1,
+         "sourceOrdinal": 1,
+         "printedMeasureNumber": "1",
+         "voiceId": "1"
+        },
+        "onsetBeat": {
+         "numerator": 0,
+         "denominator": 1
+        },
+        "durationBeat": {
+         "numerator": 4,
+         "denominator": 1
+        },
+        "notatedType": "whole",
+        "dots": 0,
+        "pitch": {
+         "step": "C",
+         "alter": {
+          "numerator": 0,
+          "denominator": 1
+         },
+         "octave": 4,
+         "midiNote": 60,
+         "spelling": "C4"
+        },
+        "tieStart": false,
+        "tieStop": false,
+        "tiedStart": false,
+        "tiedStop": false,
+        "isGrace": false,
+        "isCue": false,
+        "articulations": []
+       },
+       {
+        "eventId": "9fae445ebcbd727f:P1:m1:e2",
+        "kind": "note",
+        "source": {
+         "partId": "P1",
+         "measureOrdinal": 1,
+         "staffNumber": 2,
+         "sourceOrdinal": 2,
+         "printedMeasureNumber": "1",
+         "voiceId": "1"
+        },
+        "onsetBeat": {
+         "numerator": 0,
+         "denominator": 1
+        },
+        "durationBeat": {
+         "numerator": 4,
+         "denominator": 1
+        },
+        "notatedType": "whole",
+        "dots": 0,
+        "pitch": {
+         "step": "C",
+         "alter": {
+          "numerator": 0,
+          "denominator": 1
+         },
+         "octave": 4,
+         "midiNote": 60,
+         "spelling": "C4"
+        },
+        "tieStart": false,
+        "tieStop": false,
+        "tiedStart": false,
+        "tiedStop": false,
+        "isGrace": false,
+        "isCue": false,
+        "articulations": []
+       }
+      ],
+      "barlines": [],
+      "capabilities": []
+     }
+    ]
+   }
+  ],
+  "tieSpans": [],
+  "tempoMarks": [],
+  "capabilities": [
+   "multi_staff"
+  ]
+ },
+ "report": {
+  "schemaVersion": 1,
+  "parserVersion": "1.0.0",
+  "supportProfileVersion": "musicxml-v1.0",
+  "fingerprint": "9fae445ebcbd727f4c0b13e0ec4b86715073a9f13f5e955e165ea0f8cd546bf0",
+  "status": "READY",
+  "strictAllowed": true,
+  "sourceFileName": "g6_unison_two_staves.musicxml",
+  "sourceFormat": "musicxml-partwise",
+  "formatVersion": "4.0",
+  "counts": {
+   "partCount": 1,
+   "measureCount": 1,
+   "noteCount": 2,
+   "restCount": 0,
+   "chordNoteCount": 0,
+   "tieSpanCount": 0,
+   "graceCount": 0,
+   "cueCount": 0,
+   "warningCount": 0,
+   "errorCount": 0
+  },
+  "issues": [],
+  "capabilities": [
+   "multi_staff"
+  ]
+ },
+ "expectedCandidate": {
+  "side": "ts-legacy-reference",
+  "kind": "candidate",
+  "occurrences": [
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 1,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "playbackBeat": "0/1",
+    "durationBeat": "4/1",
+    "measureOrdinal": 1,
+    "bar": 1,
+    "beatInMeasure": "0/1",
+    "staffNumber": 1,
+    "voiceId": "1",
+    "pitch": {
+     "step": "C",
+     "alter": 0,
+     "octave": 4,
+     "midiNote": 60,
+     "spelling": "C4"
+    },
+    "isTieOnset": false,
+    "playbackIndex": 0
+   },
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 2,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "playbackBeat": "0/1",
+    "durationBeat": "4/1",
+    "measureOrdinal": 1,
+    "bar": 1,
+    "beatInMeasure": "0/1",
+    "staffNumber": 2,
+    "voiceId": "1",
+    "pitch": {
+     "step": "C",
+     "alter": 0,
+     "octave": 4,
+     "midiNote": 60,
+     "spelling": "C4"
+    },
+    "isTieOnset": false,
+    "playbackIndex": 1
+   }
+  ],
+  "groups": [
+   {
+    "passIndex": 0,
+    "playbackBeat": "0/1",
+    "members": [
+     {
+      "partId": "P1",
+      "measureOrdinal": 1,
+      "sourceOrdinal": 1,
+      "voiceId": "1"
+     },
+     {
+      "partId": "P1",
+      "measureOrdinal": 1,
+      "sourceOrdinal": 2,
+      "voiceId": "1"
+     }
+    ],
+    "pitches": [
+     "C4",
+     "C4"
+    ],
+    "bar": 1,
+    "beatInMeasure": "0/1",
+    "staffNumbers": [
+     1,
+     2
+    ],
+    "voiceIds": [
+     "1"
+    ],
+    "durationBeat": "4/1"
+   }
+  ],
+  "atoms": [
+   {
+    "startTick": 0,
+    "durationTicks": 3840,
+    "bar": 1,
+    "beat": 1
+   }
+  ],
+  "scoreEvents": [
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 1,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "measure": 1,
+    "pitch": 60,
+    "targetOnsetUs": 3000000,
+    "targetDurationUs": 3000000,
+    "partId": "staff-1:voice-1",
+    "parseConfidence": 1,
+    "runtimeOccurrenceId": "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e1"
+   },
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 2,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "measure": 1,
+    "pitch": 60,
+    "targetOnsetUs": 3000000,
+    "targetDurationUs": 3000000,
+    "partId": "staff-2:voice-1",
+    "parseConfidence": 1,
+    "runtimeOccurrenceId": "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e2"
+   }
+  ],
+  "runtimeIds": {
+   "planId": "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0",
+   "occurrenceIds": [
+    "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e1",
+    "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e2"
+   ],
+   "groupIds": [
+    "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:g0:0/1"
+   ]
+  },
+  "wireMs": [
+   {
+    "scoreEventId": "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e1",
+    "beatPosition": 0,
+    "targetOnsetMs": 3000,
+    "targetDurationMs": 3000
+   },
+   {
+    "scoreEventId": "plan:9fae445ebcbd727f:m1-1:once:playback-planner-1.0.0:p0:9fae445ebcbd727f:P1:m1:e2",
+    "beatPosition": 0,
+    "targetOnsetMs": 3000,
+    "targetDurationMs": 3000
+   }
+  ]
+ },
+ "meta": {
+  "fingerprint": "plan-v1:sha256:f67fd6e87c2d28997639b2f5624ca9dbdb5ec5a1f178f1e259c2405e3d10715c",
+  "fingerprintErrorCode": null,
+  "importStatus": "READY",
+  "importStrictAllowed": true,
+  "planStrictAllowed": true,
+  "planIssues": [],
+  "scopeCodes": [],
+  "missingEventIds": [],
+  "atomIssueCodes": []
+ }
+}

@@ -1,0 +1,373 @@
+{
+ "caseId": "G3-base",
+ "config": {
+  "partId": "P1",
+  "range": {
+   "startMeasureOrdinal": 1,
+   "endMeasureOrdinal": 2
+  },
+  "repeatSelection": {
+   "kind": "none"
+  },
+  "hand": "both",
+  "handMapping": {
+   "schemaVersion": 1,
+   "mappingVersion": "hand-mapping-1",
+   "source": "user",
+   "parts": [
+    {
+     "partId": "P1",
+     "staves": [
+      {
+       "staffNumber": 1,
+       "hand": "right"
+      }
+     ]
+    }
+   ]
+  },
+  "bpm": {
+   "numerator": 120,
+   "denominator": 1
+  },
+  "ticksPerQuarter": 960,
+  "countInUs": 2000000,
+  "unsupportedNotationPolicy": "reject-strict",
+  "plannerVersion": "parity-harness-1"
+ },
+ "document": {
+  "schemaVersion": 1,
+  "normalizerVersion": "normalizer-1",
+  "supportProfileVersion": "musicxml-v1.0",
+  "scoreRevisionId": "score-revision-v1:sha256:9af1d63e81ff2478c6cb83feb21575c9e2d3d641051a30663e5be7d34d0adfab",
+  "source": {
+   "format": "musicxml-partwise",
+   "sourceFingerprint": "sha256:86b9560aac48c47e80934ae5a10763784a40487b663356e85bef16bfabb61c2f"
+  },
+  "metadata": {
+   "workTitle": "G3 tie across bar",
+   "composer": ""
+  },
+  "parts": [
+   {
+    "partId": "P1",
+    "name": "Piano",
+    "staves": 1,
+    "measures": [
+     {
+      "ordinal": 1,
+      "printedNumber": "1",
+      "implicit": false,
+      "startBeat": {
+       "numerator": 0,
+       "denominator": 1
+      },
+      "durationBeat": {
+       "numerator": 2,
+       "denominator": 1
+      },
+      "attributes": {
+       "divisions": 1,
+       "time": {
+        "beats": 2,
+        "beatType": 4
+       },
+       "key": {
+        "fifths": 0,
+        "mode": "major"
+       },
+       "staves": 1,
+       "clefs": [
+        {
+         "staffNumber": 1,
+         "sign": "G",
+         "line": 2
+        }
+       ]
+      },
+      "events": [
+       {
+        "eventId": "86b9560aac48c47e:P1:m1:e1",
+        "kind": "note",
+        "source": {
+         "partId": "P1",
+         "measureOrdinal": 1,
+         "staffNumber": 1,
+         "sourceOrdinal": 1,
+         "printedMeasureNumber": "1",
+         "voiceId": "1"
+        },
+        "onsetBeat": {
+         "numerator": 0,
+         "denominator": 1
+        },
+        "durationBeat": {
+         "numerator": 2,
+         "denominator": 1
+        },
+        "notatedType": "half",
+        "dots": 0,
+        "pitch": {
+         "step": "C",
+         "alter": {
+          "numerator": 0,
+          "denominator": 1
+         },
+         "octave": 4,
+         "midiNote": 60,
+         "spelling": "C4"
+        },
+        "tieStart": true,
+        "tieStop": false,
+        "tiedStart": false,
+        "tiedStop": false,
+        "tieSpanId": "tie:86b9560aac48:P1:1:1",
+        "isGrace": false,
+        "isCue": false,
+        "articulations": []
+       }
+      ],
+      "barlines": [],
+      "capabilities": []
+     },
+     {
+      "ordinal": 2,
+      "printedNumber": "2",
+      "implicit": false,
+      "startBeat": {
+       "numerator": 2,
+       "denominator": 1
+      },
+      "durationBeat": {
+       "numerator": 2,
+       "denominator": 1
+      },
+      "attributes": {
+       "divisions": 1,
+       "time": {
+        "beats": 2,
+        "beatType": 4
+       },
+       "key": {
+        "fifths": 0,
+        "mode": "major"
+       },
+       "staves": 1,
+       "clefs": [
+        {
+         "staffNumber": 1,
+         "sign": "G",
+         "line": 2
+        }
+       ]
+      },
+      "events": [
+       {
+        "eventId": "86b9560aac48c47e:P1:m2:e1",
+        "kind": "note",
+        "source": {
+         "partId": "P1",
+         "measureOrdinal": 2,
+         "staffNumber": 1,
+         "sourceOrdinal": 1,
+         "printedMeasureNumber": "2",
+         "voiceId": "1"
+        },
+        "onsetBeat": {
+         "numerator": 2,
+         "denominator": 1
+        },
+        "durationBeat": {
+         "numerator": 2,
+         "denominator": 1
+        },
+        "notatedType": "half",
+        "dots": 0,
+        "pitch": {
+         "step": "C",
+         "alter": {
+          "numerator": 0,
+          "denominator": 1
+         },
+         "octave": 4,
+         "midiNote": 60,
+         "spelling": "C4"
+        },
+        "tieStart": false,
+        "tieStop": true,
+        "tiedStart": false,
+        "tiedStop": false,
+        "tieSpanId": "tie:86b9560aac48:P1:1:1",
+        "isGrace": false,
+        "isCue": false,
+        "articulations": []
+       }
+      ],
+      "barlines": [],
+      "capabilities": []
+     }
+    ]
+   }
+  ],
+  "tieSpans": [
+   {
+    "id": "tie:86b9560aac48:P1:1:1",
+    "pitchKey": "C4|1|1",
+    "eventIds": [
+     "86b9560aac48c47e:P1:m1:e1",
+     "86b9560aac48c47e:P1:m2:e1"
+    ],
+    "startBeat": {
+     "numerator": 0,
+     "denominator": 1
+    },
+    "endBeat": {
+     "numerator": 4,
+     "denominator": 1
+    }
+   }
+  ],
+  "tempoMarks": [],
+  "capabilities": [
+   "ties"
+  ]
+ },
+ "report": {
+  "schemaVersion": 1,
+  "parserVersion": "1.0.0",
+  "supportProfileVersion": "musicxml-v1.0",
+  "fingerprint": "86b9560aac48c47e80934ae5a10763784a40487b663356e85bef16bfabb61c2f",
+  "status": "READY",
+  "strictAllowed": true,
+  "sourceFileName": "g3_tie_across_bar.musicxml",
+  "sourceFormat": "musicxml-partwise",
+  "formatVersion": "4.0",
+  "counts": {
+   "partCount": 1,
+   "measureCount": 2,
+   "noteCount": 2,
+   "restCount": 0,
+   "chordNoteCount": 0,
+   "tieSpanCount": 1,
+   "graceCount": 0,
+   "cueCount": 0,
+   "warningCount": 0,
+   "errorCount": 0
+  },
+  "issues": [],
+  "capabilities": [
+   "ties"
+  ]
+ },
+ "expectedCandidate": {
+  "side": "ts-legacy-reference",
+  "kind": "candidate",
+  "occurrences": [
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 1,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "playbackBeat": "0/1",
+    "durationBeat": "4/1",
+    "measureOrdinal": 1,
+    "bar": 1,
+    "beatInMeasure": "0/1",
+    "staffNumber": 1,
+    "voiceId": "1",
+    "pitch": {
+     "step": "C",
+     "alter": 0,
+     "octave": 4,
+     "midiNote": 60,
+     "spelling": "C4"
+    },
+    "isTieOnset": true,
+    "playbackIndex": 0
+   }
+  ],
+  "groups": [
+   {
+    "passIndex": 0,
+    "playbackBeat": "0/1",
+    "members": [
+     {
+      "partId": "P1",
+      "measureOrdinal": 1,
+      "sourceOrdinal": 1,
+      "voiceId": "1"
+     }
+    ],
+    "pitches": [
+     "C4"
+    ],
+    "bar": 1,
+    "beatInMeasure": "0/1",
+    "staffNumbers": [
+     1
+    ],
+    "voiceIds": [
+     "1"
+    ],
+    "durationBeat": "4/1"
+   }
+  ],
+  "atoms": [
+   {
+    "startTick": 0,
+    "durationTicks": 3840,
+    "bar": 1,
+    "beat": 1
+   }
+  ],
+  "scoreEvents": [
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 1,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "measure": 1,
+    "pitch": 60,
+    "targetOnsetUs": 2000000,
+    "targetDurationUs": 2000000,
+    "partId": "staff-1:voice-1",
+    "parseConfidence": 1,
+    "runtimeOccurrenceId": "plan:86b9560aac48c47e:m1-2:once:playback-planner-1.0.0:p0:86b9560aac48c47e:P1:m1:e1"
+   }
+  ],
+  "runtimeIds": {
+   "planId": "plan:86b9560aac48c47e:m1-2:once:playback-planner-1.0.0",
+   "occurrenceIds": [
+    "plan:86b9560aac48c47e:m1-2:once:playback-planner-1.0.0:p0:86b9560aac48c47e:P1:m1:e1"
+   ],
+   "groupIds": [
+    "plan:86b9560aac48c47e:m1-2:once:playback-planner-1.0.0:g0:0/1"
+   ]
+  },
+  "wireMs": [
+   {
+    "scoreEventId": "plan:86b9560aac48c47e:m1-2:once:playback-planner-1.0.0:p0:86b9560aac48c47e:P1:m1:e1",
+    "beatPosition": 0,
+    "targetOnsetMs": 2000,
+    "targetDurationMs": 2000
+   }
+  ]
+ },
+ "meta": {
+  "fingerprint": "plan-v1:sha256:47df4d0b17bf14795357555b42a19e23be9d9cc1bb6a98e5286da803cc39d4ce",
+  "fingerprintErrorCode": null,
+  "importStatus": "READY",
+  "importStrictAllowed": true,
+  "planStrictAllowed": true,
+  "planIssues": [],
+  "scopeCodes": [],
+  "missingEventIds": [],
+  "atomIssueCodes": []
+ }
+}

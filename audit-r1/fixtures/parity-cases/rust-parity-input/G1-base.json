@@ -1,0 +1,812 @@
+{
+ "caseId": "G1-base",
+ "config": {
+  "partId": "P1",
+  "range": {
+   "startMeasureOrdinal": 1,
+   "endMeasureOrdinal": 2
+  },
+  "repeatSelection": {
+   "kind": "none"
+  },
+  "hand": "both",
+  "handMapping": {
+   "schemaVersion": 1,
+   "mappingVersion": "hand-mapping-1",
+   "source": "user",
+   "parts": [
+    {
+     "partId": "P1",
+     "staves": [
+      {
+       "staffNumber": 1,
+       "hand": "right"
+      }
+     ]
+    }
+   ]
+  },
+  "bpm": {
+   "numerator": 80,
+   "denominator": 1
+  },
+  "ticksPerQuarter": 960,
+  "countInUs": 3000000,
+  "unsupportedNotationPolicy": "reject-strict",
+  "plannerVersion": "parity-harness-1"
+ },
+ "document": {
+  "schemaVersion": 1,
+  "normalizerVersion": "normalizer-1",
+  "supportProfileVersion": "musicxml-v1.0",
+  "scoreRevisionId": "score-revision-v1:sha256:61d3e75cb911beab6a85bf2707663d6167302a38e1d9b0108bbf08e45b620ed6",
+  "source": {
+   "format": "musicxml-partwise",
+   "sourceFingerprint": "sha256:44a959429fe07921e744f87721b7442c4ec34dbfa3c2e3260bdc467090af4692"
+  },
+  "metadata": {
+   "workTitle": "G1 single voice",
+   "composer": ""
+  },
+  "parts": [
+   {
+    "partId": "P1",
+    "name": "Piano",
+    "staves": 1,
+    "measures": [
+     {
+      "ordinal": 1,
+      "printedNumber": "1",
+      "implicit": false,
+      "startBeat": {
+       "numerator": 0,
+       "denominator": 1
+      },
+      "durationBeat": {
+       "numerator": 4,
+       "denominator": 1
+      },
+      "attributes": {
+       "divisions": 1,
+       "time": {
+        "beats": 4,
+        "beatType": 4
+       },
+       "key": {
+        "fifths": 0,
+        "mode": "major"
+       },
+       "staves": 1,
+       "clefs": [
+        {
+         "staffNumber": 1,
+         "sign": "G",
+         "line": 2
+        }
+       ]
+      },
+      "events": [
+       {
+        "eventId": "44a959429fe07921:P1:m1:e1",
+        "kind": "note",
+        "source": {
+         "partId": "P1",
+         "measureOrdinal": 1,
+         "staffNumber": 1,
+         "sourceOrdinal": 1,
+         "printedMeasureNumber": "1",
+         "voiceId": "1"
+        },
+        "onsetBeat": {
+         "numerator": 0,
+         "denominator": 1
+        },
+        "durationBeat": {
+         "numerator": 1,
+         "denominator": 1
+        },
+        "notatedType": "quarter",
+        "dots": 0,
+        "pitch": {
+         "step": "C",
+         "alter": {
+          "numerator": 0,
+          "denominator": 1
+         },
+         "octave": 4,
+         "midiNote": 60,
+         "spelling": "C4"
+        },
+        "tieStart": false,
+        "tieStop": false,
+        "tiedStart": false,
+        "tiedStop": false,
+        "isGrace": false,
+        "isCue": false,
+        "articulations": []
+       },
+       {
+        "eventId": "44a959429fe07921:P1:m1:e2",
+        "kind": "note",
+        "source": {
+         "partId": "P1",
+         "measureOrdinal": 1,
+         "staffNumber": 1,
+         "sourceOrdinal": 2,
+         "printedMeasureNumber": "1",
+         "voiceId": "1"
+        },
+        "onsetBeat": {
+         "numerator": 1,
+         "denominator": 1
+        },
+        "durationBeat": {
+         "numerator": 1,
+         "denominator": 1
+        },
+        "notatedType": "quarter",
+        "dots": 0,
+        "pitch": {
+         "step": "D",
+         "alter": {
+          "numerator": 0,
+          "denominator": 1
+         },
+         "octave": 4,
+         "midiNote": 62,
+         "spelling": "D4"
+        },
+        "tieStart": false,
+        "tieStop": false,
+        "tiedStart": false,
+        "tiedStop": false,
+        "isGrace": false,
+        "isCue": false,
+        "articulations": []
+       },
+       {
+        "eventId": "44a959429fe07921:P1:m1:e3",
+        "kind": "note",
+        "source": {
+         "partId": "P1",
+         "measureOrdinal": 1,
+         "staffNumber": 1,
+         "sourceOrdinal": 3,
+         "printedMeasureNumber": "1",
+         "voiceId": "1"
+        },
+        "onsetBeat": {
+         "numerator": 2,
+         "denominator": 1
+        },
+        "durationBeat": {
+         "numerator": 1,
+         "denominator": 1
+        },
+        "notatedType": "quarter",
+        "dots": 0,
+        "pitch": {
+         "step": "E",
+         "alter": {
+          "numerator": 0,
+          "denominator": 1
+         },
+         "octave": 4,
+         "midiNote": 64,
+         "spelling": "E4"
+        },
+        "tieStart": false,
+        "tieStop": false,
+        "tiedStart": false,
+        "tiedStop": false,
+        "isGrace": false,
+        "isCue": false,
+        "articulations": []
+       },
+       {
+        "eventId": "44a959429fe07921:P1:m1:e4",
+        "kind": "note",
+        "source": {
+         "partId": "P1",
+         "measureOrdinal": 1,
+         "staffNumber": 1,
+         "sourceOrdinal": 4,
+         "printedMeasureNumber": "1",
+         "voiceId": "1"
+        },
+        "onsetBeat": {
+         "numerator": 3,
+         "denominator": 1
+        },
+        "durationBeat": {
+         "numerator": 1,
+         "denominator": 1
+        },
+        "notatedType": "quarter",
+        "dots": 0,
+        "pitch": {
+         "step": "F",
+         "alter": {
+          "numerator": 0,
+          "denominator": 1
+         },
+         "octave": 4,
+         "midiNote": 65,
+         "spelling": "F4"
+        },
+        "tieStart": false,
+        "tieStop": false,
+        "tiedStart": false,
+        "tiedStop": false,
+        "isGrace": false,
+        "isCue": false,
+        "articulations": []
+       }
+      ],
+      "barlines": [],
+      "capabilities": []
+     },
+     {
+      "ordinal": 2,
+      "printedNumber": "2",
+      "implicit": false,
+      "startBeat": {
+       "numerator": 4,
+       "denominator": 1
+      },
+      "durationBeat": {
+       "numerator": 4,
+       "denominator": 1
+      },
+      "attributes": {
+       "divisions": 1,
+       "time": {
+        "beats": 4,
+        "beatType": 4
+       },
+       "key": {
+        "fifths": 0,
+        "mode": "major"
+       },
+       "staves": 1,
+       "clefs": [
+        {
+         "staffNumber": 1,
+         "sign": "G",
+         "line": 2
+        }
+       ]
+      },
+      "events": [
+       {
+        "eventId": "44a959429fe07921:P1:m2:e1",
+        "kind": "note",
+        "source": {
+         "partId": "P1",
+         "measureOrdinal": 2,
+         "staffNumber": 1,
+         "sourceOrdinal": 1,
+         "printedMeasureNumber": "2",
+         "voiceId": "1"
+        },
+        "onsetBeat": {
+         "numerator": 4,
+         "denominator": 1
+        },
+        "durationBeat": {
+         "numerator": 2,
+         "denominator": 1
+        },
+        "notatedType": "half",
+        "dots": 0,
+        "pitch": {
+         "step": "G",
+         "alter": {
+          "numerator": 0,
+          "denominator": 1
+         },
+         "octave": 4,
+         "midiNote": 67,
+         "spelling": "G4"
+        },
+        "tieStart": false,
+        "tieStop": false,
+        "tiedStart": false,
+        "tiedStop": false,
+        "isGrace": false,
+        "isCue": false,
+        "articulations": []
+       },
+       {
+        "eventId": "44a959429fe07921:P1:m2:e2",
+        "kind": "rest",
+        "source": {
+         "partId": "P1",
+         "measureOrdinal": 2,
+         "staffNumber": 1,
+         "sourceOrdinal": 2,
+         "printedMeasureNumber": "2",
+         "voiceId": "1"
+        },
+        "onsetBeat": {
+         "numerator": 6,
+         "denominator": 1
+        },
+        "durationBeat": {
+         "numerator": 2,
+         "denominator": 1
+        },
+        "notatedType": "half",
+        "dots": 0,
+        "tieStart": false,
+        "tieStop": false,
+        "tiedStart": false,
+        "tiedStop": false,
+        "isGrace": false,
+        "isCue": false,
+        "articulations": []
+       }
+      ],
+      "barlines": [],
+      "capabilities": []
+     }
+    ]
+   }
+  ],
+  "tieSpans": [],
+  "tempoMarks": [],
+  "capabilities": []
+ },
+ "report": {
+  "schemaVersion": 1,
+  "parserVersion": "1.0.0",
+  "supportProfileVersion": "musicxml-v1.0",
+  "fingerprint": "44a959429fe07921e744f87721b7442c4ec34dbfa3c2e3260bdc467090af4692",
+  "status": "READY",
+  "strictAllowed": true,
+  "sourceFileName": "g1_single_voice.musicxml",
+  "sourceFormat": "musicxml-partwise",
+  "formatVersion": "4.0",
+  "counts": {
+   "partCount": 1,
+   "measureCount": 2,
+   "noteCount": 5,
+   "restCount": 1,
+   "chordNoteCount": 0,
+   "tieSpanCount": 0,
+   "graceCount": 0,
+   "cueCount": 0,
+   "warningCount": 0,
+   "errorCount": 0
+  },
+  "issues": [],
+  "capabilities": []
+ },
+ "expectedCandidate": {
+  "side": "ts-legacy-reference",
+  "kind": "candidate",
+  "occurrences": [
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 1,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "playbackBeat": "0/1",
+    "durationBeat": "1/1",
+    "measureOrdinal": 1,
+    "bar": 1,
+    "beatInMeasure": "0/1",
+    "staffNumber": 1,
+    "voiceId": "1",
+    "pitch": {
+     "step": "C",
+     "alter": 0,
+     "octave": 4,
+     "midiNote": 60,
+     "spelling": "C4"
+    },
+    "isTieOnset": false,
+    "playbackIndex": 0
+   },
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 2,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "playbackBeat": "1/1",
+    "durationBeat": "1/1",
+    "measureOrdinal": 1,
+    "bar": 1,
+    "beatInMeasure": "1/1",
+    "staffNumber": 1,
+    "voiceId": "1",
+    "pitch": {
+     "step": "D",
+     "alter": 0,
+     "octave": 4,
+     "midiNote": 62,
+     "spelling": "D4"
+    },
+    "isTieOnset": false,
+    "playbackIndex": 1
+   },
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 3,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "playbackBeat": "2/1",
+    "durationBeat": "1/1",
+    "measureOrdinal": 1,
+    "bar": 1,
+    "beatInMeasure": "2/1",
+    "staffNumber": 1,
+    "voiceId": "1",
+    "pitch": {
+     "step": "E",
+     "alter": 0,
+     "octave": 4,
+     "midiNote": 64,
+     "spelling": "E4"
+    },
+    "isTieOnset": false,
+    "playbackIndex": 2
+   },
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 4,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "playbackBeat": "3/1",
+    "durationBeat": "1/1",
+    "measureOrdinal": 1,
+    "bar": 1,
+    "beatInMeasure": "3/1",
+    "staffNumber": 1,
+    "voiceId": "1",
+    "pitch": {
+     "step": "F",
+     "alter": 0,
+     "octave": 4,
+     "midiNote": 65,
+     "spelling": "F4"
+    },
+    "isTieOnset": false,
+    "playbackIndex": 3
+   },
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 2,
+     "sourceOrdinal": 1,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "playbackBeat": "4/1",
+    "durationBeat": "2/1",
+    "measureOrdinal": 2,
+    "bar": 2,
+    "beatInMeasure": "0/1",
+    "staffNumber": 1,
+    "voiceId": "1",
+    "pitch": {
+     "step": "G",
+     "alter": 0,
+     "octave": 4,
+     "midiNote": 67,
+     "spelling": "G4"
+    },
+    "isTieOnset": false,
+    "playbackIndex": 4
+   }
+  ],
+  "groups": [
+   {
+    "passIndex": 0,
+    "playbackBeat": "0/1",
+    "members": [
+     {
+      "partId": "P1",
+      "measureOrdinal": 1,
+      "sourceOrdinal": 1,
+      "voiceId": "1"
+     }
+    ],
+    "pitches": [
+     "C4"
+    ],
+    "bar": 1,
+    "beatInMeasure": "0/1",
+    "staffNumbers": [
+     1
+    ],
+    "voiceIds": [
+     "1"
+    ],
+    "durationBeat": "1/1"
+   },
+   {
+    "passIndex": 0,
+    "playbackBeat": "1/1",
+    "members": [
+     {
+      "partId": "P1",
+      "measureOrdinal": 1,
+      "sourceOrdinal": 2,
+      "voiceId": "1"
+     }
+    ],
+    "pitches": [
+     "D4"
+    ],
+    "bar": 1,
+    "beatInMeasure": "1/1",
+    "staffNumbers": [
+     1
+    ],
+    "voiceIds": [
+     "1"
+    ],
+    "durationBeat": "1/1"
+   },
+   {
+    "passIndex": 0,
+    "playbackBeat": "2/1",
+    "members": [
+     {
+      "partId": "P1",
+      "measureOrdinal": 1,
+      "sourceOrdinal": 3,
+      "voiceId": "1"
+     }
+    ],
+    "pitches": [
+     "E4"
+    ],
+    "bar": 1,
+    "beatInMeasure": "2/1",
+    "staffNumbers": [
+     1
+    ],
+    "voiceIds": [
+     "1"
+    ],
+    "durationBeat": "1/1"
+   },
+   {
+    "passIndex": 0,
+    "playbackBeat": "3/1",
+    "members": [
+     {
+      "partId": "P1",
+      "measureOrdinal": 1,
+      "sourceOrdinal": 4,
+      "voiceId": "1"
+     }
+    ],
+    "pitches": [
+     "F4"
+    ],
+    "bar": 1,
+    "beatInMeasure": "3/1",
+    "staffNumbers": [
+     1
+    ],
+    "voiceIds": [
+     "1"
+    ],
+    "durationBeat": "1/1"
+   },
+   {
+    "passIndex": 0,
+    "playbackBeat": "4/1",
+    "members": [
+     {
+      "partId": "P1",
+      "measureOrdinal": 2,
+      "sourceOrdinal": 1,
+      "voiceId": "1"
+     }
+    ],
+    "pitches": [
+     "G4"
+    ],
+    "bar": 2,
+    "beatInMeasure": "0/1",
+    "staffNumbers": [
+     1
+    ],
+    "voiceIds": [
+     "1"
+    ],
+    "durationBeat": "2/1"
+   }
+  ],
+  "atoms": [
+   {
+    "startTick": 0,
+    "durationTicks": 960,
+    "bar": 1,
+    "beat": 1
+   },
+   {
+    "startTick": 960,
+    "durationTicks": 960,
+    "bar": 1,
+    "beat": 2
+   },
+   {
+    "startTick": 1920,
+    "durationTicks": 960,
+    "bar": 1,
+    "beat": 3
+   },
+   {
+    "startTick": 2880,
+    "durationTicks": 960,
+    "bar": 1,
+    "beat": 4
+   },
+   {
+    "startTick": 3840,
+    "durationTicks": 1920,
+    "bar": 2,
+    "beat": 1
+   }
+  ],
+  "scoreEvents": [
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 1,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "measure": 1,
+    "pitch": 60,
+    "targetOnsetUs": 3000000,
+    "targetDurationUs": 750000,
+    "partId": "staff-1:voice-1",
+    "parseConfidence": 1,
+    "runtimeOccurrenceId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e1"
+   },
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 2,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "measure": 1,
+    "pitch": 62,
+    "targetOnsetUs": 3750000,
+    "targetDurationUs": 750000,
+    "partId": "staff-1:voice-1",
+    "parseConfidence": 1,
+    "runtimeOccurrenceId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e2"
+   },
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 3,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "measure": 1,
+    "pitch": 64,
+    "targetOnsetUs": 4500000,
+    "targetDurationUs": 750000,
+    "partId": "staff-1:voice-1",
+    "parseConfidence": 1,
+    "runtimeOccurrenceId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e3"
+   },
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 1,
+     "sourceOrdinal": 4,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "measure": 1,
+    "pitch": 65,
+    "targetOnsetUs": 5250000,
+    "targetDurationUs": 750000,
+    "partId": "staff-1:voice-1",
+    "parseConfidence": 1,
+    "runtimeOccurrenceId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e4"
+   },
+   {
+    "locator": {
+     "partId": "P1",
+     "measureOrdinal": 2,
+     "sourceOrdinal": 1,
+     "voiceId": "1"
+    },
+    "passIndex": 0,
+    "measure": 2,
+    "pitch": 67,
+    "targetOnsetUs": 6000000,
+    "targetDurationUs": 1500000,
+    "partId": "staff-1:voice-1",
+    "parseConfidence": 1,
+    "runtimeOccurrenceId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m2:e1"
+   }
+  ],
+  "runtimeIds": {
+   "planId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0",
+   "occurrenceIds": [
+    "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e1",
+    "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e2",
+    "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e3",
+    "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e4",
+    "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m2:e1"
+   ],
+   "groupIds": [
+    "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:g0:0/1",
+    "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:g0:1/1",
+    "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:g0:2/1",
+    "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:g0:3/1",
+    "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:g0:4/1"
+   ]
+  },
+  "wireMs": [
+   {
+    "scoreEventId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e1",
+    "beatPosition": 0,
+    "targetOnsetMs": 3000,
+    "targetDurationMs": 750
+   },
+   {
+    "scoreEventId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e2",
+    "beatPosition": 1,
+    "targetOnsetMs": 3750,
+    "targetDurationMs": 750
+   },
+   {
+    "scoreEventId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e3",
+    "beatPosition": 2,
+    "targetOnsetMs": 4500,
+    "targetDurationMs": 750
+   },
+   {
+    "scoreEventId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m1:e4",
+    "beatPosition": 3,
+    "targetOnsetMs": 5250,
+    "targetDurationMs": 750
+   },
+   {
+    "scoreEventId": "plan:44a959429fe07921:m1-2:once:playback-planner-1.0.0:p0:44a959429fe07921:P1:m2:e1",
+    "beatPosition": 4,
+    "targetOnsetMs": 6000,
+    "targetDurationMs": 1500
+   }
+  ]
+ },
+ "meta": {
+  "fingerprint": "plan-v1:sha256:1ef79b9ca10910dfa7f8d3e66e6cd06dee7a466ae9d00af4717705f0e454510c",
+  "fingerprintErrorCode": null,
+  "importStatus": "READY",
+  "importStrictAllowed": true,
+  "planStrictAllowed": true,
+  "planIssues": [],
+  "scopeCodes": [],
+  "missingEventIds": [],
+  "atomIssueCodes": []
+ }
+}
