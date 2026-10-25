@@ -163,12 +163,12 @@ const bpmJsonOf = (bpm) => JSON.stringify(bpm);
  * not only in tests. Any failure is a coded rejection; nothing is rounded,
  * patched or degraded.
  */
-export function verifyTimelineSemantics(plan, config) {
+export function verifyTimelineSemantics(plan, config, nativeModule = native) {
   const failures = [];
   const bpmText = bpmJsonOf(config.bpm);
   const us = (beatText, field) => {
     try {
-      return native.beatToMicrosecondsJson(beatJson(parseBeatText(beatText, field)), bpmText);
+      return nativeModule.beatToMicrosecondsJson(beatJson(parseBeatText(beatText, field)), bpmText);
     } catch (error) {
       failures.push(`${field}:time-primitive:${error.message.split(':')[0]}`);
       return null;
@@ -315,15 +315,22 @@ export function createPlannerService({ authority = resolvePlannerAuthority(), na
   }
   return {
     authority,
-    /** The rust generation chain. Throws coded PlannerGateError rejections —
-     * there is deliberately NO TS fallback here. */
-    buildRustPlan({ document, report, config }) {
+    /** The rust generation chain. `mode` is REQUIRED and must be exactly
+     * 'timeline' | 'follow' — the consumption mode decides which deep
+     * verifier runs; it is never guessed or defaulted (review F1).
+     * Throws coded PlannerGateError rejections — there is deliberately NO
+     * TS fallback here. */
+    buildRustPlan({ document, report, config, mode }) {
       if (authority !== 'rust') {
         throw new PlannerGateError('PLANNER_PATH_DISABLED',
           `planner authority is '${authority}'; the rust planning path is not enabled`);
       }
       if (!document || !report || !config) {
         throw new PlannerGateError('INVALID_REQUEST', 'document, report and config are all required');
+      }
+      if (mode !== 'timeline' && mode !== 'follow') {
+        throw new PlannerGateError('INVALID_REQUEST',
+          `mode must be 'timeline' or 'follow' (the consumption mode is explicit, never inferred), got '${mode}'`);
       }
       // Multi-part strict planning is NOT verified for the Rust planner:
       // reject explicitly instead of returning a plan that may mix parts.
@@ -347,16 +354,15 @@ export function createPlannerService({ authority = resolvePlannerAuthority(), na
 
       // Step 1: build the canonical plan (document gate + C-12 + planning).
       const plan = JSON.parse(nativeModule.buildPlanV1(documentJson, reportJson, configJson));
-      // Step 1b: server-side deep integrity verification against the SAME
-      // trusted config — timeline semantics (time/identity/ticks) and the
-      // follow cross-reference invariants. A failure rejects the plan with a
-      // coded error BEFORE any response is assembled (review findings 2/3).
-      try {
-        verifyTimelineSemantics(plan, trustedConfig);
+      // Step 1b: mode-scoped deep verification against the SAME trusted
+      // config, via the SAME injected native module (review F1):
+      //  - timeline consumes atoms+scoreEvents -> verifyTimelineSemantics;
+      //  - follow consumes groups/occurrences only -> verifyFollowCrossRefs;
+      //    failures of unconsumed timeline fields never reject a follow plan.
+      if (mode === 'timeline') {
+        verifyTimelineSemantics(plan, trustedConfig, nativeModule);
+      } else {
         verifyFollowCrossReferences(plan);
-      } catch (error) {
-        if (!(error instanceof PlannerGateError)) throw error;
-        throw error;
       }
       // Step 2: the SEPARATE frozen fingerprint gate over the verbatim plan
       // with the SAME inputs — exactly once, success required.

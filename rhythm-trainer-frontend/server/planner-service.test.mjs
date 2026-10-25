@@ -46,9 +46,11 @@ function rustService() {
   return createPlannerService({ authority: 'rust' });
 }
 
-function callRust(service, document, report, config) {
+/** Invokes the chain with an EXPLICIT consumption mode (F1: the service
+ * entry never infers or defaults the mode). */
+function callRust(service, document, report, config, mode) {
   return service.buildRustPlan({
-    document, report, config,
+    document, report, config, mode,
   });
 }
 
@@ -66,7 +68,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
   it('1. a valid request produces a verifiable plan, fingerprint and exact time line', () => {
     const record = corpus('G1-base');
     const service = rustService();
-    const response = callRust(service, record.document, record.report, configFor());
+    const response = callRust(service, record.document, record.report, configFor(), 'timeline');
     expect(response.plannerVersion).toBe('rust-planner-1');
     expect(response.plannerAuthority).toBe('rust');
     expect(response.strictAllowed).toBe(true);
@@ -74,7 +76,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     expect(response.scoreFingerprint).toBe(record.report.fingerprint);
 
     // Stability: the same frozen inputs twice -> the same fingerprint.
-    const again = callRust(service, record.document, record.report, configFor());
+    const again = callRust(service, record.document, record.report, configFor(), 'timeline');
     expect(again.planFingerprint).toBe(response.planFingerprint);
 
     // The canonical time line is exact: every scoreEvent onset equals
@@ -110,7 +112,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     const config = configFor();
     config.hand = 'right';
     config.handMapping.parts[0].staves = [{ staffNumber: 1, hand: 'right' }];
-    const response = callRust(rustService(), document, record.report, config);
+    const response = callRust(rustService(), document, record.report, config, 'timeline');
     expect(response.scopeCodes).toEqual(['hand_mapping_incomplete']);
     expect(response.missingEventIds).toEqual([]);
     expect(() => assertTimelineUsable(response))
@@ -121,7 +123,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     const record = corpus('G1-base');
     const document = record.document;
     document.parts[0].measures[0].events[0].durationBeat = { numerator: 1, denominator: 7 };
-    const response = callRust(rustService(), document, record.report, configFor());
+    const response = callRust(rustService(), document, record.report, configFor(), 'timeline');
     expect(response.strictAllowed).toBe(true);
     expect(response.atomIssueCodes).toContain('tick_grid_rounding');
     // The un-gridable group's atom is MISSING (never rounded): 4 of 5 groups
@@ -135,7 +137,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     const record = corpus('G1-base');
     const document = record.document;
     document.parts[0].measures[0].events[0].durationBeat = { numerator: 1, denominator: 7 };
-    const response = callRust(rustService(), document, record.report, configFor());
+    const response = callRust(rustService(), document, record.report, configFor(), 'follow');
     // The same response that timeline rejected (atoms) is USABLE for follow:
     // follow consumes groups/occurrences, which are complete and consistent.
     expect(assertFollowUsable(response)).toBe(true);
@@ -149,7 +151,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     unmapped.config.handMapping.parts[0].staves = [{ staffNumber: 1, hand: 'left' }];
     const firstEvent = unmapped.document.parts[0].measures[0].events[0];
     firstEvent.source.staffNumber = 3;
-    const unmappedResponse = callRust(rustService(), unmapped.document, unmapped.report, unmapped.config);
+    const unmappedResponse = callRust(rustService(), unmapped.document, unmapped.report, unmapped.config, 'follow');
     expect(unmappedResponse.missingEventIds).toContain(firstEvent.eventId);
     expect(() => assertFollowUsable(unmappedResponse)).toThrow(/missingEventIds/);
   });
@@ -168,7 +170,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     document.parts.push(secondPart);
     const error = (() => {
       try {
-        callRust(rustService(), document, record.report, configFor());
+        callRust(rustService(), document, record.report, configFor(), 'timeline');
         return null;
       } catch (cause) {
         return cause;
@@ -183,7 +185,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     const config = { ...configFor(), plannerVersion: 'client-forged-42' };
     const error = (() => {
       try {
-        callRust(rustService(), record.document, record.report, config);
+        callRust(rustService(), record.document, record.report, config, 'timeline');
         return null;
       } catch (cause) {
         return cause;
@@ -200,7 +202,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     const reportJson = JSON.stringify(record.report);
     const trustedConfig = { ...config, plannerVersion: RUST_PLANNER_VERSION };
     const service = rustService();
-    const response = callRust(service, record.document, record.report, config);
+    const response = callRust(service, record.document, record.report, config, 'timeline');
     // Independent replay of the two-step chain with the trusted version.
     const plan = JSON.parse(native.buildPlanV1(documentJson, reportJson, JSON.stringify(trustedConfig)));
     const fingerprint = native.planFingerprintV1Gate(
@@ -216,7 +218,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     const service = rustService();
     const error = (() => {
       try {
-        service.buildRustPlan({ document: null, report: {}, config: {} });
+        service.buildRustPlan({ document: null, report: {}, config: {}, mode: 'timeline' });
         return null;
       } catch (cause) {
         return cause;
@@ -236,7 +238,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     const record = corpus('G1-base');
     const error = (() => {
       try {
-        createPlannerService().buildRustPlan(record.document, record.report, configFor());
+        createPlannerService().buildRustPlan({ document: record.document, report: record.report, config: configFor(), mode: 'timeline' });
         return null;
       } catch (cause) {
         return cause;
@@ -269,14 +271,14 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
         countInUs: 2_000_000,
         unsupportedNotationPolicy: 'reject-strict',
       };
-      const response = callRust(rustService(), projected.dto, imported.importReport, config);
+      const response = callRust(rustService(), projected.dto, imported.importReport, config, 'timeline');
       expect(response.strictAllowed).toBe(true);
       expect(response.plan.occurrences).toHaveLength(1579);
       expect(response.plan.groups).toHaveLength(1018);
       expect(response.plan.atoms).toHaveLength(1018);
       expect(response.plan.scoreEvents).toHaveLength(1579);
       const first = response.planFingerprint;
-      const response2 = callRust(rustService(), projected.dto, imported.importReport, config);
+      const response2 = callRust(rustService(), projected.dto, imported.importReport, config, 'timeline');
       expect(response2.planFingerprint).toBe(first);
       expect(assertTimelineUsable(response)).toBe(true);
     });
@@ -289,7 +291,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     const record = corpus('G1-base');
     const config = configFor();
     const base = rustService().buildRustPlan({
-      document: record.document, report: record.report, config,
+      document: record.document, report: record.report, config, mode: 'timeline',
     });
     const clone = () => JSON.parse(JSON.stringify(base.plan));
     const gated = (mutate, verifier, code) => {
@@ -338,6 +340,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
       // so duplicating requires a two-member group: use A4-multivoice)
       const a4Record = corpus('A4-multivoice');
       const a4Base = rustService().buildRustPlan({
+        mode: 'timeline',
         document: a4Record.document, report: a4Record.report, config: (() => {
           const { plannerVersion, ...a4Config } = a4Record.config;
           void plannerVersion;
@@ -392,7 +395,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
       const tamperingService = createPlannerService({ authority: 'rust', nativeModule: nativeStub });
       void documentJson; void reportJson; void service;
       expect(() => tamperingService.buildRustPlan({
-        document: record.document, report: record.report, config,
+        document: record.document, report: record.report, config, mode: 'timeline',
       })).toThrow(/TIMELINE_SEMANTICS_REJECTED/);
     });
 
@@ -400,8 +403,105 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
       // (covered in full by tests 5/6/8/9 above; re-asserted here for the
       // R1 boundary statement — plus the full suite regression run.)
       expect(resolvePlannerAuthority()).toBe('rts');
-      expect(() => createPlannerService().buildRustPlan(record.document, record.report, config))
+      expect(() => createPlannerService().buildRustPlan({ document: record.document, report: record.report, config, mode: 'timeline' }))
         .toThrow(/PLANNER_PATH_DISABLED/);
+    });
+  });
+
+  // ---- R2-3g-R1-F1: the consumption mode is EXPLICIT and scopes which deep
+  // verifier runs. A follow plan is never rejected for timeline-only fields
+  // it does not consume, while cross-reference damage still rejects.
+  describe('R2-3g-R1-F1: mode-scoped verification (timeline vs follow)', () => {
+    const record = corpus('G1-base');
+    const config = configFor();
+    /** Service whose native buildPlanV1 returns a TAMPERED copy of the real
+     * Rust plan, so the SERVER path (not a test helper) is what rejects. */
+    function serviceReturning(mutatedPlan) {
+      const stub = {
+        buildPlanV1: () => JSON.stringify(mutatedPlan),
+        planFingerprintV1Gate: (documentJson, reportJson, planJson, configJson) =>
+          native.planFingerprintV1Gate(documentJson, reportJson, planJson, configJson),
+        beatToMicrosecondsJson: native.beatToMicrosecondsJson,
+      };
+      return createPlannerService({ authority: 'rust', nativeModule: stub });
+    }
+    const realPlan = () => rustService().buildRustPlan({
+      document: record.document, report: record.report, config, mode: 'timeline',
+    }).plan;
+    const tampered = (mutate) => {
+      const plan = JSON.parse(JSON.stringify(realPlan()));
+      mutate(plan);
+      return plan;
+    };
+    const run = (service, mode) => service.buildRustPlan({
+      document: record.document, report: record.report, config, mode,
+    });
+
+    it('19. mode is REQUIRED and never inferred: missing/unknown modes are rejected', () => {
+      const service = rustService();
+      expect(() => service.buildRustPlan({ document: record.document, report: record.report, config }))
+        .toThrow(/mode must be 'timeline' or 'follow'/);
+      expect(() => run(service, 'both')).toThrow(/mode must be 'timeline' or 'follow'/);
+      expect(() => run(service, undefined)).toThrow(/mode must be 'timeline' or 'follow'/);
+    });
+
+    it('20. timeline: tampered scoreEvents onset/duration are rejected by the SERVICE', () => {
+      // Mutating only scoreEvents leaves groups/occurrences valid, so this
+      // proves the TIMELINE verifier (not the follow one) is what rejects.
+      const onset = tampered((plan) => { plan.scoreEvents[0].targetOnsetUs += 1; });
+      expect(() => run(serviceReturning(onset), 'timeline')).toThrow(/TIMELINE_SEMANTICS_REJECTED/);
+      const duration = tampered((plan) => { plan.scoreEvents[1].targetDurationUs += 1; });
+      expect(() => run(serviceReturning(duration), 'timeline')).toThrow(/TIMELINE_SEMANTICS_REJECTED/);
+    });
+
+    it('21. follow: tampered/removed scoreEvents do NOT reject when groups/occurrences stay valid', () => {
+      // Follow does not consume scoreEvents: these plans must be RELEASED.
+      const onset = tampered((plan) => { plan.scoreEvents[0].targetOnsetUs += 1; });
+      expect(run(serviceReturning(onset), 'follow').planFingerprint).toMatch(/^plan-v1:sha256:/);
+      const removed = tampered((plan) => { plan.scoreEvents = []; });
+      expect(run(serviceReturning(removed), 'follow').planFingerprint).toMatch(/^plan-v1:sha256:/);
+      // Follow also does not consume atoms: dropping them must not reject.
+      const noAtoms = tampered((plan) => { plan.atoms = []; });
+      expect(run(serviceReturning(noAtoms), 'follow').planFingerprint).toMatch(/^plan-v1:sha256:/);
+    });
+
+    it('22. follow: broken occurrence/group cross references still reject on the SERVICE path', () => {
+      const dangling = tampered((plan) => { plan.groups[0].occurrenceIds[0] = 'ghost:id'; });
+      expect(() => run(serviceReturning(dangling), 'follow')).toThrow(/FOLLOW_CROSSREF_REJECTED/);
+      const mismatched = tampered((plan) => { plan.groups[0].scoreEventIds[0] = 'wrong:event'; });
+      expect(() => run(serviceReturning(mismatched), 'follow')).toThrow(/FOLLOW_CROSSREF_REJECTED/);
+      const locator = tampered((plan) => { plan.groups[0].members[0].sourceOrdinal += 10; });
+      expect(() => run(serviceReturning(locator), 'follow')).toThrow(/FOLLOW_CROSSREF_REJECTED/);
+    });
+
+    it('23. the timeline verifier runs on the INJECTED native module, not the global one', () => {
+      // A stub whose time primitive returns a wrong value must make the
+      // timeline verifier reject — proving it uses the injected module.
+      const plan = realPlan();
+      const lyingStub = {
+        buildPlanV1: () => JSON.stringify(plan),
+        planFingerprintV1Gate: (documentJson, reportJson, planJson, configJson) =>
+          native.planFingerprintV1Gate(documentJson, reportJson, planJson, configJson),
+        beatToMicrosecondsJson: () => 1,
+      };
+      expect(() => run(createPlannerService({ authority: 'rust', nativeModule: lyingStub }), 'timeline'))
+        .toThrow(/TIMELINE_SEMANTICS_REJECTED/);
+      // And the same plan passes when the REAL module is injected.
+      expect(run(createPlannerService({ authority: 'rust', nativeModule: native }), 'timeline')
+        .planFingerprint).toMatch(/^plan-v1:sha256:/);
+    });
+
+    it('24. tick_grid_rounding is preserved: timeline blocks via the atom-issue guard, follow is not hurt', () => {
+      const document = record.document;
+      document.parts[0].measures[0].events[0].durationBeat = { numerator: 1, denominator: 7 };
+      // timeline: the chain RELEASES the plan (atoms missing is planner-honest)
+      // and the strict guard rejects it — not the semantics verifier.
+      const timelineResponse = callRust(rustService(), document, record.report, configFor(), 'timeline');
+      expect(timelineResponse.atomIssueCodes).toContain('tick_grid_rounding');
+      expect(() => assertTimelineUsable(timelineResponse)).toThrow(/atomIssueCodes:tick_grid_rounding/);
+      // follow: same plan, follow gate passes (no atoms dependency).
+      const followResponse = callRust(rustService(), document, record.report, configFor(), 'follow');
+      expect(assertFollowUsable(followResponse)).toBe(true);
     });
   });
 });
