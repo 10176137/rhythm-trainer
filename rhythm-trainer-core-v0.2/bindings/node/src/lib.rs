@@ -1892,3 +1892,21 @@ pub fn canonical_bytes_json(payload_json: String) -> napi::Result<String> {
         .map(|bytes| bytes)
         .map_err(|error| napi_error(error.to_string()))
 }
+
+/// E4-C channel: the Rust-side candidate-output validator emitting the four
+/// frozen normative codes; executed live by the R2-3d evidence harness.
+/// Returns the code, or null when the candidate is acceptable. Malformed
+/// (non-array) payloads are REJECTED, never read as "no violation".
+#[napi]
+pub fn validate_candidate_score_events_json(
+    events_json: String,
+    atom_bars: Option<Vec<f64>>,
+    prescription_range: Option<Vec<f64>>,
+) -> napi::Result<Option<String>> {
+    let events = parse_json(&events_json, "events")?;
+    let options = rhythm_core::contract_v1::CandidateValidationOptions {
+        atom_bars,
+        prescription_range: prescription_range.map(|range| (range[0], range[1])),
+    };
+    Ok(rhythm_core::contract_v1::validate_candidate_score_events(&events, &options).map(String::from))
+}

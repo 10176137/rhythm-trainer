@@ -489,6 +489,13 @@ export declare function planFingerprintV1Gate(documentJson: string, reportJson: 
 export declare function computePlanFingerprintV1Json(payloadJson: string): string
 /** E4-V channel: canonical JSON bytes (RFC 8785 over NFC) of a vector payload. */
 export declare function canonicalBytesJson(payloadJson: string): string
+/**
+ * E4-C channel: the Rust-side candidate-output validator emitting the four
+ * frozen normative codes; executed live by the R2-3d evidence harness.
+ * Returns the code, or null when the candidate is acceptable. Malformed
+ * (non-array) payloads are REJECTED, never read as "no violation".
+ */
+export declare function validateCandidateScoreEventsJson(eventsJson: string, atomBars?: Array<number> | undefined | null, prescriptionRange?: Array<number> | undefined | null): string | null
 export declare class NativeSession {
   constructor(targets: Array<JsTarget>, queueCapacity: number, finalizationGraceMs: number)
   start(): void

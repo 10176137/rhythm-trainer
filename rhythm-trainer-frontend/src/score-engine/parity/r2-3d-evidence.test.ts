@@ -44,6 +44,7 @@ const native = require(join(root, 'rhythm-trainer-core-v0.2', 'bindings', 'node'
   buildPlanV1(documentJson: string, reportJson: string, configJson: string): string;
   buildParityCandidateV1(documentJson: string, reportJson: string, configJson: string): string;
   planFingerprintV1Gate(documentJson: string, reportJson: string, planJson: string, configJson: string): string;
+  validateCandidateScoreEventsJson(eventsJson: string, atomBars?: number[] | null, prescriptionRange?: number[] | null): string | null;
 };
 
 const REPORT_DIR = join(root, 'audit-r1', 'reports', 'r2-3');
@@ -224,6 +225,19 @@ let e1AllExact = true;
 const e2Results: CaseResult[] = [];
 const e4BFaults: Array<{ faultId: string; detected: boolean; classifiedCorrectly: boolean; pathPrefixOk: boolean; reportFails: boolean; diffs: ParityDiff[] }> = [];
 let e5Result: E5Result = { executed: false, reason: 'not executed yet' };
+
+// E4-C: the four frozen normative codes + the fail-closed structural
+// rejection, EXECUTED LIVE through the Rust NAPI validator. The class-C
+// verdict is computed from these results — never asserted from text.
+interface ClassCCase { id: string; expectedCode: string; actualCode: string | null; pass: boolean }
+let classCCases: ClassCCase[] = [];
+let classCAllPass = false;
+
+// E4-V: every committed vector recomputed by the Rust implementation through
+// the NAPI primitives, byte-exact against the frozen expectations.
+interface ClassVVector { vector: string; canonicalMatch: boolean; fingerprintMatch: boolean; pass: boolean }
+let classVVectors: ClassVVector[] = [];
+let classVAllPass = false;
 
 beforeAll(() => {
   // ----- E1: G1–G5 golden truth, field by field, against the Rust pipeline.
@@ -424,6 +438,43 @@ beforeAll(() => {
     });
   }
 
+  // ----- E4-C: the frozen normative-code matrix EXECUTED through the Rust
+  // NAPI validator (candidate-output layer produces the codes from day one).
+  {
+    const cleanList = [{ scoreEventId: 'a', pitch: 60, measure: 1, targetDurationMs: 750 }];
+    const clean = JSON.stringify(cleanList);
+    const cases: Array<{ id: string; events: string; atomBars?: number[] | null; range?: number[] | null; expectedCode: string }> = [
+      { id: 'N-ID-C1 duplicate_target_id', events: JSON.stringify([...cleanList, { scoreEventId: 'a', pitch: 62, measure: 2, targetDurationMs: 750 }]), expectedCode: 'duplicate_target_id' },
+      { id: 'N-PITCH-C1 invalid_target_pitch (pitch 128)', events: JSON.stringify([{ scoreEventId: 'a', pitch: 128, measure: 1, targetDurationMs: 750 }]), expectedCode: 'invalid_target_pitch' },
+      { id: 'N-PITCH-C1 invalid_target_pitch (duration 0)', events: JSON.stringify([{ scoreEventId: 'a', pitch: 60, measure: 1, targetDurationMs: 0 }]), expectedCode: 'invalid_target_pitch' },
+      { id: 'N-COV-C1 measure_coverage_mismatch', events: clean, atomBars: [1, 2], expectedCode: 'measure_coverage_mismatch' },
+      { id: 'N-COV-C2 target_outside_prescription_range', events: JSON.stringify([{ scoreEventId: 'a', pitch: 60, measure: 9, targetDurationMs: 750 }]), range: [1, 2], expectedCode: 'target_outside_prescription_range' },
+      { id: 'fail-closed structural rejection (non-array)', events: JSON.stringify('not an array'), expectedCode: 'invalid_target_pitch' },
+    ];
+    classCCases = cases.map((testCase) => {
+      const actualCode = native.validateCandidateScoreEventsJson(testCase.events, testCase.atomBars ?? null, testCase.range ?? null);
+      return { id: testCase.id, expectedCode: testCase.expectedCode, actualCode, pass: actualCode === testCase.expectedCode };
+    });
+    // A clean candidate must produce NO code (null) — also part of the matrix.
+    const cleanRun = native.validateCandidateScoreEventsJson(clean, null, null);
+    classCCases.push({ id: 'clean candidate accepted', expectedCode: '<null>', actualCode: cleanRun, pass: cleanRun === null });
+    classCAllPass = classCCases.length >= 6 && classCCases.every((testCase) => testCase.pass);
+  }
+
+  // ----- E4-V: every committed vector recomputed through the Rust NAPI
+  // primitives, byte-exact against the frozen expectations.
+  {
+    const vectors = JSON.parse(readFileSync(
+      new URL('../../../../audit-r1/contracts/test-vectors/plan-fingerprint-v1.json', import.meta.url), 'utf8')).vectors as Record<string, { payload: unknown; expectedCanonical: string; expectedFingerprint: string }>;
+    classVVectors = Object.entries(vectors).map(([name, vector]) => {
+      const payloadJson = JSON.stringify(vector.payload);
+      const canonicalMatch = native.canonicalBytesJson(payloadJson) === vector.expectedCanonical;
+      const fingerprintMatch = native.computePlanFingerprintV1Json(payloadJson) === vector.expectedFingerprint;
+      return { vector: name, canonicalMatch, fingerprintMatch, pass: canonicalMatch && fingerprintMatch };
+    });
+    classVAllPass = classVVectors.length === 6 && classVVectors.every((vector) => vector.pass);
+  }
+
   // ----- E5: real-score regression (executed; skip is recorded as NOT RUN).
   if (existsSync(REAL_SCORE_PATH)) {
     const raw = readFileSync(REAL_SCORE_PATH, 'utf8');
@@ -593,12 +644,18 @@ describe('R2-3d §8 migration evidence', () => {
         detail: `${rustEvidence.vectors.length} vectors incl. V-rational-bpm`,
       },
       {
-        id: 'E4', name: '§6 P8 acceptance A/B/C/V executed',
-        status: rustEvidence.classA?.every((item: { fingerprintChanged: boolean; expected: string }) =>
-          item.fingerprintChanged === (item.expected === 'changed')) && e4bAllPass
-          && rustEvidence.allByteExact ? 'PASS' : 'FAIL',
-        evidence: 'classA: r2-3d-rust-evidence.json; B: r2-3d-e4b embedded below; C: contract_v1::normative tests + acceptance-c.test.ts; V: acceptance-v.test.ts (EXECUTED_RUST_BYTE_EXACT)',
-        detail: 'A: 12 items; B: 6 rust-candidate injections; C: 4 normative codes (Rust) + anchor mapping (TS) + contract-layer codes; V: 6 vectors via NAPI primitives',
+        id: 'E4', name: '§6 P8 acceptance A/B/C/V executed — ALL FOUR classes computed from live results',
+        // E4 passes only when A, B, C and V ALL executed AND passed. C and V
+        // verdicts come from the live NAPI executions above (review finding:
+        // a missing or failed class must BLOCK, never fall back to text).
+        status: rustEvidence.classA?.length >= 12
+          && rustEvidence.classA?.every((item: { fingerprintChanged: boolean; expected: string }) =>
+            item.fingerprintChanged === (item.expected === 'changed'))
+          && e4bAllPass
+          && classCAllPass
+          && classVAllPass ? 'PASS' : 'FAIL',
+        evidence: 'A: r2-3d-rust-evidence.json classA[]; B: e4.classB[] (captured diffs); C: e4.classC[] (live Rust NAPI validator); V: e4.classV[] (live Rust NAPI byte-exact)',
+        detail: `A: ${rustEvidence.classA?.length ?? 0} items; B: ${e4BFaults.length} rust-candidate injections; C: ${classCCases.length} normative-code cases (allPass=${classCAllPass}); V: ${classVVectors.length} vectors via NAPI (allPass=${classVAllPass})`,
       },
       {
         id: 'E5', name: 'real-score regression (executed, not skipped)',
@@ -613,7 +670,9 @@ describe('R2-3d §8 migration evidence', () => {
         // E6 passes ONLY if the archived content is structurally complete
         // (review finding 2): per-case full diff arrays on BOTH comparison
         // directions, frozen expectedOutcome verdicts, E4-B captured diffs,
-        // E5 real-score L2/L3 — never a hard-coded PASS.
+        // E5 real-score L2/L3 — and the E4-C/E4-V live results must be
+        // present and passing (review finding: E4 must cover ALL FOUR
+        // classes from computed results, never text placeholders).
         status: e2Results.length === 15
           && e2Results.every((result) => Array.isArray(result.tsVsExpected.diffs)
             && Array.isArray(result.rustVsExpected.diffs)
@@ -621,6 +680,8 @@ describe('R2-3d §8 migration evidence', () => {
             && result.expectedOutcome.allMatch)
           && e4BFaults.every((fault) => Array.isArray(fault.diffs) && fault.diffs.length > 0)
           && (e5Result.l2 ? Array.isArray(e5Result.l2.diffs) : e5Result.executed === false)
+          && classCCases.length >= 6 && classCAllPass
+          && classVVectors.length === 6 && classVAllPass
           ? 'PASS' : 'FAIL',
         evidence: 'audit-r1/reports/r2-3/r2-3d-migration-evidence-v1.json',
         detail: 'written before the verdict; failing runs keep their evidence; structural completeness is verified, not assumed',
@@ -657,11 +718,16 @@ describe('R2-3d §8 migration evidence', () => {
         classA: rustEvidence.classA,
         classB: e4BFaults,
         classC: {
-          rust: 'contract_v1::normative unit tests (4 frozen codes, decision-for-decision vs TS validator)',
-          ts: 'acceptance-c.test.ts (anchor mapping + contract-layer reuse)',
-          note: 'Rust produces the normative codes directly from day one per Gate §6 code-table boundary',
+          cases: classCCases,
+          allPass: classCAllPass,
+          channel: 'live Rust NAPI validator (validateCandidateScoreEventsJson)',
         },
-        classV: { status: 'EXECUTED_RUST_BYTE_EXACT via NAPI primitives', suite: 'acceptance-v.test.ts' },
+        classV: {
+          vectors: classVVectors,
+          allPass: classVAllPass,
+          channel: 'live Rust NAPI primitives (canonicalBytesJson / computePlanFingerprintV1Json)',
+          suite: 'acceptance-v.test.ts (EXECUTED_RUST_BYTE_EXACT)',
+        },
       },
       e5: { ...e5Result, provenance: REAL_SCORE_PROVENANCE },
       e7,
