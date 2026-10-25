@@ -39,16 +39,18 @@
 
 重载页面并选择右手后（默认谱表 1→右、2→左；映射状态可在确认后覆盖）：
 
-| 类 | 被设为 `opacity: 0.22` 的数量 |
+| 类 | 被淡化覆盖的对象数（组本身或组内 path） |
 |---|---:|
-| `vf-stavenote` | 443 |
-| `vf-notehead` | 511 |
-| `vf-stem` | 441 |
-| `vf-beam` | 83 |
-| `vf-flag` | **34 / 34** |
-| `vf-stavetie` | 16 |
-| `vf-ledgers` | 142 |
-| `vf-modifiers` | 443 |
+| `vf-stavenote` | 443（组本身） |
+| `vf-notehead` | 511（组本身） |
+| `vf-stem` | 441（组内 stem path） |
+| `vf-beam` | 83（组本身） |
+| `vf-flag` | **34 / 34**（组本身） |
+| `vf-stavetie` | 16（组本身） |
+| `vf-ledgers` | 142（组内加线 path） |
+| `vf-modifiers` | 443（组本身） |
+
+> 说明：`getStemSVG()` 和 `getLedgerLineSVGs()` 返回的是 path，不是外层 `g.vf-stem`/`g.vf-ledgers` 组；因此这两类的 opacity 设在子 path 上（441 个 stem 组、142 个 ledgers 组各含被设为 0.22 的 path），其余类直接设在组上。最终合计 632 个 `path` 被设为 0.22。
 
 - 符尾按几何邻近判断：34 个邻近已淡化音符的 flag **全部**被淡化，`nearMutedButUnmuted = 0`。
 - 上谱表右手音符及其符杠/符尾保持正常黑色（未被计入淡化）。
