@@ -1825,7 +1825,11 @@ pub fn js_score_performance(
 // ---------------------------------------------------------------------------
 
 fn parse_json(text: &str, field: &str) -> napi::Result<serde_json::Value> {
-    serde_json::from_str(text).map_err(|error| napi_error(format!("{field} is not valid JSON: {error}")))
+    // Malformed input JSON is a contract rejection too — it must carry the
+    // frozen code prefix, never an opaque message (review requirement:
+    // rejections stay code-identifiable across the Node boundary).
+    serde_json::from_str(text)
+        .map_err(|error| napi_error(format!("SCHEMA_VIOLATION: {field} is not valid JSON: {error}")))
 }
 
 fn contract_result(value: Result<serde_json::Value, rhythm_core::contract_v1::ContractError>) -> napi::Result<String> {
