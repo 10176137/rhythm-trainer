@@ -18,6 +18,15 @@ import { buildPracticePlan } from './features/score/practicePlan';
 import { practiceScoreDocument } from './features/score/practiceScore';
 import { buildPlaybackPlan, scoreOccurrencesToEngineAtoms } from './score-engine/playback/playback-planner';
 import { buildEngineScoreEvents } from './score-engine/playback/score-events';
+import { projectScoreDocumentV1 } from './score-engine/contract-v1/plan-fingerprint';
+import {
+  assertFollowResponseUsable,
+  assertTimelineResponseUsable,
+  rangeSpanFromDocument,
+  toEngineAtoms,
+  toEngineScoreEvents,
+  toPlaybackPlan,
+} from './score-engine/plan/rust-plan';
 import {
   buildReferencePlaybackPlan,
   filterPlaybackPlanByHand,
@@ -157,6 +166,10 @@ export default function App() {
   } | null>(null);
   const followSessionRef = useRef<FollowSession | null>(null);
   const guideSessionRef = useRef<FollowSession | null>(null);
+  /** R2-3h: the server's planner authority, fetched once (null = unknown).
+   * The browser keeps NO second switch; rust is only used when the server
+   * says so, and an unknown state never silently plans with TS. */
+  const plannerAuthorityRef = useRef<'rts' | 'rust' | null>(null);
   const systemDuetRef = useRef(systemDuet);
   systemDuetRef.current = systemDuet;
   const [guideView, setGuideView] = useState<{ index: number; currentGroup: PlaybackGroup | null; completed: number } | null>(null);
@@ -592,6 +605,23 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, [session.status]);
 
+  // R2-3h: resolve the server-side planner authority once per connection. A
+  // failure leaves it unknown (never assumed 'rts' — an unknown state at
+  // launch time re-probes and refuses to plan with TS if it cannot confirm).
+  useEffect(() => {
+    let cancelled = false;
+    void session.getPlannerStatus()
+      .then((status) => {
+        if (cancelled) return;
+        plannerAuthorityRef.current = status.authority;
+      })
+      .catch(() => {
+        if (cancelled) return;
+        plannerAuthorityRef.current = null;
+      });
+    return () => { cancelled = true; };
+  }, [session.getPlannerStatus]);
+
   // A finished report is persisted by the engine service — refresh history/profile data.
   useEffect(() => {
     if (session.report) {
@@ -887,6 +917,164 @@ export default function App() {
     scoreBarCount: number;
   };
 
+  /**
+   * R2-3h: the opt-in Rust launch path. The server owns the plan; this
+   * function only parses the response, derives presentation times once
+   * (us/1000) and hands the result to the existing session/FollowSession.
+   * Any failure fails the launch closed — it NEVER falls back to the TS
+   * planner (no TS planner call exists on this branch).
+   */
+  const startRustPractice = async (
+    mode: 'timeline' | 'follow',
+    launchConfig: PracticeConfig,
+    context: {
+      engineMode: string;
+      countInBeats: number;
+      targetedSource?: TargetedLaunchSource;
+      takeTemplateId: string | null;
+      partId: string;
+      range: { startMeasureOrdinal: number; endMeasureOrdinal: number };
+      handMapping: HandMappingV1;
+    },
+  ) => {
+    const engineDoc = scoreDoc.engine;
+    const report = scoreDoc.importReport;
+    try {
+      if (!engineDoc || !report) {
+        throw new Error('DOCUMENT_UNAVAILABLE: 当前乐谱缺少语义引擎数据');
+      }
+      // Inputs come from the existing import/projection flow — never from a
+      // reconstructed TS PlaybackPlan.
+      const projected = projectScoreDocumentV1(engineDoc, report);
+      if (projected.issues.length > 0) {
+        throw new Error(`DOCUMENT_VALIDATION_FAILED: ${projected.issues.map((issue) => issue.code).join(', ')}`);
+      }
+      const planConfig = {
+        partId: context.partId,
+        range: context.range,
+        repeatSelection: { kind: 'none' as const },
+        hand: launchConfig.hand,
+        handMapping: context.handMapping,
+        bpm: { numerator: launchConfig.tempo, denominator: 1 },
+        // The existing "three seconds of preparation" expressed in canonical µs.
+        countInUs: 3_000_000,
+        ticksPerQuarter: 960,
+        unsupportedNotationPolicy: 'reject-strict' as const,
+      };
+      const response = await session.requestPlannerPlan({
+        document: projected.dto,
+        report,
+        config: planConfig,
+        mode,
+        scoreFingerprint: engineDoc.fingerprint,
+        timeoutMs: 15000,
+      });
+      // Response binding is enforced again here: same score, same mode gate.
+      if (response.scoreFingerprint !== engineDoc.fingerprint) {
+        throw new Error('PLAN_RESPONSE_MISMATCH: 计划对应的曲谱与当前曲谱不一致');
+      }
+      if (mode === 'timeline') assertTimelineResponseUsable(response);
+      else assertFollowResponseUsable(response);
+      const span = rangeSpanFromDocument(engineDoc.parts[0].measures, context.range);
+      const parsed = toPlaybackPlan(response, {
+        range: context.range,
+        repeatSelection: { kind: 'none' },
+        rangeStartBeat: span.rangeStartBeat,
+        rangeDurationBeat: span.rangeDurationBeat,
+      });
+      // Presentation-only reference plan. The Rust plan is ALREADY hand
+      // filtered, so the builder runs with hand='both' (its documented no-op)
+      // — never a second hand filter.
+      const reference = buildReferencePlaybackPlan(parsed.plan, {
+        bpm: launchConfig.tempo,
+        countInBeats: context.countInBeats,
+        hand: 'both',
+      });
+      if (!reference.plan || !reference.strictAllowed) {
+        throw new Error('REFERENCE_PLAN_REJECTED: 参考播放计划被阻断');
+      }
+      referencePlanRef.current = reference.plan;
+      pendingReferencePlanRef.current = reference.plan;
+      referenceMarkedIndexRef.current = 0;
+      const expectedNotes = parsed.groups.map((group) => group.pitches.map((pitch) => ({
+        midiNote: pitch.midiNote ?? 0,
+        noteName: pitch.spelling,
+      })));
+      const groupNoteIds = parsed.groups.map((group) => [...group.scoreEventIds]);
+      expectedNotesRef.current = expectedNotes;
+      planGroupsRef.current = groupNoteIds;
+      const toleranceMs = launchConfig.profile === 'strict' ? 30 : launchConfig.profile === 'relaxed' ? 100 : 60;
+
+      if (mode === 'follow') {
+        // Follow consumes groups/occurrences only and never calls session.begin.
+        const follow = new FollowSession(parsed.groups, launchConfig.tempo, {
+          timingToleranceMs: toleranceMs,
+          chordSpreadToleranceMs: 50,
+        });
+        followSessionRef.current = follow;
+        followStatusRef.current = 'running';
+        setFollowStatus('running');
+        setFollowReport(null);
+        setFollowView({ index: 0, total: follow.progress.total, completed: 0, currentGroup: follow.currentGroup, last: null });
+        setEvents([]); setInputNote('—'); setPitchMismatch(false); setElapsed(0);
+        addFeedback(
+          '跟手等待模式已开始（引擎计划）',
+          `${parsed.groups.length} 个起音目标；光标只在弹对当前目标后前进，不会自动走。节奏按你相邻正确起音的间隔记录。`,
+          'neutral',
+        );
+        setStarting(false);
+        return;
+      }
+
+      const atoms = toEngineAtoms(response.plan.atoms);
+      const scoreEvents = toEngineScoreEvents(response.plan, parsed.occurrences);
+      const guideSession = new FollowSession(parsed.groups, launchConfig.tempo, {
+        timingToleranceMs: toleranceMs,
+        chordSpreadToleranceMs: 50,
+      });
+      guideSessionRef.current = guideSession;
+      setGuideView({ index: 0, currentGroup: guideSession.currentGroup, completed: 0 });
+      void session.begin({
+        modeId: context.engineMode,
+        bpm: launchConfig.tempo,
+        profile: launchConfig.profile,
+        countInBeats: context.countInBeats,
+        ticksPerQuarter: 960,
+        metronomeEnabled: metronomeOn,
+        beatsPerBar: (launchConfig.timeSignature[0] * 4) / launchConfig.timeSignature[1],
+        atoms,
+        scoreEvents,
+        assisted: launchConfig.feedback === 'live',
+        durationPolicy: launchConfig.durationPolicy,
+        scoreFingerprint: engineDoc.fingerprint,
+        playbackPlanId: response.plan.runtimeIds.planId,
+        scoreImportStatus: report.status,
+        hand: launchConfig.hand,
+        scoreBarCount: context.targetedSource?.scoreBarCount ?? scoreDoc.meta.barCount,
+        ...(context.targetedSource ? {
+          sourceReportId: context.targetedSource.sourceReportId,
+          sourceTakeId: context.targetedSource.sourceTakeId,
+          prescriptionId: context.targetedSource.prescriptionId,
+          prescription: context.targetedSource.prescription,
+        } : {}),
+        ...(context.takeTemplateId ? { takeTemplateId: context.takeTemplateId } : {}),
+      });
+      addFeedback(
+        '练习已开始（引擎计划）',
+        `${modeRegistry[launchConfig.modeId].title} · ${launchConfig.tempo} BPM · 计划 ${response.plannerVersion} · 指纹 ${response.planFingerprint.slice(0, 22)}…`,
+        'neutral',
+      );
+    } catch (error) {
+      setStarting(false);
+      const message = error instanceof Error ? error.message : String(error);
+      addFeedback(
+        '无法从引擎获取严格计划',
+        `${message}。本次练习不会启动，也不会回退到浏览器内规划。`,
+        'warning',
+      );
+    }
+  };
+
   const launchPractice = (
     overrideConfig?: PracticeConfig,
     targetedSource?: TargetedLaunchSource,
@@ -910,6 +1098,8 @@ export default function App() {
       setShowSettings(false);
     }
     let handByScoreEventId: Map<string, 'left' | 'right'> = new Map();
+    /** R2-3h: the explicit scope the planner request is built from. */
+    let launchScope: { partId: string; range: { startMeasureOrdinal: number; endMeasureOrdinal: number }; handMapping: HandMappingV1 } | null = null;
     if (config.modeId !== 'free') {
       const report = scoreDoc.importReport;
       if (report && !report.strictAllowed) {
@@ -977,6 +1167,7 @@ export default function App() {
         return false;
       }
       handByScoreEventId = handByScoreEventIdFromMapping(engineDoc, scopeForLaunch);
+      launchScope = { partId, range: scopeRange, handMapping: storedMapping };
       const launchNotes = scoreDoc.notes.filter((note) => (
         config.hand === 'both' || note.hand === config.hand
       )).filter((note) => (
@@ -1011,6 +1202,19 @@ export default function App() {
         setStarting(false);
         addFeedback('当前乐谱不能跟手练习', '跟手模式需要语义 MusicXML 谱面；请重新导入或恢复默认乐谱。', 'warning');
         return false;
+      }
+      // R2-3h: opt-in Rust authority. Follow asks for mode 'follow' and never
+      // calls session.begin; failures fail the launch (no TS fallback).
+      if (plannerAuthorityRef.current === 'rust' && launchScope) {
+        void startRustPractice('follow', config, {
+          engineMode,
+          countInBeats,
+          takeTemplateId,
+          partId: launchScope.partId,
+          range: launchScope.range,
+          handMapping: launchScope.handMapping,
+        });
+        return true;
       }
       try {
         const semantics = buildPlaybackPlan(scoreDoc.engine, {
@@ -1058,6 +1262,20 @@ export default function App() {
       }
     }
     clearFollowSession();
+    // R2-3h: opt-in Rust authority for the timeline. The Rust plan is the only
+    // plan generated on this branch (no TS planning, no fallback).
+    if (plannerAuthorityRef.current === 'rust' && scoreDoc.engine && launchScope) {
+      void startRustPractice('timeline', config, {
+        engineMode,
+        countInBeats,
+        targetedSource,
+        takeTemplateId,
+        partId: launchScope.partId,
+        range: launchScope.range,
+        handMapping: launchScope.handMapping,
+      });
+      return true;
+    }
     let plan: ReturnType<typeof buildPracticePlan>;
     let playbackPlanId: string | null = null;
     let scoreEvents: ReturnType<typeof buildEngineScoreEvents> | undefined;

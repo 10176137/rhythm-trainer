@@ -37,6 +37,17 @@ export class PlannerGateError extends Error {
   }
 }
 
+/** NAPI errors carry the contract code as a MESSAGE prefix ("CODE: detail")
+ * with a generic napi status in .code. Normalize them so callers (the WS
+ * protocol layer included) always see the frozen code in .code. */
+function asGateError(error) {
+  if (error instanceof PlannerGateError) return error;
+  const message = String((error && error.message) || error);
+  const matched = /^([A-Z][A-Z0-9_]{2,}):\s*([\s\S]*)$/.exec(message);
+  if (matched) return new PlannerGateError(matched[1], matched[2]);
+  return error;
+}
+
 /** Resolves the planner authority: explicit argument wins, then the
  * RHYTHM_PLANNER env var, then the frozen default 'rts'. Unknown values are
  * a coded rejection (fail-closed), never a silent choice. */
@@ -353,7 +364,12 @@ export function createPlannerService({ authority = resolvePlannerAuthority(), na
       const configJson = JSON.stringify(trustedConfig);
 
       // Step 1: build the canonical plan (document gate + C-12 + planning).
-      const plan = JSON.parse(nativeModule.buildPlanV1(documentJson, reportJson, configJson));
+      let plan;
+      try {
+        plan = JSON.parse(nativeModule.buildPlanV1(documentJson, reportJson, configJson));
+      } catch (error) {
+        throw asGateError(error);
+      }
       // Step 1b: mode-scoped deep verification against the SAME trusted
       // config, via the SAME injected native module (review F1):
       //  - timeline consumes atoms+scoreEvents -> verifyTimelineSemantics;
@@ -366,8 +382,13 @@ export function createPlannerService({ authority = resolvePlannerAuthority(), na
       }
       // Step 2: the SEPARATE frozen fingerprint gate over the verbatim plan
       // with the SAME inputs — exactly once, success required.
-      const planFingerprint = nativeModule.planFingerprintV1Gate(
-        documentJson, reportJson, JSON.stringify(plan), configJson);
+      let planFingerprint;
+      try {
+        planFingerprint = nativeModule.planFingerprintV1Gate(
+          documentJson, reportJson, JSON.stringify(plan), configJson);
+      } catch (error) {
+        throw asGateError(error);
+      }
       // Step 3: response assembly — plan + trusted version + authority +
       // fingerprint + the planner-domain metadata the launch guards consume.
       return {

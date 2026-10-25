@@ -30,6 +30,7 @@ import { createJulusianBackend } from './midi/julusian-backend.mjs';
 import { createMockBackend } from './midi/mock-backend.mjs';
 import { computeClockSample, mapNodeEventToSession, selectClockSample } from './midi/clock-map.mjs';
 import { TakeTraceRecorder, readTrace } from './midi/trace-recorder.mjs';
+import { createPlannerService, RUST_PLANNER_VERSION } from './planner-service.mjs';
 import { TakeJournal, readJournal } from './journal.mjs';
 import { replayTakeTrace } from './trace-replay.mjs';
 import { resolveModeScoringConfig } from './mode-config.mjs';
@@ -97,6 +98,19 @@ try {
   console.error(String((error && error.message) || error));
   process.exit(1);
 }
+
+// R2-3h: the planner authority is resolved ONCE at startup from
+// RHYTHM_PLANNER (default 'rts') and is the single source of truth the
+// browser queries — never a second switch maintained client-side. An
+// invalid value is a hard startup failure (fail-closed, no silent choice).
+let plannerService;
+try {
+  plannerService = createPlannerService();
+} catch (error) {
+  console.error(`[engine] 规划权威配置无效：${String((error && error.message) || error)}`);
+  process.exit(1);
+}
+console.log(`[engine] planner authority = ${plannerService.authority} (plannerVersion ${RUST_PLANNER_VERSION})`);
 
 // ---------------------------------------------------------------------------
 // Persistence: user-data JSON files with atomic writes (tmp + rename).
@@ -1219,6 +1233,56 @@ wss.on('connection', (socket) => {
       return;
     }
     switch (msg.type) {
+      case 'planner-status': {
+        // The browser asks which planner authority is actually active; the
+        // answer comes from this one server-side resolution.
+        send({
+          type: 'planner-status',
+          authority: plannerService.authority,
+          plannerVersion: RUST_PLANNER_VERSION,
+          supportedModes: ['timeline', 'follow'],
+        });
+        break;
+      }
+      case 'plan-request': {
+        const requestId = typeof msg.requestId === 'string' && msg.requestId.trim() !== ''
+          ? msg.requestId
+          : null;
+        if (!requestId) {
+          send({
+            type: 'plan-response',
+            requestId: null,
+            ok: false,
+            error: { code: 'INVALID_REQUEST', message: 'plan-request 需要非空的 requestId' },
+          });
+          break;
+        }
+        try {
+          // The existing planner service owns validation, the trusted
+          // plannerVersion, the mode-scoped deep verification, the frozen
+          // fingerprint gate and the no-fallback rejection semantics.
+          const response = plannerService.buildRustPlan({
+            document: msg.document,
+            report: msg.report,
+            config: msg.config,
+            mode: msg.mode,
+          });
+          send({ type: 'plan-response', requestId, ok: true, ...response });
+        } catch (error) {
+          // Failures stay code-identifiable and are NEVER dressed up as a
+          // successful empty plan.
+          send({
+            type: 'plan-response',
+            requestId,
+            ok: false,
+            error: {
+              code: (error && error.code) || 'PLAN_FAILED',
+              message: String((error && error.message) || error),
+            },
+          });
+        }
+        break;
+      }
       case 'clock-ping': {
         const id = String(msg.id ?? '');
         const clientSendPerfMs = Number(msg.clientSendPerfMs);

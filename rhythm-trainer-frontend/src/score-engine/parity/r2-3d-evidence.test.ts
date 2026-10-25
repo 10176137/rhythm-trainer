@@ -45,6 +45,8 @@ const native = require(join(root, 'rhythm-trainer-core-v0.2', 'bindings', 'node'
   buildParityCandidateV1(documentJson: string, reportJson: string, configJson: string): string;
   planFingerprintV1Gate(documentJson: string, reportJson: string, planJson: string, configJson: string): string;
   validateCandidateScoreEventsJson(eventsJson: string, atomBars?: number[] | null, prescriptionRange?: number[] | null): string | null;
+  canonicalBytesJson(payloadJson: string): string;
+  computePlanFingerprintV1Json(payloadJson: string): string;
 };
 
 const REPORT_DIR = join(root, 'audit-r1', 'reports', 'r2-3');

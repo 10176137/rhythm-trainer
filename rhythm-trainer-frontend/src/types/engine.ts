@@ -496,6 +496,30 @@ export type EngineServerMessage =
   | { type: 'clock-pong'; id: string; clientSendPerfMs: number; serverReceivePerfMs: number; serverSendPerfMs: number }
   | { type: 'clock-status'; offsetServerMinusClientMs: number; uncertaintyMs: number; rttMs: number; sampleCount: number; quality: string }
   | EngineReportMessage
+  | {
+      /** R2-3h: the server's active planner authority (single source of truth). */
+      type: 'planner-status';
+      authority: 'rts' | 'rust';
+      plannerVersion: string;
+      supportedModes: Array<'timeline' | 'follow'>;
+    }
+  | {
+      /** R2-3h: the server-side Rust plan (or a coded rejection). */
+      type: 'plan-response';
+      requestId: string | null;
+      ok: boolean;
+      plannerAuthority?: 'rust';
+      plannerVersion?: string;
+      planFingerprint?: string;
+      scoreFingerprint?: string;
+      strictAllowed?: boolean;
+      planIssues?: Array<{ code: string; blocksStrict?: boolean }>;
+      scopeCodes?: string[];
+      missingEventIds?: string[];
+      atomIssueCodes?: string[];
+      plan?: unknown;
+      error?: { code: string; message: string };
+    }
   | { type: 'error'; message: string };
 
 export interface EngineStartRequest {
@@ -538,4 +562,14 @@ export type EngineClientMessage =
   | { type: 'clock-ping'; id: string; clientSendPerfMs: number; protocolVersion?: number }
   | { type: 'clock-sample'; id: string; clientReceivePerfMs: number; protocolVersion?: number }
   | { type: 'session-origin'; clientPerfMs: number; protocolVersion?: number }
+  | { type: 'planner-status'; protocolVersion?: number }
+  | {
+      type: 'plan-request';
+      protocolVersion?: number;
+      requestId: string;
+      mode: 'timeline' | 'follow';
+      document: unknown;
+      report: unknown;
+      config: unknown;
+    }
   | { type: 'finish' };

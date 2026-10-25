@@ -7,6 +7,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EngineBridge } from '../../services/engineBridge';
+import type { PlanRequestInput, PlannerStatus } from '../../services/engineBridge';
+import type { RustPlanResponse } from '../../score-engine/plan/rust-plan';
 import type { DurationEvaluationPolicy, EngineAtom, EngineCaptureDiagnostics, EngineDurationReport, EngineIngestMidiPacket, EngineProfile, EngineJudgment, EngineReport, EngineScoringConfig, EngineScoreEvent, EngineSessionScoreReport, EngineScoreStatus, EngineTarget, EngineTimingAnalysis } from '../../types/engine';
 import type { HandSelection, SessionStatus } from '../../types/practice';
 import type { RetryComparison, TeachingPrescription } from '../../types/teaching';
@@ -423,6 +425,22 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     setStatus('idle');
   }, []);
 
+  /** R2-3h: planner authority + plan requests go through the same bridge the
+   * session uses. The browser never keeps its own switch. */
+  const getPlannerStatus = useCallback(async (): Promise<PlannerStatus> => {
+    const bridge = ensureBridge();
+    await bridge.connect();
+    return bridge.requestPlannerStatus();
+  }, [ensureBridge]);
+
+  const requestPlannerPlan = useCallback(async (
+    input: Omit<PlanRequestInput, 'timeoutMs'> & { timeoutMs?: number },
+  ): Promise<RustPlanResponse> => {
+    const bridge = ensureBridge();
+    await bridge.connect();
+    return bridge.requestPlan(input);
+  }, [ensureBridge]);
+
   /** Free play: a local recording session with no engine targets and no scoring. */
   const beginFreePlay = useCallback(() => {
     if (active) return;
@@ -544,6 +562,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     takeTemplateId, takeTemplateName, retryComparison,
     error, liveStats, nextUnmatchedIndex,
     begin, pause, resume, finish, reset, beginFreePlay, finishFreePlay, ingestPacket, getExpectedNote, getCaptureEpoch,
+    getPlannerStatus, requestPlannerPlan,
     originPerfMs: originRef.current,
   };
 }
