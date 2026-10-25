@@ -1,14 +1,14 @@
-# R2-3 工程任务卡（v6——按阶段复审裁决同步状态；提交于 `r2-3-rust-planner` 分支）
+# R2-3 工程任务卡（v7——按 R2-3c 复审裁决同步状态；提交于 `r2-3-rust-planner` 分支）
 
-**状态：** v6；**a1 PASS（四轮复审）；a2 验收通过（五轮复审）；a3 复审放行（七轮修复，2a93574）；R2-3b planner 语义移植 PASS（二轮复审，0898c9b→2d77cc6）；R2-3c NAPI 双跑链路进行中**（60af861 交付 NAPI 入口/ParityCandidate 适配/15 case 双跑，补独立 expected 对照与机器可读报告）。
+**状态：** v7；**a1 PASS；a2 验收通过；a3 复审放行（2a93574）；R2-3b PASS（二轮复审，2d77cc6）；R2-3c 复审通过**（双跑集成与验收报告链路：60af861→2ffd195→af8adfc+8da3124，两轮修复）；**R2-3d（§8 七证据）未放行**。
 **基线：** `main` @ `ba6d3c4`；本分支自该点创建。
 **上位约束：** R2-1 `TS_RUST_PARITY_GATE_V1.md`（Frozen @ 838cd9b）、R2-2 关闭报告 §11、路线决策 §5.1。
 **工作方式：** 全程在本分支提交。分支已推送远端供 GitHub 审查（用户确立的审查模式）；**main 不动、不合入**。
 
-**v6 变更摘要**（仅阶段状态与变更记录同步，不改任何冻结定义/范围）：
-1. 阶段状态对齐实际提交链：a3 经七轮修复后复审放行（2a93574）；R2-3b 交付（0898c9b）经首轮 REQUEST CHANGES（range-loop×1 planId 边界差异）修复后二轮 PASS（2d77cc6）。
-2. R2-3c 范围按用户任务卡定稿：NAPI 入口（保留可识别错误码）→ ParityCandidate 适配（剥离运行时字段/保留 runtimeIds/wireMs 记 not-applicable）→ 15 case 双跑接入 `diffCandidates`（**TS 与 Rust 分别对照独立 expected/golden 真值，禁止仅 TS↔Rust 互比**）→ 机器可读双跑报告（逐 case L1/L2/L3、阻断错误码、版本信息；语义/未分类差异不可忽略，失败非零退出）。
-3. 复审方法论入卡：15 case corpus 通过**不能替代规范边界值的独立检查**（loop×1 漏测即例证）。
+**v7 变更摘要**（仅阶段状态同步，不改任何冻结定义/范围）：
+1. R2-3c 经两轮复审后**通过**：一轮四项修复（报告保留 diffs 全文且失败前写盘/双侧 gitSha+契约元数据/TS·Rust 各两次完整流程验稳定性/冻结 expectedOutcome 逐 case 双侧校验），报告于固定验证 SHA `af8adfc` 单独提交（8da3124）。批准范围 = 双跑集成与验收报告链路。
+2. **R2-3c 通过 ≠ 生产权威切换许可**：`TS_RUST_PARITY_GATE_V1.md` §8 七项迁移证据（真实谱回归、A/B/C/V 验收、正式归档）仍是独立门槛；合并 main 仍不在批准范围。
+3. 下一阶段：R2-3d（§8 七证据包）——未放行，待用户批准。
 
 **v5 变更摘要**（相对 v4；四轮复审批准 a1、同步 a2 范围）：§4.2 重写为四项范围（time.rs 公式/num-bigint 全程精确/config 输入边界/§3.5 最终加法），**document.rs 完整校验移至 a3**；a3 定义相应更新。原 v4 摘要：**v4 变更摘要**（相对 v3/b6c2b9f，全部来自三轮复审意见）：
 1. **§2.2/§2.3 `scoreFingerprint` 字段来源修正**（C-12，关键）：v3 写"从输入 document 的 fingerprint 字段携带"——**ScoreDocumentV1 顶层不存在 `fingerprint` 字段**（Schema `additionalProperties:false`）。正确规则（三轮复审 §二 五步）：源指纹在 **`document.source.sourceFingerprint`**（格式 `sha256:` + 64 位小写 hex）；`build_plan_v1` 读取它、**验证格式、去 `sha256:` 前缀**得 64hex，写入 `PlannerOutput.scoreFingerprint`；门禁比较 `plan.scoreFingerprint == report.fingerprint`（后者即裸 64hex，TS 投影 :178 同格式）；`project_score_document_v1` 的文档/报告绑定检查使用**同一规范化规则**（去前缀后比较），不比较不存在的 `document.fingerprint`。
@@ -227,7 +227,7 @@ D = beat.den  × bpm.numerator
 ### 4.4 R2-3b/c/d——状态
 
 - **R2-3b（PASS，二轮复审）**：`contract_v1/planner.rs` `build_plan_v1` 完整 planner 语义（range/loop/tie/chord/排序/hand 过滤/atoms/逐音 scoreEvents/PlannerOutput §2.3）+ 冻结语料对拍（`rust-parity-input/` 15 case）+ **a3 gate isTieOnset 缺陷修复**（corpus 对拍抓获）；首轮阻断项（range-loop×1 planId）已修复（2d77cc6）。复审确认：corpus 通过不能替代规范边界值独立检查。
-- **R2-3c（进行中）**：按 v6 变更摘要第 2 条范围执行；NAPI 入口/适配层/双跑已交付（60af861），独立 expected 对照与机器可读报告补齐中。**R2-3c 完成不等于迁移门禁通过**。
+- **R2-3c（复审通过，2026-10-25）**：NAPI 三导出（buildPlanV1/buildParityCandidateV1/planFingerprintV1Gate，错误码跨 Node 边界可识别）+ ParityCandidate 适配层（lib 单点实现）+ 三方双跑（`loadExpected` 独立真值为锚，TS 与 Rust **分别**对照，冻结判据 reportPasses）+ 机器可读报告（`r2-3c-dual-run-report-v1`：逐 case L1 跨语言指纹+双侧完整重复跑稳定性、L2 diffs 全文、L3 computeL3Invariants、冻结 expectedOutcome 双侧校验、契约元数据与双侧 gitSha；先写盘后断言，失败非零退出）。报告于固定验证 SHA `af8adfc` 生成并单独提交（8da3124）。**批准范围 = 双跑集成与验收报告链路；不构成生产权威切换许可。**
 - **R2-3d（未放行）**：§8 七证据（真实谱回归、A/B/C/V 验收、正式归档）——生产切换前提。
 
 ## 5. 硬性约束（全程有效）
