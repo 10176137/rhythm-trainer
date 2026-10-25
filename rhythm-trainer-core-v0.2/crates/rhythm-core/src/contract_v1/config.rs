@@ -5,7 +5,7 @@
 //! seemingly-successful plan (fourth review item 3).
 
 use num_bigint::BigInt;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::contract_v1::error::ContractError;
 use crate::contract_v1::rational::{contract_error, is_canonical, MAX_SAFE_INTEGER, RationalV1};
@@ -26,7 +26,7 @@ fn ensure_safe_integer(value: i64, field: &str) -> Result<(), ContractError> {
     Ok(())
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanRequestConfig {
     #[serde(rename = "partId")]
@@ -48,7 +48,7 @@ pub struct PlanRequestConfig {
     pub planner_version: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigRange {
     #[serde(rename = "startMeasureOrdinal")]
@@ -63,7 +63,7 @@ pub struct ConfigRange {
 /// untagged variants (they silently ignore extra fields), so the exclusion is
 /// enforced in `validate_plan_request_config` with negative tests for all
 /// three illegal shapes (none+count, range-loop without count, unknown kind).
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigRepeatSelection {
     pub kind: String,
@@ -71,7 +71,7 @@ pub struct ConfigRepeatSelection {
     pub count: Option<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigHandMapping {
     #[serde(rename = "schemaVersion")]
@@ -82,14 +82,14 @@ pub struct ConfigHandMapping {
     pub parts: Vec<ConfigHandMappingPart>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigHandMappingPart {
     pub partId: String,
     pub staves: Vec<ConfigHandMappingStaff>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigHandMappingStaff {
     #[serde(rename = "staffNumber")]
@@ -97,7 +97,7 @@ pub struct ConfigHandMappingStaff {
     pub hand: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigRational {
     pub numerator: i64,

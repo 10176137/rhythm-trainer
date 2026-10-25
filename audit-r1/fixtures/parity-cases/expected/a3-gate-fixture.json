@@ -1,0 +1,350 @@
+{
+  "caseId": "A3-gate-fixture",
+  "derivation": "Minimal legal inputs. document = the TS projectScoreDocumentV1 projection output for a hand-authored one-note internal ScoreDocument; expectedFingerprint = the TS planFingerprintV1 gate on the same semantics (R2-3a3 cross-check). PlannerOutput occurrences carry occurrenceId+scoreEventId (payload pairing requirements per the R2-3 task card §2.3 revision).",
+  "document": {
+    "schemaVersion": 1,
+    "normalizerVersion": "normalizer-1",
+    "supportProfileVersion": "musicxml-v1.0",
+    "scoreRevisionId": "score-revision-v1:sha256:3b7309c75e2c549a6b532568fdbe6cf5befc35d60d3bb15f7b2c34585bfa0b3d",
+    "source": {
+      "format": "musicxml-partwise",
+      "sourceFingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "metadata": {
+      "workTitle": "A3 fixture",
+      "composer": "test"
+    },
+    "parts": [
+      {
+        "partId": "P1",
+        "name": "Piano",
+        "staves": 1,
+        "measures": [
+          {
+            "ordinal": 1,
+            "implicit": false,
+            "startBeat": {
+              "numerator": 0,
+              "denominator": 1
+            },
+            "durationBeat": {
+              "numerator": 1,
+              "denominator": 1
+            },
+            "attributes": {
+              "divisions": 1,
+              "time": {
+                "beats": 4,
+                "beatType": 4
+              },
+              "key": {
+                "fifths": 0,
+                "mode": "major"
+              },
+              "staves": 1,
+              "clefs": [
+                {
+                  "staffNumber": 1,
+                  "sign": "G",
+                  "line": 2
+                }
+              ]
+            },
+            "events": [
+              {
+                "eventId": "fix:m1:e1",
+                "kind": "note",
+                "source": {
+                  "partId": "P1",
+                  "measureOrdinal": 1,
+                  "staffNumber": 1,
+                  "sourceOrdinal": 1,
+                  "voiceId": "1"
+                },
+                "onsetBeat": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "durationBeat": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
+                "dots": 0,
+                "pitch": {
+                  "step": "C",
+                  "alter": {
+                    "numerator": 0,
+                    "denominator": 1
+                  },
+                  "octave": 4,
+                  "midiNote": 60,
+                  "spelling": "C4"
+                },
+                "tieStart": false,
+                "tieStop": false,
+                "tiedStart": false,
+                "tiedStop": false,
+                "isGrace": false,
+                "isCue": false,
+                "articulations": []
+              }
+            ],
+            "barlines": [],
+            "capabilities": []
+          }
+        ]
+      }
+    ],
+    "tieSpans": [],
+    "tempoMarks": [],
+    "capabilities": []
+  },
+  "report": {
+    "schemaVersion": 1,
+    "parserVersion": "fixture-parser",
+    "supportProfileVersion": "musicxml-v1.0",
+    "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "status": "READY",
+    "strictAllowed": true,
+    "sourceFileName": "a3-fixture.musicxml",
+    "sourceFormat": "musicxml-partwise",
+    "counts": {
+      "partCount": 1,
+      "measureCount": 1,
+      "noteCount": 1,
+      "restCount": 0,
+      "chordNoteCount": 0,
+      "tieSpanCount": 0,
+      "graceCount": 0,
+      "cueCount": 0,
+      "warningCount": 0,
+      "errorCount": 0
+    },
+    "issues": [],
+    "capabilities": []
+  },
+  "config": {
+    "partId": "P1",
+    "range": {
+      "startMeasureOrdinal": 1,
+      "endMeasureOrdinal": 1
+    },
+    "repeatSelection": {
+      "kind": "none"
+    },
+    "hand": "both",
+    "handMapping": {
+      "schemaVersion": 1,
+      "mappingVersion": "hand-mapping-1",
+      "source": "user",
+      "parts": [
+        {
+          "partId": "P1",
+          "staves": [
+            {
+              "staffNumber": 1,
+              "hand": "right"
+            }
+          ]
+        }
+      ]
+    },
+    "bpm": {
+      "numerator": 80,
+      "denominator": 1
+    },
+    "ticksPerQuarter": 960,
+    "countInUs": 3000000,
+    "unsupportedNotationPolicy": "reject-strict",
+    "plannerVersion": "parity-harness-1"
+  },
+  "plannerOutput": {
+    "scoreFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "occurrences": [
+      {
+        "locator": {
+          "partId": "P1",
+          "measureOrdinal": 1,
+          "sourceOrdinal": 1,
+          "voiceId": "1"
+        },
+        "passIndex": 0,
+        "playbackBeat": "0/1",
+        "durationBeat": "1/1",
+        "measureOrdinal": 1,
+        "bar": 1,
+        "beatInMeasure": "0/1",
+        "staffNumber": 1,
+        "voiceId": "1",
+        "pitch": {
+          "step": "C",
+          "alter": 0,
+          "octave": 4,
+          "midiNote": 60,
+          "spelling": "C4"
+        },
+        "isTieOnset": false,
+        "playbackIndex": 0,
+        "occurrenceId": "plan:p0:fix:m1:e1",
+        "scoreEventId": "fix:m1:e1"
+      }
+    ],
+    "groups": [
+      {
+        "passIndex": 0,
+        "playbackBeat": "0/1",
+        "members": [
+          {
+            "partId": "P1",
+            "measureOrdinal": 1,
+            "sourceOrdinal": 1,
+            "voiceId": "1"
+          }
+        ],
+        "pitches": [
+          "C4"
+        ],
+        "bar": 1,
+        "beatInMeasure": "0/1",
+        "staffNumbers": [
+          1
+        ],
+        "voiceIds": [
+          "1"
+        ],
+        "durationBeat": "1/1",
+        "occurrenceIds": [
+          "plan:p0:fix:m1:e1"
+        ],
+        "scoreEventIds": [
+          "fix:m1:e1"
+        ]
+      }
+    ],
+    "atoms": [
+      {
+        "startTick": 0,
+        "durationTicks": 960,
+        "bar": 1,
+        "beat": 1
+      }
+    ],
+    "scoreEvents": [
+      {
+        "locator": {
+          "partId": "P1",
+          "measureOrdinal": 1,
+          "sourceOrdinal": 1,
+          "voiceId": "1"
+        },
+        "passIndex": 0,
+        "measure": 1,
+        "pitch": 60,
+        "targetOnsetUs": 3000000,
+        "targetDurationUs": 750000,
+        "partId": "staff-1:voice-1",
+        "parseConfidence": 1,
+        "runtimeOccurrenceId": "plan:p0:fix:m1:e1"
+      }
+    ],
+    "runtimeIds": {
+      "planId": "plan:p0",
+      "occurrenceIds": [
+        "plan:p0:fix:m1:e1"
+      ],
+      "groupIds": [
+        "plan:g0:0/1"
+      ]
+    }
+  },
+  "expectedFingerprint": "plan-v1:sha256:55057141d52809008fabca35e1045877f0a97e0e9681f6a2cb57b20aa50d7e7e",
+  "tsPayload": {
+    "fingerprintSchemaVersion": 1,
+    "plannerVersion": "parity-harness-1",
+    "scoreRevisionId": "score-revision-v1:sha256:3b7309c75e2c549a6b532568fdbe6cf5befc35d60d3bb15f7b2c34585bfa0b3d",
+    "normalizerVersion": "normalizer-1",
+    "supportProfileVersion": "musicxml-v1.0",
+    "scope": {
+      "partId": "P1",
+      "range": {
+        "startMeasureOrdinal": 1,
+        "endMeasureOrdinal": 1
+      },
+      "hand": "both",
+      "handMapping": {
+        "schemaVersion": 1,
+        "mappingVersion": "hand-mapping-1",
+        "source": "user",
+        "parts": [
+          {
+            "partId": "P1",
+            "staves": [
+              {
+                "staffNumber": 1,
+                "hand": "right"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "repeatSelection": {
+      "kind": "none"
+    },
+    "tempo": {
+      "bpm": {
+        "numerator": 80,
+        "denominator": 1
+      },
+      "ticksPerQuarter": 960,
+      "countInBeats": {
+        "numerator": 4,
+        "denominator": 1
+      },
+      "timeOrigin": "playback-start"
+    },
+    "targetGroups": [
+      {
+        "groupIndex": 0,
+        "passIndex": 0,
+        "bar": 1,
+        "onsetBeatFromRangeStart": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "durationBeat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "beatInMeasure": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "staffNumbers": [
+          1
+        ],
+        "voiceIds": [
+          "1"
+        ],
+        "members": [
+          {
+            "sourceLocator": {
+              "partId": "P1",
+              "measureOrdinal": 1,
+              "sourceOrdinal": 1,
+              "voiceId": "1"
+            },
+            "pitch": {
+              "midiNote": 60,
+              "spelling": "C4"
+            },
+            "durationBeat": {
+              "numerator": 1,
+              "denominator": 1
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
