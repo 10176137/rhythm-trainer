@@ -72,6 +72,9 @@ export interface UsePracticeSessionOptions {
   }) => void;
   /** Client-side lookup for the expected pitch of a target (hint only). */
   expectedNotesFor?: (targetIndex: number) => { midiNote: number; noteName: string }[] | null;
+  /** R2-3h-R1: the engine socket closed — any cached planner authority is
+   * stale and must be discarded by the caller. */
+  onEngineDisconnected?: () => void;
 }
 
 const TICK_INTERVAL_MS = 50;
@@ -306,6 +309,8 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         }
         originRef.current = null;
         captureEpochRef.current = null;
+        // R2-3h-R1: the cached planner authority belonged to that connection.
+        optionsRef.current.onEngineDisconnected?.();
       },
     });
     bridgeRef.current = bridge;

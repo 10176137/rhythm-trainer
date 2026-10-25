@@ -28,6 +28,11 @@ import {
   toPlaybackPlan,
 } from './score-engine/plan/rust-plan';
 import {
+  decideAuthority,
+  orchestrateRustLaunch,
+  planContextKey,
+} from './score-engine/plan/launch-flow';
+import {
   buildReferencePlaybackPlan,
   filterPlaybackPlanByHand,
   type ReferencePlaybackPlan,
@@ -170,6 +175,16 @@ export default function App() {
    * The browser keeps NO second switch; rust is only used when the server
    * says so, and an unknown state never silently plans with TS. */
   const plannerAuthorityRef = useRef<'rts' | 'rust' | null>(null);
+  /** R2-3h-R1: monotonic probe generation — a slower/older status answer can
+   * never overwrite a newer one, and a disconnect invalidates the cache. */
+  const plannerAuthoritySeqRef = useRef(0);
+  /** R2-3h-R1: launch generation — a newer launch supersedes any in-flight
+   * plan request from an older one. */
+  const launchSeqRef = useRef(0);
+  /** R2-3h-R1: the CURRENT score selection, read after a plan response
+   * arrives (a closure-captured fingerprint cannot prove that). */
+  const scoreDocRef = useRef(scoreDoc);
+  scoreDocRef.current = scoreDoc;
   const systemDuetRef = useRef(systemDuet);
   systemDuetRef.current = systemDuet;
   const [guideView, setGuideView] = useState<{ index: number; currentGroup: PlaybackGroup | null; completed: number } | null>(null);
@@ -375,6 +390,11 @@ export default function App() {
           'warning',
         );
       });
+    },
+    // R2-3h-R1: the authority cache belonged to the connection that closed.
+    onEngineDisconnected: () => {
+      plannerAuthoritySeqRef.current += 1; // invalidate in-flight probes
+      plannerAuthorityRef.current = null;
     },
   });
 
@@ -608,18 +628,30 @@ export default function App() {
   // R2-3h: resolve the server-side planner authority once per connection. A
   // failure leaves it unknown (never assumed 'rts' — an unknown state at
   // launch time re-probes and refuses to plan with TS if it cannot confirm).
-  useEffect(() => {
-    let cancelled = false;
-    void session.getPlannerStatus()
-      .then((status) => {
-        if (cancelled) return;
-        plannerAuthorityRef.current = status.authority;
-      })
-      .catch(() => {
-        if (cancelled) return;
+  // R2-3h-R1: answers carry a generation so an older (slower) probe can never
+  // overwrite a newer result, and a socket disconnect invalidates the cache.
+  const refreshPlannerAuthority = async (): Promise<'rts' | 'rust' | null> => {
+    const seq = ++plannerAuthoritySeqRef.current;
+    try {
+      const status = await session.getPlannerStatus();
+      if (seq !== plannerAuthoritySeqRef.current) return plannerAuthorityRef.current;
+      const authority = status.authority;
+      if (authority !== 'rts' && authority !== 'rust') {
         plannerAuthorityRef.current = null;
-      });
-    return () => { cancelled = true; };
+        return null;
+      }
+      plannerAuthorityRef.current = authority;
+      return authority;
+    } catch {
+      if (seq !== plannerAuthoritySeqRef.current) return plannerAuthorityRef.current;
+      plannerAuthorityRef.current = null;
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    void refreshPlannerAuthority();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.getPlannerStatus]);
 
   // A finished report is persisted by the engine service — refresh history/profile data.
@@ -939,140 +971,203 @@ export default function App() {
   ) => {
     const engineDoc = scoreDoc.engine;
     const report = scoreDoc.importReport;
-    try {
-      if (!engineDoc || !report) {
-        throw new Error('DOCUMENT_UNAVAILABLE: 当前乐谱缺少语义引擎数据');
-      }
-      // Inputs come from the existing import/projection flow — never from a
-      // reconstructed TS PlaybackPlan.
-      const projected = projectScoreDocumentV1(engineDoc, report);
-      if (projected.issues.length > 0) {
-        throw new Error(`DOCUMENT_VALIDATION_FAILED: ${projected.issues.map((issue) => issue.code).join(', ')}`);
-      }
-      const planConfig = {
-        partId: context.partId,
-        range: context.range,
-        repeatSelection: { kind: 'none' as const },
-        hand: launchConfig.hand,
-        handMapping: context.handMapping,
-        bpm: { numerator: launchConfig.tempo, denominator: 1 },
-        // The existing "three seconds of preparation" expressed in canonical µs.
-        countInUs: 3_000_000,
-        ticksPerQuarter: 960,
-        unsupportedNotationPolicy: 'reject-strict' as const,
-      };
-      const response = await session.requestPlannerPlan({
-        document: projected.dto,
-        report,
-        config: planConfig,
-        mode,
-        scoreFingerprint: engineDoc.fingerprint,
-        timeoutMs: 15000,
-      });
-      // Response binding is enforced again here: same score, same mode gate.
-      if (response.scoreFingerprint !== engineDoc.fingerprint) {
-        throw new Error('PLAN_RESPONSE_MISMATCH: 计划对应的曲谱与当前曲谱不一致');
-      }
-      if (mode === 'timeline') assertTimelineResponseUsable(response);
-      else assertFollowResponseUsable(response);
-      const span = rangeSpanFromDocument(engineDoc.parts[0].measures, context.range);
-      const parsed = toPlaybackPlan(response, {
-        range: context.range,
-        repeatSelection: { kind: 'none' },
-        rangeStartBeat: span.rangeStartBeat,
-        rangeDurationBeat: span.rangeDurationBeat,
-      });
-      // Presentation-only reference plan. The Rust plan is ALREADY hand
-      // filtered, so the builder runs with hand='both' (its documented no-op)
-      // — never a second hand filter.
-      const reference = buildReferencePlaybackPlan(parsed.plan, {
-        bpm: launchConfig.tempo,
-        countInBeats: context.countInBeats,
-        hand: 'both',
-      });
-      if (!reference.plan || !reference.strictAllowed) {
-        throw new Error('REFERENCE_PLAN_REJECTED: 参考播放计划被阻断');
-      }
-      referencePlanRef.current = reference.plan;
-      pendingReferencePlanRef.current = reference.plan;
-      referenceMarkedIndexRef.current = 0;
-      const expectedNotes = parsed.groups.map((group) => group.pitches.map((pitch) => ({
-        midiNote: pitch.midiNote ?? 0,
-        noteName: pitch.spelling,
-      })));
-      const groupNoteIds = parsed.groups.map((group) => [...group.scoreEventIds]);
-      expectedNotesRef.current = expectedNotes;
-      planGroupsRef.current = groupNoteIds;
-      const toleranceMs = launchConfig.profile === 'strict' ? 30 : launchConfig.profile === 'relaxed' ? 100 : 60;
+    // R2-3h-R1 (F2): bind this launch to a generation + the exact score and
+    // config snapshot taken at request time. A newer launch supersedes it and
+    // a changed score/config changes the snapshot, so a late response can
+    // never start a session for state the user has already left.
+    const generation = ++launchSeqRef.current;
+    const boundFingerprint = engineDoc?.fingerprint ?? null;
+    const boundContextKey = planContextKey({
+      hand: launchConfig.hand,
+      tempo: launchConfig.tempo,
+      modeId: launchConfig.modeId,
+      loopActive: launchConfig.modeId === 'score' && launchConfig.loopEnabled,
+      loopStartBar: launchConfig.loopStartBar,
+      loopEndBar: launchConfig.loopEndBar,
+      range: context.range,
+      handMapping: context.handMapping,
+    });
+    if (!engineDoc || !report || boundFingerprint === null) {
+      setStarting(false);
+      addFeedback(
+        '无法从引擎获取严格计划',
+        'DOCUMENT_UNAVAILABLE: 当前乐谱缺少语义引擎数据。本次练习不会启动。',
+        'warning',
+      );
+      return;
+    }
 
-      if (mode === 'follow') {
-        // Follow consumes groups/occurrences only and never calls session.begin.
-        const follow = new FollowSession(parsed.groups, launchConfig.tempo, {
+    const outcome = await orchestrateRustLaunch<true>({
+      token: { generation, contextKey: boundContextKey, scoreFingerprint: boundFingerprint },
+      request: async () => {
+        // Inputs come from the existing import/projection flow — never from a
+        // reconstructed TS PlaybackPlan.
+        const projected = projectScoreDocumentV1(engineDoc, report);
+        if (projected.issues.length > 0) {
+          throw new Error(`DOCUMENT_VALIDATION_FAILED: ${projected.issues.map((issue) => issue.code).join(', ')}`);
+        }
+        const planConfig = {
+          partId: context.partId,
+          range: context.range,
+          repeatSelection: { kind: 'none' as const },
+          hand: launchConfig.hand,
+          handMapping: context.handMapping,
+          bpm: { numerator: launchConfig.tempo, denominator: 1 },
+          // The existing "three seconds of preparation" expressed in canonical µs.
+          countInUs: 3_000_000,
+          ticksPerQuarter: 960,
+          unsupportedNotationPolicy: 'reject-strict' as const,
+        };
+        return session.requestPlannerPlan({
+          document: projected.dto,
+          report,
+          config: planConfig,
+          mode,
+          scoreFingerprint: boundFingerprint,
+          timeoutMs: 15000,
+        });
+      },
+      // Read from the CURRENT app state (refs), not from the async closure: a
+      // captured fingerprint cannot prove the score is still the selected one.
+      live: () => {
+        const currentConfig = configRef.current;
+        const currentDoc = scoreDocRef.current;
+        const currentLoop = currentConfig.modeId === 'score' && currentConfig.loopEnabled;
+        const currentRange = {
+          startMeasureOrdinal: currentLoop ? currentConfig.loopStartBar : 1,
+          endMeasureOrdinal: currentLoop ? currentConfig.loopEndBar : currentDoc.meta.barCount,
+        };
+        const currentFingerprint = currentDoc.engine?.fingerprint ?? null;
+        const currentPartId = currentDoc.engine?.parts[0]?.id ?? 'P1';
+        return {
+          generation: launchSeqRef.current,
+          contextKey: planContextKey({
+            hand: currentConfig.hand,
+            tempo: currentConfig.tempo,
+            modeId: currentConfig.modeId,
+            loopActive: currentLoop,
+            loopStartBar: currentConfig.loopStartBar,
+            loopEndBar: currentConfig.loopEndBar,
+            range: currentRange,
+            handMapping: currentFingerprint
+              ? userHandMappingFor(currentFingerprint, currentPartId)
+              : null,
+          }),
+          scoreFingerprint: currentFingerprint,
+          authority: plannerAuthorityRef.current,
+        };
+      },
+      accept: (response) => {
+        // Response binding: same score, then the mode-specific gates.
+        if (response.scoreFingerprint !== boundFingerprint) {
+          throw new Error('PLAN_RESPONSE_MISMATCH: 计划对应的曲谱与当前曲谱不一致');
+        }
+        if (mode === 'timeline') assertTimelineResponseUsable(response);
+        else assertFollowResponseUsable(response);
+        const span = rangeSpanFromDocument(engineDoc.parts[0].measures, context.range);
+        const parsed = toPlaybackPlan(response, {
+          range: context.range,
+          repeatSelection: { kind: 'none' },
+          rangeStartBeat: span.rangeStartBeat,
+          rangeDurationBeat: span.rangeDurationBeat,
+        });
+        // Presentation-only reference plan. The Rust plan is ALREADY hand
+        // filtered, so the builder runs with hand='both' (its documented no-op)
+        // — never a second hand filter.
+        const reference = buildReferencePlaybackPlan(parsed.plan, {
+          bpm: launchConfig.tempo,
+          countInBeats: context.countInBeats,
+          hand: 'both',
+        });
+        if (!reference.plan || !reference.strictAllowed) {
+          throw new Error('REFERENCE_PLAN_REJECTED: 参考播放计划被阻断');
+        }
+        referencePlanRef.current = reference.plan;
+        pendingReferencePlanRef.current = reference.plan;
+        referenceMarkedIndexRef.current = 0;
+        const expectedNotes = parsed.groups.map((group) => group.pitches.map((pitch) => ({
+          midiNote: pitch.midiNote ?? 0,
+          noteName: pitch.spelling,
+        })));
+        const groupNoteIds = parsed.groups.map((group) => [...group.scoreEventIds]);
+        expectedNotesRef.current = expectedNotes;
+        planGroupsRef.current = groupNoteIds;
+        const toleranceMs = launchConfig.profile === 'strict' ? 30 : launchConfig.profile === 'relaxed' ? 100 : 60;
+
+        if (mode === 'follow') {
+          // Follow consumes groups/occurrences only and never calls session.begin.
+          const follow = new FollowSession(parsed.groups, launchConfig.tempo, {
+            timingToleranceMs: toleranceMs,
+            chordSpreadToleranceMs: 50,
+          });
+          followSessionRef.current = follow;
+          followStatusRef.current = 'running';
+          setFollowStatus('running');
+          setFollowReport(null);
+          setFollowView({ index: 0, total: follow.progress.total, completed: 0, currentGroup: follow.currentGroup, last: null });
+          setEvents([]); setInputNote('—'); setPitchMismatch(false); setElapsed(0);
+          addFeedback(
+            '跟手等待模式已开始（引擎计划）',
+            `${parsed.groups.length} 个起音目标；光标只在弹对当前目标后前进，不会自动走。节奏按你相邻正确起音的间隔记录。`,
+            'neutral',
+          );
+          setStarting(false);
+          return true as const;
+        }
+
+        const atoms = toEngineAtoms(response.plan.atoms);
+        const scoreEvents = toEngineScoreEvents(response.plan, parsed.occurrences);
+        const guideSession = new FollowSession(parsed.groups, launchConfig.tempo, {
           timingToleranceMs: toleranceMs,
           chordSpreadToleranceMs: 50,
         });
-        followSessionRef.current = follow;
-        followStatusRef.current = 'running';
-        setFollowStatus('running');
-        setFollowReport(null);
-        setFollowView({ index: 0, total: follow.progress.total, completed: 0, currentGroup: follow.currentGroup, last: null });
-        setEvents([]); setInputNote('—'); setPitchMismatch(false); setElapsed(0);
+        guideSessionRef.current = guideSession;
+        setGuideView({ index: 0, currentGroup: guideSession.currentGroup, completed: 0 });
+        void session.begin({
+          modeId: context.engineMode,
+          bpm: launchConfig.tempo,
+          profile: launchConfig.profile,
+          countInBeats: context.countInBeats,
+          ticksPerQuarter: 960,
+          metronomeEnabled: metronomeOn,
+          beatsPerBar: (launchConfig.timeSignature[0] * 4) / launchConfig.timeSignature[1],
+          atoms,
+          scoreEvents,
+          assisted: launchConfig.feedback === 'live',
+          durationPolicy: launchConfig.durationPolicy,
+          scoreFingerprint: engineDoc.fingerprint,
+          playbackPlanId: response.plan.runtimeIds.planId,
+          scoreImportStatus: report.status,
+          hand: launchConfig.hand,
+          scoreBarCount: context.targetedSource?.scoreBarCount ?? scoreDoc.meta.barCount,
+          ...(context.targetedSource ? {
+            sourceReportId: context.targetedSource.sourceReportId,
+            sourceTakeId: context.targetedSource.sourceTakeId,
+            prescriptionId: context.targetedSource.prescriptionId,
+            prescription: context.targetedSource.prescription,
+          } : {}),
+          ...(context.takeTemplateId ? { takeTemplateId: context.takeTemplateId } : {}),
+        });
         addFeedback(
-          '跟手等待模式已开始（引擎计划）',
-          `${parsed.groups.length} 个起音目标；光标只在弹对当前目标后前进，不会自动走。节奏按你相邻正确起音的间隔记录。`,
+          '练习已开始（引擎计划）',
+          `${modeRegistry[launchConfig.modeId].title} · ${launchConfig.tempo} BPM · 计划 ${response.plannerVersion} · 指纹 ${response.planFingerprint.slice(0, 22)}…`,
           'neutral',
         );
-        setStarting(false);
-        return;
-      }
+        return true as const;
+      },
+    });
 
-      const atoms = toEngineAtoms(response.plan.atoms);
-      const scoreEvents = toEngineScoreEvents(response.plan, parsed.occurrences);
-      const guideSession = new FollowSession(parsed.groups, launchConfig.tempo, {
-        timingToleranceMs: toleranceMs,
-        chordSpreadToleranceMs: 50,
-      });
-      guideSessionRef.current = guideSession;
-      setGuideView({ index: 0, currentGroup: guideSession.currentGroup, completed: 0 });
-      void session.begin({
-        modeId: context.engineMode,
-        bpm: launchConfig.tempo,
-        profile: launchConfig.profile,
-        countInBeats: context.countInBeats,
-        ticksPerQuarter: 960,
-        metronomeEnabled: metronomeOn,
-        beatsPerBar: (launchConfig.timeSignature[0] * 4) / launchConfig.timeSignature[1],
-        atoms,
-        scoreEvents,
-        assisted: launchConfig.feedback === 'live',
-        durationPolicy: launchConfig.durationPolicy,
-        scoreFingerprint: engineDoc.fingerprint,
-        playbackPlanId: response.plan.runtimeIds.planId,
-        scoreImportStatus: report.status,
-        hand: launchConfig.hand,
-        scoreBarCount: context.targetedSource?.scoreBarCount ?? scoreDoc.meta.barCount,
-        ...(context.targetedSource ? {
-          sourceReportId: context.targetedSource.sourceReportId,
-          sourceTakeId: context.targetedSource.sourceTakeId,
-          prescriptionId: context.targetedSource.prescriptionId,
-          prescription: context.targetedSource.prescription,
-        } : {}),
-        ...(context.takeTemplateId ? { takeTemplateId: context.takeTemplateId } : {}),
-      });
-      addFeedback(
-        '练习已开始（引擎计划）',
-        `${modeRegistry[launchConfig.modeId].title} · ${launchConfig.tempo} BPM · 计划 ${response.plannerVersion} · 指纹 ${response.planFingerprint.slice(0, 22)}…`,
-        'neutral',
-      );
-    } catch (error) {
-      setStarting(false);
-      const message = error instanceof Error ? error.message : String(error);
-      addFeedback(
-        '无法从引擎获取严格计划',
-        `${message}。本次练习不会启动，也不会回退到浏览器内规划。`,
-        'warning',
-      );
-    }
+    if (outcome.status === 'started') return;
+    // A superseded launch leaves the UI to the newer one; any other
+    // cancellation on the CURRENT generation must visibly fail the launch.
+    const stillLatest = generation === launchSeqRef.current;
+    if (!stillLatest || (outcome.status === 'cancelled' && outcome.code === 'STALE_SUPERSEDED')) return;
+    setStarting(false);
+    addFeedback(
+      '无法从引擎获取严格计划',
+      `${outcome.code}: ${outcome.message}。本次练习不会启动，也不会回退到浏览器内规划。`,
+      'warning',
+    );
   };
 
   const launchPractice = (
@@ -1203,9 +1298,23 @@ export default function App() {
         addFeedback('当前乐谱不能跟手练习', '跟手模式需要语义 MusicXML 谱面；请重新导入或恢复默认乐谱。', 'warning');
         return false;
       }
+      // R2-3h-R1 (F1): the authority must be CONFIRMED. Unknown (null, a
+      // failed probe or a disconnect) blocks the launch and re-probes — it
+      // must never fall through to the TS planner.
+      const authorityRoute = decideAuthority(plannerAuthorityRef.current);
+      if (authorityRoute.route === 'blocked') {
+        void refreshPlannerAuthority();
+        setStarting(false);
+        addFeedback(
+          '无法确认规划权威',
+          `${authorityRoute.message}（${authorityRoute.code}）请确认本地引擎服务已启动后重试。`,
+          'warning',
+        );
+        return false;
+      }
       // R2-3h: opt-in Rust authority. Follow asks for mode 'follow' and never
       // calls session.begin; failures fail the launch (no TS fallback).
-      if (plannerAuthorityRef.current === 'rust' && launchScope) {
+      if (authorityRoute.route === 'rust' && launchScope) {
         void startRustPractice('follow', config, {
           engineMode,
           countInBeats,
@@ -1262,9 +1371,22 @@ export default function App() {
       }
     }
     clearFollowSession();
+    // R2-3h-R1 (F1): the authority must be CONFIRMED before choosing a path.
+    // Unknown blocks the launch and re-probes — never the TS planner.
+    const timelineAuthorityRoute = decideAuthority(plannerAuthorityRef.current);
+    if (timelineAuthorityRoute.route === 'blocked') {
+      void refreshPlannerAuthority();
+      setStarting(false);
+      addFeedback(
+        '无法确认规划权威',
+        `${timelineAuthorityRoute.message}（${timelineAuthorityRoute.code}）请确认本地引擎服务已启动后重试。`,
+        'warning',
+      );
+      return false;
+    }
     // R2-3h: opt-in Rust authority for the timeline. The Rust plan is the only
     // plan generated on this branch (no TS planning, no fallback).
-    if (plannerAuthorityRef.current === 'rust' && scoreDoc.engine && launchScope) {
+    if (timelineAuthorityRoute.route === 'rust' && scoreDoc.engine && launchScope) {
       void startRustPractice('timeline', config, {
         engineMode,
         countInBeats,

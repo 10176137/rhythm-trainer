@@ -31,10 +31,12 @@ describe('R2-3h: single plan authority in the rust branch', () => {
   });
 
   it('the rust branch is only reachable through the server-reported authority', () => {
-    // Both launch sites gate on plannerAuthorityRef.current === 'rust' and the
-    // server status is the only writer of that ref.
-    const gatedCalls = appSource.match(/plannerAuthorityRef\.current === 'rust'/g) ?? [];
+    // Both launch sites route through decideAuthority(...), and the server
+    // status is the only writer of that ref (R2-3h-R1 F1).
+    const gatedCalls = appSource.match(/decideAuthority\(plannerAuthorityRef\.current\)/g) ?? [];
     expect(gatedCalls.length).toBe(2); // follow + timeline
+    expect(appSource).toContain("authorityRoute.route === 'rust' && launchScope");
+    expect(appSource).toContain("timelineAuthorityRoute.route === 'rust' && scoreDoc.engine && launchScope");
     expect(appSource).toContain('session.getPlannerStatus()');
     // No client-side env/switch reading — the browser never owns a second switch.
     expect(appSource.includes('RHYTHM_PLANNER')).toBe(false);
@@ -52,7 +54,7 @@ describe('R2-3h: single plan authority in the rust branch', () => {
 
   it('the default rts path keeps using the TS planner (unchanged behavior)', () => {
     // The TS timeline block is still present after the rust branch returns.
-    const timelineStart = appSource.indexOf("if (plannerAuthorityRef.current === 'rust' && scoreDoc.engine && launchScope)");
+    const timelineStart = appSource.indexOf("if (timelineAuthorityRoute.route === 'rust' && scoreDoc.engine && launchScope)");
     expect(timelineStart).toBeGreaterThan(-1);
     const rest = appSource.slice(timelineStart, timelineStart + 4000);
     expect(rest).toContain('buildPlaybackPlan');
