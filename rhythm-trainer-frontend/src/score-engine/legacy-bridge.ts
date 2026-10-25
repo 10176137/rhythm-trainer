@@ -10,6 +10,7 @@ import type {
   ScoreNoteType,
 } from '../core/sampleScore';
 import { toNumber } from './domain/rational';
+import type { HandMappingV1 } from './scope/practice-scope';
 
 function formatLegacyPitch(step: string, alter: number, octave: number): string {
   const accidental = alter === 0 ? '' : alter > 0 ? '♯'.repeat(alter) : '♭'.repeat(-alter);
@@ -59,6 +60,10 @@ export function toLegacyScoreDocument(
       for (const event of measure.events) {
         if (event.kind !== 'note' || !event.pitch || event.pitch.midiNote === null) continue;
         const staff = clefFor(event.source.staffNumber);
+        // Hand is NOT a clef fact: a left-hand part can switch to a treble
+        // clef mid-score. The piano staff convention is the display default;
+        // the user's explicit staff→hand mapping overrides it below.
+        const hand = event.source.staffNumber > 1 ? 'left' : 'right';
         const span = event.tieSpanId ? tieSpanFor(event.id) : undefined;
         const continuation = Boolean(span && span.eventIds[0] !== event.id);
         const durationBeats = toNumber(event.durationBeat);
@@ -69,7 +74,7 @@ export function toLegacyScoreDocument(
           step: event.pitch.step,
           alter: event.pitch.alter,
           octave: event.pitch.octave,
-          hand: staff === 'bass' ? 'left' : 'right',
+          hand,
           staff,
           voice: Number(event.source.voiceId) || 1,
           beat: toNumber(event.onsetBeat),
@@ -126,4 +131,44 @@ export function toLegacyScoreDocument(
     engine,
     importReport: report,
   };
+}
+
+/**
+ * Re-applies the user's explicit staff→hand mapping to legacy display notes.
+ * The bridge above can only apply the piano staff default at import time; the
+ * mapping is confirmed later (and the planner already consumes it), so display
+ * scoping, counts and labels must be brought back in line with it.
+ *
+ * Returns the SAME array when every note already matches, so callers can use
+ * reference equality to avoid a state update loop.
+ */
+export function applyHandMappingToLegacyNotes(
+  notes: ScoreNote[],
+  engine: EngineScoreDocument,
+  handMapping: HandMappingV1,
+): ScoreNote[] {
+  const parts = new Map(handMapping.parts.map((part) => [part.partId, part]));
+  const handByEventId = new Map<string, 'left' | 'right'>();
+  for (const part of engine.parts) {
+    const mappedPart = parts.get(part.id);
+    if (!mappedPart) continue;
+    const staffHand = new Map(mappedPart.staves.map((staff) => [staff.staffNumber, staff.hand]));
+    for (const measure of part.measures) {
+      for (const event of measure.events) {
+        if (event.kind !== 'note') continue;
+        const hand = staffHand.get(event.source.staffNumber);
+        if (hand) handByEventId.set(event.id, hand);
+      }
+    }
+  }
+  if (handByEventId.size === 0) return notes;
+
+  let changed = false;
+  const mapped = notes.map((note) => {
+    const hand = handByEventId.get(note.id);
+    if (!hand || hand === note.hand) return note;
+    changed = true;
+    return { ...note, hand };
+  });
+  return changed ? mapped : notes;
 }

@@ -16,6 +16,7 @@ import { modeList, modeRegistry } from './config/modeRegistry';
 import type { ScoreDocument } from './core/sampleScore';
 import { buildPracticePlan } from './features/score/practicePlan';
 import { practiceScoreDocument } from './features/score/practiceScore';
+import { applyHandMappingToLegacyNotes } from './score-engine/legacy-bridge';
 import { buildPlaybackPlan, scoreOccurrencesToEngineAtoms } from './score-engine/playback/playback-planner';
 import { buildEngineScoreEvents } from './score-engine/playback/score-events';
 import { projectScoreDocumentV1 } from './score-engine/contract-v1/plan-fingerprint';
@@ -136,6 +137,23 @@ export default function App() {
   };
   const [config, setConfig] = useState<PracticeConfig>(initialSettings.config);
   const [scoreDoc, setScoreDoc] = useState<ScoreDocument>(practiceScoreDocument);
+  // Display hand must match the explicit staff→hand mapping the planner uses.
+  // The import bridge only knows the piano staff default; re-apply the user's
+  // mapping whenever it is confirmed or a score is loaded. The helper returns
+  // the same array when nothing changes, so this cannot loop.
+  useEffect(() => {
+    setScoreDoc((prev) => {
+      if (!prev.engine) return prev;
+      const partId = prev.engine.parts[0]?.id ?? 'P1';
+      const stored = handMappings[prev.engine.fingerprint];
+      const mapping = stored && stored.source === 'user' && stored.parts.some((part) => part.partId === partId)
+        ? stored
+        : null;
+      if (!mapping) return prev;
+      const notes = applyHandMappingToLegacyNotes(prev.notes, prev.engine, mapping);
+      return notes === prev.notes ? prev : { ...prev, notes };
+    });
+  }, [handMappings, scoreDoc.engine]);
   const [hintOverrides, setHintOverrides] = useState<ScoreHintOverrides>(() => loadScoreHintOverrides());
   const scoreHints = resolveScoreHints(hintOverrides, config.profile);
   const [lastInputMidi, setLastInputMidi] = useState<number | null>(null);

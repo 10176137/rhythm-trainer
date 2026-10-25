@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { beatToString } from '../domain/rational';
 import { importMusicXml } from '../import/musicxml-importer';
-import { toLegacyScoreDocument } from '../legacy-bridge';
+import { toLegacyScoreDocument, applyHandMappingToLegacyNotes } from '../legacy-bridge';
+import { buildUserHandMapping } from '../scope/practice-scope';
 import { buildPlaybackPlan, buildScoreOccurrences, scoreOccurrencesToEngineAtoms } from '../playback/playback-planner';
 import { buildTempoMap } from '../playback/tempo-map';
 import type { ScoreDocument } from '../domain/types';
@@ -39,6 +40,21 @@ function topLevelDoc(name: string): ScoreDocument {
   if (!result.scoreDocument) throw new Error(`${name} did not import: ${result.importReport.status}`);
   return result.scoreDocument;
 }
+
+/** Two-staff score whose second staff switches to a treble clef in measure 2. */
+const clefCarryXml = `<?xml version="1.0"?><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1">
+      <measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>
+        <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>whole</type><staff>1</staff></note>
+        <backup><duration>4</duration></backup>
+        <note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>2</voice><type>whole</type><staff>2</staff></note>
+      </measure>
+      <measure number="2"><attributes><clef number="2"><sign>G</sign><line>2</line></clef></attributes>
+        <note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration><voice>1</voice><type>whole</type><staff>2</staff></note>
+      </measure>
+      <measure number="3"><attributes><clef number="1"><sign>F</sign><line>4</line></clef></attributes>
+        <note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration><voice>1</voice><type>whole</type><staff>2</staff></note>
+      </measure>
+    </part></score-partwise>`;
 
 describe('MusicXML importer golden contracts', () => {
   for (const [name, expected] of Object.entries(golden)) {
@@ -285,24 +301,41 @@ describe('capability and tie/tied separation', () => {
 
 describe('per-staff clef changes', () => {
   it('carries the other staff clef forward when only one staff changes', () => {
-    const xml = `<?xml version="1.0"?><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1">
-      <measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>
-        <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>whole</type><staff>1</staff></note>
-        <backup><duration>4</duration></backup>
-        <note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>2</voice><type>whole</type><staff>2</staff></note>
-      </measure>
-      <measure number="2"><attributes><clef number="2"><sign>G</sign><line>2</line></clef></attributes>
-        <note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration><voice>1</voice><type>whole</type><staff>2</staff></note>
-      </measure>
-      <measure number="3"><attributes><clef number="1"><sign>F</sign><line>4</line></clef></attributes>
-        <note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration><voice>1</voice><type>whole</type><staff>2</staff></note>
-      </measure>
-    </part></score-partwise>`;
+    const xml = clefCarryXml;
     const result = importMusicXml(xml, { fileName: 'clef-carry.musicxml' });
     expect(result.scoreDocument).toBeTruthy();
     const measures = result.scoreDocument!.parts[0].measures;
     const clefs = measures[2].attributes.clefs.map((clef) => `${clef.staffNumber}:${clef.sign}${clef.line}`).sort();
     expect(clefs).toEqual(['1:F4', '2:G2']);
+  });
+
+  it('keeps staff 2 on the left hand even when its clef is treble', () => {
+    const result = importMusicXml(clefCarryXml, { fileName: 'clef-carry.musicxml' });
+    if (!result.scoreDocument) throw new Error('fixture did not import');
+    const doc = toLegacyScoreDocument(result.scoreDocument, result.importReport, 'clef-carry.musicxml');
+    const measure2 = doc.notes.filter((note) => note.bar === 2);
+    const measure3 = doc.notes.filter((note) => note.bar === 3);
+    expect(measure2).toHaveLength(1);
+    expect(measure2[0].staff).toBe('treble'); // notation staff still follows the clef
+    expect(measure2[0].hand).toBe('left');    // display hand follows the staff
+    expect(measure3[0].hand).toBe('left');
+  });
+
+  it('lets the explicit user mapping override the staff default', () => {
+    const result = importMusicXml(clefCarryXml, { fileName: 'clef-carry.musicxml' });
+    if (!result.scoreDocument) throw new Error('fixture did not import');
+    const engine = result.scoreDocument;
+    const doc = toLegacyScoreDocument(engine, result.importReport, 'clef-carry.musicxml');
+    const mapping = buildUserHandMapping('P1', [
+      { staffNumber: 1, hand: 'left' },
+      { staffNumber: 2, hand: 'right' },
+    ]);
+    const mapped = applyHandMappingToLegacyNotes(doc.notes, engine, mapping);
+    expect(mapped.filter((note) => note.bar === 2 || note.bar === 3).every((note) => note.hand === 'right')).toBe(true);
+    expect(mapped.find((note) => note.bar === 1 && note.staff === 'bass')?.hand).toBe('right');
+    // The source notes are not mutated; the helper returns new objects only
+    // where the mapping changed the hand.
+    expect(doc.notes.filter((note) => note.bar === 2 || note.bar === 3).every((note) => note.hand === 'left')).toBe(true);
   });
 });
 

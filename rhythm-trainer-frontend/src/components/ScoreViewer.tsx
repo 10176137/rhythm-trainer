@@ -359,7 +359,7 @@ export default function ScoreViewer({
           <p>单谱表：按谱面音高逐音识别；五线之外的音符使用加线表示，注意加线数量与线/间位置。</p>
         ) : (
           <>
-            <p>上方高音谱表通常对应右手；下方低音谱表通常对应左手。本谱共 {score.length} 个音符，右手 {rightCount} 个、左手 {leftCount} 个。</p>
+            <p>上方谱表通常对应右手；下方谱表通常对应左手，实际以你确认的「谱表→手别映射」为准。本谱共 {score.length} 个音符，右手 {rightCount} 个、左手 {leftCount} 个。</p>
             <p>练习结构：每小节按 MusicXML 拍号显示；左右手同时出现的音对齐在同一拍。谱面由 OSMD / Bravura 专业制谱引擎渲染。</p>
           </>
         )}
