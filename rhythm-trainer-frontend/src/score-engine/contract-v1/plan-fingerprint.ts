@@ -1,4 +1,5 @@
-import { createHash } from 'node:crypto';
+import { sha256 } from '@noble/hashes/sha256';
+import { bytesToHex } from '@noble/hashes/utils';
 import jcsModule from 'canonicalize';
 import Ajv2020 from 'ajv/dist/2020';
 import scoreDocumentSchema from '../../../../audit-r1/contracts/score-document-v1.schema.json';
@@ -139,7 +140,9 @@ export function canonicalizeJcs(value: unknown): string {
 }
 
 function sha256Hex(bytes: string | Uint8Array): string {
-  return createHash('sha256').update(bytes).digest('hex');
+  // Browser-safe equivalent of node:crypto's utf8 SHA-256: identical bytes in,
+  // identical hex out (the frozen vectors in test-vectors/ prove it).
+  return bytesToHex(sha256(typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes));
 }
 
 // --- ScoreDocumentV1 -------------------------------------------------------

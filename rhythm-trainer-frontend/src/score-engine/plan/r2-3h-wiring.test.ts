@@ -52,6 +52,17 @@ describe('R2-3h: single plan authority in the rust branch', () => {
     expect(freeBranch.includes('requestPlannerPlan')).toBe(false);
   });
 
+  it('the browser contract projection does not depend on Node builtins', () => {
+    // R2-3h-R2: plan-fingerprint.ts is imported by App.tsx for the Rust plan
+    // request. A node:crypto import is externalized by Vite and aborts the
+    // whole app before React mounts, so keep it on the browser-safe hash.
+    const source = readFileSync(join(
+      root, 'rhythm-trainer-frontend', 'src', 'score-engine', 'contract-v1', 'plan-fingerprint.ts',
+    ), 'utf8');
+    expect(source.includes("from 'node:")).toBe(false);
+    expect(source).toContain("from '@noble/hashes/sha256'");
+  });
+
   it('the default rts path keeps using the TS planner (unchanged behavior)', () => {
     // The TS timeline block is still present after the rust branch returns.
     const timelineStart = appSource.indexOf("if (timelineAuthorityRoute.route === 'rust' && scoreDoc.engine && launchScope)");
