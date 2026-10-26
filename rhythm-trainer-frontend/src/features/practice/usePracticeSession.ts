@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EngineBridge } from '../../services/engineBridge';
 import type { PlanRequestInput, PlannerStatus } from '../../services/engineBridge';
 import type { RustPlanResponse } from '../../score-engine/plan/rust-plan';
-import type { DurationEvaluationPolicy, EngineAtom, EngineCaptureDiagnostics, EngineDurationReport, EngineIngestMidiPacket, EngineProfile, EngineJudgment, EngineReport, EngineScoringConfig, EngineScoreEvent, EngineSessionScoreReport, EngineScoreStatus, EngineTarget, EngineTimingAnalysis, FollowEventMessage, FollowReportMessage, FollowStartRequest, FollowStartedMessage } from '../../types/engine';
+import type { DurationEvaluationPolicy, EngineAtom, EngineCaptureDiagnostics, EngineDurationReport, EngineIngestMidiPacket, EngineProfile, EngineJudgment, EngineReport, EngineScoringConfig, EngineScoreEvent, EngineSessionScoreReport, EngineScoreStatus, EngineTarget, EngineTimingAnalysis, FollowEventMessage, FollowReportMessage, FollowStartRequest, FollowStartedMessage, PersistRetryResultMessage } from '../../types/engine';
 import type { HandSelection, SessionStatus } from '../../types/practice';
 import type { RetryComparison, TeachingPrescription } from '../../types/teaching';
 import { Metronome, buildBeatClicks } from './metronome';
@@ -139,7 +139,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   const targetsRef = useRef<PracticeTarget[]>([]);
   const tickTimerRef = useRef<number | null>(null);
   const statusRef = useRef<SessionStatus>('idle');
-  const engineActiveRef = useRef(false);
+  const takeIdRef = useRef<string | null>(null);  const engineActiveRef = useRef(false);
   const bpmRef = useRef(80);
   const metronomeEnabledRef = useRef(true);
   const barBeatsRef = useRef(4);
@@ -218,6 +218,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         setReport(null);
         setSessionId(null);
         setTakeId(null);
+        takeIdRef.current = null;
         setTraceId(null);
         setScoringConfig(null);
         setCaptureDiagnostics(null);
@@ -288,6 +289,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         setDurations(message.durations ?? null);
         setSessionId(message.sessionId ?? null);
         setTakeId(message.takeId ?? null);
+        takeIdRef.current = message.takeId ?? null;
         setTraceId(message.traceId ?? null);
         setScoringConfig(message.scoringConfig ?? null);
         setCaptureDiagnostics(message.captureDiagnostics ?? null);
@@ -443,6 +445,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     setReport(null);
     setSessionId(null);
     setTakeId(null);
+    takeIdRef.current = null;
     setTraceId(null);
     setScoringConfig(null);
     setCaptureDiagnostics(null);
@@ -534,6 +537,21 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     bridgeRef.current?.followAbandon();
   }, []);
 
+  /**
+   * Retries persistence of a frozen, unsaved Take. The server keeps the same
+   * takeId and only advances persistence state; the frozen report never changes.
+   */
+  const retryPersist = useCallback(async (targetTakeId: string): Promise<PersistRetryResultMessage> => {
+    const bridge = bridgeRef.current;
+    if (!bridge) throw new Error('引擎服务未连接，无法重试保存');
+    const result = await bridge.retryPersist(targetTakeId);
+    if (takeIdRef.current === targetTakeId) {
+      setReportPersisted(result.persisted);
+      setReportPersistenceError(result.persistenceError);
+    }
+    return result;
+  }, []);
+
   /** Free play: a local recording session with no engine targets and no scoring. */
   const beginFreePlay = useCallback(() => {
     if (active) return;
@@ -550,6 +568,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     setReport(null);
     setSessionId(null);
     setTakeId(null);
+    takeIdRef.current = null;
     setTraceId(null);
     setScoringConfig(null);
     setCaptureDiagnostics(null);
@@ -656,7 +675,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     error, liveStats, nextUnmatchedIndex,
     begin, pause, resume, finish, reset, beginFreePlay, finishFreePlay, ingestPacket, getExpectedNote, getCaptureEpoch,
     getPlannerStatus, requestPlannerPlan,
-    startFollow, sendFollowNote, pauseFollow, resumeFollow, finishFollow, abandonFollow,
+    startFollow, sendFollowNote, pauseFollow, resumeFollow, finishFollow, abandonFollow, retryPersist,
     originPerfMs: originRef.current,
   };
 }

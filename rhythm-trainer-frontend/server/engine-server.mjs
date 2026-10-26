@@ -37,6 +37,8 @@ import { replayTakeTrace } from './trace-replay.mjs';
 import { resolveModeScoringConfig } from './mode-config.mjs';
 import { ScoreLibrary, ScoreLibraryError, SCORE_LIBRARY_SCHEMA_VERSION, MAX_SCORE_XML_BYTES } from './score-library.mjs';
 import { TakeTemplateStore, TakeTemplateError, TAKE_TEMPLATE_SCHEMA_VERSION } from './take-templates.mjs';
+import { TakeFinalizationService } from './take-finalization.mjs';
+import { deriveTakeStatus } from './take-status.mjs';
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -155,6 +157,9 @@ ensureDirSync(SCORES_DIR);
 ensureDirSync(TAKE_TEMPLATES_DIR);
 const scoreLibrary = new ScoreLibrary({ dir: SCORES_DIR });
 const takeTemplateStore = new TakeTemplateStore({ dir: TAKE_TEMPLATES_DIR });
+// One finalizer for Timeline and Follow: frozen draft, atomic write, and
+// idempotent retry are shared; the report builders stay mode-specific.
+const takeFinalization = new TakeFinalizationService({ takesDir: TAKES_DIR });
 let sessionIdCounter = 0;
 let practiceSessionCounter = 0;
 
@@ -201,13 +206,33 @@ function listTakeFiles() {
   return fs.readdirSync(TAKES_DIR).filter((f) => f.endsWith('.json') && safeId(f.slice(0, -5)));
 }
 
+/**
+ * Additive read projection for Takes written before the orthogonal status
+ * fields existed. Missing values become unknown/unavailable, never "verified";
+ * fields actually stored on disk always win.
+ */
+function normalizeTakeRecord(take) {
+  if (!take || typeof take !== 'object' || !take.assessment) return take;
+  const capture = take.evidence?.captureDiagnostics ?? null;
+  const legacy = !!take.legacy;
+  const defaults = deriveTakeStatus({
+    attemptStatus: take.lifecycle?.endReason === 'interrupted' ? 'interrupted' : 'completed',
+    inputHealth: capture?.inputHealth ?? 'unknown',
+    clockMappingStatus: capture?.clockMapping?.status ?? 'unknown',
+    plannerAuthority: legacy ? 'legacy' : (take.context?.plannerAuthority ?? null),
+    scoreStatus: take.assessment.scoreStatus ?? 'UNAVAILABLE',
+    persistenceStatus: 'persisted',
+  });
+  return { ...take, assessment: { ...defaults, ...take.assessment } };
+}
+
 function readTakeRecord(id) {
   const clean = safeId(id);
   if (!clean) return null;
   const file = path.join(TAKES_DIR, `${clean}.json`);
   if (!fs.existsSync(file)) return null;
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    return normalizeTakeRecord(JSON.parse(fs.readFileSync(file, 'utf8')));
   } catch {
     return null;
   }
@@ -272,7 +297,14 @@ function legacyToTakeRecord(record) {
     },
     assessment: {
       trustworthy: !!record.report?.trustworthy,
-      scoreStatus: record.scoreStatus ?? 'UNAVAILABLE',
+      ...deriveTakeStatus({
+        attemptStatus: record.interrupted ? 'interrupted' : 'completed',
+        inputHealth: record.captureDiagnostics?.inputHealth ?? 'unknown',
+        clockMappingStatus: record.captureDiagnostics?.clockMapping?.status ?? 'unknown',
+        plannerAuthority: 'legacy',
+        scoreStatus: record.scoreStatus ?? 'UNAVAILABLE',
+        persistenceStatus: 'persisted',
+      }),
       timelineReport: record,
     },
     legacy: {
@@ -352,6 +384,11 @@ function takeSummary(take) {
     reportKind,
     endReason: take.lifecycle?.endReason ?? null,
     scoreStatus: take.assessment?.scoreStatus ?? null,
+    attemptStatus: take.assessment?.attemptStatus ?? null,
+    inputQuality: take.assessment?.inputQuality ?? 'unknown',
+    planAuthority: take.assessment?.planAuthority ?? 'unknown',
+    planIntegrity: take.assessment?.planIntegrity ?? 'unavailable',
+    persistenceStatus: take.assessment?.persistenceStatus ?? 'persisted',
     scoreId: take.score?.scoreId ?? null,
     scoreSnapshotRef: take.score?.scoreSnapshotRef ?? null,
     legacySessionId: take.legacy?.sessionId ?? null,
@@ -421,16 +458,6 @@ function listAllTakes() {
     .map(legacyToTakeRecord);
   return [...takes, ...legacy]
     .sort((a, b) => String(b.lifecycle?.finishedAtIso ?? '').localeCompare(String(a.lifecycle?.finishedAtIso ?? '')));
-}
-
-function writeTakeOnce(record) {
-  const clean = safeId(record.takeId);
-  if (!clean) throw new Error('takeId 非法');
-  const file = path.join(TAKES_DIR, `${clean}.json`);
-  // A repeated finalization must never replace the first authoritative Take.
-  if (fs.existsSync(file)) return { created: false, persisted: true };
-  atomicWriteJson(file, record);
-  return { created: true, persisted: true };
 }
 
 /** Content-addressed snapshot so a replaced score cannot rewrite history. */
@@ -1381,50 +1408,38 @@ wss.on('connection', (socket) => {
   }
 
   /**
-   * Normalizes Follow targets projected from a plan. A server-issued Rust
-   * plan is preferred, but the default rts launch still plans in the browser;
-   * in that case the server validates the projection it is given and records
-   * its provenance as a client plan projection (never as a Rust plan).
+   * Follow target canonicalization lives in the Rust authority: unison collapse,
+   * ordering, identity and pitch validation are music semantics. Node keeps only
+   * the protocol shape/size limits and stores the returned dropped-member
+   * evidence instead of inventing its own normalization.
    */
   function normalizeFollowGroups(value) {
     if (!Array.isArray(value) || value.length === 0) throw new Error('跟手计划没有目标');
     if (value.length > 20000) throw new Error('跟手目标数量超出上限');
-    const seenGroupIds = new Set();
-    let previousBeat = -Infinity;
-    return value.map((group) => {
-      const groupId = typeof group?.groupId === 'string' ? group.groupId.trim() : '';
-      if (!groupId || groupId.length > 200) throw new Error('跟手目标缺少合法 groupId');
-      if (seenGroupIds.has(groupId)) throw new Error(`跟手目标 groupId 重复: ${groupId}`);
-      seenGroupIds.add(groupId);
-      const bar = Number(group.bar);
-      if (!Number.isInteger(bar) || bar < 1) throw new Error(`跟手目标 ${groupId} 的 bar 非法`);
-      const playbackBeat = Number(group.playbackBeat);
-      if (!Number.isFinite(playbackBeat) || playbackBeat < 0) {
-        throw new Error(`跟手目标 ${groupId} 的 playbackBeat 非法`);
-      }
-      if (playbackBeat < previousBeat) throw new Error('跟手目标顺序与计划不一致');
-      previousBeat = playbackBeat;
-      if (!Array.isArray(group.pitches) || group.pitches.length === 0) {
-        throw new Error(`跟手目标 ${groupId} 没有可映射的 MIDI 音高`);
-      }
-      const seenNotes = new Set();
-      const pitches = [];
-      for (const pitch of group.pitches) {
-        const midiNote = Number(pitch?.midiNote);
-        const spelling = typeof pitch?.spelling === 'string' ? pitch.spelling : '';
-        if (!Number.isInteger(midiNote) || midiNote < 0 || midiNote > 127) {
-          throw new Error(`跟手目标 ${groupId} 含非法 MIDI 音高`);
-        }
-        if (!spelling) throw new Error(`跟手目标 ${groupId} 的音名缺失`);
-        // Both hands can notate the same key at the same onset. Follow asks
-        // for that key once, not twice; the group's scoreEventIds still mark
-        // every notated member when it advances.
-        if (seenNotes.has(midiNote)) continue;
-        seenNotes.add(midiNote);
-        pitches.push({ midiNote, spelling });
-      }
-      return { groupId, bar, playbackBeat, pitches };
-    });
+    try {
+      return addon.normalizeFollowGroupsV1(value);
+    } catch (error) {
+      throw new Error(`跟手目标校验失败：${String((error && error.message) || error)}`);
+    }
+  }
+
+  /** Compact evidence for the Take: only groups that actually dropped a member. */
+  function followGroupNormalizationEvidence(normalized) {
+    return {
+      version: 'follow-group-normalization-v1',
+      sourcePitchCount: normalized.sourcePitchCount,
+      canonicalPitchCount: normalized.canonicalPitchCount,
+      groupsWithDuplicates: normalized.groupsWithDuplicates,
+      duplicateGroups: normalized.normalizations
+        .filter((group) => group.duplicateMidiNotes.length > 0)
+        .map((group) => ({
+          groupId: group.groupId,
+          sourcePitchCount: group.sourcePitchCount,
+          canonicalPitchCount: group.canonicalPitchCount,
+          duplicateMidiNotes: group.duplicateMidiNotes,
+          duplicateSpellings: group.duplicateSpellings,
+        })),
+    };
   }
 
   function normalizeFollowTarget(target) {
@@ -1503,6 +1518,7 @@ wss.on('connection', (socket) => {
     const followInputs = context.inputs
       .slice(0, FOLLOW_INPUT_LIMIT)
       .map((input) => ({ midiNote: input.midiNote, atMs: input.atMs }));
+    const followInputHealth = midiAdapter.getStatus().inputHealth ?? 'unknown';
     const takeRecord = {
       schemaVersion: 1,
       takeId: context.takeId,
@@ -1543,16 +1559,26 @@ wss.on('connection', (socket) => {
           mode: 'follow',
           runtimeId: context.runtimeId,
           targetSource: context.plan.targetSource,
+          groupNormalization: context.plan.groupNormalization ?? null,
           timingToleranceMs: context.timingToleranceMs,
           chordSpreadToleranceMs: context.chordSpreadToleranceMs,
-          inputHealth: midiAdapter.getStatus().inputHealth ?? 'unknown',
+          inputHealth: followInputHealth,
           followInputCount: context.inputs.length,
           pausedIntervals: pauseIntervals.length,
         },
       },
       assessment: {
         trustworthy: !interrupted,
-        scoreStatus: 'FOLLOW_ONLY',
+        ...deriveTakeStatus({
+          attemptStatus: interrupted ? 'interrupted' : 'completed',
+          // Follow is self-paced: the fixed-clock mapping does not gate note
+          // matching, so only device health degrades its input quality.
+          inputHealth: followInputHealth,
+          clockMappingStatus: 'ok',
+          plannerAuthority: context.plan.authority,
+          scoreStatus: 'FOLLOW_ONLY',
+          persistenceStatus: 'persisted',
+        }),
         // Follow is self-paced: the report must never be read as a
         // fixed-clock Timeline strict score.
         scope: 'follow',
@@ -1566,23 +1592,21 @@ wss.on('connection', (socket) => {
         takeSnapshot: null,
       },
     };
-    let persisted = false;
-    let created = false;
-    let persistenceError = null;
-    try {
-      const written = writeTakeOnce(takeRecord);
-      persisted = written.persisted;
-      created = written.created;
-    } catch (error) {
-      persistenceError = String((error && error.message) || error);
-      console.error('[engine] Follow Take 保存失败:', persistenceError);
-    }
-    followFinalized = { takeId: context.takeId, report, persisted, persistenceError, endReason };
+    const finalized = takeFinalization.finalize(takeRecord);
+    followFinalized = {
+      takeId: context.takeId,
+      report,
+      persisted: finalized.persisted,
+      persistenceStatus: finalized.persistenceStatus,
+      persistenceError: finalized.persistenceError,
+      endReason,
+      created: finalized.created,
+    };
     followRuntime = null;
     followContext = null;
     if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
     if (activeFollowLease?.socket === socket) activeFollowLease = null;
-    return { ...followFinalized, created };
+    return followFinalized;
   }
 
   function handleFollowNote(midiNote, atMs) {
@@ -1615,6 +1639,7 @@ wss.on('connection', (socket) => {
         takeId: finalized.takeId,
         report: finalized.report,
         persisted: finalized.persisted,
+        persistenceStatus: finalized.persistenceStatus,
         persistenceError: finalized.persistenceError,
         endReason: finalized.endReason,
         progress: { index: result.progressTotal, total: result.progressTotal, completed: result.completedCount },
@@ -1957,9 +1982,11 @@ wss.on('connection', (socket) => {
           if (msg.scoreFingerprint !== undefined && msg.scoreFingerprint !== issued.scoreFingerprint) {
             throw new Error('计划上下文与当前曲谱指纹不一致');
           }
-          const groups = normalizeFollowGroups(issued.groups);
+          const normalized = normalizeFollowGroups(issued.groups);
+          const groups = normalized.groups;
           plan = {
             groups,
+            groupNormalization: followGroupNormalizationEvidence(normalized),
             bpm: issued.bpm,
             scoreFingerprint: issued.scoreFingerprint,
             authority: issued.authority,
@@ -1976,13 +2003,15 @@ wss.on('connection', (socket) => {
           if (msg.plannerAuthority !== 'rts') {
             throw new Error('跟手启动缺少服务端计划上下文');
           }
-          const groups = normalizeFollowGroups(msg.groups);
+          const normalized = normalizeFollowGroups(msg.groups);
+          const groups = normalized.groups;
           const bpm = Number(msg.bpm);
           const scoreFingerprint = typeof msg.scoreFingerprint === 'string' && msg.scoreFingerprint
             ? msg.scoreFingerprint
             : null;
           plan = {
             groups,
+            groupNormalization: followGroupNormalizationEvidence(normalized),
             bpm,
             scoreFingerprint,
             authority: 'rts',
@@ -2107,6 +2136,7 @@ wss.on('connection', (socket) => {
             takeId: followFinalized.takeId,
             report: followFinalized.report,
             persisted: followFinalized.persisted,
+            persistenceStatus: followFinalized.persistenceStatus,
             persistenceError: followFinalized.persistenceError,
             endReason: followFinalized.endReason,
           });
@@ -2142,6 +2172,34 @@ wss.on('connection', (socket) => {
           persistenceError: finalized.persistenceError,
           endReason: finalized.endReason,
         });
+        break;
+      }
+      case 'persist-retry': {
+        // The draft is retained by the shared finalizer, so a retry can happen
+        // after the finishing connection has closed. Same takeId, same content,
+        // only persistence state advances.
+        const takeId = safeId(msg.takeId ?? '');
+        if (!takeId) throw new Error('retry 缺少合法 takeId');
+        const result = takeFinalization.retry(takeId);
+        if (!result) {
+          send({
+            type: 'persist-retry-result',
+            takeId,
+            persisted: false,
+            persistenceStatus: 'unknown',
+            persistenceError: '没有可重试的未保存 Take',
+          });
+          break;
+        }
+        if (followFinalized && followFinalized.takeId === takeId) {
+          followFinalized = {
+            ...followFinalized,
+            persisted: result.persisted,
+            persistenceStatus: result.persistenceStatus,
+            persistenceError: result.persistenceError,
+          };
+        }
+        send({ type: 'persist-retry-result', ...result });
         break;
       }
       case 'start': {
@@ -3167,7 +3225,14 @@ wss.on('connection', (socket) => {
       },
       assessment: {
         trustworthy: !!record.report?.trustworthy,
-        scoreStatus: record.scoreStatus,
+        ...deriveTakeStatus({
+          attemptStatus: interrupted ? 'interrupted' : (report.state === 'invalid' ? 'rejected' : 'completed'),
+          inputHealth: captureDiagnostics.inputHealth,
+          clockMappingStatus: captureDiagnostics.clockMapping?.status ?? 'unknown',
+          plannerAuthority: record.plannerAuthority,
+          scoreStatus: record.scoreStatus,
+          persistenceStatus: 'persisted',
+        }),
         timelineReport: record,
       },
       engineDiagnostics: {
@@ -3177,23 +3242,10 @@ wss.on('connection', (socket) => {
         takeSnapshot: record.takeSnapshot ?? null,
       },
     };
-    let recordPersisted = true;
-    let takeCreated = false;
-    let persistenceError = null;
-    try {
-      const written = writeTakeOnce(takeRecord);
-      recordPersisted = written.persisted;
-      takeCreated = written.created;
-    } catch (err) {
-      recordPersisted = false;
-      persistenceError = String((err && err.message) || err);
-      console.error('[engine] Take 保存失败:', persistenceError);
-    }
-
-    try {
-      // Profile is a derived cache: only consume a newly committed Take.
-      // A duplicate finalization must not add the same evidence twice.
-      if (recordPersisted && takeCreated) {
+    // Profile is a derived cache: only a newly committed Take may contribute.
+    // Retry success runs this exactly once; the finalizer guards duplicates.
+    const applyMasteryEvidence = () => {
+      try {
         const stats = report.stats;
         // Degraded/disconnected input is not the user's rhythm error, but the
         // attempt must not count toward mastery evidence either.
@@ -3213,10 +3265,14 @@ wss.on('connection', (socket) => {
           delayedRetest: false,
         });
         persistProfile();
+      } catch (err) {
+        console.error('[engine] 学习档案更新失败:', String((err && err.message) || err));
       }
-    } catch (err) {
-      console.error('[engine] 学习档案更新失败:', String((err && err.message) || err));
-    }
+    };
+    const finalized = takeFinalization.finalize(takeRecord, { onPersisted: applyMasteryEvidence });
+    const recordPersisted = finalized.persisted;
+    const persistenceStatus = finalized.persistenceStatus;
+    const persistenceError = finalized.persistenceError;
 
     if (coordinator && finishedTake) {
       try {
@@ -3237,6 +3293,7 @@ wss.on('connection', (socket) => {
       scoreV1, scoreStatus, scoreConfigVersion, scoreAlgorithmVersion,
       scoreInputNoteCount, scoreUnmappedNoteCount, pauseAdjusted,
       persisted: recordPersisted,
+      persistenceStatus,
       persistenceError,
       practiceSessionId: finishedTake ? finishedTake.practiceSessionId : null,
       takeId: businessTakeId,

@@ -1057,6 +1057,24 @@ pub struct JsFollowGroup {
 }
 
 #[napi(object)]
+pub struct JsFollowGroupNormalization {
+    pub group_id: String,
+    pub source_pitch_count: u32,
+    pub canonical_pitch_count: u32,
+    pub duplicate_midi_notes: Vec<u32>,
+    pub duplicate_spellings: Vec<String>,
+}
+
+#[napi(object)]
+pub struct JsNormalizedFollowGroups {
+    pub groups: Vec<JsFollowGroup>,
+    pub normalizations: Vec<JsFollowGroupNormalization>,
+    pub source_pitch_count: u32,
+    pub canonical_pitch_count: u32,
+    pub groups_with_duplicates: u32,
+}
+
+#[napi(object)]
 pub struct JsFollowWrongNote {
     pub midi_note: u32,
     pub at_ms: f64,
@@ -1131,6 +1149,71 @@ fn to_follow_pitch(pitch: JsFollowPitch) -> napi::Result<CoreFollowPitch> {
     Ok(CoreFollowPitch { midi_note: pitch.midi_note as u8, spelling: pitch.spelling })
 }
 
+fn to_core_follow_groups(groups: Vec<JsFollowGroup>) -> napi::Result<Vec<CoreFollowGroup>> {
+    groups
+        .into_iter()
+        .map(|group| {
+            Ok(CoreFollowGroup {
+                group_id: group.group_id,
+                bar: group.bar,
+                playback_beat: group.playback_beat,
+                pitches: group
+                    .pitches
+                    .into_iter()
+                    .map(to_follow_pitch)
+                    .collect::<napi::Result<Vec<_>>>()?,
+            })
+        })
+        .collect()
+}
+
+fn to_js_follow_group(group: CoreFollowGroup) -> JsFollowGroup {
+    JsFollowGroup {
+        group_id: group.group_id,
+        bar: group.bar,
+        playback_beat: group.playback_beat,
+        pitches: group
+            .pitches
+            .into_iter()
+            .map(|pitch| JsFollowPitch {
+                midi_note: u32::from(pitch.midi_note),
+                spelling: pitch.spelling,
+            })
+            .collect(),
+    }
+}
+
+/// Canonicalize Follow targets with the Rust authority (unison collapse,
+/// ordering, identity validation) and return the dropped-member evidence.
+#[napi(js_name = "normalizeFollowGroupsV1")]
+pub fn normalize_follow_groups_v1(
+    groups: Vec<JsFollowGroup>,
+) -> napi::Result<JsNormalizedFollowGroups> {
+    let normalized = rhythm_core::follow::normalize_follow_groups(to_core_follow_groups(groups)?)
+        .map_err(napi_error)?;
+    Ok(JsNormalizedFollowGroups {
+        groups: normalized.groups.into_iter().map(to_js_follow_group).collect(),
+        normalizations: normalized
+            .normalizations
+            .into_iter()
+            .map(|normalization| JsFollowGroupNormalization {
+                group_id: normalization.group_id,
+                source_pitch_count: normalization.source_pitch_count as u32,
+                canonical_pitch_count: normalization.canonical_pitch_count as u32,
+                duplicate_midi_notes: normalization
+                    .duplicate_midi_notes
+                    .into_iter()
+                    .map(u32::from)
+                    .collect(),
+                duplicate_spellings: normalization.duplicate_spellings,
+            })
+            .collect(),
+        source_pitch_count: normalized.source_pitch_count as u32,
+        canonical_pitch_count: normalized.canonical_pitch_count as u32,
+        groups_with_duplicates: normalized.groups_with_duplicates as u32,
+    })
+}
+
 fn to_js_follow_wrong_note(note: CoreFollowWrongNote) -> JsFollowWrongNote {
     JsFollowWrongNote { midi_note: u32::from(note.midi_note), at_ms: note.at_ms }
 }
@@ -1202,21 +1285,7 @@ impl NativeFollowRuntime {
         timing_tolerance_ms: Option<f64>,
         chord_spread_tolerance_ms: Option<f64>,
     ) -> napi::Result<Self> {
-        let groups = groups
-            .into_iter()
-            .map(|group| {
-                Ok(CoreFollowGroup {
-                    group_id: group.group_id,
-                    bar: group.bar,
-                    playback_beat: group.playback_beat,
-                    pitches: group
-                        .pitches
-                        .into_iter()
-                        .map(to_follow_pitch)
-                        .collect::<napi::Result<Vec<_>>>()?,
-                })
-            })
-            .collect::<napi::Result<Vec<_>>>()?;
+        let groups = to_core_follow_groups(groups)?;
         let options = CoreFollowOptions {
             bpm,
             timing_tolerance_ms: timing_tolerance_ms.unwrap_or(60.0),

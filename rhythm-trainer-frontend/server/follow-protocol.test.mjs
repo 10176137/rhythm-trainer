@@ -268,6 +268,10 @@ describe('Follow Take closed loop (default rts launch)', () => {
         scoreStatus: 'FOLLOW_ONLY',
         scope: 'follow',
         strictTiming: false,
+        attemptStatus: 'completed',
+        planAuthority: 'client-rts-projection',
+        planIntegrity: 'unavailable',
+        persistenceStatus: 'persisted',
       },
       engineDiagnostics: { practiceSessionId: null },
     });
@@ -283,6 +287,21 @@ describe('Follow Take closed loop (default rts launch)', () => {
       { midiNote: 60, spelling: 'C4' },
       { midiNote: 64, spelling: 'E4' },
     ]);
+    // Unison collapse is a Rust-authority decision now, and the dropped member
+    // stays auditable instead of disappearing in Node.
+    expect(record.evidence.captureDiagnostics.groupNormalization).toMatchObject({
+      version: 'follow-group-normalization-v1',
+      sourcePitchCount: 5,
+      canonicalPitchCount: 4,
+      groupsWithDuplicates: 1,
+      duplicateGroups: [{
+        groupId: 'g2',
+        sourcePitchCount: 3,
+        canonicalPitchCount: 2,
+        duplicateMidiNotes: [60],
+        duplicateSpellings: ['C4'],
+      }],
+    });
     expect(record.evidence.followBpm).toBe(60);
     expect(record.evidence.followInputs).toHaveLength(6);
     expect(record.evidence.followInputsTruncated).toBe(false);
@@ -338,6 +357,10 @@ describe('Follow Take closed loop (default rts launch)', () => {
       scoreStatus: 'FOLLOW_ONLY',
       endReason: 'completed',
       trustworthy: true,
+      attemptStatus: 'completed',
+      planAuthority: 'client-rts-projection',
+      planIntegrity: 'unavailable',
+      persistenceStatus: 'persisted',
       bpm: 60,
       targetCount: 3,
       followCompletedTargets: 3,
@@ -450,7 +473,21 @@ describe('Follow Take closed loop (default rts launch)', () => {
     expect(legacyTake.status).toBe(200);
     expect(legacyTake.body.takeId).toBe('legacy-s-legacy-follow-test');
     expect(legacyTake.body.legacy).toMatchObject({ source: 'sessions-json', sessionId: 's-legacy-follow-test' });
+    expect(legacyTake.body.assessment).toMatchObject({
+      attemptStatus: 'completed',
+      inputQuality: 'unknown',
+      planAuthority: 'legacy',
+      planIntegrity: 'unavailable',
+      persistenceStatus: 'persisted',
+    });
     expect(legacyTake.body.assessment.timelineReport.sessionId).toBe('s-legacy-follow-test');
+  }, 20000);
+
+  it('rejects semantically invalid Follow targets in the Rust authority', async () => {
+    await expect(startFollow([
+      { groupId: 'bad1', bar: 1, playbackBeat: 2, pitches: [{ midiNote: 60, spelling: 'C4' }] },
+      { groupId: 'bad2', bar: 1, playbackBeat: 1, pitches: [{ midiNote: 62, spelling: 'D4' }] },
+    ])).rejects.toThrow(/校验失败|playback order|顺序/);
   }, 20000);
 
   it('commits an interrupted Follow Take when the connection drops (never a completed fake)', async () => {
@@ -473,6 +510,12 @@ describe('Follow Take closed loop (default rts launch)', () => {
     const record = JSON.parse(readFileSync(path.join(TAKES_DIR, `${started.takeId}.json`), 'utf8'));
     expect(record.lifecycle.endReason).toBe('interrupted');
     expect(record.assessment.trustworthy).toBe(false);
+    expect(record.assessment).toMatchObject({
+      attemptStatus: 'interrupted',
+      planAuthority: 'client-rts-projection',
+      planIntegrity: 'unavailable',
+      persistenceStatus: 'persisted',
+    });
     expect(record.assessment.followReport.completedTargets).toBe(1);
   }, 20000);
 });

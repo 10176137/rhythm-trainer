@@ -18,6 +18,7 @@ import type {
   FollowReportMessage,
   FollowStartRequest,
   FollowStartedMessage,
+  PersistRetryResultMessage,
 } from '../types/engine';
 import type { HandSelection } from '../types/practice';
 import type { TeachingPrescription } from '../types/teaching';
@@ -57,6 +58,7 @@ export interface EngineHandlers {
   onFollowStarted?: (message: FollowStartedMessage) => void;
   onFollowEvent?: (message: FollowEventMessage) => void;
   onFollowReport?: (message: FollowReportMessage) => void;
+  onPersistRetryResult?: (message: PersistRetryResultMessage) => void;
   onError: (message: string) => void;
   onDisconnected: () => void;
 }
@@ -85,6 +87,12 @@ export class EngineBridge {
     reject: (error: Error) => void;
     timer: ReturnType<typeof setTimeout>;
   } | null = null;
+  /** In-flight persistence retries keyed by takeId. */
+  private pendingRetries = new Map<string, {
+    resolve: (message: PersistRetryResultMessage) => void;
+    reject: (error: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  }>();
   private requestSeq = 0;
 
   constructor(handlers: EngineHandlers) {
@@ -114,6 +122,11 @@ export class EngineBridge {
       socket.onclose = () => {
         this.socket = null;
         this.rejectPendingPlans('PLANNER_UNAVAILABLE: 引擎服务已断开，计划请求失败');
+        for (const [takeId, waiter] of this.pendingRetries) {
+          clearTimeout(waiter.timer);
+          waiter.reject(new Error('ENGINE_UNAVAILABLE: 引擎服务已断开，保存重试失败'));
+          this.pendingRetries.delete(takeId);
+        }
         this.handlers.onDisconnected();
       };
       socket.onmessage = (event) => {
@@ -170,6 +183,16 @@ export class EngineBridge {
           case 'follow-report':
             this.handlers.onFollowReport?.(message);
             break;
+          case 'persist-retry-result': {
+            const waiter = this.pendingRetries.get(message.takeId);
+            if (waiter) {
+              this.pendingRetries.delete(message.takeId);
+              clearTimeout(waiter.timer);
+              waiter.resolve(message);
+            }
+            this.handlers.onPersistRetryResult?.(message);
+            break;
+          }
           case 'error': {
             // A failed follow-start has no dedicated error frame; reject the
             // pending start so the launch path can surface one message and
@@ -354,6 +377,34 @@ export class EngineBridge {
 
   followAbandon() {
     this.send({ type: 'follow-abandon' });
+  }
+
+  /**
+   * Retries persistence of a frozen but unsaved Take draft. The server keeps
+   * the same takeId and idempotent write semantics, so this can be called after
+   * a failure or from a reconnected socket.
+   */
+  retryPersist(takeId: string, timeoutMs = 5000): Promise<PersistRetryResultMessage> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+        reject(new Error('ENGINE_UNAVAILABLE: 引擎服务未连接，无法重试保存'));
+        return;
+      }
+      const existing = this.pendingRetries.get(takeId);
+      if (existing) {
+        clearTimeout(existing.timer);
+        existing.reject(new Error('RETRY_SUPERSEDED: 新的重试请求取代了上一次'));
+        this.pendingRetries.delete(takeId);
+      }
+      const timer = setTimeout(() => {
+        if (this.pendingRetries.get(takeId)?.timer === timer) {
+          this.pendingRetries.delete(takeId);
+          reject(new Error(`RETRY_TIMEOUT: ${timeoutMs}ms 内未收到保存结果`));
+        }
+      }, timeoutMs);
+      this.pendingRetries.set(takeId, { resolve, reject, timer });
+      this.send({ type: 'persist-retry', takeId });
+    });
   }
 
   /** 10 lightweight four-timestamp samples; the server keeps the low-RTT one. */

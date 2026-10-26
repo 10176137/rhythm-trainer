@@ -302,6 +302,20 @@ export interface JsFollowGroup {
   playbackBeat: number
   pitches: Array<JsFollowPitch>
 }
+export interface JsFollowGroupNormalization {
+  groupId: string
+  sourcePitchCount: number
+  canonicalPitchCount: number
+  duplicateMidiNotes: Array<number>
+  duplicateSpellings: Array<string>
+}
+export interface JsNormalizedFollowGroups {
+  groups: Array<JsFollowGroup>
+  normalizations: Array<JsFollowGroupNormalization>
+  sourcePitchCount: number
+  canonicalPitchCount: number
+  groupsWithDuplicates: number
+}
 export interface JsFollowWrongNote {
   midiNote: number
   atMs: number
@@ -358,6 +372,11 @@ export interface JsFollowProgress {
   currentGroupId?: string
   isComplete: boolean
 }
+/**
+ * Canonicalize Follow targets with the Rust authority (unison collapse,
+ * ordering, identity validation) and return the dropped-member evidence.
+ */
+export declare function normalizeFollowGroupsV1(groups: Array<JsFollowGroup>): JsNormalizedFollowGroups
 export interface JsTakeStart {
   practiceSessionId: string
   takeId: string

@@ -429,6 +429,7 @@ export interface EngineReportMessage {
   pauseAdjusted?: boolean;
   /** False when the engine could generate a report but could not persist the session record. */
   persisted?: boolean;
+  persistenceStatus?: 'persisted' | 'pending-retry' | 'unknown' | string | null;
   persistenceError?: string | null;
   /** v0.6.2: PracticeSession / PerformanceTake identity of this report. */
   practiceSessionId?: string;
@@ -534,9 +535,21 @@ export interface FollowReportMessage {
   takeId: string;
   report: FollowReport;
   persisted: boolean;
+  persistenceStatus?: 'persisted' | 'pending-retry' | 'unknown' | string | null;
   persistenceError: string | null;
   endReason: 'completed' | 'interrupted';
   progress?: FollowProgress;
+}
+
+/** Result of an idempotent retry for one frozen but unsaved Take draft. */
+export interface PersistRetryResultMessage {
+  type: 'persist-retry-result';
+  takeId: string;
+  persisted: boolean;
+  persistenceStatus: 'persisted' | 'pending-retry' | 'unknown' | string;
+  persistenceError: string | null;
+  created?: boolean;
+  attempts?: number;
 }
 
 export interface FollowStartRequest {
@@ -605,6 +618,7 @@ export type EngineServerMessage =
   | FollowStartedMessage
   | FollowEventMessage
   | FollowReportMessage
+  | PersistRetryResultMessage
   | { type: 'error'; message: string };
 
 export interface EngineStartRequest {
@@ -663,4 +677,5 @@ export type EngineClientMessage =
   | { type: 'follow-resume'; atMs?: number }
   | { type: 'follow-finish' }
   | { type: 'follow-abandon' }
+  | { type: 'persist-retry'; takeId: string }
   | { type: 'finish' };

@@ -2,6 +2,9 @@ import type { FollowReport, FollowTargetResult } from '../score-engine/practice/
 
 interface Props {
   report: FollowReport;
+  persistence?: { persisted: boolean; status: string; error: string | null } | null;
+  onRetrySave?: () => void;
+  retrying?: boolean;
 }
 
 function formatMs(value: number | null | undefined): string {
@@ -19,7 +22,7 @@ function targetStatus(target: FollowTargetResult): string {
   return target.standard ? '标准' : '有偏差';
 }
 
-export default function FollowReportPanel({ report }: Props) {
+export default function FollowReportPanel({ report, persistence = null, onRetrySave, retrying = false }: Props) {
   const shownTargets = report.targets.slice(0, 24);
   return (
     <section className="card follow-report" aria-label="跟手练习结果">
@@ -34,6 +37,22 @@ export default function FollowReportPanel({ report }: Props) {
         光标只由你的正确输入推进；下面的节奏指标比较相邻正确起音的实际间隔与谱面时值，
         不是固定时钟测验的 Perfect/Good/Miss 成绩。
       </p>
+      {persistence && !persistence.persisted && (
+        <div className="error-strip" role="alert">
+          <strong>结果已固定，但尚未保存</strong>
+          <p>{persistence.error ?? '持久化失败'}。历史记录中还没有这次 Take；请修复本地存储后重试。</p>
+          {onRetrySave && (
+            <button
+              type="button"
+              className="button button-outline button-small"
+              onClick={onRetrySave}
+              disabled={retrying}
+            >
+              {retrying ? '正在重试…' : '重试保存'}
+            </button>
+          )}
+        </div>
+      )}
       <div className="follow-summary">
         <div><span>完成目标</span><strong>{report.completedTargets} / {report.totalTargets}</strong></div>
         <div><span>标准</span><strong className="text-good">{report.standardTargets}</strong></div>

@@ -219,6 +219,12 @@ describe('R2-3h: plan protocol over the real engine server', () => {
       },
     });
     expect(takeOnDisk.assessment.timelineReport.plannerAuthority).toBe('rust');
+    expect(takeOnDisk.assessment).toMatchObject({
+      attemptStatus: 'completed',
+      planAuthority: 'server-rust',
+      planIntegrity: 'verified',
+      persistenceStatus: 'persisted',
+    });
 
     const list = await (await fetch(`http://127.0.0.1:${PORT}/api/sessions`)).json();
     const summary = list.items.find((item) => item.sessionId === report.sessionId);
@@ -325,6 +331,10 @@ describe('R2-3h: plan protocol over the real engine server', () => {
         scoreStatus: 'FOLLOW_ONLY',
         scope: 'follow',
         strictTiming: false,
+        attemptStatus: 'completed',
+        planAuthority: 'server-rust',
+        planIntegrity: 'verified',
+        persistenceStatus: 'persisted',
       },
     });
     expect(record.assessment.timelineReport).toBeUndefined();

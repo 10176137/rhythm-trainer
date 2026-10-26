@@ -25,6 +25,129 @@ pub struct FollowGroup {
     pub pitches: Vec<FollowPitch>,
 }
 
+/// One group's canonicalization evidence. Duplicate MIDI notes are collapsed to
+/// one key for the Follow cursor, but the source spellings that were collapsed
+/// stay auditable here instead of disappearing in the transport layer.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FollowGroupNormalization {
+    pub group_id: String,
+    pub source_pitch_count: usize,
+    pub canonical_pitch_count: usize,
+    pub duplicate_midi_notes: Vec<u8>,
+    pub duplicate_spellings: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NormalizedFollowGroups {
+    pub groups: Vec<FollowGroup>,
+    pub normalizations: Vec<FollowGroupNormalization>,
+    pub source_pitch_count: usize,
+    pub canonical_pitch_count: usize,
+    pub groups_with_duplicates: usize,
+}
+
+/// Canonicalizes a Follow target list before runtime construction.
+///
+/// Follow advances on the set of distinct MIDI keys in the current group, so a
+/// group that notates the same key in two voices must count that key once. This
+/// decision (and the ordering/identity validation around it) is music semantics
+/// and therefore lives in the Rust authority, not in Node.
+pub fn normalize_follow_groups(
+    groups: Vec<FollowGroup>,
+) -> Result<NormalizedFollowGroups, CoreError> {
+    if groups.is_empty() {
+        return Err(CoreError::InvalidPattern("follow plan has no targets".to_string()));
+    }
+    if groups.len() > 20_000 {
+        return Err(CoreError::InvalidPattern(
+            "follow target count exceeds 20000".to_string(),
+        ));
+    }
+    let mut seen_group_ids = HashSet::new();
+    let mut previous_beat = f64::NEG_INFINITY;
+    let mut source_pitch_count = 0;
+    let mut canonical_pitch_count = 0;
+    let mut normalized_groups = Vec::with_capacity(groups.len());
+    let mut normalizations = Vec::new();
+    for group in groups {
+        let group_id = group.group_id.trim().to_string();
+        if group_id.is_empty() || group_id.len() > 200 {
+            return Err(CoreError::InvalidPattern(
+                "follow group id must be non-empty and at most 200 chars".to_string(),
+            ));
+        }
+        if !seen_group_ids.insert(group_id.clone()) {
+            return Err(CoreError::InvalidPattern(format!(
+                "duplicate follow group id: {group_id}"
+            )));
+        }
+        if group.bar == 0 {
+            return Err(CoreError::InvalidPattern(format!(
+                "follow group {group_id} has an invalid bar"
+            )));
+        }
+        if !group.playback_beat.is_finite() || group.playback_beat < 0.0 {
+            return Err(CoreError::InvalidPattern(format!(
+                "follow group {group_id} has an invalid playback beat"
+            )));
+        }
+        if group.playback_beat < previous_beat {
+            return Err(CoreError::InvalidPattern(
+                "follow groups are not in playback order".to_string(),
+            ));
+        }
+        previous_beat = group.playback_beat;
+        if group.pitches.is_empty() {
+            return Err(CoreError::InvalidPattern(format!(
+                "follow group {group_id} has no MIDI-mappable pitch"
+            )));
+        }
+        let source_count = group.pitches.len();
+        let mut seen_notes = HashSet::new();
+        let mut pitches = Vec::with_capacity(source_count);
+        let mut duplicate_midi_notes = Vec::new();
+        let mut duplicate_spellings = Vec::new();
+        for pitch in group.pitches {
+            if pitch.spelling.trim().is_empty() {
+                return Err(CoreError::InvalidPattern(format!(
+                    "follow group {group_id} has a pitch without a spelling"
+                )));
+            }
+            if seen_notes.insert(pitch.midi_note) {
+                pitches.push(pitch);
+            } else {
+                duplicate_midi_notes.push(pitch.midi_note);
+                duplicate_spellings.push(pitch.spelling);
+            }
+        }
+        source_pitch_count += source_count;
+        canonical_pitch_count += pitches.len();
+        normalizations.push(FollowGroupNormalization {
+            group_id: group_id.clone(),
+            source_pitch_count: source_count,
+            canonical_pitch_count: pitches.len(),
+            duplicate_midi_notes,
+            duplicate_spellings,
+        });
+        normalized_groups.push(FollowGroup {
+            group_id,
+            bar: group.bar,
+            playback_beat: group.playback_beat,
+            pitches,
+        });
+    }
+    Ok(NormalizedFollowGroups {
+        groups: normalized_groups,
+        groups_with_duplicates: normalizations
+            .iter()
+            .filter(|normalization| !normalization.duplicate_midi_notes.is_empty())
+            .count(),
+        normalizations,
+        source_pitch_count,
+        canonical_pitch_count,
+    })
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FollowOptions {
     pub bpm: f64,
@@ -445,5 +568,47 @@ mod tests {
         let extra = runtime.push_note(62, 100.0).unwrap();
         assert_eq!(extra.kind, "extra");
         assert_eq!(runtime.finish().extra_note_count, 1);
+    }
+
+    #[test]
+    fn normalization_dedupes_unison_and_preserves_source_evidence() {
+        let normalized = normalize_follow_groups(vec![
+            group("g1", 0.0, vec![pitch(60, "C4"), pitch(60, "C4"), pitch(64, "E4")]),
+            group("g2", 1.0, vec![pitch(67, "G4")]),
+        ])
+        .unwrap();
+        assert_eq!(normalized.groups[0].pitches, vec![pitch(60, "C4"), pitch(64, "E4")]);
+        assert_eq!(normalized.groups_with_duplicates, 1);
+        assert_eq!(normalized.source_pitch_count, 4);
+        assert_eq!(normalized.canonical_pitch_count, 3);
+        assert_eq!(normalized.normalizations[0].duplicate_midi_notes, vec![60]);
+        assert_eq!(
+            normalized.normalizations[0].duplicate_spellings,
+            vec!["C4".to_string()]
+        );
+        assert!(normalized.normalizations[1].duplicate_midi_notes.is_empty());
+    }
+
+    #[test]
+    fn normalization_rejects_semantically_invalid_target_lists() {
+        assert!(normalize_follow_groups(Vec::new()).is_err());
+        assert!(normalize_follow_groups(vec![group("g1", 0.0, vec![])]).is_err());
+        assert!(normalize_follow_groups(vec![
+            group("g1", 0.0, vec![pitch(60, "C4")]),
+            group("g1", 1.0, vec![pitch(62, "D4")]),
+        ])
+        .is_err());
+        assert!(normalize_follow_groups(vec![
+            group("g1", 1.0, vec![pitch(60, "C4")]),
+            group("g2", 0.0, vec![pitch(62, "D4")]),
+        ])
+        .is_err());
+        assert!(normalize_follow_groups(vec![FollowGroup {
+            group_id: "g1".to_string(),
+            bar: 0,
+            playback_beat: 0.0,
+            pitches: vec![pitch(60, "C4")],
+        }])
+        .is_err());
     }
 }

@@ -204,6 +204,13 @@ export default function App() {
   const duetTimersRef = useRef<number[]>([]);
   const [followStatus, setFollowStatus] = useState<SessionStatus>('idle');
   const [followReport, setFollowReport] = useState<FollowReport | null>(null);
+  const [followPersistence, setFollowPersistence] = useState<{
+    takeId: string;
+    persisted: boolean;
+    status: string;
+    error: string | null;
+  } | null>(null);
+  const [followRetrying, setFollowRetrying] = useState(false);
   const [followView, setFollowView] = useState<{
     index: number;
     total: number;
@@ -447,6 +454,12 @@ export default function App() {
     followStatusRef.current = 'completed';
     setFollowStatus('completed');
     setFollowReport(report);
+    setFollowPersistence({
+      takeId: message.takeId,
+      persisted: message.persisted,
+      status: message.persistenceStatus ?? (message.persisted ? 'persisted' : 'pending-retry'),
+      error: message.persistenceError,
+    });
     setFollowView((prev) => prev ? {
       ...prev,
       index: report.completedTargets,
@@ -454,12 +467,18 @@ export default function App() {
       completed: report.completedTargets,
       currentGroup: followGroupsRef.current[report.completedTargets] ?? null,
     } : prev);
+    const interrupted = message.endReason === 'interrupted';
+    const saved = message.persisted;
+    const summary = `标准 ${report.standardTargets} / 完成 ${report.completedTargets} / 目标 ${report.totalTargets}；错误音 ${report.wrongNoteCount}，额外音 ${report.extraNoteCount}。`;
+    const persistenceNote = saved
+      ? '已保存为一个 Follow Take。'
+      : `保存失败：${message.persistenceError ?? '未知错误'}。本轮结果已固定但尚未写入历史，可重试保存。`;
     addFeedback(
-      message.endReason === 'interrupted' ? '跟手练习已中断' : '跟手练习完成',
-      `标准 ${report.standardTargets} / 完成 ${report.completedTargets} / 目标 ${report.totalTargets}；错误音 ${report.wrongNoteCount}，额外音 ${report.extraNoteCount}。${message.endReason === 'interrupted' ? '本轮记为不可信 Take。' : '已保存为一个 Follow Take。'}跟手模式不使用固定时间 strict 评分。`,
-      message.endReason === 'interrupted' ? 'warning' : 'success',
+      interrupted ? '跟手练习已中断' : saved ? '跟手练习完成' : '跟手练习已结束，但结果未保存',
+      `${summary}${interrupted ? '本轮记为不可信 Take。' : ''}${persistenceNote}跟手模式不使用固定时间 strict 评分。`,
+      interrupted || !saved ? 'warning' : 'success',
     );
-    setHistoryRefresh((value) => value + 1);
+    if (saved) setHistoryRefresh((value) => value + 1);
   }, [addFeedback]);
 
   const session = usePracticeSession({
@@ -541,7 +560,47 @@ export default function App() {
     };
   }, [addFeedback]);
 
-  const reportUnsaved = session.status === 'completed' && session.reportPersisted === false;
+  const handleTimelineRetrySave = useCallback(async () => {
+    if (!session.takeId) return;
+    try {
+      const result = await session.retryPersist(session.takeId);
+      if (result.persisted) {
+        addFeedback('报告已保存', '本次 Take 已写入本地历史。', 'success');
+        setHistoryRefresh((value) => value + 1);
+      } else {
+        addFeedback('仍未保存', result.persistenceError ?? '持久化仍然失败。', 'warning');
+      }
+    } catch (error) {
+      addFeedback('重试保存失败', error instanceof Error ? error.message : String(error), 'warning');
+    }
+  }, [session.takeId, session.retryPersist, addFeedback]);
+
+  const handleFollowRetrySave = useCallback(async () => {
+    if (!followPersistence || followPersistence.persisted) return;
+    setFollowRetrying(true);
+    try {
+      const result = await session.retryPersist(followPersistence.takeId);
+      setFollowPersistence({
+        takeId: result.takeId,
+        persisted: result.persisted,
+        status: result.persistenceStatus,
+        error: result.persistenceError,
+      });
+      if (result.persisted) {
+        addFeedback('跟手结果已保存', '这次 Follow Take 已写入本地历史。', 'success');
+        setHistoryRefresh((value) => value + 1);
+      } else {
+        addFeedback('仍未保存', result.persistenceError ?? '持久化仍然失败。', 'warning');
+      }
+    } catch (error) {
+      addFeedback('重试保存失败', error instanceof Error ? error.message : String(error), 'warning');
+    } finally {
+      setFollowRetrying(false);
+    }
+  }, [followPersistence, session.retryPersist, addFeedback]);
+
+  const reportUnsaved = (session.status === 'completed' && session.reportPersisted === false)
+    || (followPersistence !== null && !followPersistence.persisted);
   const practiceInProgress = prepRemain !== null
     || starting
     || session.active
@@ -605,6 +664,7 @@ export default function App() {
     followStatusRef.current = 'idle';
     setFollowStatus('idle');
     setFollowReport(null);
+    setFollowPersistence(null);
     setFollowView(null);
   };
 
@@ -646,6 +706,7 @@ export default function App() {
       last: null,
     });
     setFollowReport(null);
+    setFollowPersistence(null);
     setEvents([]); setInputNote('—'); setPitchMismatch(false); setElapsed(0);
     followStatusRef.current = 'idle';
     setFollowStatus('idle');
@@ -3017,11 +3078,25 @@ export default function App() {
 
           <section className="metrics-grid"><div className="metric-card card"><div className="metric-label">当前进度 <span>◷</span></div><div className="metric-value">{config.advanceMode === 'follow' ? (followView?.completed ?? 0) : engineTargets ? Math.min(session.nextUnmatchedIndex, session.liveStats.total) : 0}<small> / {config.advanceMode === 'follow' ? (followView?.total ?? 0) : engineTargets ? session.liveStats.total : scopedTargetCount}</small></div><div className="progress-track"><div style={{ width: `${config.advanceMode === 'follow' ? (followView?.total ? Math.min(100, (followView.completed / followView.total) * 100) : 0) : engineTargets && session.liveStats.total ? Math.min(100, session.nextUnmatchedIndex / session.liveStats.total * 100) : 0}%` }} /></div><div className="metric-foot">引擎已判定的目标进度</div></div><div className="metric-card card"><div className="metric-label">输入次数 <span>⌁</span></div><div className="metric-value">{events.filter(e => e.type === 'note-on').length}<small> 次</small></div><div className="metric-foot">本次会话采集到的按键</div></div><div className="metric-card card"><div className="metric-label">引擎命中 <span>％</span></div><div className="metric-value">{liveHitRate ?? '—'}<small>{liveHitRate !== null ? '%' : ''}</small></div><div className="metric-foot">实时判定 Perfect+Good / 目标数</div></div><div className="metric-card card"><div className="metric-label">引擎统计 <span>♫</span></div><div className="metric-value metric-note">{matchedLabel}</div><div className="metric-foot">命中 / 目标(漏拍与多击见报告)</div></div></section>
 
-          {config.advanceMode === 'follow' && followReport && <FollowReportPanel report={followReport} />}
+          {config.advanceMode === 'follow' && followReport && (
+            <FollowReportPanel
+              report={followReport}
+              persistence={followPersistence}
+              onRetrySave={handleFollowRetrySave}
+              retrying={followRetrying}
+            />
+          )}
           {session.reportPersisted === false && (
             <section className="card error-strip" role="alert">
               <strong>报告已生成但未能保存</strong>
               <p>{session.reportPersistenceError ?? '会话记录持久化失败'}。本轮不会被当作已保存记录；请保留页面并检查本地数据目录后再重试。</p>
+              <button
+                type="button"
+                className="button button-outline button-small"
+                onClick={() => { void handleTimelineRetrySave(); }}
+              >
+                重试保存
+              </button>
             </section>
           )}
           {status === 'completed' && config.modeId !== 'free' && config.advanceMode !== 'follow' && !session.report && (
