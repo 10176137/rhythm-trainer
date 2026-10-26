@@ -3089,7 +3089,7 @@ export default function App() {
               <div className="settings-constraints">
                 <p><strong>预备拍：</strong>默认固定 3 秒（按当前 BPM 换算为拍数，例如 40 BPM 为 2 拍）；A2 不提供可配置选项。</p>
                 <p><strong>音频输出延迟：</strong>尚未校准（uncalibrated）；时间偏差用于练习反馈，不代表采样级物理精度。</p>
-                <p><strong>分手/循环：</strong>它们现在是乐谱跟练的配置项，不再是独立模式；选择单手或开启“只练所选小节”即可。</p>
+                <p><strong>分手/循环：</strong>它们现在是练习模式的配置项，不再是独立模式；选择单手或开启“只练所选小节”即可。</p>
                 <p><strong>小节循环：</strong>当前只练所选范围一次，不跨轮重复；轮次边界仍在后续能力中。</p>
                 <p><strong>配置快照：</strong>开始后本轮配置冻结；保存后点开始/再练一次会用当前配置新开一轮，不恢复旧 Take。</p>
                 <p><strong>参考播放：</strong>系统伴弹开启时使用固定时间；运行中不修改 BPM。</p>

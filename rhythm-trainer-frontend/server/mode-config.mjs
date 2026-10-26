@@ -33,7 +33,7 @@ const MODE_POLICIES = {
     userOverrides: ['profile', 'durationPolicy', 'feedback'],
   },
   score: {
-    label: '乐谱跟练',
+    label: '练习模式',
     judgmentProfile: 'standard',
     durationPolicy: 'strict-keydown',
     scoringStartPolicy: 'first-target-early-window',
