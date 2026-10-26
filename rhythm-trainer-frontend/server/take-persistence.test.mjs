@@ -1,8 +1,10 @@
-// Follow persistence fault injection against the REAL engine server.
+// Take persistence fault injection against the REAL engine server (Timeline
+// and Follow).
 //
 // Covers the Stage 1 requirement: a failed write must keep the frozen draft,
 // report persisted=false (never a fake "saved"), and allow an idempotent retry
 // with the same takeId — including after the finishing connection closed.
+// Timeline retry also proves the mastery side effect runs exactly once.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { spawn } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
@@ -13,7 +15,7 @@ import WebSocket from 'ws';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const PORT = 8871 + Math.floor(Math.random() * 20);
-const DATA_DIR = path.join(ROOT, 'node_modules', '.cache', `follow-persistence-${PORT}`);
+const DATA_DIR = path.join(ROOT, 'node_modules', '.cache', `take-persistence-${PORT}`);
 const TAKES_DIR = path.join(DATA_DIR, 'takes');
 
 let server;
@@ -104,6 +106,25 @@ async function startAndComplete() {
   return { started, report };
 }
 
+async function startTimelineAndFinish() {
+  client.send({
+    type: 'start',
+    modeId: 'score',
+    bpm: 120,
+    profile: 'standard',
+    countInBeats: 4,
+    ticksPerQuarter: 960,
+    atoms: [{ startTick: 0, durationTicks: 960, kind: 'note', bar: 1, beat: 1 }],
+    assisted: false,
+  });
+  const started = await client.waitFor('started');
+  const target = started.targets[0];
+  client.send({ type: 'hit', seq: 1, atMs: target.atMs + 8, notes: [60] });
+  client.send({ type: 'tick', nowMs: target.atMs + 250 + 500 });
+  client.send({ type: 'finish' });
+  return client.waitFor('report');
+}
+
 function takeFiles() {
   if (!existsSync(TAKES_DIR)) return [];
   return readdirSync(TAKES_DIR).filter((name) => name.endsWith('.json'));
@@ -188,5 +209,41 @@ describe('Follow Take persistence failure', () => {
     const retried = await client.waitFor('persist-retry-result', (message) => message.takeId === takeId);
     expect(retried).toMatchObject({ persisted: true, persistenceStatus: 'persisted' });
     expect(takeFiles()).toContain(`${takeId}.json`);
+  }, 30000);
+
+  it('retries a failed Timeline Take and applies mastery evidence exactly once', async () => {
+    const profilePath = path.join(DATA_DIR, 'profile.json');
+    expect(existsSync(profilePath)).toBe(false);
+
+    setTakesWritable(false);
+    const report = await startTimelineAndFinish();
+    expect(report.persisted).toBe(false);
+    expect(report.persistenceStatus).toBe('pending-retry');
+    const takeId = report.takeId;
+    expect(takeFiles()).not.toContain(`${takeId}.json`);
+    // A failed write must not feed the derived mastery cache either.
+    expect(existsSync(profilePath)).toBe(false);
+
+    setTakesWritable(true);
+    client.send({ type: 'persist-retry', takeId });
+    const retried = await client.waitFor('persist-retry-result', (message) => message.takeId === takeId);
+    expect(retried).toMatchObject({ persisted: true, persistenceStatus: 'persisted' });
+
+    const record = JSON.parse(readFileSync(path.join(TAKES_DIR, `${takeId}.json`), 'utf8'));
+    expect(record.assessment).toMatchObject({
+      attemptStatus: 'completed',
+      planAuthority: 'client-rts-projection',
+      planIntegrity: 'unavailable',
+      persistenceStatus: 'persisted',
+    });
+    expect(record.assessment.timelineReport).toBeTruthy();
+    expect(existsSync(profilePath)).toBe(true);
+    const profileAfterFirst = readFileSync(profilePath, 'utf8');
+
+    // A duplicate retry is idempotent: one Take, one mastery update.
+    client.send({ type: 'persist-retry', takeId });
+    await client.waitFor('persist-retry-result', (message) => message.takeId === takeId);
+    expect(readFileSync(profilePath, 'utf8')).toBe(profileAfterFirst);
+    expect(takeFiles().filter((name) => name === `${takeId}.json`)).toHaveLength(1);
   }, 30000);
 });
