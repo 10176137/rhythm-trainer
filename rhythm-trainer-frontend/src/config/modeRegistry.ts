@@ -21,8 +21,8 @@ export const modeRegistry: Record<PracticeModeId, ModeDefinition> = {
     supportsLiveFeedback: true, category: '基础技能',
   },
   score: {
-    id: 'score', title: '练习模式', subtitle: '跟随乐谱演奏',
-    description: '在乐谱上定位当前音符，并在演奏时给出即时反馈。', icon: '♫',
+    id: 'score', title: '练习模式', subtitle: '按设置练习',
+    description: '按当前曲谱与练习设置演奏；开始后由本地引擎给出实时判定、逐小节证据与练习报告。', icon: '♫',
     requiresScore: true, requiresMidi: true, supportsHandSelection: true,
     supportsLiveFeedback: true, category: '基础技能',
   },
