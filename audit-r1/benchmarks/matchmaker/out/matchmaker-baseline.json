@@ -1,0 +1,392 @@
+{
+  "schemaVersion": 1,
+  "stage": 6,
+  "generatedAt": "2026-10-26T06:58:31Z",
+  "versions": {
+    "python": "3.12.15",
+    "platform": "macOS-27.2-arm64-arm-64bit",
+    "matchmaker": "0.3.0",
+    "pymatchmaker": "0.3.0",
+    "partitura": "1.9.0",
+    "mido": "unknown",
+    "license": "Apache-2.0 (pymatchmaker 0.3.0, PyPI metadata)",
+    "role": "independent offline experiment only; not imported by production"
+  },
+  "datasetVersion": "alignment-bench-v1",
+  "aggregate": {
+    "cases": 7,
+    "executed": 7,
+    "failed": 0,
+    "deterministic": true,
+    "meanIndexAccuracy": 1.0,
+    "comparableCases": 5,
+    "nonComparableCases": [
+      "fw-duplicate-note",
+      "fw-extra-after-complete"
+    ],
+    "totalFalseAdvances": 0,
+    "reachedExpectedCompleted": 6,
+    "positionCountMismatches": [
+      "fw-duplicate-note",
+      "fw-extra-after-complete"
+    ]
+  },
+  "cases": [
+    {
+      "caseId": "fw-clean",
+      "scenario": "Follow: clean three-target performance",
+      "ok": true,
+      "inputs": 3,
+      "positions": [
+        0.0,
+        1.0,
+        2.0
+      ],
+      "expectedIndices": [
+        0,
+        1,
+        2
+      ],
+      "predictedIndices": [
+        0,
+        1,
+        2
+      ],
+      "metrics": {
+        "comparable": true,
+        "droppedInputs": 0,
+        "positionCountMatches": true,
+        "indexAccuracy": 1.0,
+        "falseAdvances": 0,
+        "correctRecoveries": 3,
+        "reachedExpectedCompleted": true,
+        "runtimeMs": 10.28
+      },
+      "falseAdvances": [],
+      "baseline": {
+        "inputQuality": "healthy",
+        "kinds": [
+          "correct",
+          "correct",
+          "complete"
+        ],
+        "completedTargets": 3,
+        "standardTargets": 3,
+        "wrongNoteCount": 0,
+        "extraNoteCount": 0,
+        "duplicateNoteCount": 0,
+        "pendingTargetId": null,
+        "intervalJudged": [
+          false,
+          true,
+          true
+        ],
+        "notes": "Intervals match the notated beats at 60 BPM."
+      }
+    },
+    {
+      "caseId": "fw-skip-target",
+      "scenario": "Follow: one target skipped, performer continues",
+      "ok": true,
+      "inputs": 2,
+      "positions": [
+        0.0,
+        1.0
+      ],
+      "expectedIndices": [
+        0,
+        1
+      ],
+      "predictedIndices": [
+        0,
+        1
+      ],
+      "metrics": {
+        "comparable": true,
+        "droppedInputs": 0,
+        "positionCountMatches": true,
+        "indexAccuracy": 1.0,
+        "falseAdvances": 0,
+        "correctRecoveries": 1,
+        "reachedExpectedCompleted": true,
+        "runtimeMs": 3.289
+      },
+      "falseAdvances": [],
+      "baseline": {
+        "inputQuality": "healthy",
+        "kinds": [
+          "correct",
+          "wrong"
+        ],
+        "completedTargets": 1,
+        "standardTargets": 1,
+        "wrongNoteCount": 1,
+        "extraNoteCount": 0,
+        "duplicateNoteCount": 0,
+        "pendingTargetId": "g2",
+        "intervalJudged": [
+          false
+        ],
+        "notes": "E4 while waiting on D4 is wrong and must not advance."
+      }
+    },
+    {
+      "caseId": "fw-wrong-then-correct",
+      "scenario": "Follow: wrong note then recovery",
+      "ok": true,
+      "inputs": 4,
+      "positions": [
+        0.0,
+        0.0,
+        1.0,
+        2.0
+      ],
+      "expectedIndices": [
+        0,
+        0,
+        1,
+        2
+      ],
+      "predictedIndices": [
+        0,
+        0,
+        1,
+        2
+      ],
+      "metrics": {
+        "comparable": true,
+        "droppedInputs": 0,
+        "positionCountMatches": true,
+        "indexAccuracy": 1.0,
+        "falseAdvances": 0,
+        "correctRecoveries": 3,
+        "reachedExpectedCompleted": true,
+        "runtimeMs": 3.869
+      },
+      "falseAdvances": [],
+      "baseline": {
+        "inputQuality": "healthy",
+        "kinds": [
+          "wrong",
+          "correct",
+          "correct",
+          "complete"
+        ],
+        "completedTargets": 3,
+        "standardTargets": 2,
+        "wrongNoteCount": 1,
+        "extraNoteCount": 0,
+        "duplicateNoteCount": 0,
+        "pendingTargetId": null,
+        "intervalJudged": [
+          false,
+          true,
+          true
+        ],
+        "notes": "The wrong note keeps the first target non-standard; later targets recover."
+      }
+    },
+    {
+      "caseId": "fw-chord-spread",
+      "scenario": "Follow: chord arrives spread beyond tolerance",
+      "ok": true,
+      "inputs": 3,
+      "positions": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "expectedIndices": [
+        0,
+        0,
+        1
+      ],
+      "predictedIndices": [
+        0,
+        0,
+        1
+      ],
+      "metrics": {
+        "comparable": true,
+        "droppedInputs": 0,
+        "positionCountMatches": true,
+        "indexAccuracy": 1.0,
+        "falseAdvances": 0,
+        "correctRecoveries": 2,
+        "reachedExpectedCompleted": true,
+        "runtimeMs": 2.811
+      },
+      "falseAdvances": [],
+      "baseline": {
+        "inputQuality": "healthy",
+        "kinds": [
+          "partial",
+          "correct",
+          "complete"
+        ],
+        "completedTargets": 2,
+        "standardTargets": 0,
+        "wrongNoteCount": 0,
+        "extraNoteCount": 0,
+        "duplicateNoteCount": 0,
+        "pendingTargetId": null,
+        "intervalJudged": [
+          false,
+          true
+        ],
+        "notes": "The chord spread (100 ms) and the next interval (1100 ms vs 1000 ms) both exceed tolerance."
+      }
+    },
+    {
+      "caseId": "fw-duplicate-note",
+      "scenario": "Follow: repeated key inside an incomplete chord",
+      "ok": true,
+      "inputs": 4,
+      "positions": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "expectedIndices": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "predictedIndices": [
+        0,
+        0,
+        1
+      ],
+      "metrics": {
+        "comparable": false,
+        "droppedInputs": 1,
+        "positionCountMatches": false,
+        "indexAccuracy": null,
+        "falseAdvances": 0,
+        "correctRecoveries": 0,
+        "reachedExpectedCompleted": true,
+        "runtimeMs": 3.853
+      },
+      "falseAdvances": [],
+      "baseline": {
+        "inputQuality": "healthy",
+        "kinds": [
+          "partial",
+          "duplicate",
+          "correct",
+          "complete"
+        ],
+        "completedTargets": 2,
+        "standardTargets": 0,
+        "wrongNoteCount": 0,
+        "extraNoteCount": 0,
+        "duplicateNoteCount": 1,
+        "pendingTargetId": null,
+        "intervalJudged": [
+          false,
+          true
+        ],
+        "notes": "The second C4 is a duplicate while the chord is incomplete; the spread and next interval are non-standard."
+      }
+    },
+    {
+      "caseId": "fw-pause-resume",
+      "scenario": "Follow: pause then resume invalidates the next interval",
+      "ok": true,
+      "inputs": 3,
+      "positions": [
+        0.0,
+        1.0,
+        2.0
+      ],
+      "expectedIndices": [
+        0,
+        1,
+        2
+      ],
+      "predictedIndices": [
+        0,
+        1,
+        2
+      ],
+      "metrics": {
+        "comparable": true,
+        "droppedInputs": 0,
+        "positionCountMatches": true,
+        "indexAccuracy": 1.0,
+        "falseAdvances": 0,
+        "correctRecoveries": 3,
+        "reachedExpectedCompleted": true,
+        "runtimeMs": 4.133
+      },
+      "falseAdvances": [],
+      "baseline": {
+        "inputQuality": "healthy",
+        "kinds": [
+          "correct",
+          "correct",
+          "complete"
+        ],
+        "completedTargets": 3,
+        "standardTargets": 3,
+        "wrongNoteCount": 0,
+        "extraNoteCount": 0,
+        "duplicateNoteCount": 0,
+        "pendingTargetId": null,
+        "intervalJudged": [
+          false,
+          false,
+          true
+        ],
+        "notes": "The interval across the pause is not judged; the next one is."
+      }
+    },
+    {
+      "caseId": "fw-extra-after-complete",
+      "scenario": "Follow: input after the final target",
+      "ok": true,
+      "inputs": 2,
+      "positions": [],
+      "expectedIndices": [
+        0,
+        1
+      ],
+      "predictedIndices": [],
+      "metrics": {
+        "comparable": false,
+        "droppedInputs": 2,
+        "positionCountMatches": false,
+        "indexAccuracy": null,
+        "falseAdvances": 0,
+        "correctRecoveries": 0,
+        "reachedExpectedCompleted": false,
+        "runtimeMs": 2.526
+      },
+      "falseAdvances": [],
+      "baseline": {
+        "inputQuality": "healthy",
+        "kinds": [
+          "complete",
+          "extra"
+        ],
+        "completedTargets": 1,
+        "standardTargets": 1,
+        "wrongNoteCount": 0,
+        "extraNoteCount": 1,
+        "duplicateNoteCount": 0,
+        "pendingTargetId": null,
+        "intervalJudged": [
+          false
+        ],
+        "notes": "After completion, further input is extra."
+      }
+    }
+  ],
+  "knownLimitations": [
+    "Synthetic Follow cases only; no real-device or audio input.",
+    "Offline MIDI file, not a live stream; response latency is not measured.",
+    "Pause semantics are not modeled by the generated MIDI file; the pause case is reported as not comparable.",
+    "Matchmaker position -> group index is a nearest-beat mapping, not a note-level identity match."
+  ]
+}

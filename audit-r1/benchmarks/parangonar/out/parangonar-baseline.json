@@ -1,0 +1,1815 @@
+{
+  "schemaVersion": 1,
+  "stage": 4,
+  "generatedAt": "2026-10-26T06:54:28Z",
+  "versions": {
+    "python": "3.13.9",
+    "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+    "parangonar": "3.4.0",
+    "partitura": "1.9.0",
+    "numpy": "2.5.4",
+    "license": "Apache-2.0 (Parangonar 3.4.0 License-Expression)",
+    "upstreamTag": "3.4.0",
+    "upstreamCommit": "737f6fa32ac432ae17aa9bbc3adb21e4e8d15ced",
+    "role": "offline research only; not imported by production"
+  },
+  "datasetVersion": "alignment-bench-v1",
+  "datasetManifestSha256": "3224cab81fb65bfca2d0cbe545330e3ca983463100474d30e7b2ac79ceae9fc5",
+  "aggregate": {
+    "cases": 19,
+    "executed": 18,
+    "failed": 1,
+    "macro": {
+      "pairingPrecision": 1.0,
+      "pairingRecall": 0.939,
+      "pairingF1": 0.962,
+      "classAccuracy": 0.941,
+      "onsetMaeVsLabel": 0.0
+    },
+    "baselineMacro": {
+      "pairingPrecision": 1,
+      "pairingRecall": 0.954,
+      "pairingF1": 0.971,
+      "classAccuracy": 0.954,
+      "onsetMaeVsLabel": 0
+    },
+    "baselineMacroExecutedCases": {
+      "pairingPrecision": 1.0,
+      "pairingRecall": 0.951,
+      "pairingF1": 0.97,
+      "classAccuracy": 0.951,
+      "onsetMaeVsLabel": 0.0
+    },
+    "runtimeMsTotal": 20.386,
+    "deterministic": true,
+    "deterministicAllRuns": false,
+    "nondeterministicCases": []
+  },
+  "cases": [
+    {
+      "caseId": "tl-clean-exact",
+      "scenario": "clean, exact performance",
+      "expected": {
+        "pairs": 8,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 8,
+        "insertions": 0,
+        "deletions": 0,
+        "raw": [
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 8,
+        "pitchWrong": 0,
+        "pitchMissed": 0,
+        "pitchExtra": 0,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          },
+          "2": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 4.248
+    },
+    {
+      "caseId": "tl-late-global",
+      "scenario": "whole performance 50 ms late",
+      "expected": {
+        "pairs": 8,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 8,
+        "insertions": 0,
+        "deletions": 0,
+        "raw": [
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 50.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 8,
+        "pitchWrong": 0,
+        "pitchMissed": 0,
+        "pitchExtra": 0,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          },
+          "2": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 1.182
+    },
+    {
+      "caseId": "tl-local-deviations",
+      "scenario": "local timing deviations within the band",
+      "expected": {
+        "pairs": 8,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 8,
+        "insertions": 0,
+        "deletions": 0,
+        "raw": [
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 20.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 8,
+        "pitchWrong": 0,
+        "pitchMissed": 0,
+        "pitchExtra": 0,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          },
+          "2": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 1.223
+    },
+    {
+      "caseId": "tl-tempo-drift",
+      "scenario": "accelerando / tempo drift",
+      "expected": {
+        "pairs": 8,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 8,
+        "insertions": 0,
+        "deletions": 0,
+        "raw": [
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 140.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 0.75,
+        "pairingF1": 0.857,
+        "classAccuracy": 0.75,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 6,
+        "pitchWrong": 0,
+        "pitchMissed": 2,
+        "pitchExtra": 2,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          },
+          "2": {
+            "total": 4,
+            "errors": 2,
+            "errorRate": 0.5
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 1.229
+    },
+    {
+      "caseId": "tl-one-miss",
+      "scenario": "one missing target",
+      "expected": {
+        "pairs": 7,
+        "missed": 1,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 7,
+        "insertions": 0,
+        "deletions": 1,
+        "raw": [
+          {
+            "label": "deletion",
+            "scoreId": "s4",
+            "performedId": null
+          },
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 7,
+        "pitchWrong": 0,
+        "pitchMissed": 1,
+        "pitchExtra": 0,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 1,
+            "errorRate": 0.25
+          },
+          "2": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 1.159
+    },
+    {
+      "caseId": "tl-consecutive-miss",
+      "scenario": "three consecutive missing targets",
+      "expected": {
+        "pairs": 5,
+        "missed": 3,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 5,
+        "insertions": 0,
+        "deletions": 3,
+        "raw": [
+          {
+            "label": "deletion",
+            "scoreId": "s3",
+            "performedId": null
+          },
+          {
+            "label": "deletion",
+            "scoreId": "s4",
+            "performedId": null
+          },
+          {
+            "label": "deletion",
+            "scoreId": "s5",
+            "performedId": null
+          },
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 5,
+        "pitchWrong": 0,
+        "pitchMissed": 3,
+        "pitchExtra": 0,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 2,
+            "errorRate": 0.5
+          },
+          "2": {
+            "total": 4,
+            "errors": 1,
+            "errorRate": 0.25
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 0.946
+    },
+    {
+      "caseId": "tl-wrong-pitch",
+      "scenario": "one wrong pitch at the correct time",
+      "expected": {
+        "pairs": 8,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 7,
+        "insertions": 1,
+        "deletions": 1,
+        "raw": [
+          {
+            "label": "deletion",
+            "scoreId": "s4",
+            "performedId": null
+          },
+          {
+            "label": "insertion",
+            "scoreId": null,
+            "performedId": "p-s4"
+          },
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 0.875,
+        "pairingF1": 0.933,
+        "classAccuracy": 0.875,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [
+          "s4"
+        ],
+        "wrongClass": [
+          {
+            "scoreId": "s4",
+            "expected": "WRONG_PITCH",
+            "predicted": "MISSING"
+          }
+        ]
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 7,
+        "pitchWrong": 1,
+        "pitchMissed": 0,
+        "pitchExtra": 0,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          },
+          "2": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 1.173
+    },
+    {
+      "caseId": "tl-extra-note",
+      "scenario": "one inserted note between targets",
+      "expected": {
+        "pairs": 8,
+        "missed": 0,
+        "extra": 1,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 8,
+        "insertions": 1,
+        "deletions": 0,
+        "raw": [
+          {
+            "label": "insertion",
+            "scoreId": null,
+            "performedId": "p-extra-1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 8,
+        "pitchWrong": 0,
+        "pitchMissed": 0,
+        "pitchExtra": 1,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          },
+          "2": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 1.076
+    },
+    {
+      "caseId": "tl-mixed-errors",
+      "scenario": "missing + wrong pitch + extra interleaved",
+      "expected": {
+        "pairs": 7,
+        "missed": 1,
+        "extra": 1,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 6,
+        "insertions": 2,
+        "deletions": 2,
+        "raw": [
+          {
+            "label": "deletion",
+            "scoreId": "s3",
+            "performedId": null
+          },
+          {
+            "label": "deletion",
+            "scoreId": "s6",
+            "performedId": null
+          },
+          {
+            "label": "insertion",
+            "scoreId": null,
+            "performedId": "p-extra-mixed"
+          },
+          {
+            "label": "insertion",
+            "scoreId": null,
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 0.857,
+        "pairingF1": 0.923,
+        "classAccuracy": 0.889,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [
+          "s6"
+        ],
+        "wrongClass": [
+          {
+            "scoreId": "s6",
+            "expected": "WRONG_PITCH",
+            "predicted": "MISSING"
+          }
+        ]
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 6,
+        "pitchWrong": 1,
+        "pitchMissed": 1,
+        "pitchExtra": 1,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 1,
+            "errorRate": 0.25
+          },
+          "2": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 1.031
+    },
+    {
+      "caseId": "tl-chord-arrival-order",
+      "scenario": "same-onset chord arrives in reverse pitch order",
+      "expected": {
+        "pairs": 4,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 4,
+        "insertions": 0,
+        "deletions": 0,
+        "raw": [
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 5.75,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 4,
+        "pitchWrong": 0,
+        "pitchMissed": 0,
+        "pitchExtra": 0,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 0.524
+    },
+    {
+      "caseId": "tl-cross-hand-unison",
+      "scenario": "two staves notate the same MIDI pitch on one onset",
+      "expected": {
+        "pairs": 3,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 2,
+        "insertions": 1,
+        "deletions": 1,
+        "raw": [
+          {
+            "label": "deletion",
+            "scoreId": "s2",
+            "performedId": null
+          },
+          {
+            "label": "insertion",
+            "scoreId": null,
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 0.667,
+        "pairingF1": 0.8,
+        "classAccuracy": 0.667,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [
+          "s2"
+        ],
+        "wrongClass": [
+          {
+            "scoreId": "s2",
+            "expected": "MATCH",
+            "predicted": "MISSING"
+          }
+        ]
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 3,
+        "pitchWrong": 0,
+        "pitchMissed": 0,
+        "pitchExtra": 0,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 3,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 0.534
+    },
+    {
+      "caseId": "tl-fast-repeated-note",
+      "scenario": "fast repeated same pitch",
+      "expected": {
+        "pairs": 4,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 4,
+        "insertions": 0,
+        "deletions": 0,
+        "raw": [
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 8.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 4,
+        "pitchWrong": 0,
+        "pitchMissed": 0,
+        "pitchExtra": 0,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 0.501
+    },
+    {
+      "caseId": "tl-tie-long-note",
+      "scenario": "tied long note followed by a short note",
+      "expected": {
+        "pairs": 2,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 1,
+        "insertions": 1,
+        "deletions": 1,
+        "raw": [
+          {
+            "label": "deletion",
+            "scoreId": "s2",
+            "performedId": null
+          },
+          {
+            "label": "insertion",
+            "scoreId": null,
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 0.5,
+        "pairingF1": 0.667,
+        "classAccuracy": 0.5,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [
+          "s2"
+        ],
+        "wrongClass": [
+          {
+            "scoreId": "s2",
+            "expected": "MATCH",
+            "predicted": "MISSING"
+          }
+        ]
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 0.5,
+        "pairingF1": 0.667,
+        "classAccuracy": 0.5,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 1,
+        "pitchWrong": 0,
+        "pitchMissed": 1,
+        "pitchExtra": 1,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 1,
+            "errors": 0,
+            "errorRate": 0
+          },
+          "2": {
+            "total": 1,
+            "errors": 1,
+            "errorRate": 1
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 0.309
+    },
+    {
+      "caseId": "tl-missing-note-off",
+      "scenario": "Note On without Note Off",
+      "expected": {
+        "pairs": 8,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "degraded"
+      },
+      "predicted": {
+        "pairs": 8,
+        "insertions": 0,
+        "deletions": 0,
+        "raw": [
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "degraded",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 8,
+        "pitchWrong": 0,
+        "pitchMissed": 0,
+        "pitchExtra": 0,
+        "quality": "degraded",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          },
+          "2": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 1.076
+    },
+    {
+      "caseId": "tl-duplicate-packet",
+      "scenario": "duplicated MIDI packet for the same key/onset",
+      "expected": {
+        "pairs": 8,
+        "missed": 0,
+        "extra": 1,
+        "unassessable": 0,
+        "inputQuality": "degraded"
+      },
+      "predicted": {
+        "pairs": 8,
+        "insertions": 1,
+        "deletions": 0,
+        "raw": [
+          {
+            "label": "insertion",
+            "scoreId": null,
+            "performedId": "p-s1-duplicate"
+          },
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "degraded",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 8,
+        "pitchWrong": 0,
+        "pitchMissed": 0,
+        "pitchExtra": 1,
+        "quality": "degraded",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          },
+          "2": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 1.142
+    },
+    {
+      "caseId": "tl-one-note-400ms-late",
+      "scenario": "one note 400 ms late (outside the normal matching band)",
+      "expected": {
+        "pairs": 8,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 0,
+        "inputQuality": "healthy"
+      },
+      "predicted": {
+        "pairs": 8,
+        "insertions": 0,
+        "deletions": 0,
+        "raw": [
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 50.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "healthy",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 0.875,
+        "pairingF1": 0.933,
+        "classAccuracy": 0.875,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 7,
+        "pitchWrong": 0,
+        "pitchMissed": 1,
+        "pitchExtra": 1,
+        "quality": "healthy",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 1,
+            "errorRate": 0.25
+          },
+          "2": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 1.055
+    },
+    {
+      "caseId": "tl-missing-note-on",
+      "scenario": "one Note On lost before capture",
+      "expected": {
+        "pairs": 7,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 1,
+        "inputQuality": "degraded"
+      },
+      "predicted": {
+        "pairs": 7,
+        "insertions": 0,
+        "deletions": 1,
+        "raw": [
+          {
+            "label": "deletion",
+            "scoreId": "s3",
+            "performedId": null
+          },
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          },
+          {
+            "label": "match",
+            "scoreId": "s5",
+            "performedId": "p-s5"
+          },
+          {
+            "label": "match",
+            "scoreId": "s6",
+            "performedId": "p-s6"
+          },
+          {
+            "label": "match",
+            "scoreId": "s7",
+            "performedId": "p-s7"
+          },
+          {
+            "label": "match",
+            "scoreId": "s8",
+            "performedId": "p-s8"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "degraded",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 7,
+        "pitchWrong": 0,
+        "pitchMissed": 1,
+        "pitchExtra": 0,
+        "quality": "degraded",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 3,
+            "errors": 0,
+            "errorRate": 0
+          },
+          "2": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 1.143
+    },
+    {
+      "caseId": "tl-device-disconnect",
+      "scenario": "device disconnects after four notes",
+      "expected": {
+        "pairs": 4,
+        "missed": 0,
+        "extra": 0,
+        "unassessable": 4,
+        "inputQuality": "degraded"
+      },
+      "predicted": {
+        "pairs": 4,
+        "insertions": 0,
+        "deletions": 4,
+        "raw": [
+          {
+            "label": "deletion",
+            "scoreId": "s5",
+            "performedId": null
+          },
+          {
+            "label": "deletion",
+            "scoreId": "s6",
+            "performedId": null
+          },
+          {
+            "label": "deletion",
+            "scoreId": "s7",
+            "performedId": null
+          },
+          {
+            "label": "deletion",
+            "scoreId": "s8",
+            "performedId": null
+          },
+          {
+            "label": "match",
+            "scoreId": "s1",
+            "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
+          },
+          {
+            "label": "match",
+            "scoreId": "s3",
+            "performedId": "p-s3"
+          },
+          {
+            "label": "match",
+            "scoreId": "s4",
+            "performedId": "p-s4"
+          }
+        ]
+      },
+      "metrics": {
+        "pairingPrecision": 1.0,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
+        "onsetMae": 0.0,
+        "onsetMaeVsLabel": 0.0,
+        "inputQuality": "degraded",
+        "qualityCorrect": true
+      },
+      "mismatches": {
+        "pairs": [],
+        "wrongClass": []
+      },
+      "baseline": {
+        "pairingPrecision": 1,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
+        "onsetMaeVsLabel": 0,
+        "onsetMaxDeltaVsLabel": 0,
+        "pitchCorrect": 4,
+        "pitchWrong": 0,
+        "pitchMissed": 4,
+        "pitchExtra": 0,
+        "quality": "degraded",
+        "qualityCorrect": true,
+        "perMeasure": {
+          "1": {
+            "total": 4,
+            "errors": 0,
+            "errorRate": 0
+          }
+        }
+      },
+      "ok": true,
+      "runtimeMs": 0.803
+    },
+    {
+      "caseId": "tl-empty-input",
+      "scenario": "no performed events at all",
+      "ok": false,
+      "error": "IndexError: index -1 is out of bounds for axis 0 with size 0",
+      "runtimeMs": 0.032
+    }
+  ],
+  "knownLimitations": [
+    "Synthetic dataset only (no real-device trace, no public labeled data).",
+    "Parangonar is evaluated offline; it is not imported by the production path.",
+    "Missing Note Off is represented with duration 0.0 (no invented duration).",
+    "Wrong-pitch events are expected to be hard for a pitch-based matcher; this is measured, not hidden."
+  ]
+}
