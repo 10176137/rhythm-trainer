@@ -2,7 +2,7 @@
 
 - 分支：`feat/teaching-experience-v1`
 - 基线：`6d00e03`（Teaching UI V1 报告提交）
-- 交付代码：`4cc0755`（verifiedCodeSha）；后续文案修正 `e0c5a55`（模式改名「练习模式」，见 §9）
+- 交付代码：`4cc0755`（verifiedCodeSha）；后续文案修正 `e0c5a55` + `9ac1a42`（模式改名「练习模式」并同步副标题/说明，见 §9）
 - 日期：2026-10-27
 - 范围：课程内容、Node 教学决策闭环、单屏教学工作区、导航重排、测试与浏览器验收
 - 默认 planner：仍为 `rts`；未合并 `main`；未改任何冻结契约
@@ -140,7 +140,9 @@
 
 ## 9. 后续修正
 
-- `e0c5a55`（2026-10-27，用户反馈“这都同一个 UI，把乐谱跟练换成练习模式”）：把 `score` 模式的用户可见名称从「乐谱跟练」统一改为「练习模式」（`modeRegistry.ts`、`practiceRepository.ts` 的 `MODE_CN`、`server/mode-config.mjs` 的 `modeLabel`、练习设置里的说明文案）。面包屑、练习卡片标题、侧栏模式项、历史/报告模式标签现在都显示「练习模式」。改后重跑 `npx vitest run` 565 pass / 4 skipped、`tsc -b` clean，并在浏览器确认 `/workbench` 的面包屑与卡片标题均为「练习模式」。
+- `e0c5a55`（2026-10-27，用户反馈“这都同一个 UI，把乐谱跟练换成练习模式”）：把 `score` 模式的用户可见名称从「乐谱跟练」统一改为「练习模式」（`modeRegistry.ts`、`practiceRepository.ts` 的 `MODE_CN`、`server/mode-config.mjs` 的 `modeLabel`、练习设置里的说明文案）。面包屑、练习卡片标题、侧栏模式项、历史/报告模式标签现在都显示「练习模式」。
+- `9ac1a42`（同日，用户反馈“它的内容肯定也要变”）：同步该模式的副标题与说明，侧栏从「跟随乐谱演奏」改为「按设置练习」，卡片说明改为「按当前曲谱与练习设置演奏；开始后由本地引擎给出实时判定、逐小节证据与练习报告。」，不再保留“乐谱跟练”时代的专属文案。
+- 改后重跑 `npx vitest run` 565 pass / 4 skipped、`tsc -b` clean，并在浏览器确认 `/workbench` 的面包屑、卡片标题/说明与侧栏模式项一致。
 
 ## 10. 文件清单
 
