@@ -346,6 +346,79 @@ describe('Teaching Orchestrator REST integration', () => {
     expect(recorded.json.run.latestDecision.prescription).toBeUndefined();
   }, 20000);
 
+  it('starts a lesson from a persisted Take (from-take) with server-side diagnosis', async () => {
+    writeTake('take-from-take', FINGERPRINT);
+    const created = await api('POST', '/api/teaching/runs/from-take', {
+      takeId: 'take-from-take',
+      scoreFingerprint: FINGERPRINT,
+      scoreBarCount: 8,
+      bpm: 72,
+      hand: 'right',
+    });
+    expect(created.status).toBe(201);
+    const run = created.json.run;
+    expect(run).toMatchObject({
+      status: 'ready',
+      revision: 0,
+      scoreFingerprint: FINGERPRINT,
+      sourceTakeId: 'take-from-take',
+      currentStepId: 'understand-score',
+    });
+    expect(run.latestDecision).toBeNull();
+
+    // Begin, complete the study step, then record the SAME take as the first
+    // guided attempt: the server runs findRemediation itself.
+    await api('POST', `/api/teaching/runs/${run.runId}/actions`, {
+      commandId: 'ft-begin', expectedRevision: 0, action: 'begin',
+    });
+    await api('POST', `/api/teaching/runs/${run.runId}/actions`, {
+      commandId: 'ft-study', expectedRevision: 1, action: 'complete-step',
+    });
+    const recorded = await api('POST', `/api/teaching/runs/${run.runId}/actions`, {
+      commandId: 'ft-record', expectedRevision: 2, action: 'record-take', takeId: 'take-from-take',
+    });
+    expect(recorded.status).toBe(200);
+    expect(recorded.json.run.latestDecision).toMatchObject({
+      action: 'focus_range',
+      reasonCode: 'REMEDIATION_REQUIRED',
+      sourceTakeId: 'take-from-take',
+    });
+    expect(recorded.json.run.latestDecision.prescription).toMatchObject({
+      ruleId: 'MISSING_NOTES_V1',
+      measureRange: { startMeasure: 2, endMeasure: 2 },
+    });
+    // GET must expose the same latestDecision as applyAction.
+    const read = await api('GET', `/api/teaching/runs/${run.runId}`);
+    expect(read.json.run.latestDecision).toEqual(recorded.json.run.latestDecision);
+  }, 30000);
+
+  it('rejects from-take for missing, unpersisted, or mismatched Takes', async () => {
+    const missing = await api('POST', '/api/teaching/runs/from-take', {
+      takeId: 'take-does-not-exist',
+    });
+    expect(missing.status).toBe(404);
+    expect(missing.json.error.code).toBe('TAKE_NOT_FOUND');
+
+    writeTake('take-ft-pending', FINGERPRINT);
+    const pendingPath = path.join(DATA_DIR, 'takes', 'take-ft-pending.json');
+    const pendingTake = JSON.parse(readFileSync(pendingPath, 'utf8'));
+    pendingTake.assessment.persistenceStatus = 'pending-retry';
+    writeFileSync(pendingPath, JSON.stringify(pendingTake), 'utf8');
+    const pending = await api('POST', '/api/teaching/runs/from-take', {
+      takeId: 'take-ft-pending',
+    });
+    expect(pending.status).toBe(409);
+    expect(pending.json.error.code).toBe('TAKE_NOT_PERSISTED');
+
+    writeTake('take-ft-other', 'fp-someone-else');
+    const mismatch = await api('POST', '/api/teaching/runs/from-take', {
+      takeId: 'take-ft-other',
+      scoreFingerprint: FINGERPRINT,
+    });
+    expect(mismatch.status).toBe(409);
+    expect(mismatch.json.error.code).toBe('SCORE_FINGERPRINT_MISMATCH');
+  }, 20000);
+
   it('rejects malformed bodies and unsupported methods with coded errors', async () => {
     const bad = await fetch(`${BASE}/api/teaching/runs`, {
       method: 'POST',

@@ -46,6 +46,8 @@ import {
 import { FollowSession, type FollowNoteResult, type FollowReport } from './score-engine/practice/follow-session';
 import type { PlaybackGroup } from './score-engine/domain/types';
 import { toNumber } from './score-engine/domain/rational';
+import TeachingWorkspace, { type TeachingTakeNotice } from './components/TeachingWorkspace';
+import { saveLastRunId } from './services/teachingRunRepository';
 import { WebAudioEngineAdapter } from './features/playback/audioEngineAdapter';
 import {
   ReferencePlaybackController,
@@ -88,7 +90,6 @@ import {
   type PersistedPracticeSettings,
 } from './features/practice/practiceSettings';
 import type { EngineRawMidiPacket, FollowEventMessage, FollowGroupRequest, FollowReportMessage } from './types/engine';
-import type { TargetedPracticeStartRequest, TeachingPrescription } from './types/teaching';
 import type { DurationEvaluationPolicy, FeedbackMessage, FeedbackMode, HandSelection, JudgmentProfile, MidiPerformanceEvent, PracticeConfig, PracticeModeId, SessionStatus } from './types/practice';
 
 const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`;
@@ -216,6 +217,8 @@ export default function App() {
     error: string | null;
   } | null>(null);
   const [followRetrying, setFollowRetrying] = useState(false);
+  /** The last finished Take of this visit, offered to the teaching workspace. */
+  const [teachingTakeNotice, setTeachingTakeNotice] = useState<TeachingTakeNotice | null>(null);
   const [followView, setFollowView] = useState<{
     index: number;
     total: number;
@@ -240,6 +243,10 @@ export default function App() {
    * arrives (a closure-captured fingerprint cannot prove that). */
   const scoreDocRef = useRef(scoreDoc);
   scoreDocRef.current = scoreDoc;
+  const sessionScoreFingerprintRef = useRef<string | null>(null);
+  useEffect(() => {
+    sessionScoreFingerprintRef.current = scoreDocRef.current.engine?.fingerprint ?? null;
+  }, [scoreDoc.engine?.fingerprint]);
   const systemDuetRef = useRef(systemDuet);
   systemDuetRef.current = systemDuet;
   const [guideView, setGuideView] = useState<{ index: number; currentGroup: PlaybackGroup | null; completed: number } | null>(null);
@@ -303,10 +310,6 @@ export default function App() {
   const expectedNotesRef = useRef<{ midiNote: number; noteName: string }[][]>([]);
   const planGroupsRef = useRef<string[][]>([]);
   const lastExtraFeedbackRef = useRef(0);
-  const pendingTargetedLaunchRef = useRef<{
-    config: PracticeConfig;
-    source: TargetedLaunchSource;
-  } | null>(null);
 
   const addFeedback = useCallback((title: string, detail: string, tone: FeedbackMessage['tone']) => {
     const item = { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, title, detail, tone, timestampMs: performance.now() };
@@ -484,6 +487,12 @@ export default function App() {
       interrupted || !saved ? 'warning' : 'success',
     );
     if (saved) setHistoryRefresh((value) => value + 1);
+    setTeachingTakeNotice({
+      takeId: message.takeId,
+      persisted: saved,
+      status: message.persistenceStatus ?? (saved ? 'persisted' : 'pending-retry'),
+      fingerprint: sessionScoreFingerprintRef.current,
+    });
   }, [addFeedback]);
 
   const session = usePracticeSession({
@@ -903,6 +912,16 @@ export default function App() {
         );
       }
     }
+    // Offer the finished Take to the teaching workspace (persisted or not, so
+    // the workspace can explain a pending-retry instead of silently moving on).
+    if (session.takeId) {
+      setTeachingTakeNotice({
+        takeId: session.takeId,
+        persisted: session.reportPersisted !== false,
+        status: session.reportPersisted === false ? 'pending-retry' : 'persisted',
+        fingerprint: session.scoreFingerprint ?? sessionScoreFingerprintRef.current,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.report]);
 
@@ -1177,15 +1196,6 @@ export default function App() {
     addFeedback('正在断开 MIDI', '已请求 Node MIDI Adapter 释放端口。', 'neutral');
   };
 
-  type TargetedLaunchSource = {
-    scoreFingerprint: string;
-    sourceReportId: string;
-    sourceTakeId: string;
-    prescriptionId: string;
-    prescription: TeachingPrescription;
-    scoreBarCount: number;
-  };
-
   /**
    * R2-3h: the opt-in Rust launch path. The server owns the plan; this
    * function only parses the response, derives presentation times once
@@ -1193,13 +1203,23 @@ export default function App() {
    * Any failure fails the launch closed — it NEVER falls back to the TS
    * planner (no TS planner call exists on this branch).
    */
+  /** Provenance of a launch armed from a Node teaching step: the persisted
+   * Take this attempt belongs to. Teaching decisions read these refs from the
+   * saved Take; TS never attaches a prescription object to a launch. */
+  type LaunchSource = {
+    scoreFingerprint: string;
+    sourceReportId: string;
+    sourceTakeId: string;
+    scoreBarCount: number;
+  };
+
   const startRustPractice = async (
     mode: 'timeline' | 'follow',
     launchConfig: PracticeConfig,
     context: {
       engineMode: string;
       countInBeats: number;
-      targetedSource?: TargetedLaunchSource;
+      source?: LaunchSource;
       takeTemplateId: string | null;
       partId: string;
       range: { startMeasureOrdinal: number; endMeasureOrdinal: number };
@@ -1416,12 +1436,10 @@ export default function App() {
           planFingerprint: response.planFingerprint,
           scoreImportStatus: report.status,
           hand: launchConfig.hand,
-          scoreBarCount: context.targetedSource?.scoreBarCount ?? scoreDoc.meta.barCount,
-          ...(context.targetedSource ? {
-            sourceReportId: context.targetedSource.sourceReportId,
-            sourceTakeId: context.targetedSource.sourceTakeId,
-            prescriptionId: context.targetedSource.prescriptionId,
-            prescription: context.targetedSource.prescription,
+          scoreBarCount: context.source?.scoreBarCount ?? scoreDoc.meta.barCount,
+          ...(context.source ? {
+            sourceReportId: context.source.sourceReportId,
+            sourceTakeId: context.source.sourceTakeId,
           } : {}),
           ...(context.takeTemplateId ? { takeTemplateId: context.takeTemplateId } : {}),
         });
@@ -1449,13 +1467,13 @@ export default function App() {
 
   const launchPractice = (
     overrideConfig?: PracticeConfig,
-    targetedSource?: TargetedLaunchSource,
+    source?: LaunchSource,
     takeTemplateId: string | null = appliedTakeTemplateId,
   ) => {
     if (session.active || starting || followStatusRef.current === 'running' || followStatusRef.current === 'paused' || followStatusRef.current === 'processing') return false;
     const config = overrideConfig ?? configRef.current;
-    if (targetedSource && !(config.modeId === 'loop' || (config.modeId === 'score' && config.loopEnabled))) return false;
-    if (targetedSource && (!scoreDoc.engine || scoreDoc.engine.fingerprint !== targetedSource.scoreFingerprint)) {
+    if (source && !(config.modeId === 'loop' || (config.modeId === 'score' && config.loopEnabled))) return false;
+    if (source && (!scoreDoc.engine || scoreDoc.engine.fingerprint !== source.scoreFingerprint)) {
       addFeedback('复练曲谱不一致', '当前打开曲谱与来源报告不一致，未创建复练任务。', 'warning');
       return false;
     }
@@ -1700,7 +1718,7 @@ export default function App() {
       void startRustPractice('timeline', config, {
         engineMode,
         countInBeats,
-        targetedSource,
+        source,
         takeTemplateId,
         partId: launchScope.partId,
         range: launchScope.range,
@@ -1841,12 +1859,10 @@ export default function App() {
       plannerVersion: TS_PLANNER_VERSION,
       ...(scoreDoc.importReport ? { scoreImportStatus: scoreDoc.importReport.status } : {}),
       hand: config.hand,
-      scoreBarCount: targetedSource?.scoreBarCount ?? scoreDoc.meta.barCount,
-      ...(targetedSource ? {
-        sourceReportId: targetedSource.sourceReportId,
-        sourceTakeId: targetedSource.sourceTakeId,
-        prescriptionId: targetedSource.prescriptionId,
-        prescription: targetedSource.prescription,
+      scoreBarCount: source?.scoreBarCount ?? scoreDoc.meta.barCount,
+      ...(source ? {
+        sourceReportId: source.sourceReportId,
+        sourceTakeId: source.sourceTakeId,
       } : {}),
       ...(takeTemplateId ? { takeTemplateId } : {}),
     });
@@ -1854,79 +1870,57 @@ export default function App() {
     return true;
   };
 
-  const startTargetedPractice = (request: TargetedPracticeStartRequest): boolean => {
+  /**
+   * Arms a practice launch from a Node-authored teaching practiceRequest.
+   * The engine start itself still goes through the same PlanBundle/Rust
+   * launch flow as any other practice; the workspace only pins the config
+   * the server asked for. Returns false (and navigates nowhere) on mismatch.
+   */
+  const applyTeachingStepConfig = (request: {
+    scoreFingerprint: string;
+    tempo: number;
+    hand: 'left' | 'right' | 'both';
+    loopStartBar: number;
+    loopEndBar: number;
+  }): boolean => {
     if (session.active || starting) {
-      addFeedback('当前仍有练习', '请先结束或重置当前练习，再创建针对性复练任务。', 'warning');
+      addFeedback('当前仍有练习', '请先结束或重置当前练习，再开始教学步骤。', 'warning');
       return false;
     }
     if (!scoreDoc.engine || scoreDoc.engine.fingerprint !== request.scoreFingerprint) {
-      addFeedback('复练曲谱不一致', '当前打开曲谱与来源报告不一致，请先打开原曲谱。', 'warning');
+      addFeedback('教学曲谱不一致', '当前打开曲谱与本课程不一致，请先打开原曲谱再开始这一步。', 'warning');
       return false;
     }
-    const { startMeasure, endMeasure } = request.measureRange;
-    if (!Number.isInteger(startMeasure) || !Number.isInteger(endMeasure)
-      || startMeasure < 1 || endMeasure < startMeasure || endMeasure > scoreDoc.meta.barCount) {
-      addFeedback('复练范围非法', '处方小节范围不在当前曲谱内，未创建任务。', 'warning');
+    const { loopStartBar, loopEndBar } = request;
+    if (!Number.isInteger(loopStartBar) || !Number.isInteger(loopEndBar)
+      || loopStartBar < 1 || loopEndBar < loopStartBar || loopEndBar > scoreDoc.meta.barCount) {
+      addFeedback('教学范围非法', '教学步骤的小节范围不在当前曲谱内，未开始练习。', 'warning');
       return false;
     }
-    if (request.prescription.sourceReportId !== request.sourceReportId
-      || request.prescription.sourceTakeId !== request.sourceTakeId) {
-      addFeedback('复练来源不一致', '处方与来源报告引用不一致，未创建任务。', 'warning');
-      return false;
-    }
-    const prescription = {
-      ...request.prescription,
-      recommendedBpm: request.bpm,
-      recommendedHand: request.hand,
-      measureRange: { startMeasure, endMeasure },
-    };
     const nextConfig: PracticeConfig = {
       ...configRef.current,
       modeId: 'score',
       advanceMode: 'timeline',
-      tempo: request.bpm,
+      tempo: request.tempo,
       hand: request.hand,
       loopEnabled: true,
-      loopStartBar: startMeasure,
-      loopEndBar: endMeasure,
-    };
-    // Arm the task instead of starting it immediately. The P09 panel lives in
-    // history, so an immediate engine start would consume the 3-second count-in
-    // while the player is still switching back to the practice room.
-    pendingTargetedLaunchRef.current = {
-      config: nextConfig,
-      source: {
-        scoreFingerprint: request.scoreFingerprint,
-        sourceReportId: request.sourceReportId,
-        sourceTakeId: request.sourceTakeId,
-        prescriptionId: prescription.prescriptionId,
-        prescription,
-        scoreBarCount: scoreDoc.meta.barCount,
-      },
+      loopStartBar,
+      loopEndBar,
     };
     setConfig(nextConfig);
     setSettingsDraft(null);
-    setSettingsSaved(true);
-    savePracticeSettings({ config: nextConfig, metronomeOn });
-    setAppliedTakeTemplateId(null);
+    setShowSettings(false);
     if (route?.id !== 'workbench') navigate('/workbench');
     addFeedback(
-      '针对性复练已准备',
-      `第 ${startMeasure}–${endMeasure} 小节 · ${request.bpm} BPM · 点“开始练习”时创建新的 Session/Take。`,
-      'success',
+      '教学步骤已就绪',
+      `第 ${loopStartBar}–${loopEndBar} 小节 · ${request.tempo} BPM · 点「开始练习」时走既有的计划校验并创建新的 Take。`,
+      'neutral',
     );
     return true;
   };
 
   const startPractice = () => {
     if (prepRemain !== null) return;
-    const pendingTargeted = pendingTargetedLaunchRef.current;
-    if (pendingTargeted) {
-      pendingTargetedLaunchRef.current = null;
-      const started = launchPractice(pendingTargeted.config, pendingTargeted.source, null);
-      if (!started) pendingTargetedLaunchRef.current = pendingTargeted;
-      return;
-    }
     const pendingDraft = settingsDraft;
     const draftDirty = pendingDraft !== null && (
       pendingDraft.metronomeOn !== metronomeOn
@@ -2144,7 +2138,6 @@ export default function App() {
   const resetPractice = () => {
     const followActive = followStatusRef.current === 'running' || followStatusRef.current === 'paused' || followStatusRef.current === 'processing';
     if ((session.active || followActive) && !window.confirm('正在练习,确定要重置并丢弃当前会话进度吗?')) return;
-    pendingTargetedLaunchRef.current = null;
     cancelPrep();
     clearReferencePlayback('reset');
     systemPlayerRef.current?.stopAll();
@@ -2811,6 +2804,22 @@ export default function App() {
 
   const uiStatus: SessionStatus = config.advanceMode === 'follow' ? followStatus : session.status;
 
+  // Why a teaching practice step cannot start right now (shown inline on
+  // /teaching instead of failing after navigating to the workbench).
+  const teachingPracticeBlock: string | null = (() => {
+    if (!scoreDoc.engine) return '当前曲谱缺少语义引擎数据，无法创建练习计划。';
+    if (scoreDoc.engine.parts.length > 1) return '多 Part 乐谱暂不支持严格练习，无法开始这一步。';
+    const fingerprint = scoreDoc.engine.fingerprint;
+    const partId = scoreDoc.engine.parts[0]?.id ?? 'P1';
+    if (!userHandMappingFor(fingerprint, partId)) {
+      return '尚未确认「谱表→手别映射」；请到练习工作台打开练习设置确认后回来开始这一步。';
+    }
+    if (session.active || starting || followStatusRef.current === 'running' || followStatusRef.current === 'paused' || followStatusRef.current === 'processing') {
+      return '当前有练习进行中；请先结束或重置，再开始教学步骤。';
+    }
+    return null;
+  })();
+
   useEffect(() => {
     if (uiStatus !== 'running' && session.status !== 'countdown') return;
     const timer = window.setInterval(() => {
@@ -2945,7 +2954,10 @@ export default function App() {
               if (file) void handleLibraryReplaceFile(file);
             }}
           />
-          <div className="page-heading"><div><div className="eyebrow">YOUR PRACTICE SPACE</div><h1>今天,稳稳地弹好每一个音。</h1><p>评分由本地 Rust 引擎完成,反馈基于引擎判定与证据。</p></div><button className="button button-outline" aria-expanded={showSettings} aria-controls="practice-settings-panel" onClick={toggleSettingsPanel}>⚙ 练习设置</button></div>
+          <div className="page-heading"><div><div className="eyebrow">YOUR PRACTICE SPACE</div><h1>今天,稳稳地弹好每一个音。</h1><p>评分由本地 Rust 引擎完成,反馈基于引擎判定与证据。</p></div><div className="heading-actions"><button className="button button-primary" onClick={() => navigate('/teaching')} disabled={!scoreDoc.engine}>✎ 老师带练</button><button className="button button-outline" aria-expanded={showSettings} aria-controls="practice-settings-panel" onClick={toggleSettingsPanel}>⚙ 练习设置</button></div></div>
+          {!scoreDoc.engine && (
+            <p className="report-warning" role="status">「老师带练」需要一份带语义数据的 MusicXML 曲谱；当前曲谱不可用，请先在曲谱库打开或导入。</p>
+          )}
 
           {showSettings && (
             <section className="settings-panel card" id="practice-settings-panel" aria-label="练习配置">
@@ -3212,7 +3224,13 @@ export default function App() {
               practiceBpm={config.tempo}
               practiceHand={session.hand ?? config.hand}
               retryComparison={session.retryComparison}
-              onStartTargetedPractice={startTargetedPractice}
+              onTeachingRunCreated={(run) => {
+                // Point the teaching workspace's recovery entry at the newly
+                // created run so「打开老师带练」continues this lesson.
+                saveLastRunId(run.runId);
+                addFeedback('教学课程已创建', '可在左侧「老师带练」中继续这堂课。', 'success');
+              }}
+              onNavigateTeaching={() => navigate('/teaching')}
             />
           )}
 
@@ -3260,11 +3278,42 @@ export default function App() {
             <HistoryView
               refreshKey={historyRefresh}
               activeScoreFingerprint={scoreDoc.engine?.fingerprint ?? null}
-              onStartTargetedPractice={startTargetedPractice}
+              onTeachingRunCreated={(run) => {
+                // Point the teaching workspace's recovery entry at the newly
+                // created run so「打开老师带练」continues this lesson.
+                saveLastRunId(run.runId);
+                addFeedback('教学课程已创建', '可在左侧「老师带练」中继续这堂课。', 'success');
+              }}
+              onNavigateTeaching={() => navigate('/teaching')}
             />
           </div>
         )}
         {route?.id === 'profile' && <div className="page-content"><ProfileView refreshKey={historyRefresh} /></div>}
+        {route?.id === 'teaching' && (
+          <div className="page-content">
+            <TeachingWorkspace
+              score={{
+                fingerprint: scoreDoc.engine?.fingerprint ?? null,
+                title: scoreDoc.meta.title,
+                barCount: scoreDoc.meta.barCount,
+                bpm: config.tempo,
+                hand: config.hand,
+                sourceXml: scoreDoc.sourceXml ?? null,
+                engine: scoreDoc.engine ?? null,
+                practiceStartBlock: teachingPracticeBlock,
+              }}
+              takeNotice={teachingTakeNotice}
+              onStartPractice={(request) => applyTeachingStepConfig({
+                scoreFingerprint: request.scoreFingerprint,
+                tempo: request.tempo,
+                hand: request.hand,
+                loopStartBar: request.loopStartBar,
+                loopEndBar: request.loopEndBar,
+              })}
+              onBackToWorkbench={() => navigate('/workbench')}
+            />
+          </div>
+        )}
         {(!route || !route.enabled) && (
           <RoutePlaceholder
             route={route}

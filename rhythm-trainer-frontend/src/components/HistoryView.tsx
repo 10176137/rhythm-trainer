@@ -11,12 +11,14 @@ import type { SessionSummary, TakeRecordDetail } from '../services/practiceRepos
 import type { EngineReport } from '../types/engine';
 import type { EngineTimingAnalysis } from '../types/engine';
 import type { HandSelection } from '../types/practice';
-import type { TargetedPracticeStartRequest } from '../types/teaching';
+import type { TeachingRunDTO } from '../services/teachingRunRepository';
 
 interface Props {
   refreshKey: number;
   activeScoreFingerprint: string | null;
-  onStartTargetedPractice: (request: TargetedPracticeStartRequest) => Promise<boolean> | boolean;
+  /** Flow B: Node accepted the from-take request and created a lesson run. */
+  onTeachingRunCreated: (run: TeachingRunDTO) => void;
+  onNavigateTeaching: () => void;
 }
 
 function storedHand(value: string | null | undefined): HandSelection {
@@ -31,7 +33,8 @@ const fmtTime = (iso: string) => {
 export default function HistoryView({
   refreshKey,
   activeScoreFingerprint,
-  onStartTargetedPractice,
+  onTeachingRunCreated,
+  onNavigateTeaching,
 }: Props) {
   const [items, setItems] = useState<SessionSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -176,7 +179,8 @@ export default function HistoryView({
                           practiceBpm={timeline.bpm ?? snapshotTempo ?? 72}
                           practiceHand={storedHand(timeline.hand)}
                           retryComparison={timeline.retryComparison ?? null}
-                          onStartTargetedPractice={onStartTargetedPractice}
+                          onTeachingRunCreated={onTeachingRunCreated}
+                          onNavigateTeaching={onNavigateTeaching}
                         />
                       )}
                       {!followReport && !timeline?.report && (

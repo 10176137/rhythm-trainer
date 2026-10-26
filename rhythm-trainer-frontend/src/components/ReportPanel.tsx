@@ -5,9 +5,10 @@
 
 import type { EngineDurationReport, EngineReport, EngineScoringConfig, EngineScoreStatus, EngineSessionScoreReport, EngineTimingAnalysis } from '../types/engine';
 import type { HandSelection } from '../types/practice';
-import type { RetryComparison, TargetedPracticeStartRequest } from '../types/teaching';
+import type { RetryComparison } from '../types/teaching';
 import FullScoreReport from './FullScoreReport';
 import TargetedPracticePanel from './TargetedPracticePanel';
+import type { TeachingRunDTO } from '../services/teachingRunRepository';
 
 interface Props {
   report: EngineReport;
@@ -29,7 +30,9 @@ interface Props {
   practiceBpm?: number;
   practiceHand?: HandSelection;
   retryComparison?: RetryComparison | null;
-  onStartTargetedPractice?: (request: TargetedPracticeStartRequest) => Promise<boolean> | boolean;
+  /** Flow B: Node accepted the from-take request and created a lesson run. */
+  onTeachingRunCreated?: (run: TeachingRunDTO) => void;
+  onNavigateTeaching?: () => void;
 }
 
 const ISSUE_CN: Record<string, string> = {
@@ -79,7 +82,8 @@ export default function ReportPanel({
   practiceBpm = 72,
   practiceHand = 'both',
   retryComparison = null,
-  onStartTargetedPractice,
+  onTeachingRunCreated,
+  onNavigateTeaching,
 }: Props) {
   const stats = report.stats;
   const cells: [string, string][] = [
@@ -155,9 +159,6 @@ export default function ReportPanel({
 
       {(scoreV1 || scoreStatus) && (
         <TargetedPracticePanel
-          scoreV1={scoreV1 ?? null}
-          scoreStatus={scoreStatus ?? null}
-          durations={durations}
           sourceReportId={sessionId}
           sourceTakeId={takeId}
           sourceScoreFingerprint={scoreFingerprint}
@@ -165,7 +166,8 @@ export default function ReportPanel({
           practiceBpm={practiceBpm}
           practiceHand={practiceHand}
           scoreBarCount={scoreBarCount}
-          onStartTargetedPractice={onStartTargetedPractice}
+          onTeachingRunCreated={onTeachingRunCreated ?? (() => {})}
+          onNavigateTeaching={onNavigateTeaching ?? (() => {})}
         />
       )}
 

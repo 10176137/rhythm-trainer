@@ -826,6 +826,17 @@ async function handleTeachingApi(req, res, urlPath) {
       return;
     }
 
+    if (urlPath === '/api/teaching/runs/from-take') {
+      if (req.method !== 'POST') {
+        sendJson(res, 405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } });
+        return;
+      }
+      const body = await readJsonBody(req);
+      const run = teachingOrchestrator.createRunFromTake(body);
+      sendJson(res, 201, { ok: true, run });
+      return;
+    }
+
     const actionMatch = urlPath.match(/^\/api\/teaching\/runs\/([A-Za-z0-9_-]+)\/actions$/);
     if (actionMatch) {
       if (req.method !== 'POST') {

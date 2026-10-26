@@ -148,11 +148,16 @@ function initialSteps(input) {
   return steps;
 }
 
+/**
+ * Upper bound for measures this policy may target. Only the run's own score
+ * size and the report's per-measure summary rows define it; a bad or hostile
+ * `eventResults[].measure` value can never widen the range the engine's
+ * measure table established.
+ */
 function safeMaxMeasure(scoreReport, scoreBarCount) {
   const values = [scoreBarCount ?? 0];
   for (const item of scoreReport?.measures ?? []) values.push(Number(item.measure) || 0);
   for (const item of scoreReport?.practiceRanges ?? []) values.push(Number(item.endMeasure) || 0);
-  for (const item of scoreReport?.eventResults ?? []) values.push(Number(item.measure) || 0);
   return Math.max(0, ...values.filter(Number.isFinite));
 }
 
@@ -368,6 +373,9 @@ function toPublicRun(run) {
     status: run.status,
     scoreFingerprint: run.scoreFingerprint,
     scoreBarCount: run.scoreBarCount,
+    // Set only for runs created from an existing persisted Take (flow B).
+    sourceTakeId: run.sourceTakeId ?? null,
+    sourceSelection: run.sourceSelection ?? null,
     createdAtIso: run.createdAtIso,
     updatedAtIso: run.updatedAtIso,
     currentStepId: run.currentStepId,
@@ -400,11 +408,18 @@ function toPublicRun(run) {
     availableActions: actions,
     takeRefs: run.takeRefs.map(ref => ({ ...ref })),
     decisions: run.decisions.map(decision => ({ ...decision })),
+    latestDecision: latestDecisionOf(run),
   };
 }
 
 function currentStep(run) {
   return run.steps.find(step => step.stepRunId === run.currentStepId) ?? null;
+}
+
+/** Public DTOs always carry the run's most recent decision, so create/get and
+ * applyAction stay consistent for UI consumers. */
+function latestDecisionOf(run) {
+  return run.decisions.length ? cloneJson(run.decisions[run.decisions.length - 1]) : null;
 }
 
 function moveToNextStep(run) {
@@ -548,6 +563,89 @@ export class TeachingOrchestrator {
     return toPublicRun(run);
   }
 
+  /**
+   * Starts a lesson from an ALREADY-PERSISTED Take (flow B). The browser only
+   * sends the takeId and user intent; the diagnosis comes from this Node's own
+   * read of the Take store via the same findRemediation used by record-take.
+   * Never accepts a client-provided report/diagnostic/prescription.
+   */
+  createRunFromTake(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw new TeachingOrchestratorError('INVALID_INPUT', '创建教学流程的请求必须是对象');
+    }
+    const takeId = requireId(input.takeId, 'takeId');
+    const take = this.#readTake(takeId);
+    if (!take || take.takeId !== takeId) {
+      throw new TeachingOrchestratorError('TAKE_NOT_FOUND', '找不到已持久化的来源 Take', 404);
+    }
+    if (take.assessment?.persistenceStatus
+      && take.assessment.persistenceStatus !== 'persisted') {
+      throw new TeachingOrchestratorError(
+        'TAKE_NOT_PERSISTED',
+        '来源 Take 尚未成功落盘，不能据此开始教学。',
+        409,
+      );
+    }
+    const fingerprint = take.score?.scoreFingerprint ?? null;
+    if (!fingerprint) {
+      throw new TeachingOrchestratorError('SCORE_FINGERPRINT_MISSING', '来源 Take 缺少曲谱指纹，无法绑定教学流程。', 409);
+    }
+    if (typeof input.scoreFingerprint === 'string' && input.scoreFingerprint.trim()
+      && input.scoreFingerprint.trim() !== fingerprint) {
+      throw new TeachingOrchestratorError('SCORE_FINGERPRINT_MISMATCH', '来源 Take 与当前曲谱不一致，不能开始教学。', 409);
+    }
+
+    const sourceReport = isReport(take.assessment?.timelineReport?.scoreV1)
+      ? take.assessment.timelineReport.scoreV1
+      : null;
+    const fallbackBarCount = Math.max(1, safeMaxMeasure(sourceReport, 10000));
+    const scoreBarCount = requireInt(input.scoreBarCount ?? fallbackBarCount, 1, 10000, 'scoreBarCount');
+
+    // The strategy reads the take; the run is created at the source range so
+    // the diagnosis lands on a guided step covering it. This path skips the
+    // study/demonstrate prologue: the learner came here with a concrete take.
+    const config = normalizeCreateInput({
+      scoreFingerprint: fingerprint,
+      scoreBarCount,
+      bpm: input.bpm,
+      hand: input.hand,
+      startMeasure: input.startMeasure,
+      endMeasure: input.endMeasure,
+      goal: input.goal,
+      referenceAvailable: input.referenceAvailable === true,
+      profile: input.profile,
+      durationPolicy: input.durationPolicy,
+      feedback: input.feedback,
+    });
+
+    const now = this.#now();
+    const runId = requireId(this.#id(), 'runId');
+    if (this.#fs.existsSync(this.#file(runId))) throw new TeachingOrchestratorError('RUN_ID_CONFLICT', '教学流程 ID 已存在', 409);
+    const steps = initialSteps({ ...config, referenceAvailable: false });
+    const run = {
+      schemaVersion: TEACHING_RUN_SCHEMA_VERSION,
+      runId,
+      templateVersion: 'guided-score-v1',
+      policyVersion: TEACHING_POLICY_VERSION,
+      revision: 0,
+      status: 'ready',
+      scoreFingerprint: config.scoreFingerprint,
+      scoreBarCount: config.scoreBarCount,
+      config,
+      steps,
+      currentStepId: steps[0].stepRunId,
+      takeRefs: [],
+      decisions: [],
+      appliedCommands: [],
+      sourceTakeId: takeId,
+      sourceSelection: input.manualRange === true ? 'user-selection' : 'take-evidence',
+      createdAtIso: now,
+      updatedAtIso: now,
+    };
+    this.#write(run);
+    return toPublicRun(run);
+  }
+
   applyAction(runId, request) {
     const run = this.#read(runId);
     if (!run) throw new TeachingOrchestratorError('TEACHING_RUN_NOT_FOUND', '教学流程不存在', 404);
@@ -568,7 +666,6 @@ export class TeachingOrchestrator {
     const action = request.action;
     const step = currentStep(run);
     const now = this.#now();
-    let lastDecision = null;
 
     if (action === 'begin') {
       if (run.status !== 'ready' || !step || step.status !== 'ready') {
@@ -618,13 +715,14 @@ export class TeachingOrchestrator {
       if (run.takeRefs.some(item => item.takeId === takeId)) {
         // A Take is attached to at most one attempt in this run. Reusing the
         // same immutable Take is idempotent but cannot produce a second decision.
-        lastDecision = run.decisions.find(item => item.sourceTakeId === takeId) ?? null;
+        // The existing decision is already in run.decisions, so the DTO's
+        // latestDecision keeps pointing at it.
       } else {
         run.takeRefs.push({ takeId, stepRunId: step.stepRunId, addedAtIso: now });
         step.attemptCount += 1;
         const result = findRemediation(take, run);
-        lastDecision = buildDecision({ run, take, result, nowIso: now, index: run.steps.indexOf(step) });
-        run.decisions.push(lastDecision);
+        const decision = buildDecision({ run, take, result, nowIso: now, index: run.steps.indexOf(step) });
+        run.decisions.push(decision);
         if (result.action === 'check_input' || result.action === 'collect_more_evidence') {
           step.status = 'ready';
           run.status = 'awaiting_evidence';
@@ -636,16 +734,16 @@ export class TeachingOrchestrator {
             // iterations, then return control to the learner with a manual choice.
             if (step.attemptCount <= 2) {
               step.status = 'ready';
-              step.tempoBpm = lastDecision.prescription.recommendedBpm;
+              step.tempoBpm = decision.prescription.recommendedBpm;
               step.instruction = `${result.reason} 再慢练一次；若仍未改善，请改选更短片段或查看详细报告。`;
               run.status = 'awaiting_evidence';
             } else {
               step.status = 'ready';
               step.instruction = `${result.reason} 已连续尝试多次，请手动选择更短片段或结束本次教学，不再自动降速。`;
               run.status = 'awaiting_evidence';
-              lastDecision.action = 'ask_learner';
-              lastDecision.reasonCode = 'REMEDIATION_LIMIT_REACHED';
-              lastDecision.reason = step.instruction;
+              decision.action = 'ask_learner';
+              decision.reasonCode = 'REMEDIATION_LIMIT_REACHED';
+              decision.reason = step.instruction;
             }
           } else {
             // Add a single focused step before the independent transfer test.
@@ -659,7 +757,7 @@ export class TeachingOrchestrator {
                 instruction: result.reason,
                 range: result.candidate.range,
                 hands: step.hands ?? run.config.hand,
-                bpm: lastDecision.prescription.recommendedBpm,
+                bpm: decision.prescription.recommendedBpm,
               });
               const independentIndex = run.steps.findIndex(item => item.kind === 'independent_performance');
               run.steps.splice(independentIndex < 0 ? run.steps.length : independentIndex, 0, focus);
@@ -705,7 +803,7 @@ export class TeachingOrchestrator {
     }
     this.#write(run);
     const dto = toPublicRun(run);
-    return lastDecision ? { ...dto, latestDecision: cloneJson(lastDecision) } : dto;
+    return dto;
   }
 }
 

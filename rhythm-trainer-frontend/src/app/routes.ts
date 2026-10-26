@@ -1,5 +1,6 @@
 export type AppRouteId =
   | 'workbench'
+  | 'teaching'
   | 'history'
   | 'profile'
   | 'scores'
@@ -45,6 +46,15 @@ export const APP_ROUTES: readonly AppRouteDefinition[] = [
     nav: true,
     enabled: true,
     description: '导入、检查并打开 MusicXML 曲谱。',
+  },
+  {
+    id: 'teaching',
+    path: '/teaching',
+    title: '老师带练',
+    icon: '✎',
+    nav: true,
+    enabled: true,
+    description: '按步骤带练当前曲谱：读谱、带练、针对性练习、独立演奏。',
   },
   {
     id: 'history',

@@ -1,98 +1,64 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import TargetedPracticePanel from './TargetedPracticePanel';
-import type { EngineSessionScoreReport } from '../types/engine';
+import { TeachingApiError } from '../services/teachingRunRepository';
 
-const report = (overrides: Partial<EngineSessionScoreReport> = {}): EngineSessionScoreReport => ({
-  algorithmVersion: 'scoring-v1.0.0',
-  configVersion: 'scoring-v1.0.0:default',
-  alignmentPairs: [],
-  missedScoreEventIds: [],
-  extraPerformedIds: [],
-  restWindowExtraIds: [],
-  eventResults: [],
-  pitch: { targets: 8, correct: 8, wrongPitch: 0, missed: 0, extra: 0, recall: 1, precision: 1 },
-  onset: { matched: 8, signedMeanMs: 8, signedMedianMs: 8, meanAbsoluteMs: 8, p50AbsoluteMs: 8, p90AbsoluteMs: 8, outOfToleranceCount: 0, outOfToleranceRatio: 0 },
-  rhythm: { intervalSamples: 7, meanSpeedRatio: 1, jitterRatioMad: 0, driftRatioSlopePerIndex: 0, rhythmCompensationSuspected: false },
-  duration: { graded: 8, meanRatio: 1, tooShortCount: 0, tooLongCount: 0 },
-  continuity: { coveredRatio: 1, longestMatchedStreak: 8, measuresTotal: 1, measuresWithAnyMatch: 1 },
-  measures: [{ measure: 1, matched: 8, missed: 0, meanAbsOnsetErrorMs: 100, meanSpeedRatio: 1 }],
-  overall: { score: 80, subscores: [], renormalized: false },
-  confidence: 'high',
-  dataDegraded: false,
-  diagnostics: [],
-  practiceRanges: [{ startMeasure: 1, endMeasure: 1, reason: 'mean |onset err| 100ms', priority: 1 }],
-  ...overrides,
-});
-
-const props = {
+const baseProps = {
   sourceReportId: 's-source',
   sourceTakeId: 'take-1',
   sourceScoreFingerprint: 'fp',
   activeScoreFingerprint: 'fp',
   practiceBpm: 72,
   practiceHand: 'both' as const,
-  scoreBarCount: 1,
+  scoreBarCount: 8,
+  onTeachingRunCreated: () => {},
+  onNavigateTeaching: () => {},
 };
 
-describe('TargetedPracticePanel', () => {
-  it('renders an executable local prescription with evidence', () => {
-    const html = renderToStaticMarkup(
-      <TargetedPracticePanel
-        {...props}
-        scoreV1={report()}
-        scoreStatus="AVAILABLE"
-        onStartTargetedPractice={() => true}
-      />,
-    );
-    expect(html).toContain('确认创建复练任务');
-    expect(html).toContain('LOCAL_ONSET_V1');
-    expect(html).toContain('meanAbsOnsetErrorMs');
-    expect(html).toContain('第 1 小节');
-  });
-
-  it('shows no executable button when there is no evidence', () => {
-    const flat = report({
-      measures: [{ measure: 1, matched: 8, missed: 0, meanAbsOnsetErrorMs: 20, meanSpeedRatio: 1 }],
-      practiceRanges: [],
-    });
-    const html = renderToStaticMarkup(
-      <TargetedPracticePanel
-        {...props}
-        scoreV1={flat}
-        scoreStatus="AVAILABLE"
-        onStartTargetedPractice={() => true}
-      />,
-    );
-    expect(html).toContain('本次没有足够证据生成针对性复练建议');
+describe('TargetedPracticePanel (Node-backed)', () => {
+  it('renders the teaching entry and computes no local prescriptions', () => {
+    const html = renderToStaticMarkup(<TargetedPracticePanel {...baseProps} />);
+    expect(html).toContain('从这份 Take 开始教学');
+    expect(html).toContain('不再在浏览器里计算薄弱小节或推荐速度');
+    // None of the old TS strategy artifacts may appear.
+    expect(html).not.toContain('LOCAL_ONSET_V1');
     expect(html).not.toContain('确认创建复练任务');
+    expect(html).not.toContain('系统处方');
   });
 
-  it('blocks automatic tasks for degraded reports while keeping manual selection explicit', () => {
-    const html = renderToStaticMarkup(
-      <TargetedPracticePanel
-        {...props}
-        scoreV1={report()}
-        scoreStatus="DEGRADED"
-        onStartTargetedPractice={() => true}
-      />,
-    );
-    expect(html).toContain('不可自动执行');
-    expect(html).toContain('手动选择小节');
-    expect(html).not.toContain('确认创建复练任务');
+  it('marks the manual range as a user choice, not a system diagnosis', () => {
+    const html = renderToStaticMarkup(<TargetedPracticePanel {...baseProps} />);
+    expect(html).toContain('范围只是你的选择，不是系统诊断');
   });
 
-  it('blocks all task creation when the active score fingerprint differs', () => {
+  it('disables creation when the active score fingerprint differs', () => {
     const html = renderToStaticMarkup(
-      <TargetedPracticePanel
-        {...props}
-        activeScoreFingerprint="another-fp"
-        scoreV1={report()}
-        scoreStatus="AVAILABLE"
-        onStartTargetedPractice={() => true}
-      />,
+      <TargetedPracticePanel {...baseProps} activeScoreFingerprint="another-fp" />,
     );
     expect(html).toContain('当前打开曲谱与这份报告不一致');
-    expect(html).toMatch(/disabled/);
+    // The creation form is gated behind the warning; mismatch must never
+    // render an actionable create button.
+    expect(html).not.toContain('按所选范围创建教学课程');
+  });
+
+  it('disables creation when the report has no Take id', () => {
+    const html = renderToStaticMarkup(
+      <TargetedPracticePanel {...baseProps} sourceTakeId={null} />,
+    );
+    expect(html).toContain('这份记录还没有 Take 标识');
+  });
+
+  it('keeps sourceReportId accepted for display but never derives rules from it', () => {
+    const html = renderToStaticMarkup(
+      <TargetedPracticePanel {...baseProps} sourceReportId={null} sourceTakeId="take-1" />,
+    );
+    // Still creatable: only the persisted Take id drives the request.
+    expect(html).not.toContain('这份记录还没有 Take 标识');
+  });
+
+  it('exposes coded 4xx errors as readable messages (repository mapping)', () => {
+    const error = new TeachingApiError('SCORE_FINGERPRINT_MISMATCH', '来源 Take 与当前曲谱不一致，不能开始教学。', 409);
+    expect(error.status).toBe(409);
+    expect(error.message).toContain('不一致');
   });
 });

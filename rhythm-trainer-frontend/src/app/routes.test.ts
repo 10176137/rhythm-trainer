@@ -16,9 +16,16 @@ describe('app route registry', () => {
   });
 
   it('exposes the implemented navigation pages', () => {
-    expect(NAV_ROUTES.map((route) => route.id)).toEqual(['workbench', 'scores', 'history', 'profile', 'device']);
+    expect(NAV_ROUTES.map((route) => route.id)).toEqual(['workbench', 'scores', 'teaching', 'history', 'profile', 'device']);
     expect(NAV_ROUTES.every((route) => route.enabled)).toBe(true);
     expect(new Set(APP_ROUTES.map((route) => route.path)).size).toBe(APP_ROUTES.length);
+  });
+
+  it('registers the teaching workspace route', () => {
+    const teaching = matchAppRoute('/teaching');
+    expect(teaching.route?.id).toBe('teaching');
+    expect(teaching.route?.enabled).toBe(true);
+    expect(teaching.route?.nav).toBe(true);
   });
 
   it('enables A1 pages and reserves later paths without enabling them', () => {
