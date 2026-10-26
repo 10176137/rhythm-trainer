@@ -6,6 +6,7 @@
 //        must never start a session.
 import type { RustPlanResponse } from './rust-plan';
 import type { ScoreAdvanceMode } from '../../types/practice';
+import type { RepeatSelection } from '../domain/types';
 
 export type PlannerAuthorityValue = 'rts' | 'rust';
 
@@ -60,6 +61,10 @@ export function planContextKey(input: {
   loopEndBar: number;
   range: { startMeasureOrdinal: number; endMeasureOrdinal: number };
   handMapping: unknown;
+  /** Stage 2: repeat policy and the canonical count-in also define the plan. */
+  repeatSelection?: RepeatSelection;
+  countInUs?: number;
+  ticksPerQuarter?: number;
 }): string {
   return JSON.stringify({
     hand: input.hand,
@@ -70,6 +75,9 @@ export function planContextKey(input: {
     loopEndBar: input.loopEndBar,
     range: [input.range.startMeasureOrdinal, input.range.endMeasureOrdinal],
     handMapping: input.handMapping,
+    repeatSelection: input.repeatSelection ?? { kind: 'none' },
+    countInUs: input.countInUs ?? 3_000_000,
+    ticksPerQuarter: input.ticksPerQuarter ?? 960,
   });
 }
 

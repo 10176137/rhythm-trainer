@@ -17,17 +17,22 @@ import type { ScoreDocument } from './core/sampleScore';
 import { buildPracticePlan } from './features/score/practicePlan';
 import { practiceScoreDocument } from './features/score/practiceScore';
 import { applyHandMappingToLegacyNotes } from './score-engine/legacy-bridge';
-import { buildPlaybackPlan, scoreOccurrencesToEngineAtoms, TS_PLANNER_VERSION } from './score-engine/playback/playback-planner';
-import { buildEngineScoreEvents } from './score-engine/playback/score-events';
+import { buildPlaybackPlan, TS_PLANNER_VERSION } from './score-engine/playback/playback-planner';
 import { projectScoreDocumentV1 } from './score-engine/contract-v1/plan-fingerprint';
 import {
   assertFollowResponseUsable,
   assertTimelineResponseUsable,
   rangeSpanFromDocument,
-  toEngineAtoms,
-  toEngineScoreEvents,
   toPlaybackPlan,
 } from './score-engine/plan/rust-plan';
+import {
+  assertPracticePlanBundle,
+  buildPracticePlanBundleFromPlayback,
+  buildPracticePlanBundleFromRust,
+  engineAtomsFromBundle,
+  engineScoreEventsFromBundle,
+  type BundleConfigInput,
+} from './score-engine/plan/practice-plan-bundle';
 import {
   decideAuthority,
   orchestrateRustLaunch,
@@ -75,7 +80,7 @@ import { DeviceBridge } from './services/deviceBridge';
 import type { MidiAdapterStatus, MidiDeviceInfo, MidiInputEvent } from './services/deviceBridge';
 import { takeTemplateRepository, TakeTemplateClientError, type TakeTemplate } from './services/takeTemplateRepository';
 import { usePracticeSession } from './features/practice/usePracticeSession';
-import { countdownToFirstNoteMs, countdownWholeSeconds, countInBeatsForTempo } from './features/practice/countdown';
+import { countdownToFirstNoteMs, countdownWholeSeconds, countInBeatsForTempo, DEFAULT_COUNT_IN_MS } from './features/practice/countdown';
 import { SystemDuetPlayer } from './features/practice/systemDuet';
 import {
   loadPracticeSettings,
@@ -1219,6 +1224,9 @@ export default function App() {
       loopEndBar: launchConfig.loopEndBar,
       range: context.range,
       handMapping: context.handMapping,
+      repeatSelection: { kind: 'none' },
+      countInUs: DEFAULT_COUNT_IN_MS * 1000,
+      ticksPerQuarter: 960,
     });
     if (!engineDoc || !report || boundFingerprint === null) {
       setStarting(false);
@@ -1285,6 +1293,9 @@ export default function App() {
             handMapping: currentFingerprint
               ? userHandMappingFor(currentFingerprint, currentPartId)
               : null,
+            repeatSelection: { kind: 'none' },
+            countInUs: DEFAULT_COUNT_IN_MS * 1000,
+            ticksPerQuarter: 960,
           }),
           scoreFingerprint: currentFingerprint,
           mode: currentConfig.advanceMode,
@@ -1292,6 +1303,7 @@ export default function App() {
         };
       },
       accept: (response) => {
+        const countInUs = DEFAULT_COUNT_IN_MS * 1000;
         // Response binding: same score, then the mode-specific gates.
         if (response.scoreFingerprint !== boundFingerprint) {
           throw new Error('PLAN_RESPONSE_MISMATCH: 计划对应的曲谱与当前曲谱不一致');
@@ -1305,6 +1317,28 @@ export default function App() {
           rangeStartBeat: span.rangeStartBeat,
           rangeDurationBeat: span.rangeDurationBeat,
         });
+        // Stage 2: one validated bundle per launch. Atoms/scoreEvents are taken
+        // from this bundle below, never regenerated from a second structure.
+        const bundleConfig: BundleConfigInput = {
+          modeId: launchConfig.modeId,
+          advanceMode: mode,
+          bpm: { numerator: launchConfig.tempo, denominator: 1 },
+          range: context.range,
+          repeatSelection: { kind: 'none' },
+          hand: launchConfig.hand,
+          handMapping: context.handMapping,
+          countInUs,
+          ticksPerQuarter: 960,
+          unsupportedNotationPolicy: 'reject-strict',
+          plannerVersion: response.plannerVersion,
+        };
+        const bundle = buildPracticePlanBundleFromRust({
+          response,
+          plan: parsed.plan,
+          config: bundleConfig,
+          fingerprint: { document: engineDoc, report, partId: context.partId },
+        });
+        assertPracticePlanBundle(bundle);
         // Presentation-only reference plan. The Rust plan is ALREADY hand
         // filtered, so the builder runs with hand='both' (its documented no-op)
         // — never a second hand filter.
@@ -1349,8 +1383,8 @@ export default function App() {
           return true as const;
         }
 
-        const atoms = toEngineAtoms(response.plan.atoms);
-        const scoreEvents = toEngineScoreEvents(response.plan, parsed.occurrences);
+        const atoms = engineAtomsFromBundle(bundle);
+        const scoreEvents = engineScoreEventsFromBundle(bundle);
         const guideSession = new FollowSession(parsed.groups, launchConfig.tempo, {
           timingToleranceMs: toleranceMs,
           chordSpreadToleranceMs: 50,
@@ -1362,6 +1396,7 @@ export default function App() {
           bpm: launchConfig.tempo,
           profile: launchConfig.profile,
           countInBeats: context.countInBeats,
+          countInUs,
           ticksPerQuarter: 960,
           metronomeEnabled: metronomeOn,
           beatsPerBar: (launchConfig.timeSignature[0] * 4) / launchConfig.timeSignature[1],
@@ -1429,6 +1464,7 @@ export default function App() {
     // Three seconds of preparation, expressed in this tempo's beats so the
     // engine, score events, reference playback and metronome share one clock.
     const countInBeats = countInBeatsForTempo(config.tempo);
+    const countInUs = DEFAULT_COUNT_IN_MS * 1000;
     if (overrideConfig) {
       setConfig(overrideConfig);
       setSettingsDraft(null);
@@ -1590,6 +1626,35 @@ export default function App() {
           addFeedback('无法确定练习手别', `有 ${scoped.missingEventIds.length} 个目标无法映射到左手/右手，已阻止开始。`, 'warning');
           return false;
         }
+        if (!launchScope || !scoreDoc.importReport) {
+          setStarting(false);
+          addFeedback('无法确认练习范围', '缺少完整的手别映射或导入报告，已阻止开始。', 'warning');
+          return false;
+        }
+        // Stage 2: Follow uses the same validated bundle as Timeline; only the
+        // consumed projection differs (groups/occurrences, never strict atoms).
+        const followBundle = buildPracticePlanBundleFromPlayback({
+          plan: scoped.plan,
+          config: {
+            modeId: config.modeId,
+            advanceMode: 'follow',
+            bpm: { numerator: config.tempo, denominator: 1 },
+            range: scoped.plan.range,
+            repeatSelection: { kind: 'none' },
+            hand: config.hand,
+            handMapping: launchScope.handMapping,
+            countInUs,
+            ticksPerQuarter: 960,
+            unsupportedNotationPolicy: 'reject-strict',
+            plannerVersion: TS_PLANNER_VERSION,
+          },
+          fingerprint: {
+            document: scoreDoc.engine,
+            report: scoreDoc.importReport,
+            partId: launchScope.partId,
+          },
+        });
+        assertPracticePlanBundle(followBundle);
         const toleranceMs = config.profile === 'strict' ? 30 : config.profile === 'relaxed' ? 100 : 60;
         // Default rts path: the plan is still the TS projection, but the
         // authoritative Follow runtime and report are the server's Rust
@@ -1645,7 +1710,7 @@ export default function App() {
     }
     let plan: ReturnType<typeof buildPracticePlan>;
     let playbackPlanId: string | null = null;
-    let scoreEvents: ReturnType<typeof buildEngineScoreEvents> | undefined;
+    let scoreEvents: ReturnType<typeof engineScoreEventsFromBundle> | undefined;
     let guideGroups: readonly PlaybackGroup[] | null = null;
     if (scoreDoc.engine) {
       try {
@@ -1682,20 +1747,40 @@ export default function App() {
         }
         const scopedPlan = reference.scopedPlan;
         playbackPlanId = reference.plan.planId;
-        scoreEvents = buildEngineScoreEvents(scopedPlan, config.tempo, countInBeats);
+        if (!launchScope || !scoreDoc.importReport) {
+          setStarting(false);
+          addFeedback('无法确认练习范围', '缺少完整的手别映射或导入报告，已阻止开始。', 'warning');
+          return false;
+        }
+        const timelineBundle = buildPracticePlanBundleFromPlayback({
+          plan: scopedPlan,
+          config: {
+            modeId: config.modeId,
+            advanceMode: 'timeline',
+            bpm: { numerator: config.tempo, denominator: 1 },
+            range: scopedPlan.range,
+            repeatSelection: { kind: 'none' },
+            hand: config.hand,
+            handMapping: launchScope.handMapping,
+            countInUs,
+            ticksPerQuarter: 960,
+            unsupportedNotationPolicy: 'reject-strict',
+            plannerVersion: TS_PLANNER_VERSION,
+          },
+          fingerprint: {
+            document: scoreDoc.engine,
+            report: scoreDoc.importReport,
+            partId: launchScope.partId,
+          },
+        });
+        assertPracticePlanBundle(timelineBundle);
+        scoreEvents = engineScoreEventsFromBundle(timelineBundle);
         guideGroups = scopedPlan.groups;
         referencePlanRef.current = reference.plan;
         pendingReferencePlanRef.current = reference.plan;
         referenceMarkedIndexRef.current = 0;
-        const atomResult = scoreOccurrencesToEngineAtoms(scopedPlan);
-        const blocking = atomResult.issues.filter((issue) => issue.blocksStrict);
-        if (blocking.length) {
-          setStarting(false);
-          addFeedback('无法生成严格目标', blocking.map((issue) => issue.message).slice(0, 3).join('；'), 'warning');
-          return false;
-        }
         plan = {
-          atoms: atomResult.atoms,
+          atoms: engineAtomsFromBundle(timelineBundle),
           expectedNotes: scopedPlan.groups.map((group) => group.pitches.map((pitch) => ({
             midiNote: pitch.midiNote ?? 0,
             noteName: pitch.spelling,
@@ -1738,6 +1823,7 @@ export default function App() {
       bpm: config.tempo,
       profile: config.profile,
       countInBeats,
+      countInUs,
       ticksPerQuarter: 960,
       metronomeEnabled: metronomeOn,
       beatsPerBar: (config.timeSignature[0] * 4) / config.timeSignature[1],

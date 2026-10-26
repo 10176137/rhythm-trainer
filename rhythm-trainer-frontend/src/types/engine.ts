@@ -577,6 +577,8 @@ export interface FollowStartRequest {
 export type EngineServerMessage =
   | {
       type: 'started'; bpm: number; profile: EngineProfile; countInBeats: number;
+      /** Canonical count-in actually used; null for legacy clients. */
+      countInUs?: number | null;
       /** Backend-authoritative first note onset, relative to the session origin. */
       firstTargetAtMs: number | null;
       /** Count-in length used to build firstTargetAtMs. */
@@ -627,6 +629,8 @@ export interface EngineStartRequest {
   bpm: number;
   profile: EngineProfile;
   countInBeats: number;
+  /** Canonical count-in in microseconds; when present it is the only time origin. */
+  countInUs?: number;
   ticksPerQuarter: number;
   atoms: EngineAtom[];
   /** Per-note final-score events; never a second target timeline. */

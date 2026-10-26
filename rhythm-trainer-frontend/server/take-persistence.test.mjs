@@ -112,7 +112,8 @@ async function startTimelineAndFinish() {
     modeId: 'score',
     bpm: 120,
     profile: 'standard',
-    countInBeats: 4,
+    countInBeats: 6,
+    countInUs: 3_000_000,
     ticksPerQuarter: 960,
     atoms: [{ startTick: 0, durationTicks: 960, kind: 'note', bar: 1, beat: 1 }],
     assisted: false,
@@ -246,4 +247,20 @@ describe('Follow Take persistence failure', () => {
     expect(readFileSync(profilePath, 'utf8')).toBe(profileAfterFirst);
     expect(takeFiles().filter((name) => name === `${takeId}.json`)).toHaveLength(1);
   }, 30000);
+
+  it('rejects a countInBeats that disagrees with the canonical countInUs', async () => {
+    client.send({
+      type: 'start',
+      modeId: 'score',
+      bpm: 120,
+      profile: 'standard',
+      countInBeats: 4,
+      countInUs: 3_000_000,
+      ticksPerQuarter: 960,
+      atoms: [{ startTick: 0, durationTicks: 960, kind: 'note', bar: 1, beat: 1 }],
+      assisted: false,
+    });
+    const error = await client.waitFor('error');
+    expect(error.message).toMatch(/countInBeats.*countInUs|countInUs.*countInBeats/);
+  }, 20000);
 });

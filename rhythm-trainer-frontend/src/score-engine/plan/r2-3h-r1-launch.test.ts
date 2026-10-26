@@ -359,4 +359,21 @@ describe('R2-3h-R1 F2: a stale plan never starts', () => {
     expect(evaluatePlanCurrency(token, live({ authority: 'rts' }))).toMatchObject({ current: false, code: 'AUTHORITY_LOST' });
     expect(evaluatePlanCurrency(token, live({ authority: null }))).toMatchObject({ current: false, code: 'AUTHORITY_LOST' });
   });
+
+  it('plan context key covers repeat policy and the canonical count-in', () => {
+    const base = {
+      hand: 'both',
+      tempo: 80,
+      modeId: 'score',
+      loopActive: false,
+      loopStartBar: 1,
+      loopEndBar: 2,
+      range: { startMeasureOrdinal: 1, endMeasureOrdinal: 2 },
+      handMapping: MAPPING,
+    };
+    const key = planContextKey(base);
+    expect(planContextKey({ ...base, repeatSelection: { kind: 'range-loop', count: 2 } })).not.toBe(key);
+    expect(planContextKey({ ...base, countInUs: 2_000_000 })).not.toBe(key);
+    expect(planContextKey({ ...base, ticksPerQuarter: 480 })).not.toBe(key);
+  });
 });

@@ -35,6 +35,8 @@ export interface BeginRequest {
   bpm: number;
   profile: EngineProfile;
   countInBeats: number;
+  /** The single authoritative count-in value in microseconds (defaults to 3s). */
+  countInUs?: number;
   ticksPerQuarter: number;
   atoms: EngineAtom[];
   /** Per-note final-score events from the same PlaybackPlan. */
@@ -369,6 +371,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         bpm: request.bpm,
         profile: request.profile,
         countInBeats: request.countInBeats,
+        ...(request.countInUs !== undefined ? { countInUs: request.countInUs } : {}),
         ticksPerQuarter: request.ticksPerQuarter,
         atoms: request.atoms,
         scoreEvents: request.scoreEvents,

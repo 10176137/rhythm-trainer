@@ -2232,6 +2232,18 @@ wss.on('connection', (socket) => {
         const bpm = Number(msg.bpm);
         if (!Number.isFinite(bpm) || bpm < 20 || bpm > 300) throw new Error('BPM 需在 20–300 之间');
         const countInBeats = Number(msg.countInBeats) || 4;
+        let countInUs = null;
+        if (msg.countInUs !== undefined && msg.countInUs !== null) {
+          const value = Number(msg.countInUs);
+          if (!Number.isSafeInteger(value) || value < 0) {
+            throw new Error('countInUs 必须是非负安全整数微秒');
+          }
+          countInUs = value;
+          const derivedCountInBeats = value / (60_000_000 / bpm);
+          if (Math.abs(countInBeats - derivedCountInBeats) > 1e-6) {
+            throw new Error('countInBeats 与 countInUs 不一致');
+          }
+        }
         const ticksPerQuarter = Number(msg.ticksPerQuarter) || 960;
         if (!Array.isArray(msg.atoms) || msg.atoms.length === 0) throw new Error('乐谱目标为空,无法生成练习计划');
         // Mode → effective scoring config: single resolution point. Overrides
@@ -2470,7 +2482,7 @@ wss.on('connection', (socket) => {
             beat: Number(atom.beat),
           })),
         };
-        const countInMs = countInBeats * (60_000 / bpm);
+        const countInMs = countInUs !== null ? countInUs / 1000 : countInBeats * (60_000 / bpm);
         const targets = addon.buildSchedule(pattern, bpm, countInMs, profile);
         // P1-3: prove atoms and scoreEvents describe the SAME plan before any
         // take starts. Data model (playback-planner.ts): one EngineAtom per
@@ -2629,6 +2641,7 @@ wss.on('connection', (socket) => {
           durationPolicy, targets, countInMs, scoringStartMs, ...activeTake,
           atoms: pattern.atoms,
           countInBeats,
+          countInUs,
           ticksPerQuarter,
           scoringConfig,
           scoreFingerprint,
@@ -2650,7 +2663,7 @@ wss.on('connection', (socket) => {
         };
         meta.assisted = scoringConfig.feedback === 'live';
         send({
-          type: 'started', bpm, profile, countInBeats, targets,
+          type: 'started', bpm, profile, countInBeats, countInUs, targets,
           countInMs,
           firstTargetAtMs: targets.length > 0 ? targets[0].atMs : null,
           scoreFingerprint,
@@ -3166,6 +3179,7 @@ wss.on('connection', (socket) => {
       // Replay inputs: the exact atom list and count-in that built the targets.
       atoms: meta ? meta.atoms : null,
       countInBeats: meta ? meta.countInBeats : null,
+      countInUs: meta ? meta.countInUs : null,
       ticksPerQuarter: meta ? meta.ticksPerQuarter : null,
       practiceSessionId: finishedTake ? finishedTake.practiceSessionId : null,
       takeIndex: finishedTake ? finishedTake.takeIndex : null,
