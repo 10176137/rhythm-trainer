@@ -2,7 +2,7 @@
 
 - 分支：`feat/teaching-experience-v1`
 - 基线：`6d00e03`（Teaching UI V1 报告提交）
-- 交付代码：`4cc0755`（verifiedCodeSha）
+- 交付代码：`4cc0755`（verifiedCodeSha）；后续文案修正 `e0c5a55`（模式改名「练习模式」，见 §9）
 - 日期：2026-10-27
 - 范围：课程内容、Node 教学决策闭环、单屏教学工作区、导航重排、测试与浏览器验收
 - 默认 planner：仍为 `rts`；未合并 `main`；未改任何冻结契约
@@ -138,7 +138,11 @@
 - 本地数据：课程目录为代码内置，无迁移；LessonRun 文件仍在 `%APPDATA%/rhythm-trainer-frontend/lesson-runs/`，回滚后旧 UI 仍可读取通用字段，未知 `lessonId` 会被旧编排器忽略/拒绝创建，不会破坏已有 Take。
 - 导航回滚仅涉及 `src/app/routes.ts` 与 `src/App.tsx` 的入口映射。
 
-## 9. 文件清单
+## 9. 后续修正
+
+- `e0c5a55`（2026-10-27，用户反馈“这都同一个 UI，把乐谱跟练换成练习模式”）：把 `score` 模式的用户可见名称从「乐谱跟练」统一改为「练习模式」（`modeRegistry.ts`、`practiceRepository.ts` 的 `MODE_CN`、`server/mode-config.mjs` 的 `modeLabel`、练习设置里的说明文案）。面包屑、练习卡片标题、侧栏模式项、历史/报告模式标签现在都显示「练习模式」。改后重跑 `npx vitest run` 565 pass / 4 skipped、`tsc -b` clean，并在浏览器确认 `/workbench` 的面包屑与卡片标题均为「练习模式」。
+
+## 10. 文件清单
 
 新增：
 
