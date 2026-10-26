@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "fw-clean",
+  "mode": "follow",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "kinds": [
+      "correct",
+      "correct",
+      "complete"
+    ],
+    "completedTargets": 3,
+    "standardTargets": 3,
+    "wrongNoteCount": 0,
+    "extraNoteCount": 0,
+    "duplicateNoteCount": 0,
+    "pendingTargetId": null,
+    "intervalJudged": [
+      false,
+      true,
+      true
+    ],
+    "notes": "Intervals match the notated beats at 60 BPM."
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "fw-skip-target",
+  "mode": "follow",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "kinds": [
+      "correct",
+      "wrong"
+    ],
+    "completedTargets": 1,
+    "standardTargets": 1,
+    "wrongNoteCount": 1,
+    "extraNoteCount": 0,
+    "duplicateNoteCount": 0,
+    "pendingTargetId": "g2",
+    "intervalJudged": [
+      false
+    ],
+    "notes": "E4 while waiting on D4 is wrong and must not advance."
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "fw-duplicate-note",
+  "mode": "follow",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "kinds": [
+      "partial",
+      "duplicate",
+      "correct",
+      "complete"
+    ],
+    "completedTargets": 2,
+    "standardTargets": 0,
+    "wrongNoteCount": 0,
+    "extraNoteCount": 0,
+    "duplicateNoteCount": 1,
+    "pendingTargetId": null,
+    "intervalJudged": [
+      false,
+      true
+    ],
+    "notes": "The second C4 is a duplicate while the chord is incomplete; the spread and next interval are non-standard."
+  }
+}

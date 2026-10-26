@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "fw-extra-after-complete",
+  "mode": "follow",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "kinds": [
+      "complete",
+      "extra"
+    ],
+    "completedTargets": 1,
+    "standardTargets": 1,
+    "wrongNoteCount": 0,
+    "extraNoteCount": 1,
+    "duplicateNoteCount": 0,
+    "pendingTargetId": null,
+    "intervalJudged": [
+      false
+    ],
+    "notes": "After completion, further input is extra."
+  }
+}

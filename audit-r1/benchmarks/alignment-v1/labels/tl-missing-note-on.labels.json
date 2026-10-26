@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-missing-note-on",
+  "mode": "timeline",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "degraded",
+    "assessable": [
+      "pitch",
+      "onset"
+    ],
+    "pairs": [
+      {
+        "scoreEventId": "s1",
+        "performedNoteId": "p-s1",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s2",
+        "performedNoteId": "p-s2",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s4",
+        "performedNoteId": "p-s4",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s5",
+        "performedNoteId": "p-s5",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s6",
+        "performedNoteId": "p-s6",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s7",
+        "performedNoteId": "p-s7",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s8",
+        "performedNoteId": "p-s8",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      }
+    ],
+    "missedScoreEventIds": [],
+    "extraPerformedIds": [],
+    "unassessableScoreEventIds": [
+      "s3"
+    ],
+    "notes": "Input loss is not the user missing s3; s3 is unassessable."
+  }
+}

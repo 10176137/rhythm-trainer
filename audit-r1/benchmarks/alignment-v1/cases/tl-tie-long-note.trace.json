@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-tie-long-note",
+  "mode": "timeline",
+  "scenario": "tied long note followed by a short note",
+  "config": {
+    "bpm": 80,
+    "countInMs": 3000,
+    "countInUs": 3000000,
+    "ticksPerQuarter": 960,
+    "hand": "both",
+    "range": {
+      "startMeasureOrdinal": 1,
+      "endMeasureOrdinal": 2
+    },
+    "repeatSelection": {
+      "kind": "none"
+    },
+    "plannerVersion": "benchmark-planner-1",
+    "scoreFingerprint": "benchmark:score:e4ad0ecbf3d6b6fcc0d5e39deb7ac7e7",
+    "planFingerprint": "plan-v1:sha256:88056a196b8f4c9b0f1a598114681054fd32eed4723c6ff7c5c72d90f1555170"
+  },
+  "scoreEvents": [
+    {
+      "scoreEventId": "s1",
+      "measure": 1,
+      "beatPosition": 0,
+      "pitch": 60,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 3000,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s2",
+      "measure": 2,
+      "beatPosition": 0,
+      "pitch": 62,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    }
+  ],
+  "performed": [
+    {
+      "performedNoteId": "p-s1",
+      "pitch": 60,
+      "onsetMs": 3000,
+      "releaseMs": 6000,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s2",
+      "pitch": 62,
+      "onsetMs": 6000,
+      "releaseMs": 6750,
+      "pairingStatus": "complete"
+    }
+  ],
+  "qualitySignals": {
+    "noteOnMissing": 0,
+    "noteOffMissing": 0,
+    "duplicates": 0,
+    "outOfOrder": 0,
+    "clockQuality": "good",
+    "deviceDisconnected": false,
+    "queueOverflow": false,
+    "performedCount": 2
+  },
+  "derivation": "synthetic exact-answer trace; labels are authored separately"
+}

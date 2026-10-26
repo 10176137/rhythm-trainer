@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-chord-arrival-order",
+  "mode": "timeline",
+  "scenario": "same-onset chord arrives in reverse pitch order",
+  "config": {
+    "bpm": 80,
+    "countInMs": 3000,
+    "countInUs": 3000000,
+    "ticksPerQuarter": 960,
+    "hand": "both",
+    "range": {
+      "startMeasureOrdinal": 1,
+      "endMeasureOrdinal": 2
+    },
+    "repeatSelection": {
+      "kind": "none"
+    },
+    "plannerVersion": "benchmark-planner-1",
+    "scoreFingerprint": "benchmark:score:8add4e0c9f007cd989f0ad304500f02b",
+    "planFingerprint": "plan-v1:sha256:9a8299f3bfd01900563dd89f11af9c7cf64ffcb24495980d8f864a2879c4246e"
+  },
+  "scoreEvents": [
+    {
+      "scoreEventId": "s1",
+      "measure": 1,
+      "beatPosition": 0,
+      "pitch": 60,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s2",
+      "measure": 1,
+      "beatPosition": 0,
+      "pitch": 64,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s3",
+      "measure": 1,
+      "beatPosition": 0,
+      "pitch": 67,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s4",
+      "measure": 1,
+      "beatPosition": 1,
+      "pitch": 62,
+      "targetOnsetMs": 3750,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    }
+  ],
+  "performed": [
+    {
+      "performedNoteId": "p-s3",
+      "pitch": 67,
+      "onsetMs": 3005,
+      "releaseMs": 3755,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s2",
+      "pitch": 64,
+      "onsetMs": 3008,
+      "releaseMs": 3758,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s1",
+      "pitch": 60,
+      "onsetMs": 3010,
+      "releaseMs": 3760,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s4",
+      "pitch": 62,
+      "onsetMs": 3750,
+      "releaseMs": 4500,
+      "pairingStatus": "complete"
+    }
+  ],
+  "qualitySignals": {
+    "noteOnMissing": 0,
+    "noteOffMissing": 0,
+    "duplicates": 0,
+    "outOfOrder": 0,
+    "clockQuality": "good",
+    "deviceDisconnected": false,
+    "queueOverflow": false,
+    "performedCount": 4
+  },
+  "derivation": "synthetic exact-answer trace; labels are authored separately"
+}

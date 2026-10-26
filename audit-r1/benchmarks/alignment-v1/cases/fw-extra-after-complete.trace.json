@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "fw-extra-after-complete",
+  "mode": "follow",
+  "scenario": "Follow: input after the final target",
+  "config": {
+    "bpm": 60,
+    "timingToleranceMs": 60,
+    "chordSpreadToleranceMs": 50,
+    "plannerVersion": "benchmark-follow-1",
+    "scoreFingerprint": "benchmark:follow:c7cc3c8998d0b535fe5782f6c2a46462",
+    "planFingerprint": "plan-v1:sha256:9543d10f909ed722cea00078d05b4d6f46db79ef86528310341be8428ebae415"
+  },
+  "groups": [
+    {
+      "groupId": "g1",
+      "bar": 1,
+      "playbackBeat": 0,
+      "pitches": [
+        {
+          "midiNote": 60,
+          "spelling": "C4"
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "midiNote": 60,
+      "atMs": 0
+    },
+    {
+      "midiNote": 62,
+      "atMs": 100
+    }
+  ],
+  "pauseAtMs": null,
+  "qualitySignals": {
+    "clockQuality": "not-applicable",
+    "deviceDisconnected": false,
+    "performedCount": 2
+  },
+  "derivation": "synthetic self-paced trace; expected kinds are authored separately"
+}

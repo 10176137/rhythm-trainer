@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-tempo-drift",
+  "mode": "timeline",
+  "scenario": "accelerando / tempo drift",
+  "config": {
+    "bpm": 80,
+    "countInMs": 3000,
+    "countInUs": 3000000,
+    "ticksPerQuarter": 960,
+    "hand": "both",
+    "range": {
+      "startMeasureOrdinal": 1,
+      "endMeasureOrdinal": 2
+    },
+    "repeatSelection": {
+      "kind": "none"
+    },
+    "plannerVersion": "benchmark-planner-1",
+    "scoreFingerprint": "benchmark:score:9e730ddbb241c34fe6432ae866635f7e",
+    "planFingerprint": "plan-v1:sha256:e188034224b33d7f09f69fe0a11b3e0311c0997c6f691a92443f2395be8ab216"
+  },
+  "scoreEvents": [
+    {
+      "scoreEventId": "s1",
+      "measure": 1,
+      "beatPosition": 0,
+      "pitch": 60,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s2",
+      "measure": 1,
+      "beatPosition": 1,
+      "pitch": 62,
+      "targetOnsetMs": 3750,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s3",
+      "measure": 1,
+      "beatPosition": 2,
+      "pitch": 64,
+      "targetOnsetMs": 4500,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s4",
+      "measure": 1,
+      "beatPosition": 3,
+      "pitch": 65,
+      "targetOnsetMs": 5250,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s5",
+      "measure": 2,
+      "beatPosition": 4,
+      "pitch": 67,
+      "targetOnsetMs": 6000,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s6",
+      "measure": 2,
+      "beatPosition": 5,
+      "pitch": 69,
+      "targetOnsetMs": 6750,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s7",
+      "measure": 2,
+      "beatPosition": 6,
+      "pitch": 71,
+      "targetOnsetMs": 7500,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s8",
+      "measure": 2,
+      "beatPosition": 7,
+      "pitch": 72,
+      "targetOnsetMs": 8250,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    }
+  ],
+  "performed": [
+    {
+      "performedNoteId": "p-s1",
+      "pitch": 60,
+      "onsetMs": 3000,
+      "releaseMs": 3750,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s2",
+      "pitch": 62,
+      "onsetMs": 3770,
+      "releaseMs": 4520,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s3",
+      "pitch": 64,
+      "onsetMs": 4550,
+      "releaseMs": 5300,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s4",
+      "pitch": 65,
+      "onsetMs": 5340,
+      "releaseMs": 6090,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s5",
+      "pitch": 67,
+      "onsetMs": 6140,
+      "releaseMs": 6890,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s6",
+      "pitch": 69,
+      "onsetMs": 6950,
+      "releaseMs": 7700,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s7",
+      "pitch": 71,
+      "onsetMs": 7770,
+      "releaseMs": 8520,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s8",
+      "pitch": 72,
+      "onsetMs": 8600,
+      "releaseMs": 9350,
+      "pairingStatus": "complete"
+    }
+  ],
+  "qualitySignals": {
+    "noteOnMissing": 0,
+    "noteOffMissing": 0,
+    "duplicates": 0,
+    "outOfOrder": 0,
+    "clockQuality": "good",
+    "deviceDisconnected": false,
+    "queueOverflow": false,
+    "performedCount": 8
+  },
+  "derivation": "synthetic exact-answer trace; labels are authored separately"
+}

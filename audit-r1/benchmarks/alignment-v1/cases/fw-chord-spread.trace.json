@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "fw-chord-spread",
+  "mode": "follow",
+  "scenario": "Follow: chord arrives spread beyond tolerance",
+  "config": {
+    "bpm": 60,
+    "timingToleranceMs": 60,
+    "chordSpreadToleranceMs": 50,
+    "plannerVersion": "benchmark-follow-1",
+    "scoreFingerprint": "benchmark:follow:6f96a7712fbe0c9e9a6f8327a9432191",
+    "planFingerprint": "plan-v1:sha256:777be6065bbfe70e51141beceb46ec773f9fcef5c667323859dbf79fe8a9cd4a"
+  },
+  "groups": [
+    {
+      "groupId": "g1",
+      "bar": 1,
+      "playbackBeat": 0,
+      "pitches": [
+        {
+          "midiNote": 60,
+          "spelling": "C4"
+        },
+        {
+          "midiNote": 64,
+          "spelling": "E4"
+        }
+      ]
+    },
+    {
+      "groupId": "g2",
+      "bar": 1,
+      "playbackBeat": 1,
+      "pitches": [
+        {
+          "midiNote": 67,
+          "spelling": "G4"
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "midiNote": 60,
+      "atMs": 0
+    },
+    {
+      "midiNote": 64,
+      "atMs": 100
+    },
+    {
+      "midiNote": 67,
+      "atMs": 1100
+    }
+  ],
+  "pauseAtMs": null,
+  "qualitySignals": {
+    "clockQuality": "not-applicable",
+    "deviceDisconnected": false,
+    "performedCount": 3
+  },
+  "derivation": "synthetic self-paced trace; expected kinds are authored separately"
+}

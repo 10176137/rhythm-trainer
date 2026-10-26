@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "fw-skip-target",
+  "mode": "follow",
+  "scenario": "Follow: one target skipped, performer continues",
+  "config": {
+    "bpm": 60,
+    "timingToleranceMs": 60,
+    "chordSpreadToleranceMs": 50,
+    "plannerVersion": "benchmark-follow-1",
+    "scoreFingerprint": "benchmark:follow:b9e1e3bfd06e216572e2fed6544f98f2",
+    "planFingerprint": "plan-v1:sha256:2aaa9edc2355596c9499cc3269ada94d7af9ee6f615133036ab999f92416d330"
+  },
+  "groups": [
+    {
+      "groupId": "g1",
+      "bar": 1,
+      "playbackBeat": 0,
+      "pitches": [
+        {
+          "midiNote": 60,
+          "spelling": "C4"
+        }
+      ]
+    },
+    {
+      "groupId": "g2",
+      "bar": 1,
+      "playbackBeat": 1,
+      "pitches": [
+        {
+          "midiNote": 62,
+          "spelling": "D4"
+        }
+      ]
+    },
+    {
+      "groupId": "g3",
+      "bar": 1,
+      "playbackBeat": 2,
+      "pitches": [
+        {
+          "midiNote": 64,
+          "spelling": "E4"
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "midiNote": 60,
+      "atMs": 0
+    },
+    {
+      "midiNote": 64,
+      "atMs": 1000
+    }
+  ],
+  "pauseAtMs": null,
+  "qualitySignals": {
+    "clockQuality": "not-applicable",
+    "deviceDisconnected": false,
+    "performedCount": 2
+  },
+  "derivation": "synthetic self-paced trace; expected kinds are authored separately"
+}

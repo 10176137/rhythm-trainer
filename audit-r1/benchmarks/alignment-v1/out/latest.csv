@@ -1,0 +1,27 @@
+caseId,mode,scenario,pairingPrecision,pairingRecall,pairingF1,classAccuracy,onsetMaeVsLabel,kindAccuracy,quality,qualityCorrect,runtimeMs
+tl-clean-exact,timeline,"clean, exact performance",1,1,1,1,0,,healthy,true,0.451
+tl-late-global,timeline,whole performance 50 ms late,1,1,1,1,0,,healthy,true,0.186
+tl-local-deviations,timeline,local timing deviations within the band,1,1,1,1,0,,healthy,true,0.142
+tl-tempo-drift,timeline,accelerando / tempo drift,1,0.75,0.857,0.75,0,,healthy,true,0.154
+tl-one-miss,timeline,one missing target,1,1,1,1,0,,healthy,true,0.123
+tl-consecutive-miss,timeline,three consecutive missing targets,1,1,1,1,0,,healthy,true,0.111
+tl-wrong-pitch,timeline,one wrong pitch at the correct time,1,1,1,1,0,,healthy,true,0.123
+tl-extra-note,timeline,one inserted note between targets,1,1,1,1,0,,healthy,true,0.131
+tl-mixed-errors,timeline,missing + wrong pitch + extra interleaved,1,1,1,1,0,,healthy,true,0.125
+tl-chord-arrival-order,timeline,same-onset chord arrives in reverse pitch order,1,1,1,1,0,,healthy,true,0.082
+tl-cross-hand-unison,timeline,two staves notate the same MIDI pitch on one onset,1,1,1,1,0,,healthy,true,0.064
+tl-fast-repeated-note,timeline,fast repeated same pitch,1,1,1,1,0,,healthy,true,0.072
+tl-tie-long-note,timeline,tied long note followed by a short note,1,0.5,0.667,0.5,0,,healthy,true,0.066
+tl-missing-note-off,timeline,Note On without Note Off,1,1,1,1,0,,degraded,true,0.112
+tl-duplicate-packet,timeline,duplicated MIDI packet for the same key/onset,1,1,1,1,0,,degraded,true,0.12
+tl-one-note-400ms-late,timeline,one note 400 ms late (outside the normal matching band),1,0.875,0.933,0.875,0,,healthy,true,0.129
+tl-missing-note-on,timeline,one Note On lost before capture,1,1,1,1,0,,degraded,true,0.11
+tl-device-disconnect,timeline,device disconnects after four notes,1,1,1,1,0,,degraded,true,0.089
+tl-empty-input,timeline,no performed events at all,1,1,1,1,,,unscorable,true,0.041
+fw-clean,follow,Follow: clean three-target performance,,,,,,1,healthy,true,1.452
+fw-skip-target,follow,"Follow: one target skipped, performer continues",,,,,,1,healthy,true,0.055
+fw-wrong-then-correct,follow,Follow: wrong note then recovery,,,,,,1,healthy,true,0.096
+fw-chord-spread,follow,Follow: chord arrives spread beyond tolerance,,,,,,1,healthy,true,0.088
+fw-duplicate-note,follow,Follow: repeated key inside an incomplete chord,,,,,,1,healthy,true,0.071
+fw-pause-resume,follow,Follow: pause then resume invalidates the next interval,,,,,,1,healthy,true,0.087
+fw-extra-after-complete,follow,Follow: input after the final target,,,,,,1,healthy,true,0.038

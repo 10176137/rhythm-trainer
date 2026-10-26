@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "fw-clean",
+  "mode": "follow",
+  "scenario": "Follow: clean three-target performance",
+  "config": {
+    "bpm": 60,
+    "timingToleranceMs": 60,
+    "chordSpreadToleranceMs": 50,
+    "plannerVersion": "benchmark-follow-1",
+    "scoreFingerprint": "benchmark:follow:b9e1e3bfd06e216572e2fed6544f98f2",
+    "planFingerprint": "plan-v1:sha256:09a5c3b37fca860d6d83a70338c3b1c0172cc8b9562be2e84ecefb8ced67239b"
+  },
+  "groups": [
+    {
+      "groupId": "g1",
+      "bar": 1,
+      "playbackBeat": 0,
+      "pitches": [
+        {
+          "midiNote": 60,
+          "spelling": "C4"
+        }
+      ]
+    },
+    {
+      "groupId": "g2",
+      "bar": 1,
+      "playbackBeat": 1,
+      "pitches": [
+        {
+          "midiNote": 62,
+          "spelling": "D4"
+        }
+      ]
+    },
+    {
+      "groupId": "g3",
+      "bar": 1,
+      "playbackBeat": 2,
+      "pitches": [
+        {
+          "midiNote": 64,
+          "spelling": "E4"
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "midiNote": 60,
+      "atMs": 0
+    },
+    {
+      "midiNote": 62,
+      "atMs": 1000
+    },
+    {
+      "midiNote": 64,
+      "atMs": 2000
+    }
+  ],
+  "pauseAtMs": null,
+  "qualitySignals": {
+    "clockQuality": "not-applicable",
+    "deviceDisconnected": false,
+    "performedCount": 3
+  },
+  "derivation": "synthetic self-paced trace; expected kinds are authored separately"
+}

@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "fw-duplicate-note",
+  "mode": "follow",
+  "scenario": "Follow: repeated key inside an incomplete chord",
+  "config": {
+    "bpm": 60,
+    "timingToleranceMs": 60,
+    "chordSpreadToleranceMs": 50,
+    "plannerVersion": "benchmark-follow-1",
+    "scoreFingerprint": "benchmark:follow:6f96a7712fbe0c9e9a6f8327a9432191",
+    "planFingerprint": "plan-v1:sha256:552f65b9836040a213b8ff62ce049eb8fd034cd12edc942a86e5f100d975a5d4"
+  },
+  "groups": [
+    {
+      "groupId": "g1",
+      "bar": 1,
+      "playbackBeat": 0,
+      "pitches": [
+        {
+          "midiNote": 60,
+          "spelling": "C4"
+        },
+        {
+          "midiNote": 64,
+          "spelling": "E4"
+        }
+      ]
+    },
+    {
+      "groupId": "g2",
+      "bar": 1,
+      "playbackBeat": 1,
+      "pitches": [
+        {
+          "midiNote": 67,
+          "spelling": "G4"
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "midiNote": 60,
+      "atMs": 0
+    },
+    {
+      "midiNote": 60,
+      "atMs": 100
+    },
+    {
+      "midiNote": 64,
+      "atMs": 200
+    },
+    {
+      "midiNote": 67,
+      "atMs": 1200
+    }
+  ],
+  "pauseAtMs": null,
+  "qualitySignals": {
+    "clockQuality": "not-applicable",
+    "deviceDisconnected": false,
+    "performedCount": 4
+  },
+  "derivation": "synthetic self-paced trace; expected kinds are authored separately"
+}

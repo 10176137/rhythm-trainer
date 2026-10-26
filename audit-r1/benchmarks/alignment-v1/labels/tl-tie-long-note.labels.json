@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-tie-long-note",
+  "mode": "timeline",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "assessable": [
+      "pitch",
+      "onset",
+      "duration"
+    ],
+    "pairs": [
+      {
+        "scoreEventId": "s1",
+        "performedNoteId": "p-s1",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s2",
+        "performedNoteId": "p-s2",
+        "pitchMatched": true,
+        "onsetErrorMs": 3000
+      }
+    ],
+    "missedScoreEventIds": [],
+    "extraPerformedIds": [],
+    "unassessableScoreEventIds": [],
+    "notes": "Duration evidence is assessed against the full notated span."
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-device-disconnect",
+  "mode": "timeline",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "degraded",
+    "assessable": [
+      "pitch",
+      "onset"
+    ],
+    "pairs": [
+      {
+        "scoreEventId": "s1",
+        "performedNoteId": "p-s1",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s2",
+        "performedNoteId": "p-s2",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s3",
+        "performedNoteId": "p-s3",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s4",
+        "performedNoteId": "p-s4",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      }
+    ],
+    "missedScoreEventIds": [],
+    "extraPerformedIds": [],
+    "unassessableScoreEventIds": [
+      "s5",
+      "s6",
+      "s7",
+      "s8"
+    ],
+    "notes": "Missing tail is evidence loss, not four user misses."
+  }
+}

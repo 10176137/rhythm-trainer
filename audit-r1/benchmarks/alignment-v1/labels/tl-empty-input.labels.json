@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-empty-input",
+  "mode": "timeline",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "unscorable",
+    "assessable": [],
+    "pairs": [],
+    "missedScoreEventIds": [],
+    "extraPerformedIds": [],
+    "unassessableScoreEventIds": [
+      "s1"
+    ],
+    "notes": "No evidence; no score should be invented."
+  }
+}

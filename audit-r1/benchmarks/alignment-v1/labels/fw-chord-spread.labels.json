@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "fw-chord-spread",
+  "mode": "follow",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "kinds": [
+      "partial",
+      "correct",
+      "complete"
+    ],
+    "completedTargets": 2,
+    "standardTargets": 0,
+    "wrongNoteCount": 0,
+    "extraNoteCount": 0,
+    "duplicateNoteCount": 0,
+    "pendingTargetId": null,
+    "intervalJudged": [
+      false,
+      true
+    ],
+    "notes": "The chord spread (100 ms) and the next interval (1100 ms vs 1000 ms) both exceed tolerance."
+  }
+}

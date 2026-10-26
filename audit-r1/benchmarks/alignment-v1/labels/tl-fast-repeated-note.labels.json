@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-fast-repeated-note",
+  "mode": "timeline",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "assessable": [
+      "pitch",
+      "onset",
+      "duration"
+    ],
+    "pairs": [
+      {
+        "scoreEventId": "s1",
+        "performedNoteId": "p-s1",
+        "pitchMatched": true,
+        "onsetErrorMs": 8
+      },
+      {
+        "scoreEventId": "s2",
+        "performedNoteId": "p-s2",
+        "pitchMatched": true,
+        "onsetErrorMs": -8
+      },
+      {
+        "scoreEventId": "s3",
+        "performedNoteId": "p-s3",
+        "pitchMatched": true,
+        "onsetErrorMs": 8
+      },
+      {
+        "scoreEventId": "s4",
+        "performedNoteId": "p-s4",
+        "pitchMatched": true,
+        "onsetErrorMs": -8
+      }
+    ],
+    "missedScoreEventIds": [],
+    "extraPerformedIds": [],
+    "unassessableScoreEventIds": [],
+    "notes": "A dedupe threshold must not swallow real repeats."
+  }
+}

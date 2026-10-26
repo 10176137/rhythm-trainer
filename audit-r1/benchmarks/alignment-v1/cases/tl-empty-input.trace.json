@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-empty-input",
+  "mode": "timeline",
+  "scenario": "no performed events at all",
+  "config": {
+    "bpm": 80,
+    "countInMs": 3000,
+    "countInUs": 3000000,
+    "ticksPerQuarter": 960,
+    "hand": "both",
+    "range": {
+      "startMeasureOrdinal": 1,
+      "endMeasureOrdinal": 2
+    },
+    "repeatSelection": {
+      "kind": "none"
+    },
+    "plannerVersion": "benchmark-planner-1",
+    "scoreFingerprint": "benchmark:score:cf5ddd9906a6bc1f4343e429511077fc",
+    "planFingerprint": "plan-v1:sha256:7cfcda23db1399a936bc6346d2732d8a3c051c39759df87441d650a56cb7f8e5"
+  },
+  "scoreEvents": [
+    {
+      "scoreEventId": "s1",
+      "measure": 1,
+      "beatPosition": 0,
+      "pitch": 60,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    }
+  ],
+  "performed": [],
+  "qualitySignals": {
+    "noteOnMissing": 0,
+    "noteOffMissing": 0,
+    "duplicates": 0,
+    "outOfOrder": 0,
+    "clockQuality": "unknown",
+    "deviceDisconnected": false,
+    "queueOverflow": false,
+    "performedCount": 0
+  },
+  "derivation": "synthetic exact-answer trace; labels are authored separately"
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-cross-hand-unison",
+  "mode": "timeline",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "assessable": [
+      "pitch",
+      "onset",
+      "duration"
+    ],
+    "pairs": [
+      {
+        "scoreEventId": "s1",
+        "performedNoteId": "p-s1",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s2",
+        "performedNoteId": "p-s2",
+        "pitchMatched": true,
+        "onsetErrorMs": 2
+      },
+      {
+        "scoreEventId": "s3",
+        "performedNoteId": "p-s3",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      }
+    ],
+    "missedScoreEventIds": [],
+    "extraPerformedIds": [],
+    "unassessableScoreEventIds": [],
+    "notes": "Two notated members with the same pitch remain two occurrences."
+  }
+}

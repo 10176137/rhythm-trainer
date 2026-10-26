@@ -1,0 +1,364 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "createdAt": "2026-10-26T00:00:00.000Z",
+  "description": "Stage 3 synthetic alignment benchmark (Timeline + Follow). Labels are independent of the implementation.",
+  "cases": [
+    {
+      "caseId": "tl-clean-exact",
+      "mode": "timeline",
+      "scenario": "clean, exact performance",
+      "tags": [
+        "clean",
+        "baseline"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-clean-exact.trace.json",
+      "labels": "labels/tl-clean-exact.labels.json"
+    },
+    {
+      "caseId": "tl-late-global",
+      "mode": "timeline",
+      "scenario": "whole performance 50 ms late",
+      "tags": [
+        "timing",
+        "systematic-offset"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-late-global.trace.json",
+      "labels": "labels/tl-late-global.labels.json"
+    },
+    {
+      "caseId": "tl-local-deviations",
+      "mode": "timeline",
+      "scenario": "local timing deviations within the band",
+      "tags": [
+        "timing",
+        "local"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-local-deviations.trace.json",
+      "labels": "labels/tl-local-deviations.labels.json"
+    },
+    {
+      "caseId": "tl-tempo-drift",
+      "mode": "timeline",
+      "scenario": "accelerando / tempo drift",
+      "tags": [
+        "timing",
+        "tempo-drift",
+        "hard"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-tempo-drift.trace.json",
+      "labels": "labels/tl-tempo-drift.labels.json"
+    },
+    {
+      "caseId": "tl-one-miss",
+      "mode": "timeline",
+      "scenario": "one missing target",
+      "tags": [
+        "missing",
+        "hard"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-one-miss.trace.json",
+      "labels": "labels/tl-one-miss.labels.json"
+    },
+    {
+      "caseId": "tl-consecutive-miss",
+      "mode": "timeline",
+      "scenario": "three consecutive missing targets",
+      "tags": [
+        "missing",
+        "consecutive",
+        "hard"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-consecutive-miss.trace.json",
+      "labels": "labels/tl-consecutive-miss.labels.json"
+    },
+    {
+      "caseId": "tl-wrong-pitch",
+      "mode": "timeline",
+      "scenario": "one wrong pitch at the correct time",
+      "tags": [
+        "pitch",
+        "hard"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-wrong-pitch.trace.json",
+      "labels": "labels/tl-wrong-pitch.labels.json"
+    },
+    {
+      "caseId": "tl-extra-note",
+      "mode": "timeline",
+      "scenario": "one inserted note between targets",
+      "tags": [
+        "extra",
+        "hard"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-extra-note.trace.json",
+      "labels": "labels/tl-extra-note.labels.json"
+    },
+    {
+      "caseId": "tl-mixed-errors",
+      "mode": "timeline",
+      "scenario": "missing + wrong pitch + extra interleaved",
+      "tags": [
+        "missing",
+        "pitch",
+        "extra",
+        "hard"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-mixed-errors.trace.json",
+      "labels": "labels/tl-mixed-errors.labels.json"
+    },
+    {
+      "caseId": "tl-chord-arrival-order",
+      "mode": "timeline",
+      "scenario": "same-onset chord arrives in reverse pitch order",
+      "tags": [
+        "chord",
+        "arrival-order"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-chord-arrival-order.trace.json",
+      "labels": "labels/tl-chord-arrival-order.labels.json"
+    },
+    {
+      "caseId": "tl-cross-hand-unison",
+      "mode": "timeline",
+      "scenario": "two staves notate the same MIDI pitch on one onset",
+      "tags": [
+        "chord",
+        "unison",
+        "cross-hand"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-cross-hand-unison.trace.json",
+      "labels": "labels/tl-cross-hand-unison.labels.json"
+    },
+    {
+      "caseId": "tl-fast-repeated-note",
+      "mode": "timeline",
+      "scenario": "fast repeated same pitch",
+      "tags": [
+        "repeated-pitch",
+        "hard"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-fast-repeated-note.trace.json",
+      "labels": "labels/tl-fast-repeated-note.labels.json"
+    },
+    {
+      "caseId": "tl-tie-long-note",
+      "mode": "timeline",
+      "scenario": "tied long note followed by a short note",
+      "tags": [
+        "tie",
+        "duration"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-tie-long-note.trace.json",
+      "labels": "labels/tl-tie-long-note.labels.json"
+    },
+    {
+      "caseId": "tl-missing-note-off",
+      "mode": "timeline",
+      "scenario": "Note On without Note Off",
+      "tags": [
+        "input-evidence",
+        "missing-release",
+        "degraded"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-missing-note-off.trace.json",
+      "labels": "labels/tl-missing-note-off.labels.json"
+    },
+    {
+      "caseId": "tl-duplicate-packet",
+      "mode": "timeline",
+      "scenario": "duplicated MIDI packet for the same key/onset",
+      "tags": [
+        "input-evidence",
+        "duplicate",
+        "degraded"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-duplicate-packet.trace.json",
+      "labels": "labels/tl-duplicate-packet.labels.json"
+    },
+    {
+      "caseId": "tl-one-note-400ms-late",
+      "mode": "timeline",
+      "scenario": "one note 400 ms late (outside the normal matching band)",
+      "tags": [
+        "timing",
+        "hard",
+        "out-of-band"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-one-note-400ms-late.trace.json",
+      "labels": "labels/tl-one-note-400ms-late.labels.json"
+    },
+    {
+      "caseId": "tl-missing-note-on",
+      "mode": "timeline",
+      "scenario": "one Note On lost before capture",
+      "tags": [
+        "input-evidence",
+        "missing-note-on",
+        "degraded"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-missing-note-on.trace.json",
+      "labels": "labels/tl-missing-note-on.labels.json"
+    },
+    {
+      "caseId": "tl-device-disconnect",
+      "mode": "timeline",
+      "scenario": "device disconnects after four notes",
+      "tags": [
+        "input-evidence",
+        "disconnect",
+        "degraded"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-device-disconnect.trace.json",
+      "labels": "labels/tl-device-disconnect.labels.json"
+    },
+    {
+      "caseId": "tl-empty-input",
+      "mode": "timeline",
+      "scenario": "no performed events at all",
+      "tags": [
+        "input-evidence",
+        "empty",
+        "unscorable"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-empty-input.trace.json",
+      "labels": "labels/tl-empty-input.labels.json"
+    },
+    {
+      "caseId": "fw-clean",
+      "mode": "follow",
+      "scenario": "Follow: clean three-target performance",
+      "tags": [
+        "follow",
+        "clean"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/fw-clean.trace.json",
+      "labels": "labels/fw-clean.labels.json"
+    },
+    {
+      "caseId": "fw-skip-target",
+      "mode": "follow",
+      "scenario": "Follow: one target skipped, performer continues",
+      "tags": [
+        "follow",
+        "missing-target",
+        "hard"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/fw-skip-target.trace.json",
+      "labels": "labels/fw-skip-target.labels.json"
+    },
+    {
+      "caseId": "fw-wrong-then-correct",
+      "mode": "follow",
+      "scenario": "Follow: wrong note then recovery",
+      "tags": [
+        "follow",
+        "wrong-note"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/fw-wrong-then-correct.trace.json",
+      "labels": "labels/fw-wrong-then-correct.labels.json"
+    },
+    {
+      "caseId": "fw-chord-spread",
+      "mode": "follow",
+      "scenario": "Follow: chord arrives spread beyond tolerance",
+      "tags": [
+        "follow",
+        "chord",
+        "spread"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/fw-chord-spread.trace.json",
+      "labels": "labels/fw-chord-spread.labels.json"
+    },
+    {
+      "caseId": "fw-duplicate-note",
+      "mode": "follow",
+      "scenario": "Follow: repeated key inside an incomplete chord",
+      "tags": [
+        "follow",
+        "duplicate"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/fw-duplicate-note.trace.json",
+      "labels": "labels/fw-duplicate-note.labels.json"
+    },
+    {
+      "caseId": "fw-pause-resume",
+      "mode": "follow",
+      "scenario": "Follow: pause then resume invalidates the next interval",
+      "tags": [
+        "follow",
+        "pause",
+        "resume"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/fw-pause-resume.trace.json",
+      "labels": "labels/fw-pause-resume.labels.json"
+    },
+    {
+      "caseId": "fw-extra-after-complete",
+      "mode": "follow",
+      "scenario": "Follow: input after the final target",
+      "tags": [
+        "follow",
+        "extra"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/fw-extra-after-complete.trace.json",
+      "labels": "labels/fw-extra-after-complete.labels.json"
+    }
+  ],
+  "counts": {
+    "timeline": 19,
+    "follow": 7
+  }
+}

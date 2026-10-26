@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-cross-hand-unison",
+  "mode": "timeline",
+  "scenario": "two staves notate the same MIDI pitch on one onset",
+  "config": {
+    "bpm": 80,
+    "countInMs": 3000,
+    "countInUs": 3000000,
+    "ticksPerQuarter": 960,
+    "hand": "both",
+    "range": {
+      "startMeasureOrdinal": 1,
+      "endMeasureOrdinal": 2
+    },
+    "repeatSelection": {
+      "kind": "none"
+    },
+    "plannerVersion": "benchmark-planner-1",
+    "scoreFingerprint": "benchmark:score:f9d8101e730bbcfb9009d60594208540",
+    "planFingerprint": "plan-v1:sha256:a8d9ae190497c478261841623a00abcb19ab8e5c20cb5d1ee0527ff069ce2d0e"
+  },
+  "scoreEvents": [
+    {
+      "scoreEventId": "s1",
+      "measure": 1,
+      "beatPosition": 0,
+      "pitch": 60,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 750,
+      "partId": "P1-staff1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s2",
+      "measure": 1,
+      "beatPosition": 0,
+      "pitch": 60,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 750,
+      "partId": "P1-staff2",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s3",
+      "measure": 1,
+      "beatPosition": 1,
+      "pitch": 62,
+      "targetOnsetMs": 3750,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    }
+  ],
+  "performed": [
+    {
+      "performedNoteId": "p-s1",
+      "pitch": 60,
+      "onsetMs": 3000,
+      "releaseMs": 3750,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s2",
+      "pitch": 60,
+      "onsetMs": 3002,
+      "releaseMs": 3752,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s3",
+      "pitch": 62,
+      "onsetMs": 3750,
+      "releaseMs": 4500,
+      "pairingStatus": "complete"
+    }
+  ],
+  "qualitySignals": {
+    "noteOnMissing": 0,
+    "noteOffMissing": 0,
+    "duplicates": 0,
+    "outOfOrder": 0,
+    "clockQuality": "good",
+    "deviceDisconnected": false,
+    "queueOverflow": false,
+    "performedCount": 3
+  },
+  "derivation": "synthetic exact-answer trace; labels are authored separately"
+}

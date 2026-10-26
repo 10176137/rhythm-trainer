@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "fw-wrong-then-correct",
+  "mode": "follow",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "kinds": [
+      "wrong",
+      "correct",
+      "correct",
+      "complete"
+    ],
+    "completedTargets": 3,
+    "standardTargets": 2,
+    "wrongNoteCount": 1,
+    "extraNoteCount": 0,
+    "duplicateNoteCount": 0,
+    "pendingTargetId": null,
+    "intervalJudged": [
+      false,
+      true,
+      true
+    ],
+    "notes": "The wrong note keeps the first target non-standard; later targets recover."
+  }
+}
