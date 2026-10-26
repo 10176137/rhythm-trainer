@@ -375,7 +375,7 @@ cases.push(timelineCase({
 
 const tieScore = [
   { ...event('s1', 1, 0, 60, 3000), targetDurationMs: 3000 },
-  event('s2', 2, 0, 62),
+  event('s2', 2, 4, 62),
 ];
 const tiePerformed = [
   { performedNoteId: 'p-s1', pitch: 60, onsetMs: onset(0), releaseMs: round(onset(0) + 3000), pairingStatus: 'complete' },

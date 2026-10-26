@@ -1,6 +1,6 @@
 # Stage 4 — Parangonar offline comparison
 
-- Generated: 2026-10-26T06:54:28Z
+- Generated: 2026-10-26T08:31:58Z
 - Parangonar: 3.4.0 (Apache-2.0, tag 3.4.0, commit 737f6fa)
 - Partitura: 1.9.0; Python 3.13.9
 - Dataset: alignment-bench-v1 (Timeline only, 19 cases)
@@ -13,12 +13,12 @@
 | Metric | scoring_v1 | Parangonar |
 |---|---|---|
 | pairing precision | 1.0 | 1.0 |
-| pairing recall | 0.951 | 0.939 |
-| pairing F1 | 0.97 | 0.962 |
-| class accuracy | 0.951 | 0.941 |
+| pairing recall | 0.979 | 0.967 |
+| pairing F1 | 0.988 | 0.981 |
+| class accuracy | 0.979 | 0.968 |
 | onset MAE vs label | 0.0 | 0.0 |
 
-All-19 baseline macro (for reference): F1 0.971, class 0.954.
+All-19 baseline macro (for reference): F1 0.989, class 0.98.
 
 ## Per case
 
@@ -36,7 +36,7 @@ All-19 baseline macro (for reference): F1 0.971, class 0.954.
 | tl-chord-arrival-order | 1 | 1.0 | 1 | 1.0 |
 | tl-cross-hand-unison | 1 | 0.8 | 1 | 0.667 |
 | tl-fast-repeated-note | 1 | 1.0 | 1 | 1.0 |
-| tl-tie-long-note | 0.667 | 0.667 | 0.5 | 0.5 |
+| tl-tie-long-note | 1 | 1.0 | 1 | 1.0 |
 | tl-missing-note-off | 1 | 1.0 | 1 | 1.0 |
 | tl-duplicate-packet | 1 | 1.0 | 1 | 1.0 |
 | tl-one-note-400ms-late | 0.933 | 1.0 | 0.875 | 1.0 |

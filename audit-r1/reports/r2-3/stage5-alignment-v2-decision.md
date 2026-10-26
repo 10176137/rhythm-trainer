@@ -9,8 +9,8 @@
 
 | Gate 5 条件 | 实测 | 是否满足 |
 |---|---|---|
-| hard-case macro alignment F1 相对基线提升 ≥5pp | Parangonar 0.962 vs 0.970（−0.8pp） | 否 |
-| 或 hard-case 错配数量减少 ≥20% | 基线 4，候选 4（0%） | 否 |
+| hard-case macro alignment F1 相对基线提升 ≥5pp | Parangonar 0.981 vs 0.988（−0.7pp） | 否 |
+| 或 hard-case 错配数量减少 ≥20% | 基线 3，候选 3（0%） | 否 |
 | clean-case macro F1 不下降 >1pp | 未下降 | 是，但不足以单独放行 |
 | 原始 onset MAE 不因时间扭曲虚假改善 | onset MAE vs label = 0 | 是 |
 | 分层报告（clean/hard） | 已按 case 输出 | 是 |

@@ -43,9 +43,9 @@ Outputs:
 ## Result (2026-10-26)
 
 - Executed 18/19 Timeline cases; empty input crashes Parangonar with `IndexError: index -1 ... size 0`.
-- Same-18 comparison: baseline F1 **0.970** vs Parangonar **0.962**; class accuracy **0.951** vs **0.941**; recall **0.951** vs **0.939**.
+- Same-18 comparison: baseline F1 **0.988** vs Parangonar **0.981**; class accuracy **0.979** vs **0.968**; recall **0.979** vs **0.967**.
 - Improvements: tempo drift (F1 0.857→1.0), one note 400 ms late (0.933→1.0).
-- Regressions / limits: cross-hand unison (1.0→0.8), wrong pitch (1.0→0.933/0.875), mixed errors (1.0→0.923/0.889), tie/long note unchanged (0.667).
+- Regressions / limits: cross-hand unison (1.0→0.8), wrong pitch (1.0→0.933/0.875), mixed errors (1.0→0.923/0.889). Tie/long note is 1.0 for both after the 2026-10-26 dataset correction.
 - Executable cases are deterministic across two passes; the empty-input crash is recorded separately.
 - **Stage 5 threshold not met**: no +5 pp macro F1 and no ≥20% hard-case mismatch reduction; clean cases did not degrade.
 

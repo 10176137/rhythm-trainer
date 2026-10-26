@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "stage": 4,
-  "generatedAt": "2026-10-26T06:54:28Z",
+  "generatedAt": "2026-10-26T08:31:58Z",
   "versions": {
     "python": "3.13.9",
     "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
@@ -21,26 +21,26 @@
     "failed": 1,
     "macro": {
       "pairingPrecision": 1.0,
-      "pairingRecall": 0.939,
-      "pairingF1": 0.962,
-      "classAccuracy": 0.941,
+      "pairingRecall": 0.967,
+      "pairingF1": 0.981,
+      "classAccuracy": 0.968,
       "onsetMaeVsLabel": 0.0
     },
     "baselineMacro": {
       "pairingPrecision": 1,
-      "pairingRecall": 0.954,
-      "pairingF1": 0.971,
-      "classAccuracy": 0.954,
+      "pairingRecall": 0.98,
+      "pairingF1": 0.989,
+      "classAccuracy": 0.98,
       "onsetMaeVsLabel": 0
     },
     "baselineMacroExecutedCases": {
       "pairingPrecision": 1.0,
-      "pairingRecall": 0.951,
-      "pairingF1": 0.97,
-      "classAccuracy": 0.951,
+      "pairingRecall": 0.979,
+      "pairingF1": 0.988,
+      "classAccuracy": 0.979,
       "onsetMaeVsLabel": 0.0
     },
-    "runtimeMsTotal": 20.386,
+    "runtimeMsTotal": 19.188,
     "deterministic": true,
     "deterministicAllRuns": false,
     "nondeterministicCases": []
@@ -144,7 +144,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 4.248
+      "runtimeMs": 4.313
     },
     {
       "caseId": "tl-late-global",
@@ -244,7 +244,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 1.182
+      "runtimeMs": 1.067
     },
     {
       "caseId": "tl-local-deviations",
@@ -344,7 +344,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 1.223
+      "runtimeMs": 1.001
     },
     {
       "caseId": "tl-tempo-drift",
@@ -444,7 +444,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 1.229
+      "runtimeMs": 1.031
     },
     {
       "caseId": "tl-one-miss",
@@ -544,7 +544,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 1.159
+      "runtimeMs": 0.971
     },
     {
       "caseId": "tl-consecutive-miss",
@@ -644,7 +644,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 0.946
+      "runtimeMs": 0.887
     },
     {
       "caseId": "tl-wrong-pitch",
@@ -757,7 +757,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 1.173
+      "runtimeMs": 0.961
     },
     {
       "caseId": "tl-extra-note",
@@ -862,7 +862,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 1.076
+      "runtimeMs": 0.992
     },
     {
       "caseId": "tl-mixed-errors",
@@ -980,7 +980,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 1.031
+      "runtimeMs": 0.992
     },
     {
       "caseId": "tl-chord-arrival-order",
@@ -1055,7 +1055,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 0.524
+      "runtimeMs": 0.497
     },
     {
       "caseId": "tl-cross-hand-unison",
@@ -1138,7 +1138,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 0.534
+      "runtimeMs": 0.501
     },
     {
       "caseId": "tl-fast-repeated-note",
@@ -1213,7 +1213,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 0.501
+      "runtimeMs": 0.476
     },
     {
       "caseId": "tl-tie-long-note",
@@ -1226,60 +1226,47 @@
         "inputQuality": "healthy"
       },
       "predicted": {
-        "pairs": 1,
-        "insertions": 1,
-        "deletions": 1,
+        "pairs": 2,
+        "insertions": 0,
+        "deletions": 0,
         "raw": [
-          {
-            "label": "deletion",
-            "scoreId": "s2",
-            "performedId": null
-          },
-          {
-            "label": "insertion",
-            "scoreId": null,
-            "performedId": "p-s2"
-          },
           {
             "label": "match",
             "scoreId": "s1",
             "performedId": "p-s1"
+          },
+          {
+            "label": "match",
+            "scoreId": "s2",
+            "performedId": "p-s2"
           }
         ]
       },
       "metrics": {
         "pairingPrecision": 1.0,
-        "pairingRecall": 0.5,
-        "pairingF1": 0.667,
-        "classAccuracy": 0.5,
+        "pairingRecall": 1.0,
+        "pairingF1": 1.0,
+        "classAccuracy": 1.0,
         "onsetMae": 0.0,
         "onsetMaeVsLabel": 0.0,
         "inputQuality": "healthy",
         "qualityCorrect": true
       },
       "mismatches": {
-        "pairs": [
-          "s2"
-        ],
-        "wrongClass": [
-          {
-            "scoreId": "s2",
-            "expected": "MATCH",
-            "predicted": "MISSING"
-          }
-        ]
+        "pairs": [],
+        "wrongClass": []
       },
       "baseline": {
         "pairingPrecision": 1,
-        "pairingRecall": 0.5,
-        "pairingF1": 0.667,
-        "classAccuracy": 0.5,
+        "pairingRecall": 1,
+        "pairingF1": 1,
+        "classAccuracy": 1,
         "onsetMaeVsLabel": 0,
         "onsetMaxDeltaVsLabel": 0,
-        "pitchCorrect": 1,
+        "pitchCorrect": 2,
         "pitchWrong": 0,
-        "pitchMissed": 1,
-        "pitchExtra": 1,
+        "pitchMissed": 0,
+        "pitchExtra": 0,
         "quality": "healthy",
         "qualityCorrect": true,
         "perMeasure": {
@@ -1290,13 +1277,13 @@
           },
           "2": {
             "total": 1,
-            "errors": 1,
-            "errorRate": 1
+            "errors": 0,
+            "errorRate": 0
           }
         }
       },
       "ok": true,
-      "runtimeMs": 0.309
+      "runtimeMs": 0.359
     },
     {
       "caseId": "tl-missing-note-off",
@@ -1396,7 +1383,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 1.076
+      "runtimeMs": 1.138
     },
     {
       "caseId": "tl-duplicate-packet",
@@ -1501,7 +1488,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 1.142
+      "runtimeMs": 1.064
     },
     {
       "caseId": "tl-one-note-400ms-late",
@@ -1601,7 +1588,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 1.055
+      "runtimeMs": 1.16
     },
     {
       "caseId": "tl-missing-note-on",
@@ -1701,7 +1688,7 @@
         }
       },
       "ok": true,
-      "runtimeMs": 1.143
+      "runtimeMs": 0.959
     },
     {
       "caseId": "tl-device-disconnect",
@@ -1796,14 +1783,14 @@
         }
       },
       "ok": true,
-      "runtimeMs": 0.803
+      "runtimeMs": 0.789
     },
     {
       "caseId": "tl-empty-input",
       "scenario": "no performed events at all",
       "ok": false,
       "error": "IndexError: index -1 is out of bounds for axis 0 with size 0",
-      "runtimeMs": 0.032
+      "runtimeMs": 0.03
     }
   ],
   "knownLimitations": [

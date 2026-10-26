@@ -38,9 +38,9 @@ Gate 1 报告：`stage1-reliability-gate-report.md`（`4122f3b`）。
 - `audit-r1/benchmarks/alignment-v1/`：26 case（Timeline 19 / Follow 7），trace 与 labels 分离。
 - 一条脚本双跑，输出 JSON/CSV/Markdown；两次 canonical hash 一致。
 - 基线（`scoring-v1.0.0` / FollowRuntime）：
-  - Timeline 宏平均 precision 1.000、recall 0.954、F1 0.971、class 0.954；
+  - Timeline 宏平均 precision 1.000、recall 0.980、F1 0.989、class 0.980；
   - Follow kind accuracy 1.000；
-  - 已知失败：tempo drift、tie/long note、400ms late note。
+  - 已知失败：tempo drift、400ms late note。
 - Gate 3 报告：`stage3-benchmark-gate-report.md`（`ce3c51e`，数据 `4fc685e`）。
 - **缺口**：无真实设备 trace、无公开许可数据；来源覆盖未满足，已如实记录。
 
@@ -49,9 +49,9 @@ Gate 1 报告：`stage1-reliability-gate-report.md`（`4122f3b`）。
 ### Parangonar（离线）
 
 - 3.4.0，Apache-2.0，tag commit `737f6fa`；隔离 Python 3.13 venv；锁文件已提交。
-- 18/19 可执行；同 18 case：F1 0.962 vs 基线 0.970，class 0.941 vs 0.951。
-- 改善：tempo drift、400ms late；退化：cross-hand unison、wrong-pitch、mixed；tie 不变；空输入崩溃。
-- **Stage 5 不实现 alignment_v2**：F1 未 +5pp，hard-case 错配 4→4（未 −20%）。决定记录：`stage5-alignment-v2-decision.md`。
+- 18/19 可执行；同 18 case：F1 0.981 vs 基线 0.988，class 0.968 vs 0.979。
+- 改善：tempo drift、400ms late；退化：cross-hand unison、wrong-pitch、mixed；空输入崩溃。
+- **Stage 5 不实现 alignment_v2**：F1 未 +5pp，hard-case 错配 3→3（未 −20%）。决定记录：`stage5-alignment-v2-decision.md`。
 
 ### Matchmaker（Follow）
 
@@ -122,7 +122,7 @@ Gate 1 报告：`stage1-reliability-gate-report.md`（`4122f3b`）。
 |---|---|---|
 | 1 | fingerprint 字节/字段/hash | 冻结契约沿用；rts bundle 重算已验证，但未持久化 |
 | 2 | 源事件 ID 稳定性 | 沿用现有契约；未重新定义 |
-| 3 | 同 onset/unison/tie 语义 | Follow 同音去重已迁 Rust；Timeline tie/long-note 仍为基准失败 |
+| 3 | 同 onset/unison/tie 语义 | Follow 同音去重已迁 Rust；Timeline tie/long-note 修正数据后通过；基准此前假失败已撤销 |
 | 4 | tick/beat→µs 取整/tempo | `time-conversion-v1` 冻结；countInUs 统一；swing/tempo map 未支持 |
 | 5 | Pause/Resume 时钟 | 沿用停走 + 单次平移；有测试，无新契约 |
 | 6 | 存储原子性/崩溃恢复 | 原子写+fsync；跨进程 draft 恢复未承诺 |

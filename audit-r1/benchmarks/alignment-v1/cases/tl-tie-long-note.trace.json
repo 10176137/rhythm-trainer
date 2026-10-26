@@ -18,8 +18,8 @@
       "kind": "none"
     },
     "plannerVersion": "benchmark-planner-1",
-    "scoreFingerprint": "benchmark:score:e4ad0ecbf3d6b6fcc0d5e39deb7ac7e7",
-    "planFingerprint": "plan-v1:sha256:88056a196b8f4c9b0f1a598114681054fd32eed4723c6ff7c5c72d90f1555170"
+    "scoreFingerprint": "benchmark:score:40240e77e9f8778381df10170fa272bc",
+    "planFingerprint": "plan-v1:sha256:9a95510aeed83dc87731adb4582936c13152400ff13d604c55db322da9bae41e"
   },
   "scoreEvents": [
     {
@@ -35,9 +35,9 @@
     {
       "scoreEventId": "s2",
       "measure": 2,
-      "beatPosition": 0,
+      "beatPosition": 4,
       "pitch": 62,
-      "targetOnsetMs": 3000,
+      "targetOnsetMs": 6000,
       "targetDurationMs": 750,
       "partId": "P1",
       "parseConfidence": 1

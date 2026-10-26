@@ -23,7 +23,7 @@
         "scoreEventId": "s2",
         "performedNoteId": "p-s2",
         "pitchMatched": true,
-        "onsetErrorMs": 3000
+        "onsetErrorMs": 0
       }
     ],
     "missedScoreEventIds": [],

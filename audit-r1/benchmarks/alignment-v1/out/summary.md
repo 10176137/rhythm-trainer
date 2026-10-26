@@ -1,7 +1,7 @@
 # Alignment benchmark v1 — baseline summary
 
-- Generated: 2026-10-26T06:48:06.620Z
-- Git SHA: `753238b61d5af66351e77b4b5648f15358a65eb0`
+- Generated: 2026-10-26T08:31:40.631Z
+- Git SHA: `e75a622c04a2af1d12b412619e43dc1ddf5d7561`
 - Dataset: `alignment-bench-v1` (19 timeline, 7 follow)
 - Baseline: Rust `scoring-v1.0.0` / FollowRuntime
 - Deterministic (two runs): **yes**
@@ -11,9 +11,9 @@
 | Metric | Value |
 |---|---|
 | pairingPrecision | 1 |
-| pairingRecall | 0.954 |
-| pairingF1 | 0.971 |
-| classAccuracy | 0.954 |
+| pairingRecall | 0.98 |
+| pairingF1 | 0.989 |
+| classAccuracy | 0.98 |
 | onsetMaeVsLabel | 0 |
 | quality accuracy | 1 |
 
@@ -42,7 +42,7 @@
 | tl-chord-arrival-order | 1 | 1 | 1 | 1 | 0 | healthy |
 | tl-cross-hand-unison | 1 | 1 | 1 | 1 | 0 | healthy |
 | tl-fast-repeated-note | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-tie-long-note | 1 | 0.5 | 0.667 | 0.5 | 0 | healthy |
+| tl-tie-long-note | 1 | 1 | 1 | 1 | 0 | healthy |
 | tl-missing-note-off | 1 | 1 | 1 | 1 | 0 | degraded |
 | tl-duplicate-packet | 1 | 1 | 1 | 1 | 0 | degraded |
 | tl-one-note-400ms-late | 1 | 0.875 | 0.933 | 0.875 | 0 | healthy |
@@ -65,7 +65,6 @@
 ## Known baseline failures (expected evidence, not harness failure)
 
 - `tl-tempo-drift` — accelerando / tempo drift
-- `tl-tie-long-note` — tied long note followed by a short note
 - `tl-one-note-400ms-late` — one note 400 ms late (outside the normal matching band)
 
 Labels are independent of the implementation; a low score is a benchmark observation, not a gate failure at Stage 3.

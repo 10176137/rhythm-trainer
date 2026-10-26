@@ -35,9 +35,9 @@
 | 指标 | scoring_v1 | Parangonar |
 |---|---|---|
 | pairing precision | 1.000 | 1.000 |
-| pairing recall | 0.951 | 0.939 |
-| pairing F1 | **0.970** | **0.962** |
-| class accuracy | **0.951** | **0.941** |
+| pairing recall | 0.979 | 0.967 |
+| pairing F1 | **0.988** | **0.981** |
+| class accuracy | **0.979** | **0.968** |
 | onset MAE vs label | 0 | 0 |
 | 可执行 | 19/19 | 18/19 |
 
@@ -49,10 +49,10 @@
   - `tl-cross-hand-unison`：F1 1.0 → **0.8**（同 onset 同音高成员被合并）；
   - `tl-wrong-pitch`：F1 1.0 → 0.933，class 1.0 → 0.875（pitch-based matcher 不配对错音目标）；
   - `tl-mixed-errors`：F1 1.0 → 0.923（含错音/漏音/插入混合）；
-  - `tl-tie-long-note`：两者均 0.667（都失败）；
   - clean/local/chord/repeat/missing 等 case 均为 1.0，无退化。
 - 可执行 case 两遍一致；空输入崩溃是候选限制，单独记录，不伪装成对齐结果。
-- 全 19 case 基线参考：F1 0.971、class 0.954（与 18-case 基线 0.970/0.951 的差异来自被排除的空输入 case）。
+- 全 19 case 基线参考：F1 0.989、class 0.980。
+- **2026-10-26 基准修正**：`tl-tie-long-note` 的第二个 target onset 原为 3000 ms（应为 6000 ms），导致假失败；修正后两者均 1.0。该 case 已从失败列表移除。
 
 ## 4. 对比结论（对照 §7.3 问题）
 
@@ -75,8 +75,8 @@
 
 按 §8 Gate 5：
 
-- macro alignment F1 需提升 ≥5 个百分点：Parangonar 0.962 vs 基线 0.970，**下降 0.8pp**；
-- 或 hard-case 错配数量减少 ≥20%：基线 hard-case 错配（tempo drift 2、tie 1、400ms 1）共 4；Parangonar（tie 1、unison 1、wrong 1、mixed 1）共 4，**无减少**；
+- macro alignment F1 需提升 ≥5 个百分点：Parangonar 0.981 vs 基线 0.988，**下降 0.7pp**；
+- 或 hard-case 错配数量减少 ≥20%：基线 hard-case 错配（tempo drift 2、400ms 1）共 3；Parangonar（unison 1、wrong 1、mixed 1）共 3，**无减少**；
 - clean-case F1 不下降超过 1pp：未下降，但不足以补偿整体退化。
 
 **决定：不实现 Rust `alignment_v2`。** 保留 `scoring_v1` 作为生产基线；不创建 `alignment_v2.rs`，不更新 golden，不切换默认算法。

@@ -68,16 +68,17 @@ node audit-r1/benchmarks/alignment-v1/run-benchmark.mjs
 
 ## 5. 基线结果
 
-- Timeline 宏平均：precision **1.000**、recall **0.954**、F1 **0.971**、class accuracy **0.954**；
+- Timeline 宏平均：precision **1.000**、recall **0.980**、F1 **0.989**、class accuracy **0.980**；
 - `onsetMaeVsLabel = 0`：预测的原始 onset error 与标签逐 pair 一致，没有时间扭曲；
 - 输入质量分类：19/19 正确；
 - Follow：kind accuracy **1.000**，无计数/interval 错误；
 - 基线失败（真实算法局限，作为后续候选对照起点）：
   - `tl-tempo-drift`：渐快后段身份丢失（recall 0.75）；
-  - `tl-tie-long-note`：长音在 release 时刻紧接下一音，`scoring_v1` 把下一音判为 MISSING+EXTRA（recall 0.5）；
   - `tl-one-note-400ms-late`：超出匹配带后身份丢失（recall 0.875）。
 
-这些失败不是 harness 错误：`tl-tie-long-note` 的 score/performed 原始数据经人工核对，标签正确；400 ms 迟到是明确的 out-of-band 场景。
+这些失败不是 harness 错误：tempo drift 与 400 ms 迟到都是明确的基线局限。
+
+**2026-10-26 基准修正**：`tl-tie-long-note` 最初把第二个 target 的 onset 误写成 3000 ms（应为 6000 ms），导致假失败；修正后基线与 Parangonar 均为 F1 1.0。该 case 不是算法缺陷，原始失败结论已撤销。
 
 ## 6. 复现性与数据完整性
 

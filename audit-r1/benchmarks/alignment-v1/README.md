@@ -84,14 +84,15 @@ Follow：
 ## 基线结果（2026-10-26，`753238b`）
 
 - Deterministic：**yes**（两次 canonical runs 的 SHA 相同，见 `out/latest.json` 的 `runHashes`）。
-- Timeline 宏平均：precision 1.0、recall 0.954、F1 0.971、class accuracy 0.954、onset MAE vs label 0。
+- Timeline 宏平均：precision 1.0、recall 0.98、F1 0.989、class accuracy 0.98、onset MAE vs label 0。
 - Follow：kind accuracy 1.0、无计数/间隔错误。
 - 基线失败（作为后续候选对照的起点，不是 harness 失败）：
   - `tl-tempo-drift`（渐快导致后段配对丢失）；
-  - `tl-tie-long-note`（长音/延音后紧跟同 release 时间的音符被误判为漏+多）；
   - `tl-one-note-400ms-late`（超出匹配带后身份丢失）。
 
 这些结果说明基准能区分“干净场景”和“困难场景”，也证明原始 onset 误差没有被时间扭曲掩盖。
+
+> 2026-10-26 修正：`tl-tie-long-note` 最初把第二个 target 的 onset 误写成 3000 ms（应为 6000 ms），导致“漏+多”的假失败。修正后基线/Parangonar 均为 1.0；该 case 不是算法缺陷。
 
 ## 复现性与边界
 
