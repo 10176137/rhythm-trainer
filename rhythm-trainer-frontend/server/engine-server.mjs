@@ -39,6 +39,7 @@ import { ScoreLibrary, ScoreLibraryError, SCORE_LIBRARY_SCHEMA_VERSION, MAX_SCOR
 import { TakeTemplateStore, TakeTemplateError, TAKE_TEMPLATE_SCHEMA_VERSION } from './take-templates.mjs';
 import { TakeFinalizationService } from './take-finalization.mjs';
 import { deriveTakeStatus } from './take-status.mjs';
+import { TeachingOrchestrator, TeachingOrchestratorError } from './teaching-orchestrator.mjs';
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -131,6 +132,7 @@ const TRACES_DIR = path.join(DATA_DIR, 'traces');
 const JOURNALS_DIR = path.join(DATA_DIR, 'journals');
 const SCORES_DIR = path.join(DATA_DIR, 'scores');
 const TAKE_TEMPLATES_DIR = path.join(DATA_DIR, 'take-templates');
+const LESSON_RUNS_DIR = path.join(DATA_DIR, 'lesson-runs');
 const PROFILE_FILE = path.join(DATA_DIR, 'profile.json');
 
 function ensureDirSync(dir) {
@@ -155,11 +157,18 @@ ensureDirSync(TRACES_DIR);
 ensureDirSync(JOURNALS_DIR);
 ensureDirSync(SCORES_DIR);
 ensureDirSync(TAKE_TEMPLATES_DIR);
+ensureDirSync(LESSON_RUNS_DIR);
 const scoreLibrary = new ScoreLibrary({ dir: SCORES_DIR });
 const takeTemplateStore = new TakeTemplateStore({ dir: TAKE_TEMPLATES_DIR });
 // One finalizer for Timeline and Follow: frozen draft, atomic write, and
 // idempotent retry are shared; the report builders stay mode-specific.
 const takeFinalization = new TakeFinalizationService({ takesDir: TAKES_DIR });
+// Application-layer lesson workflow. It only reads already-persisted Takes;
+// it never accepts a report object from the browser.
+const teachingOrchestrator = new TeachingOrchestrator({
+  dir: LESSON_RUNS_DIR,
+  readTake: (takeId) => readTakeById(takeId),
+});
 let sessionIdCounter = 0;
 let practiceSessionCounter = 0;
 
@@ -804,7 +813,63 @@ async function handleTakeTemplateApi(req, res, takeId) {
   }
 }
 
+async function handleTeachingApi(req, res, urlPath) {
+  try {
+    if (urlPath === '/api/teaching/runs') {
+      if (req.method !== 'POST') {
+        sendJson(res, 405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } });
+        return;
+      }
+      const body = await readJsonBody(req);
+      const run = teachingOrchestrator.createRun(body);
+      sendJson(res, 201, { ok: true, run });
+      return;
+    }
+
+    const actionMatch = urlPath.match(/^\/api\/teaching\/runs\/([A-Za-z0-9_-]+)\/actions$/);
+    if (actionMatch) {
+      if (req.method !== 'POST') {
+        sendJson(res, 405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } });
+        return;
+      }
+      const body = await readJsonBody(req);
+      const run = teachingOrchestrator.applyAction(actionMatch[1], body);
+      sendJson(res, 200, { ok: true, run });
+      return;
+    }
+
+    const runMatch = urlPath.match(/^\/api\/teaching\/runs\/([A-Za-z0-9_-]+)$/);
+    if (runMatch) {
+      if (req.method !== 'GET') {
+        sendJson(res, 405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } });
+        return;
+      }
+      sendJson(res, 200, { ok: true, run: teachingOrchestrator.getRun(runMatch[1]) });
+      return;
+    }
+
+    sendJson(res, 404, { ok: false, error: { code: 'NOT_FOUND', message: 'not found' } });
+  } catch (error) {
+    if (error instanceof TeachingOrchestratorError) {
+      sendJson(res, error.status, { ok: false, error: { code: error.code, message: error.message } });
+      return;
+    }
+    // readJsonBody uses ScoreLibraryError for body-shape failures; surface its
+    // coded 4xx instead of turning a malformed request into a 500.
+    if (error && typeof error.code === 'string' && Number.isInteger(error.status)) {
+      sendJson(res, error.status, { ok: false, error: { code: error.code, message: error.message } });
+      return;
+    }
+    console.error('[engine] teaching API failed:', String((error && error.message) || error));
+    sendJson(res, 500, { ok: false, error: { code: 'TEACHING_INTERNAL_ERROR', message: '教学服务暂时不可用' } });
+  }
+}
+
 async function handleApi(req, res, urlPath, query) {
+  if (urlPath === '/api/teaching/runs' || urlPath.startsWith('/api/teaching/runs/')) {
+    await handleTeachingApi(req, res, urlPath);
+    return;
+  }
   if (urlPath === '/api/take-templates' || urlPath.startsWith('/api/take-templates/')) {
     if (urlPath === '/api/take-templates') {
       await handleTakeTemplateApi(req, res, null);

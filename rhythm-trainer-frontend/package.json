@@ -10,7 +10,8 @@
     "server": "node server/engine-server.mjs",
     "midi:probe": "node server/midi/probe.mjs",
     "selftest": "node server/selftest.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:teaching": "node --test server/teaching-orchestrator.node-test.mjs"
   },
   "dependencies": {
     "@julusian/midi": "^3.8.1",

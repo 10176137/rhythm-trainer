@@ -7,7 +7,7 @@
 // Timeline retry also proves the mastery side effect runs exactly once.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { spawn } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import WebSocket from 'ws';
@@ -126,13 +126,36 @@ async function startTimelineAndFinish() {
   return client.waitFor('report');
 }
 
+const TAKES_BLOCKED_DIR = `${TAKES_DIR}.blocked`;
+
 function takeFiles() {
-  if (!existsSync(TAKES_DIR)) return [];
-  return readdirSync(TAKES_DIR).filter((name) => name.endsWith('.json'));
+  try {
+    if (!existsSync(TAKES_DIR) || !statSync(TAKES_DIR).isDirectory()) return [];
+    return readdirSync(TAKES_DIR).filter((name) => name.endsWith('.json'));
+  } catch {
+    return [];
+  }
 }
 
+// chmod-based permission denial is a no-op on Windows. Replace the takes
+// directory with a regular file instead: every write under that path fails
+// with ENOTDIR on every platform, and the original directory (with any prior
+// Takes) is restored when writes are re-enabled.
 function setTakesWritable(writable) {
-  chmodSync(TAKES_DIR, writable ? 0o700 : 0o500);
+  if (!writable) {
+    if (existsSync(TAKES_DIR)) {
+      rmSync(TAKES_BLOCKED_DIR, { recursive: true, force: true });
+      renameSync(TAKES_DIR, TAKES_BLOCKED_DIR);
+    }
+    writeFileSync(TAKES_DIR, 'blocked', 'utf8');
+    return;
+  }
+  if (existsSync(TAKES_DIR) && !statSync(TAKES_DIR).isDirectory()) {
+    rmSync(TAKES_DIR, { force: true });
+  }
+  if (existsSync(TAKES_BLOCKED_DIR)) {
+    renameSync(TAKES_BLOCKED_DIR, TAKES_DIR);
+  }
 }
 
 beforeAll(async () => {
@@ -167,7 +190,7 @@ describe('Follow Take persistence failure', () => {
 
     expect(report.persisted).toBe(false);
     expect(report.persistenceStatus).toBe('pending-retry');
-    expect(report.persistenceError).toMatch(/EACCES|EPERM|permission|拒绝/i);
+    expect(report.persistenceError).toMatch(/EACCES|EPERM|ENOTDIR|EEXIST|permission|not a directory|already exists|目录|拒绝|已存在/i);
     expect(takeFiles()).toEqual([]);
 
     const takeId = report.takeId;
