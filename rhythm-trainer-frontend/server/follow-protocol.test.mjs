@@ -490,6 +490,27 @@ describe('Follow Take closed loop (default rts launch)', () => {
     ])).rejects.toThrow(/校验失败|playback order|顺序/);
   }, 20000);
 
+  it('finalizes an empty Follow attempt without inventing a completed target', async () => {
+    const started = await startFollow([
+      { groupId: 'empty1', bar: 1, playbackBeat: 0, pitches: [{ midiNote: 60, spelling: 'C4' }] },
+    ]);
+    client.send({ type: 'follow-finish' });
+    const report = await client.waitFor('follow-report');
+    expect(report.report).toMatchObject({
+      totalTargets: 1,
+      completedTargets: 0,
+      standardTargets: 0,
+      wrongNoteCount: 0,
+      extraNoteCount: 0,
+      duplicateNoteCount: 0,
+    });
+    expect(report.persisted).toBe(true);
+    const record = JSON.parse(readFileSync(path.join(TAKES_DIR, `${started.takeId}.json`), 'utf8'));
+    expect(record.evidence.followInputs).toEqual([]);
+    expect(record.assessment.trustworthy).toBe(true);
+    expect(record.assessment.followReport.completedTargets).toBe(0);
+  }, 20000);
+
   it('commits an interrupted Follow Take when the connection drops (never a completed fake)', async () => {
     const started = await startFollow([
       { groupId: 'drop1', bar: 1, playbackBeat: 0, pitches: [{ midiNote: 60, spelling: 'C4' }] },
