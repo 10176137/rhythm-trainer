@@ -18,6 +18,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import {
+  HANDS_PROGRESSION_TEMPLATE,
+  TRANSFER_NOTE_V1,
+  getLessonById,
+  learnerMessageFor,
+  lessonViewForRun,
+} from './teaching-content.mjs';
 
 export const TEACHING_RUN_SCHEMA_VERSION = 1;
 export const TEACHING_POLICY_VERSION = 'teaching-policy-v1';
@@ -72,6 +79,20 @@ function normalizeCreateInput(input) {
   const goal = ['learn-score', 'rhythm', 'pitch', 'duration', 'rehearse'].includes(input.goal)
     ? input.goal
     : 'learn-score';
+  let lessonId = null;
+  if (input.lessonId != null && input.lessonId !== '') {
+    if (typeof input.lessonId !== 'string' || !getLessonById(input.lessonId)) {
+      throw new TeachingOrchestratorError('INVALID_LESSON', '课程不存在，请刷新课程目录后重试。');
+    }
+    lessonId = input.lessonId;
+  }
+  let firstHand = null;
+  if (lessonId) {
+    firstHand = input.firstHand == null ? 'right' : input.firstHand;
+    if (!['left', 'right'].includes(firstHand)) {
+      throw new TeachingOrchestratorError('INVALID_HAND', 'firstHand 必须是 left/right（先练哪只手）');
+    }
+  }
   return {
     scoreFingerprint,
     scoreBarCount,
@@ -80,6 +101,8 @@ function normalizeCreateInput(input) {
     startMeasure,
     endMeasure,
     goal,
+    lessonId,
+    firstHand,
     referenceAvailable: input.referenceAvailable === true,
     profile: ['strict', 'standard', 'relaxed'].includes(input.profile) ? input.profile : 'standard',
     durationPolicy: ['strict-keydown', 'disabled'].includes(input.durationPolicy) ? input.durationPolicy : 'disabled',
@@ -145,6 +168,49 @@ function initialSteps(input) {
     hands: input.hand,
     bpm: input.bpm,
   }));
+  return steps;
+}
+
+/**
+ * Lesson runs use the user-approved hands-progression flow:
+ *   讲解 → 第一只手 → 另一只手 → 合手慢速 → 合手原速通过检查.
+ * hand-1/hand-2 are practice steps (kind guided_practice); pass-check is the
+ * independent transfer/pass gate. The learner picks which hand goes first.
+ */
+function lessonSteps(config, lesson, firstHand) {
+  const hands = firstHand === 'left' ? ['left', 'right'] : ['right', 'left'];
+  const range = { startMeasure: config.startMeasure, endMeasure: config.endMeasure };
+  const steps = [makeStep({
+    id: 'understand-score',
+    kind: 'study_score',
+    title: `先听讲解：${lesson.explainScript.title}`,
+    instruction: lesson.explainScript.explanation,
+  })];
+  for (const template of HANDS_PROGRESSION_TEMPLATE) {
+    const kind = template.stepRunId === 'pass-check' ? 'independent_performance' : 'guided_practice';
+    const hand = template.stepRunId === 'hand-1'
+      ? hands[0]
+      : template.stepRunId === 'hand-2' ? hands[1] : 'both';
+    // The pass check is the learner's target tempo, not a rounded practice
+    // tempo; rounding 72→70 would silently lower the pass bar.
+    const bpm = template.tempoFactor === 1
+      ? config.bpm
+      : roundBpm(Math.min(
+        lesson.practiceTemplate.bpmRange[1],
+        Math.max(lesson.practiceTemplate.bpmRange[0], config.bpm * template.tempoFactor),
+      ));
+    steps.push(makeStep({
+      id: template.stepRunId,
+      kind,
+      title: template.stepRunId === 'hand-1' ? template.title.replace('第一只手', hand === 'left' ? '左手' : '右手')
+        : template.stepRunId === 'hand-2' ? template.title.replace('另一只手', hand === 'left' ? '左手' : '右手')
+        : template.title,
+      instruction: template.instruction,
+      range,
+      hands: hand,
+      bpm,
+    }));
+  }
   return steps;
 }
 
@@ -373,6 +439,9 @@ function toPublicRun(run) {
     status: run.status,
     scoreFingerprint: run.scoreFingerprint,
     scoreBarCount: run.scoreBarCount,
+    lessonId: run.lessonId ?? null,
+    lessonVersion: run.lessonVersion ?? null,
+    firstHand: run.firstHand ?? null,
     // Set only for runs created from an existing persisted Take (flow B).
     sourceTakeId: run.sourceTakeId ?? null,
     sourceSelection: run.sourceSelection ?? null,
@@ -407,9 +476,19 @@ function toPublicRun(run) {
     } : null,
     availableActions: actions,
     takeRefs: run.takeRefs.map(ref => ({ ...ref })),
-    decisions: run.decisions.map(decision => ({ ...decision })),
-    latestDecision: latestDecisionOf(run),
+    decisions: run.decisions.map(decision => withLearnerFeedback(run, decision)),
+    latestDecision: latestDecisionOf(run) ? withLearnerFeedback(run, latestDecisionOf(run)) : null,
+    lesson: lessonViewForRun(getLessonById(run.lessonId)),
   };
+}
+
+/** Decisions carry the lesson's own words for the learner (falls back to the
+ * policy reason). Additive: stored decisions stay untouched. */
+function withLearnerFeedback(run, decision) {
+  if (!decision || decision.learnerFeedback) return decision;
+  const lesson = getLessonById(run.lessonId);
+  const feedback = learnerMessageFor(lesson, decision, decision.reason);
+  return { ...decision, learnerFeedback: feedback };
 }
 
 function currentStep(run) {
@@ -435,6 +514,46 @@ function moveToNextStep(run) {
   run.status = 'completed';
 }
 
+/**
+ * Evidence-backed "what went well" for the teacher feedback area. Only reads
+ * the Rust report; returns nothing when the attempt's evidence is not usable,
+ * so the UI can never show praise without evidence.
+ */
+function performanceHighlights(take, result) {
+  if (result.action === 'check_input' || result.action === 'collect_more_evidence') return [];
+  const scoreReport = take?.assessment?.timelineReport?.scoreV1;
+  if (!isReport(scoreReport)) return [];
+  const highlights = [];
+  const cleanMeasures = scoreReport.measures
+    .filter(item => validMeasure(item.measure, Number.MAX_SAFE_INTEGER)
+      && Number.isFinite(item.matched) && item.matched >= 2
+      && (item.missed ?? 0) === 0
+      && Number.isFinite(item.meanAbsOnsetErrorMs) && item.meanAbsOnsetErrorMs <= 60)
+    .sort((a, b) => b.matched - a.matched || a.meanAbsOnsetErrorMs - b.meanAbsOnsetErrorMs)
+    .slice(0, 2);
+  for (const item of cleanMeasures) {
+    highlights.push({
+      source: 'score-measure',
+      metric: 'matched',
+      value: item.matched,
+      measure: item.measure,
+      detail: `该小节 ${item.matched} 个目标全部命中，平均绝对起音误差 ${Number(item.meanAbsOnsetErrorMs).toFixed(1)}ms`,
+      takeId: take.takeId,
+    });
+  }
+  const events = Array.isArray(scoreReport.eventResults) ? scoreReport.eventResults : null;
+  if (!cleanMeasures.length && events && events.length === 0) {
+    highlights.push({
+      source: 'score-report',
+      metric: 'eventResults',
+      value: 0,
+      detail: '引擎报告中没有漏音、错音或额外音事件',
+      takeId: take.takeId,
+    });
+  }
+  return highlights;
+}
+
 function buildDecision({ run, take, result, nowIso, index }) {
   const candidate = result.candidate;
   const decision = {
@@ -447,6 +566,7 @@ function buildDecision({ run, take, result, nowIso, index }) {
     reasonCode: result.reasonCode,
     reason: result.reason,
     evidenceRefs: candidate?.evidence ?? [],
+    highlights: performanceHighlights(take, result),
     createdAtIso: nowIso,
   };
   if (candidate) {
@@ -531,19 +651,25 @@ export class TeachingOrchestrator {
 
   createRun(input) {
     const config = normalizeCreateInput(input);
+    const lesson = config.lessonId ? getLessonById(config.lessonId) : null;
     const now = this.#now();
     const runId = requireId(this.#id(), 'runId');
     if (this.#fs.existsSync(this.#file(runId))) throw new TeachingOrchestratorError('RUN_ID_CONFLICT', '教学流程 ID 已存在', 409);
-    const steps = initialSteps(config);
+    const steps = lesson
+      ? lessonSteps(config, lesson, config.firstHand ?? 'right')
+      : initialSteps(config);
     const run = {
       schemaVersion: TEACHING_RUN_SCHEMA_VERSION,
       runId,
-      templateVersion: 'guided-score-v1',
+      templateVersion: lesson ? `hands-progression-v${lesson.version}` : 'guided-score-v1',
       policyVersion: TEACHING_POLICY_VERSION,
       revision: 0,
       status: 'ready',
       scoreFingerprint: config.scoreFingerprint,
       scoreBarCount: config.scoreBarCount,
+      lessonId: config.lessonId,
+      lessonVersion: lesson?.version ?? null,
+      firstHand: config.firstHand,
       config,
       steps,
       currentStepId: steps[0].stepRunId,
@@ -726,8 +852,8 @@ export class TeachingOrchestrator {
         if (result.action === 'check_input' || result.action === 'collect_more_evidence') {
           step.status = 'ready';
           run.status = 'awaiting_evidence';
-          // Keep the same step active only after the UI confirms retry.
-          step.instruction = result.reason;
+          // The step keeps its static phase instruction; the evidence gate
+          // reason lives in the decision the teacher panel renders.
         } else if (result.action === 'focus_range' && result.candidate) {
           if (step.kind === 'focused_practice') {
             // Do not loop silently forever. Permit two guided remediation
@@ -774,6 +900,18 @@ export class TeachingOrchestrator {
           if (step.kind === 'independent_performance') {
             run.status = 'completed';
             run.currentStepId = null;
+            // Completion honesty (§transfer/review): passing the check means
+            // THIS range is stable. A transfer check on new material is NOT
+            // auto-run in V1 — record it as not-executed instead of claiming
+            // mastery, and surface the lesson's review policy.
+            const lesson = getLessonById(run.lessonId);
+            if (lesson) {
+              decision.transfer = { status: 'not-executed', note: TRANSFER_NOTE_V1 };
+              decision.reviewSuggestion = {
+                trigger: lesson.reviewPolicy.trigger,
+                suggestedIntervalDays: [...lesson.reviewPolicy.suggestedIntervalDays],
+              };
+            }
           } else {
             moveToNextStep(run);
             const next = currentStep(run);

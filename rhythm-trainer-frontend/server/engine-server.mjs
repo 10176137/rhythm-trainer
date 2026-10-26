@@ -40,6 +40,7 @@ import { TakeTemplateStore, TakeTemplateError, TAKE_TEMPLATE_SCHEMA_VERSION } fr
 import { TakeFinalizationService } from './take-finalization.mjs';
 import { deriveTakeStatus } from './take-status.mjs';
 import { TeachingOrchestrator, TeachingOrchestratorError } from './teaching-orchestrator.mjs';
+import { LESSON_CATALOG_SCHEMA_VERSION, getLessonCatalog } from './teaching-content.mjs';
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -815,6 +816,19 @@ async function handleTakeTemplateApi(req, res, takeId) {
 
 async function handleTeachingApi(req, res, urlPath) {
   try {
+    if (urlPath === '/api/teaching/lessons') {
+      if (req.method !== 'GET') {
+        sendJson(res, 405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } });
+        return;
+      }
+      sendJson(res, 200, {
+        ok: true,
+        schemaVersion: LESSON_CATALOG_SCHEMA_VERSION,
+        lessons: getLessonCatalog(),
+      });
+      return;
+    }
+
     if (urlPath === '/api/teaching/runs') {
       if (req.method !== 'POST') {
         sendJson(res, 405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } });
@@ -877,7 +891,7 @@ async function handleTeachingApi(req, res, urlPath) {
 }
 
 async function handleApi(req, res, urlPath, query) {
-  if (urlPath === '/api/teaching/runs' || urlPath.startsWith('/api/teaching/runs/')) {
+  if (urlPath === '/api/teaching/lessons' || urlPath === '/api/teaching/runs' || urlPath.startsWith('/api/teaching/runs/')) {
     await handleTeachingApi(req, res, urlPath);
     return;
   }

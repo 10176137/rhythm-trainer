@@ -2885,20 +2885,20 @@ export default function App() {
   const sidebar = (
     <aside className="sidebar">
         <div className="brand-row"><div className="brand-mark">R</div><div><div className="brand-name">Rhythm Trainer</div><div className="brand-subtitle">PRACTICE STUDIO</div></div></div>
-        <div className="sidebar-section-label">工作台</div>
+        <div className="sidebar-section-label">学习</div>
         <nav className="main-nav" aria-label="主导航">
           {NAV_ROUTES.map((navRoute) => (
             <button
               key={navRoute.id}
               className={`nav-item ${route?.id === navRoute.id ? 'active' : ''}`}
               aria-current={route?.id === navRoute.id ? 'page' : undefined}
-              aria-label={navRoute.title}
+              aria-label={navRoute.navTitle ?? navRoute.title}
               title={navRoute.title}
               onClick={() => requestNavigation(navRoute.path)}
             >
               <span className="nav-icon">{navRoute.icon}</span>
-              <span>{navRoute.title}</span>
-              {navRoute.id === 'workbench' && <span className="nav-arrow">›</span>}
+              <span>{navRoute.navTitle ?? navRoute.title}</span>
+              {navRoute.id === 'teaching' && <span className="nav-arrow">›</span>}
             </button>
           ))}
         </nav>
@@ -2916,7 +2916,7 @@ export default function App() {
 
   const topbar = (
     <header className="topbar">
-      <div className="breadcrumb"><span>工作台</span><b>/</b><strong>{route?.id === 'workbench' ? currentMode.title : route?.title ?? '页面不存在'}</strong></div>
+      <div className="breadcrumb"><span>学习</span><b>/</b><strong>{route?.id === 'workbench' ? currentMode.title : route?.title ?? '页面不存在'}</strong></div>
       <div className="top-actions"><div className={`device-chip ${deviceStatus === 'connected' ? 'device-ok' : ''}`}><span className="device-dot" /><span>{deviceStatus === 'connected' ? 'MIDI 已连接' : deviceStatus === 'connecting' ? 'MIDI 连接中' : deviceStatus === 'error' ? 'MIDI 错误' : 'MIDI 未连接'}</span></div>{portOptions.length > 0 && <select className="port-select" value={selectedPortId ?? ''} onChange={(e) => { setSelectedPortId(e.target.value); connectDevice(e.target.value); }} title="选择要监听的 MIDI 输入端口（只监听选中的一个）">
         {portOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
       </select>}<button className="button button-outline button-small" onClick={() => void exportMidiLog()} disabled={deviceStatus !== 'connected'}>导出日志</button><button className="button button-outline button-small" onClick={() => (deviceStatus === 'connected' ? refreshDevices() : connectDevice())} disabled={isConnecting}>{isConnecting ? '连接中…' : deviceStatus === 'connected' ? '刷新设备' : '连接键盘'}</button><button className="avatar mini-avatar">P</button></div>
@@ -2954,7 +2954,7 @@ export default function App() {
               if (file) void handleLibraryReplaceFile(file);
             }}
           />
-          <div className="page-heading"><div><div className="eyebrow">YOUR PRACTICE SPACE</div><h1>今天,稳稳地弹好每一个音。</h1><p>评分由本地 Rust 引擎完成,反馈基于引擎判定与证据。</p></div><div className="heading-actions"><button className="button button-primary" onClick={() => navigate('/teaching')} disabled={!scoreDoc.engine}>✎ 老师带练</button><button className="button button-outline" aria-expanded={showSettings} aria-controls="practice-settings-panel" onClick={toggleSettingsPanel}>⚙ 练习设置</button></div></div>
+          <div className="page-heading"><div><div className="eyebrow">YOUR PRACTICE SPACE</div><h1>今天,稳稳地弹好每一个音。</h1><p>评分由本地 Rust 引擎完成,反馈基于引擎判定与证据。</p></div><div className="heading-actions"><button className="button button-primary" onClick={() => navigate('/teaching')} disabled={!scoreDoc.engine}>✎ 老师带练</button><button className="button button-outline" onClick={() => requestNavigation('/scores')}>曲谱库</button><button className="button button-outline" aria-expanded={showSettings} aria-controls="practice-settings-panel" onClick={toggleSettingsPanel}>⚙ 练习设置</button></div></div>
           {!scoreDoc.engine && (
             <p className="report-warning" role="status">「老师带练」需要一份带语义数据的 MusicXML 曲谱；当前曲谱不可用，请先在曲谱库打开或导入。</p>
           )}
@@ -3289,8 +3289,33 @@ export default function App() {
           </div>
         )}
         {route?.id === 'profile' && <div className="page-content"><ProfileView refreshKey={historyRefresh} /></div>}
+        {route?.id === 'progress' && (
+          <div className="page-content progress-page">
+            <div className="page-heading">
+              <div>
+                <div className="eyebrow">PROGRESS</div>
+                <h1>学习进度</h1>
+                <p>能力画像是基于规则的暂定学习判断，不是能力认证；下面是已保存的每一次 Take。</p>
+              </div>
+              <div className="heading-actions">
+                <button className="button button-primary" onClick={() => navigate('/teaching')}>继续学习</button>
+                <button className="button button-outline" onClick={() => navigate('/workbench')}>自由练习</button>
+              </div>
+            </div>
+            <ProfileView refreshKey={historyRefresh} />
+            <HistoryView
+              refreshKey={historyRefresh}
+              activeScoreFingerprint={scoreDoc.engine?.fingerprint ?? null}
+              onTeachingRunCreated={(run) => {
+                saveLastRunId(run.runId);
+                addFeedback('教学课程已创建', '可在「学习」中继续这堂课。', 'success');
+              }}
+              onNavigateTeaching={() => navigate('/teaching')}
+            />
+          </div>
+        )}
         {route?.id === 'teaching' && (
-          <div className="page-content">
+          <div className="page-content teaching-page">
             <TeachingWorkspace
               score={{
                 fingerprint: scoreDoc.engine?.fingerprint ?? null,
@@ -3303,6 +3328,7 @@ export default function App() {
                 practiceStartBlock: teachingPracticeBlock,
               }}
               takeNotice={teachingTakeNotice}
+              inputStatus={deviceStatus}
               onStartPractice={(request) => applyTeachingStepConfig({
                 scoreFingerprint: request.scoreFingerprint,
                 tempo: request.tempo,

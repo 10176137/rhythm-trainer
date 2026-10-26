@@ -91,6 +91,80 @@ export interface TeachingPrescriptionDTO {
   createdAtIso: string;
 }
 
+export interface TeachingLessonObjective {
+  id: string;
+  statement: string;
+  evidenceType: 'onset-timing' | 'pitch-events' | 'duration-assessment' | 'input-health';
+}
+
+export interface TeachingExplainScript {
+  title: string;
+  explanation: string;
+  prompts: string[];
+  successCriteria: string[];
+}
+
+export interface TeachingFeedbackRule {
+  diagnosisCode: string;
+  learnerMessage: string;
+  nextAction: string;
+}
+
+export interface TeachingCoachingTip {
+  coaching: string;
+}
+
+/** A lesson as served by GET /api/teaching/lessons (server-validated content). */
+export interface TeachingLessonSummary {
+  lessonId: string;
+  version: number;
+  title: string;
+  description: string;
+  difficulty: 'intro' | 'basic' | 'intermediate';
+  skillTags: string[];
+  prerequisites: string[];
+  learningObjectives: TeachingLessonObjective[];
+  explainScript: TeachingExplainScript;
+  coachingByPhase: Record<string, TeachingCoachingTip>;
+  practiceTemplate: {
+    advanceMode: 'timeline';
+    defaultBpm: number;
+    bpmRange: [number, number];
+  };
+  feedbackRules: TeachingFeedbackRule[];
+  completionPolicy: { requiredEvidence: string[]; allowProvisionalCompletion: boolean };
+  reviewPolicy: { trigger: string; suggestedIntervalDays: number[] };
+}
+
+/** Lesson view embedded in every LessonRun response. */
+export interface TeachingLessonView {
+  lessonId: string;
+  version: number;
+  title: string;
+  description: string;
+  objectives: TeachingLessonObjective[];
+  explainScript: TeachingExplainScript;
+  coachingByStepId: Record<string, TeachingCoachingTip>;
+  transferNote: string;
+  reviewPolicy: { trigger: string; suggestedIntervalDays: number[] };
+}
+
+export interface TeachingLearnerFeedback {
+  message: string;
+  nextAction: string | null;
+  source: 'lesson' | 'policy';
+}
+
+export interface TeachingTransferNote {
+  status: 'not-executed' | 'passed' | 'failed';
+  note?: string;
+}
+
+export interface TeachingReviewSuggestion {
+  trigger: string;
+  suggestedIntervalDays: number[];
+}
+
 export interface TeachingDecision {
   decisionId: string;
   policyVersion: string;
@@ -101,6 +175,11 @@ export interface TeachingDecision {
   reasonCode: string;
   reason: string;
   evidenceRefs: TeachingEvidenceRef[];
+  /** Evidence-backed positives from the Rust report; [] when not assessable. */
+  highlights?: TeachingEvidenceRef[];
+  learnerFeedback?: TeachingLearnerFeedback;
+  transfer?: TeachingTransferNote;
+  reviewSuggestion?: TeachingReviewSuggestion;
   createdAtIso: string;
   prescription?: TeachingPrescriptionDTO;
 }
@@ -120,6 +199,9 @@ export interface TeachingRunDTO {
   status: TeachingRunStatus;
   scoreFingerprint: string;
   scoreBarCount: number;
+  lessonId: string | null;
+  lessonVersion: number | null;
+  firstHand: 'left' | 'right' | null;
   /** Set only for runs created from an existing persisted Take. */
   sourceTakeId: string | null;
   sourceSelection: string | null;
@@ -132,12 +214,16 @@ export interface TeachingRunDTO {
   takeRefs: TeachingTakeRef[];
   decisions: TeachingDecision[];
   latestDecision: TeachingDecision | null;
+  /** Validated lesson view; null for legacy runs created without a lesson. */
+  lesson?: TeachingLessonView | null;
   duplicateCommand?: boolean;
 }
 
 export interface CreateRunInput {
   scoreFingerprint: string;
   scoreBarCount: number;
+  lessonId?: string;
+  firstHand?: 'left' | 'right';
   bpm?: number;
   hand?: TeachingHand;
   startMeasure?: number;
@@ -213,6 +299,13 @@ export function saveLastRunId(runId: string | null): void {
 }
 
 export const teachingRunRepository = {
+  listLessons(): Promise<TeachingLessonSummary[]> {
+    return request<{ ok: true; schemaVersion: number; lessons: TeachingLessonSummary[] }>(
+      'GET',
+      '/api/teaching/lessons',
+    ).then((data) => data.lessons);
+  },
+
   createRun(input: CreateRunInput): Promise<TeachingRunDTO> {
     return request<{ ok: true; run: TeachingRunDTO }>('POST', '/api/teaching/runs', input).then((data) => data.run);
   },

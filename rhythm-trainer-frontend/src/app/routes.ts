@@ -1,6 +1,7 @@
 export type AppRouteId =
   | 'workbench'
   | 'teaching'
+  | 'progress'
   | 'history'
   | 'profile'
   | 'scores'
@@ -14,6 +15,8 @@ export interface AppRouteDefinition {
   id: AppRouteId;
   path: string;
   title: string;
+  /** Short label in the primary navigation; falls back to `title`. */
+  navTitle?: string;
   /** Icon shown in the sidebar for implemented navigation pages. */
   icon?: string;
   nav: boolean;
@@ -30,38 +33,50 @@ export interface AppRouteDefinition {
  */
 export const APP_ROUTES: readonly AppRouteDefinition[] = [
   {
+    id: 'teaching',
+    path: '/teaching',
+    title: '老师带练',
+    navTitle: '学习',
+    icon: '✎',
+    nav: true,
+    enabled: true,
+    description: '按步骤带练当前曲谱：讲解、单手、合手、原速通过检查。',
+  },
+  {
     id: 'workbench',
     path: '/workbench',
     title: '练习工作台',
+    navTitle: '自由练习',
     icon: '▤',
     nav: true,
     enabled: true,
-    description: '练习、参考播放、实时反馈与设置。',
+    description: '自由练习、参考播放、实时反馈与设置。',
+  },
+  {
+    id: 'progress',
+    path: '/progress',
+    title: '学习进度',
+    navTitle: '进度',
+    icon: '◷',
+    nav: true,
+    enabled: true,
+    description: '能力画像与已保存的练习记录。',
   },
   {
     id: 'scores',
     path: '/scores',
     title: '曲谱库',
     icon: '♬',
-    nav: true,
+    nav: false,
     enabled: true,
     description: '导入、检查并打开 MusicXML 曲谱。',
-  },
-  {
-    id: 'teaching',
-    path: '/teaching',
-    title: '老师带练',
-    icon: '✎',
-    nav: true,
-    enabled: true,
-    description: '按步骤带练当前曲谱：读谱、带练、针对性练习、独立演奏。',
   },
   {
     id: 'history',
     path: '/history',
     title: '练习记录',
     icon: '◷',
-    nav: true,
+    nav: false,
     enabled: true,
     description: '已保存的练习轮次与报告。',
   },
@@ -70,7 +85,7 @@ export const APP_ROUTES: readonly AppRouteDefinition[] = [
     path: '/profile',
     title: '能力画像',
     icon: '⌁',
-    nav: true,
+    nav: false,
     enabled: true,
     description: '按练习模式聚合的掌握状态与近期趋势。',
   },
@@ -95,7 +110,7 @@ export const APP_ROUTES: readonly AppRouteDefinition[] = [
     path: '/device',
     title: '设备检查',
     icon: '⌨',
-    nav: true,
+    nav: false,
     enabled: true,
     description: 'MIDI 连接、按键测试与输入健康。',
   },

@@ -383,3 +383,128 @@ test('from-take rejects unpersisted and foreign Takes', () => {
     error => error instanceof TeachingOrchestratorError && error.code === 'SCORE_FINGERPRINT_MISMATCH',
   );
 });
+
+// ---------------------------------------------------------------------------
+// Hands-progression lesson runs (user-approved course flow).
+
+test('lesson run builds the hands-progression steps and carries the lesson view', () => {
+  const run = orchestrator.createRun({
+    scoreFingerprint: 'score-fp-1', scoreBarCount: 8, bpm: 72, hand: 'both',
+    lessonId: 'steady-beat-hands', firstHand: 'left',
+    startMeasure: 2, endMeasure: 6,
+  });
+  assert.deepEqual(run.steps.map(step => step.stepRunId), [
+    'understand-score', 'hand-1', 'hand-2', 'hands-together', 'pass-check',
+  ]);
+  // Learner picked left hand first.
+  assert.equal(run.steps[1].hands, 'left');
+  assert.equal(run.steps[2].hands, 'right');
+  assert.equal(run.steps[3].hands, 'both');
+  assert.equal(run.steps[4].hands, 'both');
+  // Tempo factors: slow singles, slightly faster together, original for pass.
+  assert.equal(run.steps[1].tempoBpm, 55);
+  assert.equal(run.steps[3].tempoBpm, 60);
+  assert.equal(run.steps[4].tempoBpm, 72);
+  // Steps cover the learner-chosen range.
+  assert.deepEqual(run.steps[1].measureRange, { startMeasure: 2, endMeasure: 6 });
+  // Lesson DTO travels with every response.
+  assert.equal(run.lesson.lessonId, 'steady-beat-hands');
+  assert.equal(run.lesson.coachingByStepId['hand-1'].coaching.length > 10, true);
+  assert.equal(run.templateVersion, 'hands-progression-v1');
+  // practiceRequest authored per step.
+  assert.equal(run.currentStep.kind, 'study_score');
+});
+
+test('lesson run record-take maps decisions onto lesson feedback words', () => {
+  takes.set('lesson-take', makeTake({ takeId: 'lesson-take', missingMeasure: 3 }));
+  let run = orchestrator.createRun({
+    scoreFingerprint: 'score-fp-1', scoreBarCount: 8, bpm: 72,
+    lessonId: 'steady-beat-hands', firstHand: 'right',
+  });
+  run = action(run, 'ls-begin', 'begin');
+  run = action(run, 'ls-study', 'complete-step');
+  assert.equal(run.currentStep.stepRunId, 'hand-1');
+  run = action(run, 'ls-record', 'record-take', { takeId: 'lesson-take' });
+  const decision = run.latestDecision;
+  assert.equal(decision.action, 'focus_range');
+  assert.equal(decision.learnerFeedback.source, 'lesson');
+  assert.match(decision.learnerFeedback.message, /每个键都弹响|漏/);
+  assert.ok(decision.learnerFeedback.nextAction.length > 5);
+  // Focus step inserted before the pass-check; steps keep progression ids.
+  assert.equal(run.currentStep.kind, 'focused_practice');
+  assert.equal(run.steps.at(-1).stepRunId, 'pass-check');
+});
+
+test('lessons attach evidence-backed highlights and never praise untrusted input', () => {
+  let run = orchestrator.createRun({
+    scoreFingerprint: 'score-fp-1', scoreBarCount: 8, bpm: 72, lessonId: 'steady-beat-hands',
+  });
+  run = action(run, 'hl-begin', 'begin');
+  run = action(run, 'hl-study', 'complete-step');
+  takes.set('hl-clean', makeTake({ takeId: 'hl-clean', missingMeasure: 3 }));
+  run = action(run, 'hl-record', 'record-take', { takeId: 'hl-clean' });
+  // The take has one missing measure, but measures 1–2 are fully matched, so
+  // the teacher can honestly say what went well alongside the one fix.
+  assert.ok(run.latestDecision.highlights.length >= 1);
+  assert.ok(run.latestDecision.highlights.every((item) => item.takeId === 'hl-clean'));
+
+  let degradedRun = orchestrator.createRun({
+    scoreFingerprint: 'score-fp-1', scoreBarCount: 8, bpm: 72, lessonId: 'steady-beat-hands',
+  });
+  degradedRun = action(degradedRun, 'hl2-begin', 'begin');
+  degradedRun = action(degradedRun, 'hl2-study', 'complete-step');
+  takes.set('hl-degraded', makeTake({ takeId: 'hl-degraded', trustworthy: false }));
+  degradedRun = action(degradedRun, 'hl2-record', 'record-take', { takeId: 'hl-degraded' });
+  assert.equal(degradedRun.latestDecision.action, 'check_input');
+  assert.deepEqual(degradedRun.latestDecision.highlights, []);
+});
+
+test('lesson run completion records transfer as not-executed with a review plan', () => {
+  let run = orchestrator.createRun({
+    scoreFingerprint: 'score-fp-1', scoreBarCount: 4, bpm: 72,
+    lessonId: 'steady-beat-hands', firstHand: 'left',
+  });
+  run = action(run, 'lc-begin', 'begin');
+  run = action(run, 'lc-study', 'complete-step');
+  // Each stage needs its own immutable Take; replaying one take is idempotent
+  // and cannot advance the run.
+  for (const [index, stepId] of ['hand-1', 'hand-2', 'hands-together'].entries()) {
+    const takeId = `lesson-clean-${index}`;
+    takes.set(takeId, makeTake({ takeId }));
+    assert.equal(run.currentStep.stepRunId, stepId);
+    run = action(run, `lc-clean-${index}`, 'record-take', { takeId });
+    if (run.status === 'awaiting_evidence') run = action(run, `lc-retry-${index}`, 'retry-current-step');
+  }
+  // The clean take passes every practice stage; final stage is the pass check.
+  assert.equal(run.currentStep.stepRunId, 'pass-check');
+  takes.set('lesson-clean-pass', makeTake({ takeId: 'lesson-clean-pass' }));
+  run = action(run, 'lc-pass', 'record-take', { takeId: 'lesson-clean-pass' });
+  assert.equal(run.status, 'completed');
+  const decision = run.latestDecision;
+  assert.deepEqual(decision.transfer, {
+    status: 'not-executed',
+    note: run.lesson.transferNote,
+  });
+  assert.deepEqual(decision.reviewSuggestion.suggestedIntervalDays, [1, 3, 7]);
+});
+
+test('unknown lessonId is rejected at run creation', () => {
+  assert.throws(
+    () => orchestrator.createRun({ scoreFingerprint: 'score-fp-1', scoreBarCount: 4, lessonId: 'no-such-lesson' }),
+    error => error instanceof TeachingOrchestratorError && error.code === 'INVALID_LESSON',
+  );
+  assert.throws(
+    () => orchestrator.createRun({
+      scoreFingerprint: 'score-fp-1', scoreBarCount: 4,
+      lessonId: 'steady-beat-hands', firstHand: 'middle',
+    }),
+    error => error instanceof TeachingOrchestratorError && error.code === 'INVALID_HAND',
+  );
+});
+
+test('runs without a lesson keep the legacy template and have no lesson view', () => {
+  const run = orchestrator.createRun({ scoreFingerprint: 'score-fp-1', scoreBarCount: 4, bpm: 72, hand: 'both' });
+  assert.deepEqual(run.steps.map(step => step.kind), ['study_score', 'guided_practice', 'independent_performance']);
+  assert.equal(run.lesson, null);
+  assert.equal(run.templateVersion, 'guided-score-v1');
+});

@@ -419,6 +419,107 @@ describe('Teaching Orchestrator REST integration', () => {
     expect(mismatch.json.error.code).toBe('SCORE_FINGERPRINT_MISMATCH');
   }, 20000);
 
+  it('serves the versioned lesson catalog for the workspace picker', async () => {
+    const listed = await api('GET', '/api/teaching/lessons');
+    expect(listed.status).toBe(200);
+    expect(listed.json.ok).toBe(true);
+    expect(listed.json.schemaVersion).toBe(1);
+    expect(listed.json.lessons).toHaveLength(8);
+    const ids = listed.json.lessons.map((lesson) => lesson.lessonId);
+    expect(new Set(ids).size).toBe(8);
+    for (const lesson of listed.json.lessons) {
+      expect(lesson).toMatchObject({
+        lessonId: expect.any(String),
+        version: expect.any(Number),
+        title: expect.any(String),
+        difficulty: expect.any(String),
+      });
+      expect(lesson.explainScript.explanation.length).toBeGreaterThan(20);
+      expect(Object.keys(lesson.coachingByPhase)).toEqual(
+        ['hand-single-1', 'hand-single-2', 'hands-together', 'pass-check'],
+      );
+      expect(lesson.learningObjectives.length).toBeGreaterThan(0);
+    }
+    expect(ids).toContain('steady-beat-hands');
+    expect(ids).toContain('transfer-review');
+
+    const method = await api('POST', '/api/teaching/lessons');
+    expect(method.status).toBe(405);
+    expect(method.json.error.code).toBe('METHOD_NOT_ALLOWED');
+  }, 20000);
+
+  it('runs a lesson with the hands progression and lesson-authored feedback', async () => {
+    const created = await api('POST', '/api/teaching/runs', {
+      scoreFingerprint: FINGERPRINT,
+      scoreBarCount: 8,
+      bpm: 72,
+      startMeasure: 1,
+      endMeasure: 8,
+      lessonId: 'steady-beat-hands',
+      firstHand: 'left',
+    });
+    expect(created.status).toBe(201);
+    const run = created.json.run;
+    expect(run.templateVersion).toBe('hands-progression-v1');
+    expect(run.lessonId).toBe('steady-beat-hands');
+    expect(run.firstHand).toBe('left');
+    expect(run.steps.map((step) => step.stepRunId)).toEqual([
+      'understand-score', 'hand-1', 'hand-2', 'hands-together', 'pass-check',
+    ]);
+    expect(run.steps.slice(1).map((step) => [step.hands, step.tempoBpm])).toEqual([
+      ['left', 55], ['right', 55], ['both', 60], ['both', 72],
+    ]);
+    expect(run.steps.at(-1).kind).toBe('independent_performance');
+    expect(run.lesson).toMatchObject({
+      lessonId: 'steady-beat-hands',
+      title: expect.any(String),
+      transferNote: expect.any(String),
+    });
+
+    // Unknown lesson or invalid first hand are coded 400s, not silent fallbacks.
+    const unknownLesson = await api('POST', '/api/teaching/runs', {
+      scoreFingerprint: FINGERPRINT, scoreBarCount: 8, lessonId: 'no-such-lesson',
+    });
+    expect(unknownLesson.status).toBe(400);
+    expect(unknownLesson.json.error.code).toBe('INVALID_LESSON');
+    const unknownHand = await api('POST', '/api/teaching/runs', {
+      scoreFingerprint: FINGERPRINT, scoreBarCount: 8,
+      lessonId: 'steady-beat-hands', firstHand: 'middle',
+    });
+    expect(unknownHand.status).toBe(400);
+    expect(unknownHand.json.error.code).toBe('INVALID_HAND');
+
+    await api('POST', `/api/teaching/runs/${run.runId}/actions`, {
+      commandId: 'lp-begin', expectedRevision: 0, action: 'begin',
+    });
+    const studyDone = await api('POST', `/api/teaching/runs/${run.runId}/actions`, {
+      commandId: 'lp-study', expectedRevision: 1, action: 'complete-step',
+    });
+    expect(studyDone.json.run.currentStepId).toBe('hand-1');
+    expect(studyDone.json.run.currentStep.practiceRequest).toMatchObject({
+      tempo: 55,
+      hand: 'left',
+      loopStartBar: 1,
+      loopEndBar: 8,
+    });
+
+    writeTake('take-lesson-hand-1', FINGERPRINT);
+    const recorded = await api('POST', `/api/teaching/runs/${run.runId}/actions`, {
+      commandId: 'lp-record', expectedRevision: 2, action: 'record-take', takeId: 'take-lesson-hand-1',
+    });
+    expect(recorded.status).toBe(200);
+    expect(recorded.json.run.latestDecision).toMatchObject({
+      action: 'focus_range',
+      reasonCode: 'REMEDIATION_REQUIRED',
+      prescription: { ruleId: 'MISSING_NOTES_V1', measureRange: { startMeasure: 2, endMeasure: 2 } },
+    });
+    expect(recorded.json.run.latestDecision.learnerFeedback).toMatchObject({
+      source: 'lesson',
+      message: expect.any(String),
+      nextAction: expect.any(String),
+    });
+  }, 30000);
+
   it('rejects malformed bodies and unsupported methods with coded errors', async () => {
     const bad = await fetch(`${BASE}/api/teaching/runs`, {
       method: 'POST',
