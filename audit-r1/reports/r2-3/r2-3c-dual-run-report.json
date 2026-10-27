@@ -1,6 +1,6 @@
 {
  "schemaVersion": "r2-3c-dual-run-report-v1",
- "generatedAt": "2026-10-25T12:53:47.350Z",
+ "generatedAt": "2026-10-26T16:30:53.198Z",
  "command": "npx vitest run src/score-engine/parity/rust-parity.test.ts",
  "sides": {
   "expected": {
@@ -11,14 +11,14 @@
    "kind": "candidate",
    "pipeline": "buildTsCandidate (live, run twice for stability)",
    "plannerVersion": "parity-harness-1",
-   "gitSha": "af8adfcd34c762d66cdd3a90b98163e612f627d1",
+   "gitSha": "eecd392c6232d1430e40f074ac3c7d4ab9b14043",
    "gitShaNote": "single repo: TS and Rust sources are pinned by the same commit"
   },
   "rust": {
    "kind": "candidate",
    "pipeline": "build_plan_v1 + build_parity_candidate_v1 via NAPI (live, run twice for stability)",
    "plannerVersion": "parity-harness-1",
-   "gitSha": "af8adfcd34c762d66cdd3a90b98163e612f627d1",
+   "gitSha": "eecd392c6232d1430e40f074ac3c7d4ab9b14043",
    "gitShaNote": "single repo: TS and Rust sources are pinned by the same commit"
   }
  },

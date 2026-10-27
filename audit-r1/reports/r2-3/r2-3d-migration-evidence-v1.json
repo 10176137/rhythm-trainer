@@ -1,18 +1,18 @@
 {
  "schemaVersion": "r2-3d-migration-evidence-v1",
- "generatedAt": "2026-10-25T14:11:43.945Z",
+ "generatedAt": "2026-10-26T16:30:55.679Z",
  "command": "npx vitest run src/score-engine/parity/r2-3d-evidence.test.ts (+ cargo test contract_v1_r23d_evidence, acceptance suites)",
- "verifiedCodeSha": "d687a9edfd0b3e23fd2e0476923e12568e6ef70c",
+ "verifiedCodeSha": "eecd392c6232d1430e40f074ac3c7d4ab9b14043",
  "sides": {
   "ts": {
    "pipeline": "buildTsCandidate (live)",
    "plannerVersion": "parity-harness-1",
-   "gitSha": "d687a9edfd0b3e23fd2e0476923e12568e6ef70c"
+   "gitSha": "eecd392c6232d1430e40f074ac3c7d4ab9b14043"
   },
   "rust": {
    "pipeline": "build_plan_v1 via NAPI (live)",
    "plannerVersion": "parity-harness-1",
-   "gitSha": "d687a9edfd0b3e23fd2e0476923e12568e6ef70c"
+   "gitSha": "eecd392c6232d1430e40f074ac3c7d4ab9b14043"
   },
   "note": "single repo: one commit pins both TS and Rust sources"
  },
