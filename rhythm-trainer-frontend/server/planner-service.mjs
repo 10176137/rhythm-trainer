@@ -6,10 +6,11 @@
 //   assembly (plan + plannerVersion + plannerAuthority + planFingerprint)
 //
 // plus the two session guards (timeline / follow) the strict-practice
-// launch must pass. The rust path is DISABLED unless the authority is
-// explicitly 'rust' (env RHYTHM_PLANNER, default 'rts'); a failed or
-// disabled Rust path NEVER falls back to the TS planner — the caller
-// receives a coded rejection instead of a plan.
+// launch must pass. The authority comes from RHYTHM_PLANNER with the
+// production default 'rust' (user-authorized switch, 2026-10-27; set
+// RHYTHM_PLANNER=rts to roll back); a failed or disabled Rust path NEVER
+// falls back to the TS planner — the caller receives a coded rejection
+// instead of a plan.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -49,10 +50,11 @@ function asGateError(error) {
 }
 
 /** Resolves the planner authority: explicit argument wins, then the
- * RHYTHM_PLANNER env var, then the frozen default 'rts'. Unknown values are
- * a coded rejection (fail-closed), never a silent choice. */
+ * RHYTHM_PLANNER env var, then the production default 'rust' (user-authorized
+ * switch, 2026-10-27; RHYTHM_PLANNER=rts rolls back). Unknown values are a
+ * coded rejection (fail-closed), never a silent choice. */
 export function resolvePlannerAuthority(explicit) {
-  const value = explicit ?? process.env.RHYTHM_PLANNER ?? 'rts';
+  const value = explicit ?? process.env.RHYTHM_PLANNER ?? 'rust';
   if (!AUTHORITIES.includes(value)) {
     throw new PlannerGateError('INVALID_PLANNER_AUTHORITY',
       `RHYTHM_PLANNER must be rts|rust, got '${value}'`);
@@ -316,9 +318,9 @@ export function verifyFollowCrossReferences(plan) {
 
 /**
  * Creates the planner service bound to one authority. The default authority
- * comes from RHYTHM_PLANNER (default 'rts') — the rust path is disabled
- * unless explicitly selected, and the existing TS path / free play are
- * untouched by this module.
+ * comes from RHYTHM_PLANNER (production default 'rust' since 2026-10-27;
+ * RHYTHM_PLANNER=rts rolls back) — the TS path / free play are untouched by
+ * this module.
  */
 export function createPlannerService({ authority = resolvePlannerAuthority(), nativeModule = native } = {}) {
   if (!AUTHORITIES.includes(authority)) {

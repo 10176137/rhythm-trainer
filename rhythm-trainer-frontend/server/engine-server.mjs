@@ -109,9 +109,10 @@ try {
 }
 
 // R2-3h: the planner authority is resolved ONCE at startup from
-// RHYTHM_PLANNER (default 'rts') and is the single source of truth the
-// browser queries — never a second switch maintained client-side. An
-// invalid value is a hard startup failure (fail-closed, no silent choice).
+// RHYTHM_PLANNER (production default 'rust' since 2026-10-27 by user
+// authorization; RHYTHM_PLANNER=rts rolls back) and is the single source of
+// truth the browser queries — never a second switch maintained client-side.
+// An invalid value is a hard startup failure (fail-closed, no silent choice).
 let plannerService;
 try {
   plannerService = createPlannerService();

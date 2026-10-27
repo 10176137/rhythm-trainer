@@ -228,17 +228,17 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
     expect(error?.plan).toBeUndefined();
   });
 
-  it('9. the default authority is rts and the switch is fail-closed on unknown values', () => {
-    // No RHYTHM_PLANNER in this environment -> the frozen default.
-    expect(resolvePlannerAuthority()).toBe('rts');
+  it('9. the default authority is rust (user-authorized switch) and unknown values fail closed', () => {
+    // No RHYTHM_PLANNER in this environment -> the production default.
+    expect(resolvePlannerAuthority()).toBe('rust');
     expect(() => resolvePlannerAuthority('rts')).not.toThrow();
     expect(() => resolvePlannerAuthority('rust')).not.toThrow();
     expect(() => resolvePlannerAuthority('best-of-both')).toThrow(/INVALID_PLANNER_AUTHORITY/);
-    // With the default authority the rust chain refuses to run at all.
+    // The rts authority (explicit rollback) refuses the rust chain entirely.
     const record = corpus('G1-base');
     const error = (() => {
       try {
-        createPlannerService().buildRustPlan({ document: record.document, report: record.report, config: configFor(), mode: 'timeline' });
+        createPlannerService({ authority: 'rts' }).buildRustPlan({ document: record.document, report: record.report, config: configFor(), mode: 'timeline' });
         return null;
       } catch (cause) {
         return cause;
@@ -305,7 +305,7 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
       const imported = await import('./planner-service.mjs');
       expect(typeof imported.createPlannerService).toBe('function');
       expect(typeof imported.verifyTimelineSemantics).toBe('function');
-      expect(imported.resolvePlannerAuthority()).toBe('rts');
+      expect(imported.resolvePlannerAuthority()).toBe('rust');
     });
 
     it('12. the real Rust baseline passes BOTH server-path verifiers', () => {
@@ -399,11 +399,12 @@ describe('R2-3g: rust planner generation chain (real NAPI)', () => {
       })).toThrow(/TIMELINE_SEMANTICS_REJECTED/);
     });
 
-    it('18. existing behaviors are unchanged: rts default, disabled path, multi-part, version, frozen suites', () => {
+    it('18. behaviors after the authority switch: rust default, rts rollback path, frozen suites', () => {
       // (covered in full by tests 5/6/8/9 above; re-asserted here for the
       // R1 boundary statement — plus the full suite regression run.)
-      expect(resolvePlannerAuthority()).toBe('rts');
-      expect(() => createPlannerService().buildRustPlan({ document: record.document, report: record.report, config, mode: 'timeline' }))
+      expect(resolvePlannerAuthority()).toBe('rust');
+      // The explicit rts rollback still refuses the rust chain entirely.
+      expect(() => createPlannerService({ authority: 'rts' }).buildRustPlan({ document: record.document, report: record.report, config, mode: 'timeline' }))
         .toThrow(/PLANNER_PATH_DISABLED/);
     });
   });

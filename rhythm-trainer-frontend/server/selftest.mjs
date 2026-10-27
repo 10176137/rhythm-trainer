@@ -2040,8 +2040,14 @@ async function waitForServer() {
 
 async function main() {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rhythm-engine-selftest-'));
+  // The timeline selftest drives the WS start protocol with inline atoms, i.e.
+  // the rts client-projection path. The production default authority is rust
+  // (plan-request -> start with planRequestId), which is covered end to end by
+  // plan-protocol/follow-protocol tests; here we pin rts explicitly so the
+  // selftest exercises process health, persistence and admission gates
+  // regardless of the deployed authority.
   const child = spawn(process.execPath, [path.join(__dirname, 'engine-server.mjs')], {
-    env: { ...process.env, PORT: String(PORT), RHYTHM_DATA_DIR: dataDir, RHYTHM_MIDI_BACKEND: 'mock' },
+    env: { ...process.env, PORT: String(PORT), RHYTHM_DATA_DIR: dataDir, RHYTHM_MIDI_BACKEND: 'mock', RHYTHM_PLANNER: 'rts' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   child.stdout.on('data', (d) => process.stdout.write(`[server] ${d}`));
