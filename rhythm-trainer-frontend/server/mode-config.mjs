@@ -9,7 +9,7 @@
 
 export const MODE_CONFIG_VERSION = 'mode-config-1.0.0';
 
-export const MODE_IDS = ['rhythm', 'score', 'hands', 'loop', 'free'];
+export const MODE_IDS = ['rhythm', 'score', 'hands', 'loop', 'free', 'fixed-line', 'exercise'];
 
 /**
  * Per-mode policy:
@@ -33,7 +33,27 @@ const MODE_POLICIES = {
     userOverrides: ['profile', 'durationPolicy', 'feedback'],
   },
   score: {
-    label: '练习模式',
+    label: '正常曲目演奏',
+    judgmentProfile: 'standard',
+    durationPolicy: 'strict-keydown',
+    scoringStartPolicy: 'first-target-early-window',
+    pitchHint: true,
+    diagnosis: { onset: true, stability: true, duration: true, pitch: true, misses: true },
+    notApplicable: [],
+    userOverrides: ['profile', 'durationPolicy', 'feedback'],
+  },
+  'fixed-line': {
+    label: '固定判定线节奏练习',
+    judgmentProfile: 'standard',
+    durationPolicy: 'strict-keydown',
+    scoringStartPolicy: 'first-target-early-window',
+    pitchHint: true,
+    diagnosis: { onset: true, stability: true, duration: true, pitch: true, misses: true },
+    notApplicable: [],
+    userOverrides: ['profile', 'durationPolicy', 'feedback'],
+  },
+  exercise: {
+    label: '节奏型与技巧训练',
     judgmentProfile: 'standard',
     durationPolicy: 'strict-keydown',
     scoringStartPolicy: 'first-target-early-window',

@@ -1,4 +1,4 @@
-export type PracticeModeId = 'rhythm' | 'score' | 'hands' | 'loop' | 'free';
+export type PracticeModeId = 'rhythm' | 'score' | 'hands' | 'loop' | 'free' | 'fixed-line' | 'exercise';
 export type HandSelection = 'both' | 'right' | 'left';
 export type FeedbackMode = 'live' | 'after';
 /** Centralized session machine: idle → countdown → running ↔ paused → processing → completed. */

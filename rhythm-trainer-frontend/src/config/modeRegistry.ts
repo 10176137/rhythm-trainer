@@ -21,9 +21,21 @@ export const modeRegistry: Record<PracticeModeId, ModeDefinition> = {
     supportsLiveFeedback: true, category: '基础技能',
   },
   score: {
-    id: 'score', title: '练习模式', subtitle: '按设置练习',
-    description: '按当前曲谱与练习设置演奏；开始后由本地引擎给出实时判定、逐小节证据与练习报告。', icon: '♫',
+    id: 'score', title: '正常曲目演奏', subtitle: '按曲谱、固定时间判定',
+    description: '选择现有曲目，按正常乐谱演奏；系统按固定时间判定节奏、音高与时值。', icon: '♫',
     requiresScore: true, requiresMidi: true, supportsHandSelection: true,
+    supportsLiveFeedback: true, category: '基础技能',
+  },
+  'fixed-line': {
+    id: 'fixed-line', title: '固定判定线节奏练习', subtitle: '音符到达判定线时演奏',
+    description: '单行大谱表向左滚动，音符到达固定判定线时演奏；专注节奏与时值。', icon: '▶',
+    requiresScore: true, requiresMidi: true, supportsHandSelection: true,
+    supportsLiveFeedback: true, category: '基础技能',
+  },
+  exercise: {
+    id: 'exercise', title: '节奏型与技巧训练', subtitle: '生成节奏型 / 琶音',
+    description: '选择节奏型或琶音规则，确定性生成练习乐谱，再进入固定判定线练习。', icon: '✎',
+    requiresScore: false, requiresMidi: true, supportsHandSelection: true,
     supportsLiveFeedback: true, category: '基础技能',
   },
   hands: {

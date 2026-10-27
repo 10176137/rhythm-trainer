@@ -2,21 +2,27 @@ import { describe, expect, it } from 'vitest';
 import { MODE_CONFIG_VERSION, MODE_IDS, resolveModeScoringConfig } from './mode-config.mjs';
 
 describe('mode → ScoringConfig mapping', () => {
-  it('maps all five real mode IDs; none falls through to one shared default', () => {
+  it('maps every real mode ID; none falls through to one shared default', () => {
     const configs = Object.fromEntries(MODE_IDS.map((id) => [id, resolveModeScoringConfig({ modeId: id })]));
-    expect(Object.keys(configs).sort()).toEqual(['free', 'hands', 'loop', 'rhythm', 'score']);
+    expect(Object.keys(configs).sort()).toEqual(['exercise', 'fixed-line', 'free', 'hands', 'loop', 'rhythm', 'score']);
     expect(configs.rhythm.judgmentProfile).toBe('standard');
     expect(configs.score.judgmentProfile).toBe('standard');
+    expect(configs['fixed-line'].judgmentProfile).toBe('standard');
+    expect(configs.exercise.judgmentProfile).toBe('standard');
     expect(configs.hands.judgmentProfile).toBe('relaxed');
     expect(configs.loop.judgmentProfile).toBe('strict');
     expect(configs.free.durationPolicy).toBe('disabled');
     expect(configs.free.scoringStartPolicy).toBe('none');
-    // rhythm and free declare pitch hints off; score/hands/loop declare them on
+    // rhythm and free declare pitch hints off; A/B/C/hands/loop declare them on
     expect(configs.rhythm.pitchHint).toBe(false);
     expect(configs.free.pitchHint).toBe(false);
     expect(configs.score.pitchHint).toBe(true);
     expect(configs.hands.pitchHint).toBe(true);
     expect(configs.loop.pitchHint).toBe(true);
+    expect(configs['fixed-line'].pitchHint).toBe(true);
+    expect(configs.exercise.pitchHint).toBe(true);
+    expect(configs['fixed-line'].modeLabel).toBe('固定判定线节奏练习');
+    expect(configs.exercise.modeLabel).toBe('节奏型与技巧训练');
     // every config is versioned and traceable
     for (const config of Object.values(configs)) {
       expect(config.configVersion).toBe(MODE_CONFIG_VERSION);

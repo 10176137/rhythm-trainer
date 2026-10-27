@@ -189,7 +189,9 @@ export const practiceRepository = {
 
 export const MODE_CN: Record<string, string> = {
   rhythm: '节奏训练',
-  score: '练习模式',
+  score: '正常曲目演奏',
+  'fixed-line': '固定判定线节奏练习',
+  exercise: '节奏型与技巧训练',
   hands: '分手练习',
   loop: '乐句循环',
   free: '自由弹奏',

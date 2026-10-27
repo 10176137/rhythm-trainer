@@ -21,7 +21,11 @@ export function buildPracticePlan(
   loopEndBar: number,
 ): PracticePlan {
   let scoped = notes.filter((note) => hand === 'both' || note.hand === hand);
-  if (modeId === 'loop') scoped = scoped.filter((note) => note.bar >= loopStartBar && note.bar <= loopEndBar);
+  // The A–B range is a plan filter for the score-reading modes, including the
+  // fixed-judgment-line view. It must not change the scoring mode.
+  if (modeId === 'loop' || modeId === 'fixed-line' || modeId === 'exercise') {
+    scoped = scoped.filter((note) => note.bar >= loopStartBar && note.bar <= loopEndBar);
+  }
   const sorted = [...scoped].sort((a, b) => a.beat - b.beat);
   const groups: { tick: number; notes: ScoreNote[] }[] = [];
   for (const note of sorted) {

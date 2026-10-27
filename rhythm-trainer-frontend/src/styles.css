@@ -864,3 +864,102 @@
 .sidebar{height:100vh;min-height:0;overflow-y:auto}
 .teaching-track{flex-wrap:wrap;overflow-x:visible}
 .teaching-track-step{flex:1 1 140px;min-width:140px;max-width:none}
+
+/* Practice-mode hierarchy: 练习模式 is the parent; A/B/C are children. */
+.mode-group{display:flex;flex-direction:column;gap:2px}
+.mode-parent{width:100%;border:1px solid transparent;background:transparent;border-radius:10px;display:flex;align-items:center;gap:11px;text-align:left;padding:9px 9px;color:#4f586b}
+.mode-parent:hover{background:#fafaff}
+.mode-group.has-active .mode-parent{color:#5046c5}
+.mode-parent .mode-icon{background:#e9e6ff;color:#5c4fd2}
+.mode-caret{margin-left:auto;font-size:14px;color:#9aa2b1;transition:transform .15s;display:inline-block}
+.mode-caret.open{transform:rotate(180deg)}
+.mode-children{display:flex;flex-direction:column;gap:2px;margin:1px 0 3px 15px;padding-left:11px;border-left:1px solid #eceaf8}
+.mode-child{padding:8px 8px;border-radius:9px}
+.mode-child .mode-icon{width:26px;height:26px;font-size:14px}
+.mode-child .mode-copy strong{font-size:11.5px}
+.mode-child .mode-copy small{font-size:9.5px}
+.mode-menu-divider{height:1px;background:#eef0f4;margin:7px 6px}
+
+/* Fixed judgment line mode (B). Page shell does not scroll; only the score
+   viewport receives time-based motion. */
+.fixed-line-page{height:calc(100vh - 72px);overflow:hidden;display:flex;flex-direction:column;position:relative}
+.fixed-line-page .page-heading{display:none}
+.fixed-line-page .calibration-note,.fixed-line-page .metrics-grid,.fixed-line-page .app-footer{display:none}
+.fixed-line-page .settings-panel{position:absolute;z-index:30;top:8px;right:22px;width:min(720px,calc(100% - 44px));max-height:calc(100vh - 120px);overflow:auto;box-shadow:0 18px 50px #2f2a5a26}
+.fixed-line-page .workspace-grid{flex:1;min-height:0;margin-top:12px;grid-template-columns:minmax(0,1.75fr) minmax(300px,.75fr)}
+.fixed-line-page .score-card{min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:12px}
+.fixed-line-page .score-wrap{display:flex;flex-direction:column;min-height:0;flex:1;margin-top:0}
+.fixed-line-page .right-column{min-height:0;overflow-y:auto;padding-right:2px}
+.fixed-line-page .session-strip{flex-shrink:0}
+.fixed-line-viewport{display:flex;flex-direction:column;min-height:0;flex:1;border:1px solid #e8eaf1;border-radius:12px;overflow:hidden;background:#fbfbfe}
+.fixed-line-toolbar{display:flex;align-items:center;gap:14px;padding:8px 13px;border-bottom:1px solid #eceef4;background:#fff;flex-shrink:0;font-size:10px;color:#8a91a2}
+.fixed-line-kind{font-weight:700;color:#5d50d2;letter-spacing:.3px}
+.fixed-line-meta{color:#6a7186}
+.fixed-line-hint{margin-left:auto;color:#9aa2b1}
+.fixed-line-canvas{flex:1;min-height:0;background:#fff}
+.fixed-line-canvas svg{width:100%;height:100%;display:block}
+.fixed-line-staff{stroke:#d7dbe6;stroke-width:1}
+.fixed-line-bracket{stroke:#aeb4c3;stroke-width:1.6;fill:none}
+.fixed-line-barline{stroke:#c4c9d5;stroke-width:1.2}
+.fixed-line-measure{font-size:9px;fill:#a5acb9;text-anchor:start}
+.fixed-line-clef{font-size:42px;fill:#424b5e}
+.fixed-line-clef.bass{font-size:36px}
+.fixed-line-key{font-size:15px;fill:#424b5e}
+.fixed-line-time{font-size:13px;font-weight:700;fill:#424b5e;text-anchor:middle}
+.fixed-line-ledger{stroke:#9aa3b4;stroke-width:1}
+.fixed-line-notehead{fill:#343c4d;stroke:#343c4d;stroke-width:.6}
+.fixed-line-stem{stroke:#343c4d;stroke-width:1.6}
+.fixed-line-flag{fill:none;stroke:#343c4d;stroke-width:1.5;stroke-linecap:round}
+.fixed-line-dot{fill:#343c4d}
+.fixed-line-accidental{font-size:12px;fill:#343c4d}
+.fixed-line-rest{font-size:25px;fill:#4a5264}
+.fixed-line-note.is-active .fixed-line-notehead{fill:#6b5dd8;stroke:#5b4dd0}
+.fixed-line-note.is-active .fixed-line-stem,.fixed-line-note.is-active .fixed-line-flag{stroke:#5b4dd0}
+.fixed-line-note.is-good .fixed-line-notehead{fill:#1c9a72;stroke:#168765}
+.fixed-line-note.is-good .fixed-line-stem,.fixed-line-note.is-good .fixed-line-flag{stroke:#168765}
+.fixed-line-note.is-miss .fixed-line-notehead{fill:#c34b58;stroke:#b23f4b}
+.fixed-line-note.is-miss .fixed-line-stem,.fixed-line-note.is-miss .fixed-line-flag{stroke:#b23f4b}
+.fixed-line-judge{stroke:#6b5dd8;stroke-width:2.4}
+.fixed-line-judge-label{font-size:10px;fill:#5d50d2;font-weight:700;letter-spacing:.5px}
+.fixed-line-overlay-card{fill:#fff;stroke:#dcd6fa;stroke-width:1.5;filter:drop-shadow(0 6px 18px #4c3fbf2e)}
+.fixed-line-countdown-number{font-size:30px;font-weight:700;fill:#5d50d2}
+.fixed-line-countdown-copy{font-size:10px;fill:#7c8496}
+.fixed-line-zoom{display:flex;align-items:center;gap:8px;margin-left:12px;font-size:10px;color:#8a91a2}
+.fixed-line-zoom input{width:110px;accent-color:#6456d9}
+@media(max-width:980px){.fixed-line-page{height:auto;overflow:visible}.fixed-line-page .workspace-grid{grid-template-columns:1fr}.fixed-line-viewport{min-height:330px}}
+.fixed-line-page .workspace-grid{grid-template-rows:minmax(0,1fr) auto;align-items:stretch}
+.fixed-line-page .score-card{grid-column:1;grid-row:1;min-height:0}
+.fixed-line-page .score-bottom{grid-column:1;grid-row:2;margin-top:0;padding-top:8px;border-top:1px solid #eef0f4}
+.fixed-line-page .right-column{grid-column:2;grid-row:1 / span 2;align-self:stretch}
+.fixed-line-page .workspace-grid{grid-template-columns:minmax(0,1.7fr) minmax(330px,.8fr)}
+.fixed-line-page .right-column{grid-template-columns:1fr}
+.fixed-line-osmd-wrap{position:relative;flex:1;min-height:0;overflow:hidden;background:#fff}
+.fixed-line-osmd-host{position:absolute;top:0;left:0;width:1510px;transform-origin:0 0;will-change:transform}
+.fixed-line-osmd-host svg{display:block}
+.fixed-line-line{position:absolute;top:12px;bottom:12px;width:2px;background:#6b5dd8;box-shadow:0 0 0 1px #6b5dd81a;pointer-events:none;z-index:3}
+.fixed-line-line span{position:absolute;top:-4px;left:7px;font-size:10px;font-weight:700;color:#5d50d2;white-space:nowrap;background:#fff;padding:1px 4px;border-radius:4px}
+.fixed-line-osmd-status{position:absolute;inset:0;display:grid;place-items:center;background:#ffffffdd;color:#8a91a2;font-size:12px;z-index:4}
+.fixed-line-osmd-status.error{color:#b23f4b}
+.fixed-line-countdown{position:absolute;left:30%;top:50%;transform:translate(-50%,-50%);width:124px;height:76px;border-radius:14px;background:#fff;border:1px solid #dcd6fa;box-shadow:0 8px 26px #4c3fbf2e;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:5;pointer-events:none}
+.fixed-line-countdown strong{font-size:30px;line-height:1;color:#5d50d2}
+.fixed-line-countdown span{font-size:10px;color:#7c8496;margin-top:5px}
+.fixed-line-paused{position:absolute;left:30%;top:50%;transform:translate(-50%,-50%);padding:8px 16px;border-radius:9px;background:#fff;border:1px solid #dcd6fa;color:#5d50d2;font-size:12px;font-weight:600;z-index:5}
+/* C setup screen: the normal practice grid/session strip is hidden until the
+   exercise is generated; the panel owns the fixed-height work area. */
+.exercise-setup-page .workspace-grid,.exercise-setup-page .session-strip,.exercise-setup-page .calibration-note{display:none}
+.exercise-setup{flex:1;min-height:0;overflow:auto;background:#fff;border:1px solid #e9ebf2;border-radius:14px;padding:20px 22px;margin-top:12px}
+.exercise-setup-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.exercise-setup-head h2{font-size:18px;margin:6px 0 0;letter-spacing:-.3px}
+.exercise-setup-head p{font-size:11.5px;line-height:1.7;color:#8a91a2;margin:7px 0 0;max-width:620px}
+.exercise-kind-tabs{display:flex;gap:4px;background:#f4f3fb;border:1px solid #e9e6fb;border-radius:9px;padding:3px;flex-shrink:0}
+.exercise-kind-tabs button{border:0;background:transparent;color:#7c8496;font-size:11px;font-weight:600;padding:7px 13px;border-radius:7px}
+.exercise-kind-tabs button.active{background:#fff;color:#5d50d2;box-shadow:0 2px 8px #5d50d21a}
+.exercise-setup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px 16px;margin-top:18px}
+.exercise-setup-grid label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#6a7186}
+.exercise-setup-grid select,.exercise-setup-grid input{border:1px solid #dfe2ec;border-radius:8px;padding:8px 9px;font-size:12px;background:#fff}
+.exercise-seed-row{display:flex;align-items:center;gap:8px}
+.exercise-seed-row input{flex:1;min-width:0}
+.exercise-setup-summary{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;padding:10px 12px;border-radius:9px;background:#faf9ff;border:1px solid #efecff;font-size:11px;color:#6a7186}
+.exercise-setup-summary span:last-child{color:#9aa2b1}
+.exercise-setup-actions{display:flex;align-items:center;gap:14px;margin-top:18px}
+.exercise-setup-note{font-size:11px;color:#9aa2b1}

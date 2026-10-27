@@ -12,7 +12,7 @@ import DevicePage, { type HeldDeviceNote } from './components/DevicePage';
 import LeaveGuardDialog from './components/LeaveGuardDialog';
 import { useAppRoute } from './app/useAppRoute';
 import { NAV_ROUTES } from './app/routes';
-import { modeList, modeRegistry } from './config/modeRegistry';
+import { modeRegistry } from './config/modeRegistry';
 import type { ScoreDocument } from './core/sampleScore';
 import { buildPracticePlan } from './features/score/practicePlan';
 import { practiceScoreDocument } from './features/score/practiceScore';
@@ -47,6 +47,9 @@ import { FollowSession, type FollowNoteResult, type FollowReport } from './score
 import type { PlaybackGroup } from './score-engine/domain/types';
 import { toNumber } from './score-engine/domain/rational';
 import TeachingWorkspace, { type TeachingTakeNotice } from './components/TeachingWorkspace';
+import FixedLineScoreView from './components/FixedLineScoreView';
+import ExerciseSetupPanel from './components/ExerciseSetupPanel';
+import { generateExercise, type ExerciseSpec, type GeneratedExercise } from './features/exercises/exerciseGenerator';
 import { saveLastRunId } from './services/teachingRunRepository';
 import { WebAudioEngineAdapter } from './features/playback/audioEngineAdapter';
 import {
@@ -98,10 +101,15 @@ const noteForMidi = (midi: number) => {
   return `${names[midi % 12]}${Math.floor(midi / 12) - 1}`;
 };
 
-// Hand and loop are configuration of score practice, not separate modes.
-const visibleModes = modeList.filter((mode) => mode.id === 'rhythm' || mode.id === 'score' || mode.id === 'free');
+// A/B/C practice modes live under the「练习模式」parent node; free play stays
+// a separate entry because it has no score target.
+const practiceModeChildren = [modeRegistry.score, modeRegistry['fixed-line'], modeRegistry.exercise];
+const freeMode = modeRegistry.free;
 
 function engineModeFor(config: PracticeConfig): PracticeModeId {
+  // B/C keep their own mode identity even when a bar range is selected; the
+  // range is a plan filter, not a different scoring mode.
+  if (config.modeId === 'fixed-line' || config.modeId === 'exercise') return config.modeId;
   if (config.modeId !== 'score') return config.modeId;
   if (config.loopEnabled) return 'loop';
   if (config.hand !== 'both') return 'hands';
@@ -863,6 +871,10 @@ export default function App() {
 
   // Re-render the countdown readout while counting in.
   const [nowTick, setNowTick] = useState(0);
+  const [modeGroupOpen, setModeGroupOpen] = useState(true);
+  const [generatedExercise, setGeneratedExercise] = useState<GeneratedExercise | null>(null);
+  const [exerciseBusy, setExerciseBusy] = useState(false);
+  const [exerciseError, setExerciseError] = useState<string | null>(null);
   useEffect(() => {
     if (session.status !== 'countdown') return;
     const timer = window.setInterval(() => setNowTick(performance.now()), 200);
@@ -926,6 +938,8 @@ export default function App() {
   }, [session.report]);
 
   const currentMode = modeRegistry[config.modeId];
+  const fixedLineMode = config.modeId === 'fixed-line' || config.modeId === 'exercise';
+  const exerciseSetupActive = config.modeId === 'exercise' && !generatedExercise;
   useEffect(() => {
     const title = route?.id === 'workbench' ? currentMode.title : route?.title ?? '页面不存在';
     document.title = `${title} · Rhythm Trainer`;
@@ -2263,6 +2277,84 @@ export default function App() {
     if (showSettings) void refreshScoreLibrary();
   }, [showSettings, refreshScoreLibrary]);
 
+  // C: generate a deterministic exercise, import it through the canonical
+  // MusicXML parser, and make it the active score. It is saved to the score
+  // library so the Take can reference an immutable score snapshot.
+  const handleGenerateExercise = async (spec: ExerciseSpec) => {
+    if (session.active || starting || exerciseBusy) {
+      setExerciseError('当前仍有练习；请先结束或重置，再生成新的练习。');
+      return;
+    }
+    setExerciseBusy(true);
+    setExerciseError(null);
+    try {
+      const generated = generateExercise(spec);
+      const imported = importScoreText(generated.xml, `${generated.exerciseId}.musicxml`);
+      if (!imported.doc?.engine) {
+        throw new Error('生成乐谱未通过 MusicXML 导入校验，不能开始练习。');
+      }
+      if (!imported.report.strictAllowed) {
+        throw new Error('生成乐谱不允许严格计时评分，已停止。');
+      }
+      let savedId: string | null = null;
+      try {
+        const entry = await createScoreLibraryEntry({
+          name: `生成练习 · ${generated.summary.title}`,
+          fileName: `${generated.exerciseId}.musicxml`,
+          xml: generated.xml,
+          importSummary: summarizeImportReport(imported.report),
+        });
+        savedId = entry.id;
+        await refreshScoreLibrary(entry.id);
+      } catch (saveError) {
+        addFeedback(
+          '生成练习未能保存到曲谱库',
+          `本次仍可在当前页面练习，但历史报告无法关联曲谱快照：${saveError instanceof Error ? saveError.message : String(saveError)}`,
+          'warning',
+        );
+      }
+      setScoreDoc(imported.doc);
+      rememberActiveScore(savedId);
+      setGeneratedExercise(generated);
+      const [beats, beatType] = spec.timeSignature;
+      setConfig((prev) => ({
+        ...prev,
+        modeId: 'exercise',
+        tempo: spec.bpm,
+        hand: spec.hand,
+        timeSignature: [beats, beatType],
+        loopEnabled: false,
+        loopStartBar: 1,
+        loopEndBar: spec.bars,
+        advanceMode: 'timeline',
+      }));
+      setSettingsDraft((prev) => prev ? {
+        ...prev,
+        config: {
+          ...prev.config,
+          modeId: 'exercise',
+          tempo: spec.bpm,
+          hand: spec.hand,
+          timeSignature: [beats, beatType],
+          loopEnabled: false,
+          loopStartBar: 1,
+          loopEndBar: spec.bars,
+          advanceMode: 'timeline',
+        },
+      } : prev);
+      setSettingsSaved(false);
+      addFeedback(
+        '生成练习已就绪',
+        `${generated.summary.title} · ${generated.summary.noteCount} 个音 · seed ${spec.seed} · ${generated.generatorVersion}`,
+        'success',
+      );
+    } catch (error) {
+      setExerciseError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setExerciseBusy(false);
+    }
+  };
+
   const takeTemplateErrorText = (error: unknown) => (
     error instanceof TakeTemplateClientError ? error.message : error instanceof Error ? error.message : String(error)
   );
@@ -2651,11 +2743,14 @@ export default function App() {
     clearFollowSession();
     session.reset();
     const nextHand: HandSelection = modeId === 'hands' && config.hand === 'both' ? 'right' : config.hand;
-    setConfig(prev => ({ ...prev, modeId, hand: nextHand }));
-    setSettingsDraft(prev => prev ? { ...prev, config: { ...prev.config, modeId, hand: nextHand } } : prev);
+    const nextAdvanceMode = (modeId === 'fixed-line' || modeId === 'exercise') ? 'timeline' : config.advanceMode;
+    setConfig(prev => ({ ...prev, modeId, hand: nextHand, advanceMode: nextAdvanceMode }));
+    setSettingsDraft(prev => prev ? { ...prev, config: { ...prev.config, modeId, hand: nextHand, advanceMode: nextAdvanceMode } } : prev);
     setSettingsSaved(false);
     setElapsed(0); setEvents([]); setFeedbackItems([]); setInputNote('—'); setPitchMismatch(false);
     setLastInputMidi(null);
+    setGeneratedExercise(null);
+    setExerciseError(null);
     expectedNotesRef.current = []; planGroupsRef.current = [];
     elapsedBeforePauseRef.current = 0; displayStartRef.current = null; setStarting(false);
     if (route?.id !== 'workbench') navigate('/workbench');
@@ -2902,11 +2997,53 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="sidebar-section-label mode-label">练习模式 <span>{visibleModes.length}</span></div>
+        <div className="sidebar-section-label mode-label">练习模式 <span>{practiceModeChildren.length}</span></div>
         <div className="mode-menu">
-          {visibleModes.map(mode => <button key={mode.id} className={`mode-item ${config.modeId === mode.id ? 'selected' : ''}`} aria-label={`练习模式：${mode.title}`} title={`${mode.title} · ${mode.subtitle}`} aria-pressed={config.modeId === mode.id} onClick={() => chooseMode(mode.id)}>
-            <span className="mode-icon">{mode.icon}</span><span className="mode-copy"><strong>{mode.title}</strong><small>{mode.subtitle}</small></span>{config.modeId === mode.id && <i className="mode-dot" />}
-          </button>)}
+          <div className={`mode-group ${practiceModeChildren.some((mode) => mode.id === config.modeId) ? 'has-active' : ''}`}>
+            <button
+              type="button"
+              className="mode-parent"
+              aria-expanded={modeGroupOpen}
+              aria-controls="practice-mode-children"
+              onClick={() => setModeGroupOpen((open) => !open)}
+            >
+              <span className="mode-icon">▦</span>
+              <span className="mode-copy"><strong>练习模式</strong><small>曲目演奏 · 判定线 · 技巧训练</small></span>
+              <span className={`mode-caret ${modeGroupOpen ? 'open' : ''}`}>⌄</span>
+            </button>
+            {modeGroupOpen && (
+              <div className="mode-children" id="practice-mode-children" role="group" aria-label="练习模式子模式">
+                {practiceModeChildren.map((mode) => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    className={`mode-item mode-child ${config.modeId === mode.id ? 'selected' : ''}`}
+                    aria-label={mode.title}
+                    title={`${mode.title} · ${mode.subtitle}`}
+                    aria-pressed={config.modeId === mode.id}
+                    onClick={() => chooseMode(mode.id)}
+                  >
+                    <span className="mode-icon">{mode.icon}</span>
+                    <span className="mode-copy"><strong>{mode.title}</strong><small>{mode.subtitle}</small></span>
+                    {config.modeId === mode.id && <i className="mode-dot" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="mode-menu-divider" />
+          <button
+            type="button"
+            className={`mode-item ${config.modeId === freeMode.id ? 'selected' : ''}`}
+            aria-label={freeMode.title}
+            title={`${freeMode.title} · ${freeMode.subtitle}`}
+            aria-pressed={config.modeId === freeMode.id}
+            onClick={() => chooseMode(freeMode.id)}
+          >
+            <span className="mode-icon">{freeMode.icon}</span>
+            <span className="mode-copy"><strong>{freeMode.title}</strong><small>{freeMode.subtitle}</small></span>
+            {config.modeId === freeMode.id && <i className="mode-dot" />}
+          </button>
         </div>
         <div className="sidebar-spacer" />
         <div className="side-note"><span className="note-spark">✦</span><div><strong>教师反馈正在成长</strong><p>先用可解释的规则给出证据,再逐步学习你的长期弱项。</p></div></div>
@@ -2929,7 +3066,7 @@ export default function App() {
       topbar={topbar}
       notice={session.error ? <section className="card error-strip" role="alert"><strong>引擎服务异常</strong><p>{session.error}</p></section> : null}
     >
-      <div className="page-content" style={{ display: route?.id === 'workbench' ? undefined : 'none' }}>
+      <div className={`page-content${fixedLineMode ? ' fixed-line-page' : ''}${exerciseSetupActive ? ' exercise-setup-page' : ''}`} style={{ display: route?.id === 'workbench' ? undefined : 'none' }}>
           <input
             ref={scoreFileInputRef}
             type="file"
@@ -2981,7 +3118,7 @@ export default function App() {
                 <label className="field"><span>判定档位</span><select value={settingsView.config.profile} disabled={settingsLocked} onChange={e => updateSettingsDraft('profile', e.target.value as JudgmentProfile)}><option value="relaxed">宽松 (±50/100ms)</option><option value="standard">标准 (±30/60ms)</option><option value="strict">严格 (±15/30ms)</option></select></label>
                 <label className="field"><span>时值评估 (v0.3)</span><select value={settingsView.config.durationPolicy} disabled={settingsLocked} onChange={e => updateSettingsDraft('durationPolicy', e.target.value as DurationEvaluationPolicy)}><option value="strict-keydown">严格按键时长</option><option value="disabled">只记录不评分</option></select></label>
                 <label className="field"><span>反馈时机</span><select value={settingsView.config.feedback} disabled={settingsLocked} onChange={e => updateSettingsDraft('feedback', e.target.value as FeedbackMode)}><option value="live">实时反馈</option><option value="after">结束后分析</option></select></label>
-                <label className="field"><span>练习推进</span><select value={systemDuet ? 'timeline' : settingsView.config.advanceMode} disabled={settingsLocked || systemDuet} onChange={e => updateSettingsDraft('advanceMode', e.target.value as 'timeline' | 'follow')}><option value="follow">跟手等待（光标跟着你）</option><option value="timeline">固定时间（自动判定）</option></select></label>
+                <label className="field"><span>练习推进</span><select value={systemDuet ? 'timeline' : settingsView.config.advanceMode} disabled={settingsLocked || systemDuet || fixedLineMode} onChange={e => updateSettingsDraft('advanceMode', e.target.value as 'timeline' | 'follow')}><option value="follow">跟手等待（光标跟着你）</option><option value="timeline">固定时间（自动判定）</option></select></label>
                 <div className="field field-wide"><span>识谱辅助（仅显示）</span><div className="hint-toggle-row">
                   <button type="button" className={`toggle ${scoreHints.noteNames ? 'on' : ''}`} aria-pressed={scoreHints.noteNames} onClick={toggleNoteNames}><i />音名提示 {scoreHints.noteNames ? '开' : '关'}</button>
                   <button type="button" className={`toggle ${scoreHints.positionHints ? 'on' : ''}`} aria-pressed={scoreHints.positionHints} onClick={togglePositionHints}><i />线/间提示 {scoreHints.positionHints ? '开' : '关'}</button>
@@ -3116,8 +3253,27 @@ export default function App() {
             音频输出延迟尚未校准（uncalibrated）。当前 onset 偏差适合练习反馈，不应视为采样级精确测量；输出延迟校准在 C2 接入。
           </p>
 
+          {exerciseSetupActive && (
+            <ExerciseSetupPanel
+              busy={exerciseBusy}
+              error={exerciseError}
+              onGenerate={(spec) => void handleGenerateExercise(spec)}
+            />
+          )}
+
           <div className="workspace-grid">
-            <section className="card score-card"><ScoreViewer
+            <section className="card score-card">{fixedLineMode ? (
+              <FixedLineScoreView
+                xml={scoreDoc.sourceXml ?? null}
+                engine={scoreDoc.engine ?? null}
+                targets={session.targets}
+                groups={planGroupsRef.current}
+                status={status}
+                tempo={config.tempo}
+                displayStartMs={displayStartRef.current}
+              />
+            ) : (
+              <ScoreViewer
               score={scoreDoc.notes}
               meta={scoreDoc.meta}
               warnings={scoreDoc.warnings}
@@ -3143,7 +3299,8 @@ export default function App() {
               onToggleSystemAudio={toggleSystemAudio}
               prepRemain={prepRemain}
               firstNoteCountdownMs={countdownRemain}
-            /></section><div className="score-status-bar score-bottom"><div><span className="small-label">当前目标音</span><strong>{currentTargetLabel}</strong></div><div><span className="small-label">当前输入</span><strong className={pitchMismatch ? 'text-bad' : ''}>{inputNote}</strong></div><div><span className="small-label">最近判定</span><strong>{hitLabel}{hitErrorMs !== null ? ` ${hitErrorMs > 0 ? '+' : ''}${Math.round(hitErrorMs)}ms` : ''}</strong></div>{countdownSeconds !== null && <div><span className="small-label">距离首音</span><strong>{countdownSeconds}</strong></div>}<button className="button button-outline button-small" onClick={() => simulateNote()} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}>模拟按键</button></div>
+              />
+            )}</section><div className="score-status-bar score-bottom"><div><span className="small-label">当前目标音</span><strong>{currentTargetLabel}</strong></div><div><span className="small-label">当前输入</span><strong className={pitchMismatch ? 'text-bad' : ''}>{inputNote}</strong></div><div><span className="small-label">最近判定</span><strong>{hitLabel}{hitErrorMs !== null ? ` ${hitErrorMs > 0 ? '+' : ''}${Math.round(hitErrorMs)}ms` : ''}</strong></div>{countdownSeconds !== null && <div><span className="small-label">距离首音</span><strong>{countdownSeconds}</strong></div>}{config.modeId === 'exercise' && generatedExercise && status === 'idle' && <button className="button button-outline button-small" onClick={() => { setGeneratedExercise(null); setExerciseError(null); }}>生成设置</button>}<button className="button button-outline button-small" onClick={() => simulateNote()} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}>模拟按键</button></div>
 
             <aside className="right-column"><section className="card feedback-card"><div className="card-heading"><div><div className="eyebrow">LIVE COACH</div><h3>实时反馈</h3></div><span className="live-indicator"><i />LIVE</span></div><div className="feedback-summary"><div className={`feedback-symbol ${lastHit === 'good' ? 'feedback-good' : lastHit !== 'waiting' ? 'feedback-warn' : ''}`}>{lastHit === 'good' ? '✓' : lastHit === 'miss' ? '○' : lastHit === 'extra' ? '−' : '⌁'}</div><div><strong>{lastHit === 'good' ? '这一拍很稳' : lastHit === 'miss' ? '漏掉了这一拍' : lastHit === 'extra' ? '多了一次击打' : '等待你的演奏'}</strong><p>{status === 'countdown' ? '倒数到第一个音,听到预备拍后准备;数字归零就是第一个音的起点。' : status !== 'running' ? '开始练习后,引擎会根据输入事件给出判定。' : lastHit === 'good' ? '时机落在引擎判定窗口内。继续保持。' : '弹奏当前高亮音符,判定会出现在这里。'}</p></div></div><div className="feedback-list">{feedbackItems.slice(0, 4).map(item => <div className="feedback-entry" key={item.id}><i className={`entry-dot tone-${item.tone}`} /><div><strong>{item.title}</strong><p>{item.detail}</p></div></div>)}</div><div className="feedback-footer"><span>节奏判定:Rust 引擎 · 音高:独立提示</span><button onClick={() => addFeedback('判定依据', '节奏评分来自本地引擎的确定性匹配(目标时间表 + 击打时间戳);音高提示只对比目标音集合,不影响节奏成绩。', 'neutral')}>反馈依据 ↗</button></div></section>
 
