@@ -9,7 +9,7 @@
 
 export const MODE_CONFIG_VERSION = 'mode-config-1.0.0';
 
-export const MODE_IDS = ['rhythm', 'score', 'hands', 'loop', 'free', 'fixed-line', 'exercise'];
+export const MODE_IDS = ['rhythm', 'score', 'hands', 'loop', 'free', 'fixed-line', 'reading-free', 'reading-rhythm'];
 
 /**
  * Per-mode policy:
@@ -52,8 +52,20 @@ const MODE_POLICIES = {
     notApplicable: [],
     userOverrides: ['profile', 'durationPolicy', 'feedback'],
   },
-  exercise: {
-    label: '节奏型与技巧训练',
+  'reading-free': {
+    // Free reading never starts an engine session (untimed pitch matching in
+    // the browser); the policy exists so old/new payloads validate consistently.
+    label: '自由识谱',
+    judgmentProfile: 'standard',
+    durationPolicy: 'disabled',
+    scoringStartPolicy: 'none',
+    pitchHint: false,
+    diagnosis: { onset: false, stability: false, duration: false, pitch: true, misses: false },
+    notApplicable: ['pitchHint', 'durationPolicy'],
+    userOverrides: [],
+  },
+  'reading-rhythm': {
+    label: '节奏识谱',
     judgmentProfile: 'standard',
     durationPolicy: 'strict-keydown',
     scoringStartPolicy: 'first-target-early-window',

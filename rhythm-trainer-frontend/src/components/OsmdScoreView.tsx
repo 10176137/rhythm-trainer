@@ -23,6 +23,8 @@ interface Props {
   scrollRef: RefObject<HTMLDivElement | null>;
   onSelectEvent: (eventId: string) => void;
   onRendered?: () => void;
+  /** Engraver zoom (OSMD Zoom). Default 1.0; reading drills render larger. */
+  zoom?: number;
 }
 
 /** Fixed natural width: no downscaling on narrow screens; the outer pane scrolls. */
@@ -47,6 +49,7 @@ export default function OsmdScoreView({
   scrollRef,
   onSelectEvent,
   onRendered,
+  zoom = 1.0,
 }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -80,6 +83,7 @@ export default function OsmdScoreView({
 
     void (async () => {
       try {
+        host.dataset.osmdStage = 'importing';
         const { OpenSheetMusicDisplay } = await import('opensheetmusicdisplay');
         if (cancelled) return;
         const osmd = new OpenSheetMusicDisplay(host, {
@@ -96,10 +100,13 @@ export default function OsmdScoreView({
           disableCursor: true,
         });
         osmdRef.current = osmd;
+        host.dataset.osmdStage = 'loading';
         await osmd.load(xml);
         if (cancelled) return;
-        osmd.Zoom = 1.0;
+        host.dataset.osmdStage = 'rendering';
+        osmd.Zoom = zoom;
         osmd.render();
+        host.dataset.osmdStage = 'done';
         if (cancelled) return;
 
         const adapter = new OsmdScoreViewAdapter(osmd);
@@ -138,7 +145,7 @@ export default function OsmdScoreView({
       adapterRef.current = null;
       if (host) host.innerHTML = '';
     };
-  }, [xml, engine, layoutEpoch]);
+  }, [xml, engine, layoutEpoch, zoom]);
 
   // OSMD can render a 0-width page when it was mounted inside a hidden route
   // or while the score card was transiently width-less. The host is fixed at

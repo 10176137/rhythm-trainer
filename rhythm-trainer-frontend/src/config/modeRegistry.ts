@@ -32,10 +32,16 @@ export const modeRegistry: Record<PracticeModeId, ModeDefinition> = {
     requiresScore: true, requiresMidi: true, supportsHandSelection: true,
     supportsLiveFeedback: true, category: '基础技能',
   },
-  exercise: {
-    id: 'exercise', title: '节奏型与技巧训练', subtitle: '生成节奏型 / 琶音',
-    description: '选择节奏型或琶音规则，确定性生成练习乐谱，再进入固定判定线练习。', icon: '✎',
-    requiresScore: false, requiresMidi: true, supportsHandSelection: true,
+  'reading-free': {
+    id: 'reading-free', title: '自由识谱', subtitle: '81 键 · 不限时',
+    description: '不限时识别目标音符：弹出当前题目的全部目标琴键后进入下一题，不按反应速度评分。',
+    icon: '◈', requiresScore: false, requiresMidi: true, supportsHandSelection: false,
+    supportsLiveFeedback: true, category: '基础技能',
+  },
+  'reading-rhythm': {
+    id: 'reading-rhythm', title: '节奏识谱', subtitle: '81 键 · 判定线',
+    description: '按乐谱、拍号和速度演奏；系统评价音高、起音时间、按键时长与同时起音准确性。',
+    icon: '◈', requiresScore: false, requiresMidi: true, supportsHandSelection: false,
     supportsLiveFeedback: true, category: '基础技能',
   },
   hands: {

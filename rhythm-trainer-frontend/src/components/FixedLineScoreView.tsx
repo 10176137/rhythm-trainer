@@ -7,7 +7,7 @@
 // not a constant px/ms over an arbitrary VexFlow layout. rAF only moves the
 // SVG; the engine remains the scoring clock.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import { OsmdScoreViewAdapter } from '../score-engine/view/score-view-adapter';
 import type { ScoreDocument as EngineScoreDocument } from '../score-engine/domain/types';
@@ -139,12 +139,21 @@ export default function FixedLineScoreView({
     };
   }, [xml, engine]);
 
-  // Measure OSMD anchors once per plan/score. The host is temporarily reset to
-  // translate(0,0), so these coordinates are independent of the animation.
-  useEffect(() => {
+  // Measure OSMD anchors for the current plan/score. The host is temporarily
+  // reset to translate(0,0), so these coordinates are independent of the
+  // animation. While the page is hidden (display:none) every rect is 0 — that
+  // measurement is garbage, so we retry on the next frames until the container
+  // is actually laid out.
+  const measureAnchors = useCallback((attempt = 0): void => {
     const host = hostRef.current;
     const adapter = adapterRef.current;
-    if (!host || !adapter || loading || !targets.length) return;
+    const wrap = wrapRef.current;
+    if (!host || !adapter || !wrap || loading || !targets.length) return;
+    if (attempt > 120) return; // ~2s of frames; give up rather than loop forever
+    if (wrap.clientWidth === 0 || wrap.clientHeight === 0) {
+      requestAnimationFrame(() => measureAnchors(attempt + 1));
+      return;
+    }
     host.style.transform = 'translate(0px, 0px)';
     const hostRect = osmdHostRect(host);
     const stafflines = Array.from(host.querySelectorAll<SVGGElement>('g.staffline'));
@@ -154,12 +163,15 @@ export default function FixedLineScoreView({
       const group = stafflines.slice(i, i + staves);
       if (!group.length) continue;
       const rects = group.map((item) => item.getBoundingClientRect());
-      systems.push({
-        index: systems.length,
-        top: Math.min(...rects.map((rect) => rect.top)) - hostRect.top,
-        bottom: Math.max(...rects.map((rect) => rect.bottom)) - hostRect.top,
-        stafflines: group,
-      });
+      const top = Math.min(...rects.map((rect) => rect.top)) - hostRect.top;
+      const bottom = Math.max(...rects.map((rect) => rect.bottom)) - hostRect.top;
+      if (bottom - top <= 0) {
+        // Hidden or not-yet-laid-out stafflines: restore visibility and retry.
+        for (const line of stafflines) line.style.display = '';
+        requestAnimationFrame(() => measureAnchors(attempt + 1));
+        return;
+      }
+      systems.push({ index: systems.length, top, bottom, stafflines: group });
     }
     const stafflineIndex = new Map<SVGGElement, number>();
     stafflines.forEach((element, index) => stafflineIndex.set(element, index));
@@ -186,6 +198,10 @@ export default function FixedLineScoreView({
         x: noteRect.left + noteRect.width / 2 - hostRect.left,
       });
     }
+    if (!anchors.length) {
+      requestAnimationFrame(() => measureAnchors(attempt + 1));
+      return;
+    }
     anchorsRef.current = anchors;
     systemsRef.current = systems;
     // Show only the first system until the clock moves.
@@ -195,17 +211,28 @@ export default function FixedLineScoreView({
     currentSystemRef.current = 0;
     timeHighlightRef.current = -1;
     applyTimeHighlight(0);
-    // Place the first system at the left edge so the pre-start preview is readable.
-    if (wrapRef.current) {
-      const wrap = wrapRef.current;
-      const judgeX = wrap.clientWidth * JUDGE_RATIO;
-      const centerY = wrap.clientHeight / 2;
-      const first = anchors[0];
-      const x = first ? judgeX - first.x : 24;
-      const y = centerY - ((systems[0]?.top ?? 0) + (systems[0]?.bottom ?? 0)) / 2;
-      host.style.transform = `translate(${x}px, ${y}px)`;
-    }
-  }, [targets, groups, loading, ready, engine]);
+    // Place the first system at the judgment line so the pre-start preview is readable.
+    const judgeX = wrap.clientWidth * JUDGE_RATIO;
+    const centerY = wrap.clientHeight / 2;
+    const first = anchors[0];
+    const x = judgeX - first.x;
+    const y = centerY - (systems[0].top + systems[0].bottom) / 2;
+    host.style.transform = `translate(${x}px, ${y}px)`;
+  }, [targets, groups, loading, engine]);
+
+  useEffect(() => {
+    measureAnchors();
+  }, [measureAnchors, ready]);
+
+  // The practice view can be laid out late (setup page first, hidden grid) or
+  // resized; re-measure when the wrap actually gets its size.
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => measureAnchors());
+    observer.observe(wrap);
+    return () => observer.disconnect();
+  }, [measureAnchors]);
 
   // The green highlight follows the TARGET AT THE FIXED LINE, derived from the
   // same target times as the animation. It must not lag behind when a target
@@ -249,7 +276,13 @@ export default function FixedLineScoreView({
         anchorX = active.x + (next.x - active.x) * progress;
       }
       const system = systemsRef.current[active.system];
-      if (!system) { frame = requestAnimationFrame(tick); return; }
+      if (!system || system.bottom - system.top <= 0) {
+        // Geometry not measured yet (hidden layout); ask for a re-measure and
+        // hold the previous frame instead of moving to garbage coordinates.
+        measureAnchors();
+        frame = requestAnimationFrame(tick);
+        return;
+      }
       if (currentSystemRef.current !== active.system) {
         for (const item of systemsRef.current) {
           for (const line of item.stafflines) line.style.display = item.index === active.system ? '' : 'none';
@@ -265,7 +298,7 @@ export default function FixedLineScoreView({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [status, displayStartMs, loading, ready, targets.length, groups]);
+  }, [status, displayStartMs, loading, ready, targets.length, groups, measureAnchors]);
 
   // Reset the visual clock on reset/idle; keep the first system readable.
   useEffect(() => {

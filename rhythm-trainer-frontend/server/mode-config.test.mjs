@@ -4,25 +4,27 @@ import { MODE_CONFIG_VERSION, MODE_IDS, resolveModeScoringConfig } from './mode-
 describe('mode → ScoringConfig mapping', () => {
   it('maps every real mode ID; none falls through to one shared default', () => {
     const configs = Object.fromEntries(MODE_IDS.map((id) => [id, resolveModeScoringConfig({ modeId: id })]));
-    expect(Object.keys(configs).sort()).toEqual(['exercise', 'fixed-line', 'free', 'hands', 'loop', 'rhythm', 'score']);
+    expect(Object.keys(configs).sort()).toEqual(['fixed-line', 'free', 'hands', 'loop', 'reading-free', 'reading-rhythm', 'rhythm', 'score']);
     expect(configs.rhythm.judgmentProfile).toBe('standard');
     expect(configs.score.judgmentProfile).toBe('standard');
     expect(configs['fixed-line'].judgmentProfile).toBe('standard');
-    expect(configs.exercise.judgmentProfile).toBe('standard');
+    expect(configs['reading-rhythm'].judgmentProfile).toBe('standard');
     expect(configs.hands.judgmentProfile).toBe('relaxed');
     expect(configs.loop.judgmentProfile).toBe('strict');
     expect(configs.free.durationPolicy).toBe('disabled');
     expect(configs.free.scoringStartPolicy).toBe('none');
-    // rhythm and free declare pitch hints off; A/B/C/hands/loop declare them on
+    expect(configs['reading-free'].scoringStartPolicy).toBe('none');
+    expect(configs['reading-free'].durationPolicy).toBe('disabled');
+    // rhythm and free declare pitch hints off; A/B/reading-rhythm/hands/loop declare them on
     expect(configs.rhythm.pitchHint).toBe(false);
     expect(configs.free.pitchHint).toBe(false);
     expect(configs.score.pitchHint).toBe(true);
     expect(configs.hands.pitchHint).toBe(true);
     expect(configs.loop.pitchHint).toBe(true);
     expect(configs['fixed-line'].pitchHint).toBe(true);
-    expect(configs.exercise.pitchHint).toBe(true);
+    expect(configs['reading-rhythm'].pitchHint).toBe(true);
     expect(configs['fixed-line'].modeLabel).toBe('固定判定线节奏练习');
-    expect(configs.exercise.modeLabel).toBe('节奏型与技巧训练');
+    expect(configs['reading-rhythm'].modeLabel).toBe('节奏识谱');
     // every config is versioned and traceable
     for (const config of Object.values(configs)) {
       expect(config.configVersion).toBe(MODE_CONFIG_VERSION);

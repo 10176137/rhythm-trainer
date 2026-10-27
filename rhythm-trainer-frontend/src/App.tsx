@@ -48,8 +48,10 @@ import type { PlaybackGroup } from './score-engine/domain/types';
 import { toNumber } from './score-engine/domain/rational';
 import TeachingWorkspace, { type TeachingTakeNotice } from './components/TeachingWorkspace';
 import FixedLineScoreView from './components/FixedLineScoreView';
-import ExerciseSetupPanel from './components/ExerciseSetupPanel';
-import { generateExercise, type ExerciseSpec, type GeneratedExercise } from './features/exercises/exerciseGenerator';
+import NoteReadingSetup, { type ReadingSetupValue } from './components/NoteReadingSetup';
+import FreeReadingView, { type FreeReadingInputEvent } from './components/FreeReadingView';
+import { FreeReadingSession } from './features/reading/freeReadingSession';
+import { generateFreeQuestions, generateRhythmScore, type GeneratedRhythmScore } from './features/reading/readingGenerator';
 import { saveLastRunId } from './services/teachingRunRepository';
 import { WebAudioEngineAdapter } from './features/playback/audioEngineAdapter';
 import {
@@ -102,14 +104,15 @@ const noteForMidi = (midi: number) => {
 };
 
 // A/B/C practice modes live under the「练习模式」parent node; free play stays
-// a separate entry because it has no score target.
-const practiceModeChildren = [modeRegistry.score, modeRegistry['fixed-line'], modeRegistry.exercise];
+// a separate entry because it has no score target. 识谱训练 replaces the old
+// generated-exercise business with two modes (task spec: 81-key note reading).
+const practiceModeChildren = [modeRegistry.score, modeRegistry['fixed-line'], modeRegistry['reading-free'], modeRegistry['reading-rhythm']];
 const freeMode = modeRegistry.free;
 
 function engineModeFor(config: PracticeConfig): PracticeModeId {
-  // B/C keep their own mode identity even when a bar range is selected; the
-  // range is a plan filter, not a different scoring mode.
-  if (config.modeId === 'fixed-line' || config.modeId === 'exercise') return config.modeId;
+  // B / rhythm reading keep their own mode identity; a bar range is a plan
+  // filter, not a different scoring mode. reading-free never reaches the engine.
+  if (config.modeId === 'fixed-line' || config.modeId === 'reading-rhythm') return config.modeId;
   if (config.modeId !== 'score') return config.modeId;
   if (config.loopEnabled) return 'loop';
   if (config.hand !== 'both') return 'hands';
@@ -839,6 +842,13 @@ export default function App() {
     } as MidiPerformanceEvent]);
     setInputNote(noteForMidi(midiNote));
     setPitchMismatch(false);
+    // 自由识谱：设备/模拟输入喂给识谱会话，绝不进引擎计时链路。
+    if (readingFreeActiveRef.current && !isRelease) {
+      readingInputSeqRef.current += 1;
+      setReadingInput({ midi: midiNote, isRelease, seq: readingInputSeqRef.current });
+      return;
+    }
+    if (readingFreeActiveRef.current && isRelease) return;
     if (configRef.current.modeId === 'free') return;
     if (configRef.current.advanceMode === 'follow') {
       if (!isRelease && followStatusRef.current === 'running') {
@@ -872,9 +882,17 @@ export default function App() {
   // Re-render the countdown readout while counting in.
   const [nowTick, setNowTick] = useState(0);
   const [modeGroupOpen, setModeGroupOpen] = useState(true);
-  const [generatedExercise, setGeneratedExercise] = useState<GeneratedExercise | null>(null);
-  const [exerciseBusy, setExerciseBusy] = useState(false);
-  const [exerciseError, setExerciseError] = useState<string | null>(null);
+  const [readingFreeSession, setReadingFreeSession] = useState<FreeReadingSession | null>(null);
+  const [readingFreeConfig, setReadingFreeConfig] = useState<ReadingSetupValue | null>(null);
+  const [readingInput, setReadingInput] = useState<FreeReadingInputEvent | null>(null);
+  const [readingBusy, setReadingBusy] = useState(false);
+  const [readingError, setReadingError] = useState<string | null>(null);
+  const [generatedReadingScore, setGeneratedReadingScore] = useState<GeneratedRhythmScore | null>(null);
+  const readingInputSeqRef = useRef(0);
+  const readingFreeActiveRef = useRef(false);
+  readingFreeActiveRef.current = readingFreeSession !== null
+    && readingFreeSession.status === 'running';
+  const readingCountInRef = useRef(1);
   useEffect(() => {
     if (session.status !== 'countdown') return;
     const timer = window.setInterval(() => setNowTick(performance.now()), 200);
@@ -938,8 +956,12 @@ export default function App() {
   }, [session.report]);
 
   const currentMode = modeRegistry[config.modeId];
-  const fixedLineMode = config.modeId === 'fixed-line' || config.modeId === 'exercise';
-  const exerciseSetupActive = config.modeId === 'exercise' && !generatedExercise;
+  const fixedLineMode = config.modeId === 'fixed-line' || config.modeId === 'reading-rhythm';
+  // 识谱配置页：自由识谱会话期间由 FreeReadingView 接管；节奏识谱生成谱面后
+  // 进入固定判定线练习视图，配置页退场（「识谱设置」按钮可返回）。
+  const readingSetupActive = (config.modeId === 'reading-free' || config.modeId === 'reading-rhythm')
+    && readingFreeSession === null
+    && !(config.modeId === 'reading-rhythm' && generatedReadingScore);
   useEffect(() => {
     const title = route?.id === 'workbench' ? currentMode.title : route?.title ?? '页面不存在';
     document.title = `${title} · Rhythm Trainer`;
@@ -1495,8 +1517,13 @@ export default function App() {
     const engineMode = engineModeFor(config);
     // Three seconds of preparation, expressed in this tempo's beats so the
     // engine, score events, reference playback and metronome share one clock.
-    const countInBeats = countInBeatsForTempo(config.tempo);
-    const countInUs = DEFAULT_COUNT_IN_MS * 1000;
+    // Rhythm reading honors the setup's 1/2-measure count-in instead.
+    const countInBeats = config.modeId === 'reading-rhythm'
+      ? readingCountInRef.current * config.timeSignature[0]
+      : countInBeatsForTempo(config.tempo);
+    const countInUs = config.modeId === 'reading-rhythm'
+      ? Math.round(countInBeats * (60_000_000 / config.tempo))
+      : DEFAULT_COUNT_IN_MS * 1000;
     if (overrideConfig) {
       setConfig(overrideConfig);
       setSettingsDraft(null);
@@ -2277,82 +2304,102 @@ export default function App() {
     if (showSettings) void refreshScoreLibrary();
   }, [showSettings, refreshScoreLibrary]);
 
-  // C: generate a deterministic exercise, import it through the canonical
-  // MusicXML parser, and make it the active score. It is saved to the score
-  // library so the Take can reference an immutable score snapshot.
-  const handleGenerateExercise = async (spec: ExerciseSpec) => {
-    if (session.active || starting || exerciseBusy) {
-      setExerciseError('当前仍有练习；请先结束或重置，再生成新的练习。');
+  // 81-key note reading (task spec: replaces the generated-exercise business).
+  // Free: deterministic question set handed to a session. Rhythm: generate a
+  // legal score through the canonical importer and reuse the EXISTING
+  // planner/timeline/Rust scoring pipeline — no second target array.
+  const handleStartReading = async (value: ReadingSetupValue) => {
+    if (session.active || starting || readingBusy) {
+      setReadingError('当前仍有练习；请先结束或重置，再开始识谱训练。');
       return;
     }
-    setExerciseBusy(true);
-    setExerciseError(null);
+    setReadingBusy(true);
+    setReadingError(null);
     try {
-      const generated = generateExercise(spec);
-      const imported = importScoreText(generated.xml, `${generated.exerciseId}.musicxml`);
-      if (!imported.doc?.engine) {
-        throw new Error('生成乐谱未通过 MusicXML 导入校验，不能开始练习。');
-      }
-      if (!imported.report.strictAllowed) {
-        throw new Error('生成乐谱不允许严格计时评分，已停止。');
-      }
-      let savedId: string | null = null;
-      try {
-        const entry = await createScoreLibraryEntry({
-          name: `生成练习 · ${generated.summary.title}`,
-          fileName: `${generated.exerciseId}.musicxml`,
-          xml: generated.xml,
-          importSummary: summarizeImportReport(imported.report),
+      if (value.mode === 'free') {
+        const questions = generateFreeQuestions({
+          mode: 'free',
+          ranges: value.ranges,
+          notesPerEvent: value.notesPerEvent,
+          seed: value.seed,
+          questionCount: value.questionCount,
         });
-        savedId = entry.id;
-        await refreshScoreLibrary(entry.id);
-      } catch (saveError) {
+        const readingSession = new FreeReadingSession(questions.map((question) => question.midiNotes));
+        setReadingFreeConfig(value);
+        setReadingFreeSession(readingSession);
         addFeedback(
-          '生成练习未能保存到曲谱库',
-          `本次仍可在当前页面练习，但历史报告无法关联曲谱快照：${saveError instanceof Error ? saveError.message : String(saveError)}`,
-          'warning',
+          '自由识谱开始',
+          `${value.questionCount} 题 · 每题 ${value.notesPerEvent} 音 · seed ${value.seed} · 不限时`,
+          'success',
         );
-      }
-      setScoreDoc(imported.doc);
-      rememberActiveScore(savedId);
-      setGeneratedExercise(generated);
-      const [beats, beatType] = spec.timeSignature;
-      setConfig((prev) => ({
-        ...prev,
-        modeId: 'exercise',
-        tempo: spec.bpm,
-        hand: spec.hand,
-        timeSignature: [beats, beatType],
-        loopEnabled: false,
-        loopStartBar: 1,
-        loopEndBar: spec.bars,
-        advanceMode: 'timeline',
-      }));
-      setSettingsDraft((prev) => prev ? {
-        ...prev,
-        config: {
-          ...prev.config,
-          modeId: 'exercise',
-          tempo: spec.bpm,
-          hand: spec.hand,
+      } else {
+        const generated = generateRhythmScore({
+          mode: 'rhythm',
+          ranges: value.ranges,
+          notesPerEvent: value.notesPerEvent,
+          seed: value.seed,
+          timeSignature: value.timeSignature,
+          bpm: value.bpm,
+          complexity: value.complexity,
+          measures: value.measures,
+          countInMeasures: value.countInMeasures,
+        });
+        const imported = importScoreText(generated.xml, `reading-${generated.contentFingerprint}.musicxml`);
+        if (!imported.doc?.engine) throw new Error('生成乐谱未通过 MusicXML 导入校验，不能开始练习。');
+        if (!imported.report.strictAllowed) throw new Error('生成乐谱不允许严格计时评分，已停止。');
+        let savedId: string | null = null;
+        try {
+          const entry = await createScoreLibraryEntry({
+            name: `识谱训练 · 节奏 · ${value.timeSignature[0]}/4 · ${value.measures} 小节`,
+            fileName: `reading-${generated.contentFingerprint}.musicxml`,
+            xml: generated.xml,
+            importSummary: summarizeImportReport(imported.report),
+          });
+          savedId = entry.id;
+          await refreshScoreLibrary(entry.id);
+        } catch (saveError) {
+          addFeedback(
+            '识谱训练未能保存到曲谱库',
+            `本次仍可练习，但历史报告无法关联曲谱快照：${saveError instanceof Error ? saveError.message : String(saveError)}`,
+            'warning',
+          );
+        }
+        setScoreDoc(imported.doc);
+        rememberActiveScore(savedId);
+        readingCountInRef.current = value.countInMeasures;
+        const [beats, beatType] = value.timeSignature;
+        const nextConfig: PracticeConfig = {
+          ...config,
+          modeId: 'reading-rhythm',
+          tempo: value.bpm,
+          hand: 'both',
           timeSignature: [beats, beatType],
           loopEnabled: false,
           loopStartBar: 1,
-          loopEndBar: spec.bars,
+          loopEndBar: value.measures,
           advanceMode: 'timeline',
-        },
-      } : prev);
-      setSettingsSaved(false);
-      addFeedback(
-        '生成练习已就绪',
-        `${generated.summary.title} · ${generated.summary.noteCount} 个音 · seed ${spec.seed} · ${generated.generatorVersion}`,
-        'success',
-      );
+        };
+        setConfig(nextConfig);
+        setSettingsDraft((prev) => prev ? { ...prev, config: nextConfig } : prev);
+        setSettingsSaved(false);
+        setGeneratedReadingScore(generated);
+        addFeedback(
+          '节奏识谱已就绪',
+          `${value.timeSignature[0]}/4 · ${value.measures} 小节 · ${generated.summary.eventCount} 个事件 · seed ${value.seed}；开始前请确认手别映射。`,
+          'success',
+        );
+      }
     } catch (error) {
-      setExerciseError(error instanceof Error ? error.message : String(error));
+      setReadingError(error instanceof Error ? error.message : String(error));
     } finally {
-      setExerciseBusy(false);
+      setReadingBusy(false);
     }
+  };
+
+  const handleExitReadingFree = () => {
+    setReadingFreeSession(null);
+    setReadingInput(null);
+    session.reset();
   };
 
   const takeTemplateErrorText = (error: unknown) => (
@@ -2743,14 +2790,16 @@ export default function App() {
     clearFollowSession();
     session.reset();
     const nextHand: HandSelection = modeId === 'hands' && config.hand === 'both' ? 'right' : config.hand;
-    const nextAdvanceMode = (modeId === 'fixed-line' || modeId === 'exercise') ? 'timeline' : config.advanceMode;
+    const nextAdvanceMode = (modeId === 'fixed-line' || modeId === 'reading-rhythm') ? 'timeline' : config.advanceMode;
     setConfig(prev => ({ ...prev, modeId, hand: nextHand, advanceMode: nextAdvanceMode }));
     setSettingsDraft(prev => prev ? { ...prev, config: { ...prev.config, modeId, hand: nextHand, advanceMode: nextAdvanceMode } } : prev);
     setSettingsSaved(false);
     setElapsed(0); setEvents([]); setFeedbackItems([]); setInputNote('—'); setPitchMismatch(false);
     setLastInputMidi(null);
-    setGeneratedExercise(null);
-    setExerciseError(null);
+    setGeneratedReadingScore(null);
+    setReadingError(null);
+    setReadingFreeSession(null);
+    setReadingInput(null);
     expectedNotesRef.current = []; planGroupsRef.current = [];
     elapsedBeforePauseRef.current = 0; displayStartRef.current = null; setStarting(false);
     if (route?.id !== 'workbench') navigate('/workbench');
@@ -3066,7 +3115,7 @@ export default function App() {
       topbar={topbar}
       notice={session.error ? <section className="card error-strip" role="alert"><strong>引擎服务异常</strong><p>{session.error}</p></section> : null}
     >
-      <div className={`page-content${fixedLineMode ? ' fixed-line-page' : ''}${exerciseSetupActive ? ' exercise-setup-page' : ''}`} style={{ display: route?.id === 'workbench' ? undefined : 'none' }}>
+      <div className={`page-content${fixedLineMode ? ' fixed-line-page' : ''}${status === 'completed' ? ' page-done' : ''}${readingSetupActive ? ' reading-setup-page' : ''}${readingFreeSession ? ' reading-free-page' : ''}`} style={{ display: route?.id === 'workbench' ? undefined : 'none' }}>
           <input
             ref={scoreFileInputRef}
             type="file"
@@ -3253,11 +3302,63 @@ export default function App() {
             音频输出延迟尚未校准（uncalibrated）。当前 onset 偏差适合练习反馈，不应视为采样级精确测量；输出延迟校准在 C2 接入。
           </p>
 
-          {exerciseSetupActive && (
-            <ExerciseSetupPanel
-              busy={exerciseBusy}
-              error={exerciseError}
-              onGenerate={(spec) => void handleGenerateExercise(spec)}
+          {readingSetupActive && (
+            <NoteReadingSetup
+              busy={readingBusy}
+              error={readingError}
+              deviceConnected={deviceStatus === 'connected'}
+              deviceLabel={deviceName}
+              handMappingReady={(() => {
+                const fingerprint = scoreDoc.engine?.fingerprint;
+                const partId = scoreDoc.engine?.parts[0]?.id ?? 'P1';
+                return !fingerprint || !!userHandMappingFor(fingerprint, partId);
+              })()}
+              onStart={(value) => void handleStartReading(value)}
+            />
+          )}
+
+          {readingFreeSession && (
+            <FreeReadingView
+              session={readingFreeSession}
+              input={readingInput}
+              deviceConnected={deviceStatus === 'connected'}
+              onInput={(midi, isRelease) => {
+                readingInputSeqRef.current += 1;
+                setReadingInput({ midi, isRelease, seq: readingInputSeqRef.current });
+                setLastInputMidi(midi);
+                setInputNote(noteForMidi(midi));
+              }}
+              onFinish={(status) => {
+                addFeedback(
+                  status === 'completed' ? '自由识谱完成' : '自由识谱已提前结束',
+                  '结果保留在本页（自由识谱 v1 不写入 Take）；可重新练习或修改配置。',
+                  status === 'completed' ? 'success' : 'neutral',
+                );
+                setHistoryRefresh((value) => value + 1);
+              }}
+              onRetrySameConfig={() => {
+                if (readingFreeConfig) void handleStartReading(readingFreeConfig);
+              }}
+              onReviewWeak={(() => {
+                const weak = readingFreeSession.weakestPitches(4).map((item) => item.midi);
+                if (!weak.length || !readingFreeConfig) return null;
+                return () => {
+                  const config = readingFreeConfig;
+                  const questions = generateFreeQuestions({
+                    mode: 'free',
+                    ranges: [{ startMidi: Math.max(28, Math.min(...weak) - 2), endMidi: Math.min(108, Math.max(...weak) + 2) }],
+                    notesPerEvent: config.notesPerEvent,
+                    seed: Math.floor(Math.random() * 1_000_000),
+                    questionCount: 10,
+                  });
+                  setReadingFreeSession(new FreeReadingSession(questions.map((question) => question.midiNotes)));
+                };
+              })()}
+              onChangeConfig={() => {
+                setReadingFreeSession(null);
+                setReadingInput(null);
+              }}
+              onExit={handleExitReadingFree}
             />
           )}
 
@@ -3300,7 +3401,7 @@ export default function App() {
               prepRemain={prepRemain}
               firstNoteCountdownMs={countdownRemain}
               />
-            )}</section><div className="score-status-bar score-bottom"><div><span className="small-label">当前目标音</span><strong>{currentTargetLabel}</strong></div><div><span className="small-label">当前输入</span><strong className={pitchMismatch ? 'text-bad' : ''}>{inputNote}</strong></div><div><span className="small-label">最近判定</span><strong>{hitLabel}{hitErrorMs !== null ? ` ${hitErrorMs > 0 ? '+' : ''}${Math.round(hitErrorMs)}ms` : ''}</strong></div>{countdownSeconds !== null && <div><span className="small-label">距离首音</span><strong>{countdownSeconds}</strong></div>}{config.modeId === 'exercise' && generatedExercise && status === 'idle' && <button className="button button-outline button-small" onClick={() => { setGeneratedExercise(null); setExerciseError(null); }}>生成设置</button>}<button className="button button-outline button-small" onClick={() => simulateNote()} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}>模拟按键</button></div>
+            )}</section><div className="score-status-bar score-bottom"><div><span className="small-label">当前目标音</span><strong>{currentTargetLabel}</strong></div><div><span className="small-label">当前输入</span><strong className={pitchMismatch ? 'text-bad' : ''}>{inputNote}</strong></div><div><span className="small-label">最近判定</span><strong>{hitLabel}{hitErrorMs !== null ? ` ${hitErrorMs > 0 ? '+' : ''}${Math.round(hitErrorMs)}ms` : ''}</strong></div>{countdownSeconds !== null && <div><span className="small-label">距离首音</span><strong>{countdownSeconds}</strong></div>}{config.modeId === 'reading-rhythm' && generatedReadingScore && status === 'idle' && <button className="button button-outline button-small" onClick={() => { setGeneratedReadingScore(null); setReadingError(null); }}>识谱设置</button>}<button className="button button-outline button-small" onClick={() => simulateNote()} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}>模拟按键</button></div>
 
             <aside className="right-column"><section className="card feedback-card"><div className="card-heading"><div><div className="eyebrow">LIVE COACH</div><h3>实时反馈</h3></div><span className="live-indicator"><i />LIVE</span></div><div className="feedback-summary"><div className={`feedback-symbol ${lastHit === 'good' ? 'feedback-good' : lastHit !== 'waiting' ? 'feedback-warn' : ''}`}>{lastHit === 'good' ? '✓' : lastHit === 'miss' ? '○' : lastHit === 'extra' ? '−' : '⌁'}</div><div><strong>{lastHit === 'good' ? '这一拍很稳' : lastHit === 'miss' ? '漏掉了这一拍' : lastHit === 'extra' ? '多了一次击打' : '等待你的演奏'}</strong><p>{status === 'countdown' ? '倒数到第一个音,听到预备拍后准备;数字归零就是第一个音的起点。' : status !== 'running' ? '开始练习后,引擎会根据输入事件给出判定。' : lastHit === 'good' ? '时机落在引擎判定窗口内。继续保持。' : '弹奏当前高亮音符,判定会出现在这里。'}</p></div></div><div className="feedback-list">{feedbackItems.slice(0, 4).map(item => <div className="feedback-entry" key={item.id}><i className={`entry-dot tone-${item.tone}`} /><div><strong>{item.title}</strong><p>{item.detail}</p></div></div>)}</div><div className="feedback-footer"><span>节奏判定:Rust 引擎 · 音高:独立提示</span><button onClick={() => addFeedback('判定依据', '节奏评分来自本地引擎的确定性匹配(目标时间表 + 击打时间戳);音高提示只对比目标音集合,不影响节奏成绩。', 'neutral')}>反馈依据 ↗</button></div></section>
 

@@ -963,3 +963,82 @@
 .exercise-setup-summary span:last-child{color:#9aa2b1}
 .exercise-setup-actions{display:flex;align-items:center;gap:14px;margin-top:18px}
 .exercise-setup-note{font-size:11px;color:#9aa2b1}
+
+/* 81-key note-reading training (task spec v1.0). Setup and free-reading pages
+   own the full work area; the normal practice grid is hidden. */
+.reading-setup-page .workspace-grid,.reading-setup-page .session-strip,.reading-setup-page .calibration-note{display:none}
+.reading-free-page .workspace-grid,.reading-free-page .session-strip,.reading-free-page .calibration-note,.reading-free-page .metrics-grid{display:none}
+.reading-setup{flex:1;min-height:0;overflow:auto;background:#fff;border:1px solid #e9ebf2;border-radius:14px;padding:20px 22px;margin-top:12px}
+.reading-setup-head h2{font-size:18px;margin:6px 0 0;letter-spacing:-.3px}
+.reading-setup-head p{font-size:11.5px;line-height:1.7;color:#8a91a2;margin:7px 0 0;max-width:640px}
+.reading-mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.reading-mode-card{text-align:left;border:1px solid #e4e7ef;background:#fff;border-radius:11px;padding:13px 15px;display:flex;flex-direction:column;gap:6px;color:#4c5268}
+.reading-mode-card:hover{border-color:#cfc9f7}
+.reading-mode-card.selected{border-color:#8d82ee;background:#f7f5ff;box-shadow:0 0 0 2px #efecff}
+.reading-mode-card strong{font-size:13px}
+.reading-mode-card span{font-size:11px;line-height:1.65;color:#7d8496}
+.reading-setup-block{margin-top:16px;padding-top:13px;border-top:1px solid #f0f1f5}
+.reading-setup-block h3{font-size:12px;color:#4c5268;margin:0 0 9px}
+.reading-preset-row{display:flex;flex-wrap:wrap;gap:7px}
+.reading-preset-row button{border:1px solid #e4e7ef;background:#fff;color:#6a7186;font-size:10.5px;padding:6px 10px;border-radius:8px}
+.reading-preset-row button.active{border-color:#8d82ee;background:#f7f5ff;color:#5046c5;font-weight:600}
+.reading-custom-row{display:flex;align-items:flex-end;gap:10px;margin-top:10px;flex-wrap:wrap}
+.reading-custom-row label{display:flex;flex-direction:column;gap:4px;font-size:10.5px;color:#7d8496}
+.reading-custom-row select,.reading-custom-row input{border:1px solid #dfe2ec;border-radius:8px;padding:7px 9px;font-size:12px;min-width:110px;background:#fff}
+.reading-range-list{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:10px}
+.reading-range-chip{display:inline-flex;align-items:center;gap:5px;background:#f4f3fb;border:1px solid #e7e4f8;border-radius:14px;padding:4px 9px;font-size:10.5px;color:#5046c5}
+.reading-range-chip button{border:0;background:transparent;color:#9a91d8;font-size:12px;padding:0 2px}
+.reading-pool-count{font-size:10.5px;color:#8a91a2;margin-left:4px}
+.reading-count-row{display:flex;gap:7px}
+.reading-count-row button{border:1px solid #e4e7ef;background:#fff;color:#6a7186;font-size:11px;padding:7px 14px;border-radius:8px}
+.reading-count-row button.active{border-color:#8d82ee;background:#f7f5ff;color:#5046c5;font-weight:700}
+.reading-rhythm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 14px}
+.reading-rhythm-grid label{display:flex;flex-direction:column;gap:4px;font-size:10.5px;color:#7d8496}
+.reading-rhythm-grid select,.reading-rhythm-grid input{border:1px solid #dfe2ec;border-radius:8px;padding:7px 9px;font-size:12px;background:#fff}
+.reading-summary{display:flex;flex-wrap:wrap;gap:7px 16px;margin-top:16px;padding:10px 13px;border-radius:9px;background:#faf9ff;border:1px solid #efecff;font-size:11px;color:#6a7186}
+.reading-summary b{color:#2f3542}
+.reading-summary-warn{color:#a56a1b !important}
+.reading-setup-actions{display:flex;align-items:center;gap:14px;margin-top:16px}
+.reading-setup-note{font-size:11px;color:#9aa2b1}
+.reading-practice{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0;margin-top:12px}
+.reading-topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border:1px solid #e9ebf2;border-radius:13px;padding:10px 16px;flex-shrink:0}
+.reading-topbar-title{display:flex;align-items:baseline;gap:12px;min-width:0}
+.reading-topbar-title strong{font-size:15px}
+.reading-topbar-meta{font-size:11px;color:#8a91a2}
+.reading-topbar-actions{display:flex;gap:8px;flex-shrink:0}
+.reading-score-stage{position:relative;flex:1;min-height:0;background:#fff;border:1px solid #e9ebf2;border-radius:13px;overflow:auto;padding:14px 16px}
+.reading-paused-overlay{position:absolute;inset:0;display:grid;place-items:center;background:#ffffffd9;color:#5d50d2;font-size:14px;font-weight:600;z-index:5}
+.reading-feedback{display:flex;gap:22px;align-items:center;background:#fff;border:1px solid #e9ebf2;border-radius:11px;padding:9px 15px;font-size:12px;color:#4c5268;flex-shrink:0}
+.reading-feedback b.text-good{color:#168765}
+.reading-feedback b.text-bad{color:#c34b58}
+.reading-keyboard{position:relative;flex-shrink:0;user-select:none}
+.reading-keyboard-strip{position:relative;display:flex;height:86px;border:1px solid #d8dce6;border-radius:8px;overflow:hidden;background:#f0f2f7;gap:1px;padding:2px}
+.rk-white{position:relative;flex:1;min-width:0;border:1px solid #d5d9e2;border-radius:0 0 4px 4px;background:#fff;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;color:#939bab;font-size:8px}
+.rk-white:disabled{cursor:default}
+.rk-white:not(:disabled):hover{background:#f0edff}
+.rk-white.rk-hit{background:#dcf4ea;border-color:#9ad9c2}
+.rk-white.rk-wrong{background:#f9dcdf;border-color:#e3a3ab}
+.rk-black{position:absolute;top:2px;height:52px;border:1px solid #202634;border-radius:0 0 3px 3px;background:#303747;z-index:2}
+.rk-black.rk-hit{background:#1c9a72}
+.rk-black.rk-wrong{background:#c34b58}
+.reading-keyboard-scale{position:relative;height:14px;font-size:8.5px;color:#a5acb9}
+.reading-keyboard-scale span{position:absolute;top:2px}
+.reading-keyboard.disabled{opacity:.6}
+.reading-hint{font-size:10.5px;color:#9aa2b1;margin:0}
+.reading-result{flex:1;min-height:0;overflow:auto;background:#fff;border:1px solid #e9ebf2;border-radius:14px;padding:22px;margin-top:12px}
+.reading-result-head h2{font-size:19px;margin:6px 0 0}
+.reading-result-head p{font-size:11.5px;color:#8a91a2;margin:7px 0 0}
+.reading-result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:18px}
+.reading-result-card{border:1px solid #eceef4;border-radius:11px;padding:13px 15px;display:flex;flex-direction:column;gap:6px}
+.reading-result-card span{font-size:10.5px;color:#8a91a2}
+.reading-result-card b{font-size:21px;letter-spacing:-.4px}
+.reading-result-weak{margin-top:18px;background:#faf9ff;border:1px solid #efecff;border-radius:11px;padding:13px 15px}
+.reading-result-weak h3{font-size:12px;margin:0 0 8px}
+.reading-result-weak ul{margin:0;padding-left:18px;font-size:11.5px;line-height:1.8;color:#4c5268}
+.reading-muted{font-size:10.5px;color:#9aa2b1}
+.reading-result-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;align-items:center}
+@media(max-width:980px){.reading-mode-cards{grid-template-columns:1fr}}
+/* After a take completes, release the fixed-height shell so the report and
+   history panels are reachable. */
+.fixed-line-page.page-done{height:auto;overflow:visible}
+.fixed-line-page.page-done .workspace-grid{grid-template-rows:auto;grid-template-columns:minmax(0,1.7fr) minmax(330px,.8fr)}
