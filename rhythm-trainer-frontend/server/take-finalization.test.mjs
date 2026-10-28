@@ -58,6 +58,22 @@ function rmDir(dir) {
 }
 
 describe('TakeFinalizationService', () => {
+  it('retries a failed derived update without rewriting or duplicating the committed Take', () => {
+    const dir = tempDir();
+    const service = new TakeFinalizationService({ takesDir: dir, maxRetainedEntries: 1, logger: { error() {} } });
+    let attempts = 0;
+    const first = service.finalize(record('derived'), { onPersisted: () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error('profile unavailable');
+    } });
+    expect(first).toMatchObject({ persisted: true, derivedUpdatePending: true, derivedUpdateError: 'profile unavailable' });
+    const original = fs.readFileSync(path.join(dir, 'derived.json'), 'utf8');
+    service.finalize(record('other'));
+    expect(service.retry('derived')).toMatchObject({ persisted: true, derivedUpdatePending: false, derivedUpdateError: null });
+    service.retry('derived');
+    expect(attempts).toBe(2);
+    expect(fs.readFileSync(path.join(dir, 'derived.json'), 'utf8')).toBe(original);
+  });
   it('writes one authoritative Take and treats a duplicate finalize as idempotent', () => {
     const dir = tempDir();
     const service = new TakeFinalizationService({ takesDir: dir });

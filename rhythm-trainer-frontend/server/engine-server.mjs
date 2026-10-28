@@ -39,6 +39,8 @@ import { ScoreLibrary, ScoreLibraryError, SCORE_LIBRARY_SCHEMA_VERSION, MAX_SCOR
 import { TakeTemplateStore, TakeTemplateError, TAKE_TEMPLATE_SCHEMA_VERSION } from './take-templates.mjs';
 import { TakeFinalizationService } from './take-finalization.mjs';
 import { deriveTakeStatus } from './take-status.mjs';
+import { ReadingAttemptStore, ReadingAttemptError } from './reading-attempts.mjs';
+import { ProfileEvidenceCache } from './profile-evidence.mjs';
 import { TeachingOrchestrator, TeachingOrchestratorError } from './teaching-orchestrator.mjs';
 import { LESSON_CATALOG_SCHEMA_VERSION, getLessonCatalog } from './teaching-content.mjs';
 
@@ -165,6 +167,7 @@ const takeTemplateStore = new TakeTemplateStore({ dir: TAKE_TEMPLATES_DIR });
 // One finalizer for Timeline and Follow: frozen draft, atomic write, and
 // idempotent retry are shared; the report builders stay mode-specific.
 const takeFinalization = new TakeFinalizationService({ takesDir: TAKES_DIR });
+const readingAttempts = new ReadingAttemptStore({ dir: path.join(DATA_DIR, 'reading-attempts') });
 // Application-layer lesson workflow. It only reads already-persisted Takes;
 // it never accepts a report object from the browser.
 const teachingOrchestrator = new TeachingOrchestrator({
@@ -174,28 +177,9 @@ const teachingOrchestrator = new TeachingOrchestrator({
 let sessionIdCounter = 0;
 let practiceSessionCounter = 0;
 
-// StudentModel: restored from disk at startup, updated on every finish.
-let studentModel = null;
-try {
-  if (fs.existsSync(PROFILE_FILE)) {
-    const parsed = JSON.parse(fs.readFileSync(PROFILE_FILE, 'utf8'));
-    if (parsed.schemaVersion === SCHEMA_VERSION && Array.isArray(parsed.snapshot)) {
-      studentModel = new addon.NativeStudentModel(parsed.snapshot);
-    }
-  }
-} catch (err) {
-  console.error('[engine] profile.json 损坏，已忽略并重建（原文件保留为 profile.json.corrupt）');
-  try { fs.renameSync(PROFILE_FILE, `${PROFILE_FILE}.corrupt`); } catch { /* ignore */ }
-}
-if (!studentModel) studentModel = new addon.NativeStudentModel();
-
-function persistProfile() {
-  try {
-    atomicWriteJson(PROFILE_FILE, { schemaVersion: SCHEMA_VERSION, snapshot: studentModel.snapshot() });
-  } catch (err) {
-    console.error('[engine] profile 保存失败:', String((err && err.message) || err));
-  }
-}
+// Old snapshots remain a baseline. New Takes carry recoverable, deduplicated evidence.
+const profileCache = new ProfileEvidenceCache({ file: PROFILE_FILE, createModel: (snapshot) => new addon.NativeStudentModel(snapshot) });
+try { profileCache.recover(listAllTakes()); } catch (error) { console.error('[profile] 启动恢复暂未保存，读取档案时可重试:', error.message); }
 
 function listSessionFiles() {
   return fs.readdirSync(SESSIONS_DIR).filter((f) => f.endsWith('.json') && safeId(f.slice(0, -5)));
@@ -892,6 +876,23 @@ async function handleTeachingApi(req, res, urlPath) {
 }
 
 async function handleApi(req, res, urlPath, query) {
+  if (urlPath === '/api/reading-attempts' || urlPath.startsWith('/api/reading-attempts/')) {
+    try {
+      if (urlPath === '/api/reading-attempts' && req.method === 'POST') {
+        sendJson(res, 200, { record: readingAttempts.save(await readJsonBody(req)) });
+      } else if (req.method === 'GET' && urlPath === '/api/reading-attempts') {
+        sendJson(res, 200, { items: readingAttempts.list() });
+      } else if (req.method === 'GET') {
+        const record = readingAttempts.get(urlPath.slice('/api/reading-attempts/'.length));
+        sendJson(res, record ? 200 : 404, record ? { record } : { error: '识谱记录不存在' });
+      } else sendJson(res, 405, { error: 'method not allowed' });
+    } catch (error) {
+      if (error instanceof ReadingAttemptError || error instanceof ScoreLibraryError) sendJson(res, error.status ?? 400, { error: error.message });
+      else { console.error('[reading] 保存或读取失败:', error); sendJson(res, 500, { error: '识谱记录保存或读取失败，请重试' }); }
+    }
+    return;
+  }
+
   if (urlPath === '/api/teaching/lessons' || urlPath === '/api/teaching/runs' || urlPath.startsWith('/api/teaching/runs/')) {
     await handleTeachingApi(req, res, urlPath);
     return;
@@ -1055,7 +1056,9 @@ async function handleApi(req, res, urlPath, query) {
     return;
   }
   if (urlPath === '/api/profile') {
-    const skills = studentModel.snapshot();
+    takeFinalization.retryDerivedUpdates();
+    profileCache.recover(listAllTakes());
+    const skills = profileCache.snapshot();
     const takes = listAllTakes();
     const sessions = takes.length;
     const trustworthySessions = takes.filter((take) => take.assessment?.trustworthy).length;
@@ -2322,7 +2325,8 @@ wss.on('connection', (socket) => {
         lastNowMs = 0;
         const bpm = Number(msg.bpm);
         if (!Number.isFinite(bpm) || bpm < 20 || bpm > 300) throw new Error('BPM 需在 20–300 之间');
-        const countInBeats = Number(msg.countInBeats) || 4;
+        const countInBeats = msg.countInBeats == null ? 4 : Number(msg.countInBeats);
+        if (!Number.isFinite(countInBeats) || countInBeats < 0) throw new Error('countInBeats 必须是非负有限数');
         let countInUs = null;
         if (msg.countInUs !== undefined && msg.countInUs !== null) {
           const value = Number(msg.countInUs);
@@ -3347,33 +3351,16 @@ wss.on('connection', (socket) => {
         takeSnapshot: record.takeSnapshot ?? null,
       },
     };
-    // Profile is a derived cache: only a newly committed Take may contribute.
-    // Retry success runs this exactly once; the finalizer guards duplicates.
-    const applyMasteryEvidence = () => {
-      try {
-        const stats = report.stats;
-        // Degraded/disconnected input is not the user's rhythm error, but the
-        // attempt must not count toward mastery evidence either.
-        const healthClean = captureDiagnostics.inputHealth === 'healthy';
-        const passed = !!report.trustworthy
-          && healthClean
-          && stats.missCount === 0
-          && stats.extraCount === 0
-          && stats.meanAbsoluteMs != null
-          && stats.meanAbsoluteMs <= PASS_MAE_MS;
-        studentModel.observeAttempt(record.modeId, {
-          passed,
-          trustworthy: !!report.trustworthy && healthClean,
-          targetCount: report.targetCount,
-          assisted: record.assisted,
-          transferTest: false,   // transfer testing not implemented yet — honest default
-          delayedRetest: false,
-        });
-        persistProfile();
-      } catch (err) {
-        console.error('[engine] 学习档案更新失败:', String((err && err.message) || err));
-      }
-    };
+    // Evidence lives in the committed Take, so recovery also survives server restarts.
+    const stats = report.stats;
+    const healthClean = captureDiagnostics.inputHealth === 'healthy';
+    takeRecord.engineDiagnostics.profileEvidence = { modeId: record.modeId, attempt: {
+      passed: !!report.trustworthy && healthClean && stats.missCount === 0 && stats.extraCount === 0
+        && stats.meanAbsoluteMs != null && stats.meanAbsoluteMs <= PASS_MAE_MS,
+      trustworthy: !!report.trustworthy && healthClean,
+      targetCount: report.targetCount, assisted: record.assisted, transferTest: false, delayedRetest: false,
+    } };
+    const applyMasteryEvidence = () => profileCache.recover([takeRecord]);
     const finalized = takeFinalization.finalize(takeRecord, { onPersisted: applyMasteryEvidence });
     const recordPersisted = finalized.persisted;
     const persistenceStatus = finalized.persistenceStatus;

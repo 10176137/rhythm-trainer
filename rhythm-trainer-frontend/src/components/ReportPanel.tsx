@@ -145,7 +145,7 @@ export default function ReportPanel({
         <p className="report-warning">本次会话存在输入完整性或时序异常,结果仅供参考,不作为能力评估依据。</p>
       )}
 
-      <FullScoreReport
+      <details className="report-details"><summary>查看完整评分与诊断</summary><FullScoreReport
         scoreV1={scoreV1}
         scoreStatus={scoreStatus}
         scoringConfig={scoringConfig}
@@ -155,7 +155,7 @@ export default function ReportPanel({
         scoreUnmappedNoteCount={scoreUnmappedNoteCount}
         pauseAdjusted={pauseAdjusted}
         retryComparison={retryComparison}
-      />
+      /></details>
 
       {(scoreV1 || scoreStatus) && (
         <TargetedPracticePanel

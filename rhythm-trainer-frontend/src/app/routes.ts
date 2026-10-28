@@ -1,4 +1,5 @@
 export type AppRouteId =
+  | 'performance'
   | 'workbench'
   | 'teaching'
   | 'progress'
@@ -32,13 +33,14 @@ export interface AppRouteDefinition {
  * placeholder, never fake data.
  */
 export const APP_ROUTES: readonly AppRouteDefinition[] = [
+  { id: 'performance', path: '/performance', title: '演奏', navTitle: '演奏', icon: '♫', nav: true, enabled: true, description: '读谱演奏与固定线演奏，可在页内切换。' },
   {
     id: 'teaching',
     path: '/teaching',
     title: '老师带练',
     navTitle: '学习',
     icon: '✎',
-    nav: true,
+    nav: false,
     enabled: true,
     description: '按步骤带练当前曲谱：讲解、单手、合手、原速通过检查。',
   },
@@ -46,7 +48,7 @@ export const APP_ROUTES: readonly AppRouteDefinition[] = [
     id: 'workbench',
     path: '/workbench',
     title: '练习工作台',
-    navTitle: '自由练习',
+    navTitle: '识谱',
     icon: '▤',
     nav: true,
     enabled: true,
@@ -58,7 +60,7 @@ export const APP_ROUTES: readonly AppRouteDefinition[] = [
     title: '学习进度',
     navTitle: '进度',
     icon: '◷',
-    nav: true,
+    nav: false,
     enabled: true,
     description: '能力画像与已保存的练习记录。',
   },

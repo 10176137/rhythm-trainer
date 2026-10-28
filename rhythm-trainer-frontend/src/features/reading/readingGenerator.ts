@@ -12,7 +12,7 @@
 
 import { poolFromRanges, midiLabel, type PitchRange } from './readingKeys';
 
-export const READING_GENERATOR_VERSION = 'reading-generator-1.0.0';
+export const READING_GENERATOR_VERSION = 'reading-generator-1.2.0';
 
 export type ReadingComplexity = 'basic' | 'intermediate' | 'advanced';
 
@@ -104,33 +104,18 @@ function validate(config: ReadingConfig): number[] {
   return pool;
 }
 
-/** Picks `count` distinct pitches from `candidates` using the seeded RNG. */
-function sampleDistinct(candidates: number[], count: number, rand: () => number): number[] {
-  const copy = [...candidates];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rand() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy.slice(0, count).sort((a, b) => a - b);
-}
-
 export function generateFreeQuestions(config: ReadingConfig): GeneratedReadingQuestion[] {
   if (config.mode !== 'free') throw new ReadingGeneratorError('WRONG_MODE', 'generateFreeQuestions 只接受 free 模式');
   const pool = validate(config);
   const rand = mulberry32(config.seed);
   const questions: GeneratedReadingQuestion[] = [];
-  const seen = new Set<string>();
-  for (let index = 0; index < (config.questionCount ?? 20); index += 1) {
-    // One staff side per question keeps the rendered chord on a single staff.
-    const midiNotes = eventPitches(pool, config.notesPerEvent, rand);
-    seen.add(midiNotes.join(','));
-    questions.push({ midiNotes });
-  }
+  const sample = balancedSampler(pool, config.notesPerEvent, rand);
+  for (let index = 0; index < (config.questionCount ?? 20); index += 1) questions.push({ midiNotes: sample() });
   return questions;
 }
 
 /** Free-reading question rendering: ONE measure, whole-note chord, real notation. */
-export function questionXml(midiNotes: number[], staff: 1 | 2): string {
+export function questionXml(midiNotes: readonly number[], staff: 1 | 2): string {
   if (!midiNotes.length) throw new ReadingGeneratorError('EMPTY_QUESTION', '题目没有目标音');
   const sorted = [...midiNotes].sort((a, b) => a - b);
   const notes = sorted.map((midi, index) => {
@@ -152,14 +137,14 @@ export function questionXml(midiNotes: number[], staff: 1 | 2): string {
 </score-partwise>`;
 }
 
-export function questionStaff(midiNotes: number[]): 1 | 2 {
+export function questionStaff(midiNotes: readonly number[]): 1 | 2 {
   const sorted = [...midiNotes].sort((a, b) => a - b);
   const median = sorted[Math.floor((sorted.length - 1) / 2)];
   return median >= 60 ? 1 : 2;
 }
 
-const PITCH_STEPS = ['C', 'C', 'D', 'D', 'E', 'F', 'F', 'G', 'G', 'A', 'A', 'B'] as const;
-const PITCH_ALTERS = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0] as const;
+const PITCH_STEPS = ['C', 'C', 'D', 'E', 'E', 'F', 'F', 'G', 'A', 'A', 'B', 'B'] as const;
+const PITCH_ALTERS = [0, 1, 0, -1, 0, 0, 1, 0, -1, 0, -1, 0] as const;
 
 function midiToPitch(midi: number): { step: string; alter: number; octave: number } {
   const pc = ((midi % 12) + 12) % 12;
@@ -226,15 +211,28 @@ function pickCell(cells: RhythmCell[], remaining: number, rand: () => number): R
  * so a multi-note event never spans staves. Falls back to the whole pool when
  * one side cannot satisfy notesPerEvent.
  */
-function eventPitches(pool: number[], notesPerEvent: number, rand: () => number): number[] {
-  const preferAbove = rand() < 0.5;
-  const sides = preferAbove
-    ? [pool.filter((midi) => midi >= 60), pool.filter((midi) => midi < 60)]
-    : [pool.filter((midi) => midi < 60), pool.filter((midi) => midi >= 60)];
-  for (const side of sides) {
-    if (side.length >= notesPerEvent) return sampleDistinct(side, notesPerEvent, rand);
-  }
-  return sampleDistinct(pool, notesPerEvent, rand);
+function balancedSampler(pool: number[], count: number, rand: () => number): () => number[] {
+  const uses = new Map(pool.map((midi) => [midi, 0]));
+  const ordered = (values: number[]) => values.map((midi) => ({ midi, tie: rand() }))
+    .sort((a, b) => uses.get(a.midi)! - uses.get(b.midi)! || a.tie - b.tie).map((item) => item.midi);
+  return () => {
+    const anchor = ordered(pool)[0];
+    const side = pool.filter((midi) => (midi >= 60) === (anchor >= 60));
+    const candidates = side.length >= count ? side : pool;
+    const result = [anchor, ...ordered(candidates.filter((midi) => midi !== anchor)).slice(0, count - 1)];
+    for (const midi of result) uses.set(midi, uses.get(midi)! + 1);
+    return result.sort((a, b) => a - b);
+  };
+}
+
+/** Revisit the actual failed groups; interleave new coverage questions every third item. */
+export function generateReviewQuestions(config: ReadingConfig, failedGroups: readonly (readonly number[])[]): GeneratedReadingQuestion[] {
+  const pool = validate(config);
+  const groups = [...new Map(failedGroups.filter((q) => q.length === config.notesPerEvent && q.every((midi) => pool.includes(midi)))
+    .map((q) => [q.join(','), [...q]])).values()];
+  const normal = generateFreeQuestions(config);
+  if (!groups.length) return normal;
+  return normal.map((question, index) => index % 3 === 2 ? question : { midiNotes: groups[(index - Math.floor(index / 3)) % groups.length] });
 }
 
 export function generateRhythmScore(config: ReadingConfig): GeneratedRhythmScore {
@@ -248,6 +246,7 @@ export function generateRhythmScore(config: ReadingConfig): GeneratedRhythmScore
     ...(config.complexity === 'advanced' ? CELLS.advanced : []),
   ];
   const rand = mulberry32(config.seed);
+  const sample = balancedSampler(pool, config.notesPerEvent, rand);
   const beatsPerBar = beats;
   let eventCount = 0;
   let noteCount = 0;
@@ -268,7 +267,7 @@ export function generateRhythmScore(config: ReadingConfig): GeneratedRhythmScore
           continue;
         }
         eventCount += 1;
-        const pitches = eventPitches(pool, config.notesPerEvent, rand);
+        const pitches = sample();
         noteCount += pitches.length;
         pitches.forEach((midi, index) => {
           const { step, alter, octave } = midiToPitch(midi);

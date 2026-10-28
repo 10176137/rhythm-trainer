@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import KeyboardReference from './KeyboardReference';
-import OsmdScoreView from './OsmdScoreView';
+import OsmdScoreView, { ENGRAVED_SCORE_WIDTH } from './OsmdScoreView';
 import type { ScoreMeta, ScoreNote } from '../core/sampleScore';
 import { getStaffPlacement, midiToPitchName } from '../features/score/staffMapping';
 import { beatPositionLabel, durationLabel } from '../features/score/scoreLayout';
@@ -10,6 +10,7 @@ import type { HandSelection, PracticeModeId } from '../types/practice';
 import type { ScoreDocument as EngineScoreDocument } from '../score-engine/domain/types';
 
 interface Props {
+  focus?: boolean;
   score: ScoreNote[];
   meta: ScoreMeta;
   warnings?: string[];
@@ -59,6 +60,7 @@ function SpeakerIcon() {
 }
 
 export default function ScoreViewer({
+  focus = false,
   score,
   meta,
   warnings = [],
@@ -104,8 +106,22 @@ export default function ScoreViewer({
   const [osmdRevision, setOsmdRevision] = useState(0);
   const [horizontalScroll, setHorizontalScroll] = useState({ max: 0, value: 0 });
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [engravedWidth, setEngravedWidth] = useState(ENGRAVED_SCORE_WIDTH);
 
   const canEngrave = Boolean(sourceXml && engine);
+  useEffect(() => {
+    if (!focus) { setEngravedWidth(ENGRAVED_SCORE_WIDTH); return; }
+    const container = scrollRef.current;
+    if (!container) return;
+    const update = () => {
+      const available = container.clientWidth - 40;
+      if (available > 0) setEngravedWidth(Math.max(760, Math.min(ENGRAVED_SCORE_WIDTH, Math.floor(available / 20) * 20)));
+    };
+    update();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    observer?.observe(container);
+    return () => observer?.disconnect();
+  }, [focus, canEngrave]);
   const selectedNote = pickedId ? score.find((note) => note.id === pickedId) ?? null : null;
   const selectedPlacement = selectedNote
     ? getStaffPlacement(selectedNote.staff, selectedNote.step, selectedNote.alter, selectedNote.octave)
@@ -279,6 +295,8 @@ export default function ScoreViewer({
               </div>
             )}
             <OsmdScoreView
+              width={engravedWidth}
+              zoom={focus ? 1.3 : 1}
               xml={sourceXml!}
               engine={engine!}
               activeNoteIds={activeNoteIds}
@@ -350,8 +368,8 @@ export default function ScoreViewer({
         </section>
       )}
 
-      <section className="score-tips">
-        <h3>阅读提示</h3>
+      <details className="score-tips">
+        <summary>阅读提示</summary>
         {hand !== 'both' && (
           <p>当前只练{handLabel}：另一只手的音符已淡化，仅作为谱面上下文，不是本轮目标。</p>
         )}
@@ -363,7 +381,7 @@ export default function ScoreViewer({
             <p>练习结构：每小节按 MusicXML 拍号显示；左右手同时出现的音对齐在同一拍。谱面由 OSMD / Bravura 专业制谱引擎渲染。</p>
           </>
         )}
-      </section>
+      </details>
 
       <div className="score-display-note">
         <i />

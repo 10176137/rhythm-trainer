@@ -84,6 +84,7 @@ export class TakeFinalizationService {
       created: false,
       onPersisted: typeof onPersisted === 'function' ? onPersisted : null,
       sideEffectsApplied: false,
+      derivedUpdateError: null,
     };
     this.#entries.set(takeId, entry);
     this.#attempt(entry);
@@ -96,7 +97,15 @@ export class TakeFinalizationService {
     const entry = this.#entries.get(String(takeId));
     if (!entry) return null;
     if (entry.status !== PERSISTENCE_STATUS.PERSISTED) this.#attempt(entry);
+    else this.#applySideEffects(entry);
     return this.#summary(entry);
+  }
+
+  /** Recover derived caches when they are next read, without rewriting Takes. */
+  retryDerivedUpdates() {
+    for (const entry of this.#entries.values()) {
+      if (entry.status === PERSISTENCE_STATUS.PERSISTED) this.#applySideEffects(entry);
+    }
   }
 
   get(takeId) {
@@ -129,7 +138,6 @@ export class TakeFinalizationService {
       // The frozen record is only needed while a retry is possible. Keep the
       // fingerprint for duplicate detection, release the payload.
       entry.record = null;
-      entry.onPersisted = null;
     } catch (error) {
       entry.status = PERSISTENCE_STATUS.PENDING_RETRY;
       entry.error = String((error && error.message) || error);
@@ -167,13 +175,14 @@ export class TakeFinalizationService {
 
   #applySideEffects(entry) {
     if (!entry.onPersisted || entry.sideEffectsApplied) return;
-    entry.sideEffectsApplied = true;
     try {
       entry.onPersisted();
-    } catch (error) {
-      this.#logger.error?.(`[engine] Take 保存后的派生更新失败 (${entry.takeId}):`, String((error && error.message) || error));
-    } finally {
+      entry.sideEffectsApplied = true;
+      entry.derivedUpdateError = null;
       entry.onPersisted = null;
+    } catch (error) {
+      entry.derivedUpdateError = String((error && error.message) || error);
+      this.#logger.error?.(`[engine] Take 保存后的派生更新失败 (${entry.takeId}):`, entry.derivedUpdateError);
     }
   }
 
@@ -187,6 +196,8 @@ export class TakeFinalizationService {
       attempts: entry.attempts,
       alreadyFinalized: false,
       conflict: false,
+      derivedUpdatePending: !!entry.onPersisted && !entry.sideEffectsApplied,
+      derivedUpdateError: entry.derivedUpdateError,
     };
   }
 
@@ -195,7 +206,7 @@ export class TakeFinalizationService {
     if (this.#entries.size <= this.#maxRetainedEntries) return;
     for (const [takeId, entry] of this.#entries) {
       if (this.#entries.size <= this.#maxRetainedEntries) break;
-      if (entry.status === PERSISTENCE_STATUS.PERSISTED) this.#entries.delete(takeId);
+      if (entry.status === PERSISTENCE_STATUS.PERSISTED && !entry.onPersisted) this.#entries.delete(takeId);
     }
   }
 }

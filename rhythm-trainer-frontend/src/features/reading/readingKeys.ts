@@ -37,7 +37,7 @@ export function poolFromRanges(ranges: readonly PitchRange[]): number[] {
 }
 
 export function midiLabel(midi: number): string {
-  const names = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const names = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
   return `${names[((midi % 12) + 12) % 12]}${Math.floor(midi / 12) - 1}`;
 }
 
@@ -58,3 +58,11 @@ export const RANGE_PRESETS: readonly RangePreset[] = [
   { id: 'extended', label: '扩展 · E1–C7', ranges: [{ startMidi: READING_KEY_LOW, endMidi: 96 }] },
   { id: 'all-81', label: '全部 81 键 · E1–C8', ranges: [{ startMidi: READING_KEY_LOW, endMidi: READING_KEY_HIGH }] },
 ];
+
+/** Octaves are disjoint, including the partial octaves at the keyboard ends. */
+export const READING_OCTAVES = Array.from({ length: 8 }, (_, index) => {
+  const octave = index + 1;
+  const startMidi = Math.max(READING_KEY_LOW, (octave + 1) * 12);
+  const endMidi = Math.min(READING_KEY_HIGH, (octave + 2) * 12 - 1);
+  return { id: String(octave), range: { startMidi, endMidi }, label: startMidi === endMidi ? midiLabel(startMidi) : `${midiLabel(startMidi)}–${midiLabel(endMidi)}` };
+});

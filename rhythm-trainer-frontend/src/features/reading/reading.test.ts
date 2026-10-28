@@ -9,11 +9,21 @@ import {
   questionXml,
 } from './readingGenerator';
 import { FreeReadingSession } from './freeReadingSession';
-import { READING_KEY_COUNT, poolFromRanges } from './readingKeys';
+import { READING_KEY_COUNT, poolFromRanges, READING_OCTAVES } from './readingKeys';
 
 const RANGES = [{ startMidi: 60, endMidi: 72 }];
 
 describe('reading key range', () => {
+  it('offers non-overlapping octave groups covering the keyboard', () => {
+    const ranges = READING_OCTAVES.map((octave) => octave.range);
+    const all = ranges.flatMap((range) => poolFromRanges([range]));
+    expect(all).toHaveLength(81);
+    expect(new Set(all).size).toBe(81);
+    expect(all[0]).toBe(28);
+    expect(all.at(-1)).toBe(108);
+    expect(READING_OCTAVES.find((octave) => octave.id === '4')?.range).toEqual({ startMidi: 60, endMidi: 71 });
+  });
+
   it('defines exactly 81 keys and dedupes overlapping ranges', () => {
     expect(READING_KEY_COUNT).toBe(81);
     const pool = poolFromRanges([
@@ -26,6 +36,13 @@ describe('reading key range', () => {
 });
 
 describe('reading generator', () => {
+  it('covers each selected pitch before repeating a single-note target', () => {
+    for (const seed of [1, 3, 7, 99]) {
+      const questions = generateFreeQuestions({ mode: 'free', ranges: [{ startMidi: 60, endMidi: 71 }], notesPerEvent: 1, seed, questionCount: 20 });
+      expect(new Set(questions.slice(0, 12).flatMap((q) => q.midiNotes)).size).toBe(12);
+      expect(questions.some((q) => q.midiNotes[0] === 70)).toBe(true);
+    }
+  });
   it('is deterministic for the same config + seed and changes with the seed', () => {
     const a = generateFreeQuestions({ mode: 'free', ranges: RANGES, notesPerEvent: 2, seed: 7, questionCount: 20 });
     const b = generateFreeQuestions({ mode: 'free', ranges: RANGES, notesPerEvent: 2, seed: 7, questionCount: 20 });
@@ -110,6 +127,15 @@ describe('reading generator', () => {
     })).toThrowError(/不足/);
   });
 
+  it('writes B-flat in both question and rhythm notation without changing MIDI pitch', () => {
+    const question = questionXml([70], 1);
+    expect(question).toContain('<step>B</step><alter>-1</alter><octave>4</octave>');
+    expect(importScoreText(question, 'question.musicxml').doc?.notes[0]?.midiNote).toBe(70);
+    const rhythm = generateRhythmScore({ mode: 'rhythm', ranges: [{ startMidi: 70, endMidi: 70 }], notesPerEvent: 1, seed: 3, measures: 4 });
+    expect(rhythm.xml).toContain('<step>B</step><alter>-1</alter><octave>4</octave>');
+    expect(importScoreText(rhythm.xml, 'rhythm.musicxml').doc?.notes.every((note) => note.midiNote === 70)).toBe(true);
+  });
+
   it('renders question XML that parses as a real one-measure score', () => {
     const xml = questionXml([60, 64, 67], questionStaff([60, 64, 67]));
     const imported = importScoreText(xml, 'q.musicxml');
@@ -119,6 +145,33 @@ describe('reading generator', () => {
 });
 
 describe('free reading session', () => {
+  it('reports no assessment before input, and counts actual hits in a partial chord', () => {
+    const s = new FreeReadingSession([[60, 64], [67]]);
+    expect(s.snapshot().hitAccuracy).toBeNull();
+    expect(s.snapshot().firstTryAccuracy).toBeNull();
+    s.noteOn(60); s.noteOn(61); s.endEarly();
+    expect(s.snapshot().hitAccuracy).toBe(50);
+    expect(s.snapshot().firstTryAccuracy).toBe(0);
+  });
+
+  it('records the expected target and mistaken key separately for review', () => {
+    const s = new FreeReadingSession([[70], [60, 64]]);
+    s.noteOn(69); s.noteOn(70); s.noteOn(60); s.noteOn(65);
+    expect(s.weakestPitches().map((item) => item.midi)).toEqual([64, 70]);
+    expect(s.snapshot().confusions).toEqual([
+      { remainingTargets: [70], pressed: 69, questionIndex: 0 },
+      { remainingTargets: [64], pressed: 65, questionIndex: 1 },
+    ]);
+  });
+
+  it('records help as assisted and excludes it from first-try success', () => {
+    const s = new FreeReadingSession([[70]]);
+    s.hint(); s.noteOn(70);
+    expect(s.snapshot().hintedQuestions).toBe(1);
+    expect(s.snapshot().firstTryAccuracy).toBe(0);
+    const test = new FreeReadingSession([[70]], { task: 'test' });
+    expect(test.hint()).toBe(false);
+  });
   function session(): FreeReadingSession {
     return new FreeReadingSession([[60, 64], [67, 72], [60]]);
   }

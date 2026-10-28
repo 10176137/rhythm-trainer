@@ -125,6 +125,42 @@ afterAll(async () => {
 });
 
 describe('R2-3h: plan protocol over the real engine server', () => {
+  it('saves and reads untimed reading evidence through the real API', async () => {
+    const payload = { id: 'api-reading-evidence', startedAtIso: '2026-10-28T00:00:00Z', finishedAtIso: '2026-10-28T00:01:00Z',
+      config: { mode: 'free', task: 'practice', ranges: [{ startMidi: 60, endMidi: 71 }], notesPerEvent: 1, seed: 1, questionCount: 10 },
+      source: 'virtual', questions: Array.from({ length: 10 }, () => [70]), events: [], endReason: 'ended-early' };
+    const url = `http://127.0.0.1:${PORT}/api/reading-attempts`;
+    const post = (body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const saved = await post(payload);
+    expect(saved.status).toBe(200);
+    expect((await saved.json()).record.summary.firstTryAccuracy).toBeNull();
+    expect((await post(payload)).status).toBe(200);
+    expect((await post({ ...payload, events: [{ type: 'note', midi: 69 }] })).status).toBe(409);
+    const items = (await (await fetch(url)).json()).items;
+    expect(items.filter((item) => item.id === payload.id)).toHaveLength(1);
+    expect(items.find((item) => item.id === payload.id)).not.toHaveProperty('events');
+    expect((await fetch(`${url}/${payload.id}`)).status).toBe(200);
+    expect((await post({ ...payload, id: '../escape' })).status).toBe(400);
+  });
+  it('starts a verified zero-count-in plan without replacing zero with four beats', async () => {
+    const plan = await request(socket, {
+      type: 'plan-request', protocolVersion: 1, requestId: 'zero-count-in', mode: 'timeline',
+      document: CORPUS.document, report: CORPUS.report, config: { ...CONFIG, countInUs: 0 },
+    }, 'plan-response', 'zero-count-in');
+    expect(plan.ok).toBe(true);
+    const started = await request(socket, {
+      type: 'start', protocolVersion: 1, modeId: 'score', bpm: CONFIG.bpm.numerator,
+      profile: 'standard', countInBeats: 0, countInUs: 0, ticksPerQuarter: 960,
+      atoms: plan.plan.atoms, scoreEvents: engineScoreEventsFor(plan),
+      scoreFingerprint: plan.scoreFingerprint, playbackPlanId: plan.plan.runtimeIds.planId,
+      planRequestId: plan.requestId, plannerAuthority: plan.plannerAuthority,
+      plannerVersion: plan.plannerVersion, planFingerprint: plan.planFingerprint,
+      hand: 'both', scoreBarCount: CORPUS.document.parts[0].measures.length,
+    }, 'started');
+    expect(started.countInMs).toBe(0);
+    expect(started.countInBeats).toBe(0);
+    await request(socket, { type: 'finish', protocolVersion: 1 }, 'report');
+  });
   it('reports the server-side planner authority (single source of truth)', async () => {
     const status = await request(socket, { protocolVersion: 1, type: 'planner-status' }, 'planner-status');
     expect(status.authority).toBe('rust');
