@@ -6,21 +6,32 @@ import { useMemo, useState } from 'react';
 import {
   RANGE_PRESETS,
   clampReadingRange,
+  keyLabel,
   midiLabel,
-  poolFromRanges,
+  readingPool,
   rangeLabel,
+  type KeyMode,
+  type KeyRoot,
+  type KeySelection,
   type PitchRange,
 } from '../features/reading/readingKeys';
 import { readingPoolLabel } from '../features/reading/readingGenerator';
+import type { ReadingStaffPreference } from '../features/reading/readingGenerator';
 
 export type ReadingModeChoice = 'free' | 'rhythm';
 export type ReadingComplexityChoice = 'basic' | 'intermediate' | 'advanced';
+export type ReadingKeyChoice = 'chromatic' | 'major' | 'minor';
 
 export interface ReadingSetupValue {
   mode: ReadingModeChoice;
   ranges: PitchRange[];
   notesPerEvent: 1 | 2 | 3 | 4;
   seed: number;
+  /** null = 不限调（半音阶）. */
+  key: KeySelection | null;
+  keyChoice: ReadingKeyChoice;
+  keyRoot: KeyRoot;
+  staffPreference: ReadingStaffPreference;
   questionCount: 10 | 20 | 40;
   timeSignature: [2 | 3 | 4, 4];
   bpm: number;
@@ -44,12 +55,24 @@ const COMPLEXITY_CN: Record<ReadingComplexityChoice, string> = {
   advanced: '高级（十六分与拍内切分）',
 };
 
+const KEY_ROOTS: KeyRoot[] = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+
+const STAFF_CN: Record<ReadingStaffPreference, string> = {
+  auto: '自动（按音高分谱表）',
+  treble: '右手 · 高音谱表',
+  bass: '左手 · 低音谱表',
+};
+
 function defaultSetup(): ReadingSetupValue {
   return {
     mode: 'free',
     ranges: [{ startMidi: 60, endMidi: 72 }],
     notesPerEvent: 1,
     seed: Date.now() % 1_000_000,
+    key: null,
+    keyChoice: 'chromatic',
+    keyRoot: 'C',
+    staffPreference: 'auto',
     questionCount: 20,
     timeSignature: [4, 4],
     bpm: 60,
@@ -70,7 +93,7 @@ export default function NoteReadingSetup({
   const [value, setValue] = useState<ReadingSetupValue>(defaultSetup);
   const [customRange, setCustomRange] = useState<{ start: number; end: number }>({ start: 60, end: 72 });
 
-  const pool = useMemo(() => poolFromRanges(value.ranges), [value.ranges]);
+  const pool = useMemo(() => readingPool(value.ranges, value.key), [value.ranges, value.key]);
   const poolReady = pool.length >= value.notesPerEvent;
   const bpmReady = value.mode !== 'rhythm' || (Number.isFinite(value.bpm) && value.bpm >= 40 && value.bpm <= 180);
   const seedReady = Number.isInteger(value.seed);
@@ -184,7 +207,62 @@ export default function NoteReadingSetup({
               <button type="button" aria-label={`移除区间 ${rangeLabel(range)}`} onClick={() => removeRange(index)}>×</button>
             </span>
           ))}
-          <span className="reading-pool-count">目标池 {readingPoolLabel(value.ranges)}</span>
+          <span className="reading-pool-count">
+            目标池 {value.key ? `${keyLabel(value.key)} · ${pool.length} 音（已按调性筛选）` : readingPoolLabel(value.ranges)}
+          </span>
+        </div>
+      </div>
+
+      <div className="reading-setup-block" aria-label="调性与谱表">
+        <div className="reading-rhythm-grid">
+          <label>
+            调性（升降号与音池随调号；不限 = 半音阶）
+            <select
+              value={value.keyChoice}
+              onChange={(event) => {
+                const choice = event.target.value as ReadingKeyChoice;
+                patch({
+                  keyChoice: choice,
+                  key: choice === 'chromatic' ? null : { root: value.keyRoot, mode: choice as KeyMode },
+                });
+              }}
+            >
+              <option value="chromatic">不限调（半音阶）</option>
+              <option value="major">大调</option>
+              <option value="minor">小调</option>
+            </select>
+          </label>
+          <label>
+            调（根音）
+            <select
+              value={value.keyRoot}
+              disabled={value.keyChoice === 'chromatic'}
+              onChange={(event) => {
+                const root = event.target.value as KeyRoot;
+                patch({
+                  keyRoot: root,
+                  key: value.keyChoice === 'chromatic' ? null : { root, mode: value.keyChoice },
+                });
+              }}
+            >
+              {KEY_ROOTS.map((root) => (
+                <option key={root} value={root}>
+                  {root}{value.keyChoice === 'minor' ? ' 小调' : ' 大调'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            谱表（手别）
+            <select
+              value={value.staffPreference}
+              onChange={(event) => patch({ staffPreference: event.target.value as ReadingStaffPreference })}
+            >
+              {(Object.keys(STAFF_CN) as ReadingStaffPreference[]).map((pref) => (
+                <option key={pref} value={pref}>{STAFF_CN[pref]}</option>
+              ))}
+            </select>
+          </label>
         </div>
       </div>
 
@@ -314,8 +392,9 @@ export default function NoteReadingSetup({
 
       <div className="reading-summary" aria-label="配置摘要">
         <span>模式 <b>{value.mode === 'free' ? '自由识谱' : '节奏识谱'}</b></span>
-        <span>目标池 <b>{readingPoolLabel(value.ranges)}</b></span>
+        <span>目标池 <b>{value.key ? `${keyLabel(value.key)} · ${pool.length} 音` : readingPoolLabel(value.ranges)}</b></span>
         <span>每事件 <b>{value.notesPerEvent}</b> 音</span>
+        <span>谱表 <b>{STAFF_CN[value.staffPreference]}</b></span>
         {value.mode === 'free'
           ? <span>题目 <b>{value.questionCount}</b> 题</span>
           : (

@@ -1350,7 +1350,11 @@ export default function App() {
               ? userHandMappingFor(currentFingerprint, currentPartId)
               : null,
             repeatSelection: { kind: 'none' },
-            countInUs: DEFAULT_COUNT_IN_MS * 1000,
+            // Plan targets embed the count-in; keep it identical to the value
+            // session.begin receives (reading-rhythm uses its measure count).
+            countInUs: config.modeId === 'reading-rhythm'
+              ? Math.round(context.countInBeats * (60_000_000 / config.tempo))
+              : DEFAULT_COUNT_IN_MS * 1000,
             ticksPerQuarter: 960,
           }),
           scoreFingerprint: currentFingerprint,
@@ -1359,7 +1363,13 @@ export default function App() {
         };
       },
       accept: (response) => {
-        const countInUs = DEFAULT_COUNT_IN_MS * 1000;
+        // The count-in must satisfy the engine's cross-check:
+        // countInUs = countInBeats * 60_000_000 / bpm. Reading rhythm honors
+        // the setup's 1/2-measure count-in; everything else keeps 3 seconds.
+        const countInBeatsUs = config.modeId === 'reading-rhythm'
+          ? Math.round(context.countInBeats * (60_000_000 / config.tempo))
+          : DEFAULT_COUNT_IN_MS * 1000;
+        const countInUs = countInBeatsUs;
         // Response binding: same score, then the mode-specific gates.
         if (response.scoreFingerprint !== boundFingerprint) {
           throw new Error('PLAN_RESPONSE_MISMATCH: 计划对应的曲谱与当前曲谱不一致');
@@ -2322,6 +2332,8 @@ export default function App() {
           ranges: value.ranges,
           notesPerEvent: value.notesPerEvent,
           seed: value.seed,
+          key: value.key,
+          staffPreference: value.staffPreference,
           questionCount: value.questionCount,
         });
         const readingSession = new FreeReadingSession(questions.map((question) => question.midiNotes));
@@ -2329,7 +2341,7 @@ export default function App() {
         setReadingFreeSession(readingSession);
         addFeedback(
           '自由识谱开始',
-          `${value.questionCount} 题 · 每题 ${value.notesPerEvent} 音 · seed ${value.seed} · 不限时`,
+          `${value.questionCount} 题 · 每题 ${value.notesPerEvent} 音${value.key ? ` · ${value.key.root}${value.key.mode === 'major' ? '大调' : '小调'}` : ''} · seed ${value.seed} · 不限时`,
           'success',
         );
       } else {
@@ -2338,6 +2350,8 @@ export default function App() {
           ranges: value.ranges,
           notesPerEvent: value.notesPerEvent,
           seed: value.seed,
+          key: value.key,
+          staffPreference: value.staffPreference,
           timeSignature: value.timeSignature,
           bpm: value.bpm,
           complexity: value.complexity,
@@ -2350,7 +2364,12 @@ export default function App() {
         let savedId: string | null = null;
         try {
           const entry = await createScoreLibraryEntry({
-            name: `识谱训练 · 节奏 · ${value.timeSignature[0]}/4 · ${value.measures} 小节`,
+            // Name must be unique per configuration: the library rejects
+            // duplicates, so seed (and key/hand) are part of the display name.
+            name: `识谱训练 · 节奏 · ${value.timeSignature[0]}/4 · ${value.measures} 小节`
+              + `${value.key ? ` · ${value.key.root}${value.key.mode === 'major' ? '大调' : '小调'}` : ''}`
+              + `${value.staffPreference === 'bass' ? ' · 左手' : value.staffPreference === 'treble' ? ' · 右手' : ''}`
+              + ` · seed ${value.seed}`,
             fileName: `reading-${generated.contentFingerprint}.musicxml`,
             xml: generated.xml,
             importSummary: summarizeImportReport(imported.report),
@@ -3320,6 +3339,7 @@ export default function App() {
           {readingFreeSession && (
             <FreeReadingView
               session={readingFreeSession}
+              setup={readingFreeConfig ? { key: readingFreeConfig.key, staffPreference: readingFreeConfig.staffPreference } : null}
               input={readingInput}
               deviceConnected={deviceStatus === 'connected'}
               onInput={(midi, isRelease) => {

@@ -6,8 +6,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import OsmdScoreView from './OsmdScoreView';
 import ReadingKeyboard, { type ReadingKeyState } from './ReadingKeyboard';
-import { questionStaff, questionXml } from '../features/reading/readingGenerator';
-import { midiLabel } from '../features/reading/readingKeys';
+import { questionStaff, questionXml, type ReadingStaffPreference } from '../features/reading/readingGenerator';
+import { midiLabel, type KeySelection } from '../features/reading/readingKeys';
 import { FreeReadingSession, type FreeReadingSnapshot } from '../features/reading/freeReadingSession';
 import { importScoreText } from '../features/score/scoreImport';
 import type { ScoreDocument as EngineScoreDocument } from '../score-engine/domain/types';
@@ -20,6 +20,8 @@ export interface FreeReadingInputEvent {
 
 interface Props {
   session: FreeReadingSession;
+  /** The setup the session was generated from (key/staff preference for rendering). */
+  setup: { key: KeySelection | null; staffPreference: ReadingStaffPreference } | null;
   /** Bumps whenever App forwards a new MIDI note-on/off. */
   input: FreeReadingInputEvent | null;
   deviceConnected: boolean;
@@ -60,6 +62,7 @@ function useSnapshot(session: FreeReadingSession, input: FreeReadingInputEvent |
 
 export default function FreeReadingView({
   session,
+  setup,
   input,
   deviceConnected,
   onInput,
@@ -82,10 +85,13 @@ export default function FreeReadingView({
   }, [snapshot.status, onFinish]);
 
   const question = session.questions[snapshot.currentIndex] ?? [];
-  const staff = useMemo(() => (question.length ? questionStaff(question) : 1), [question]);
+  const staff = useMemo(
+    () => (question.length ? questionStaff(question, setup?.staffPreference ?? 'auto') : 1),
+    [question, setup?.staffPreference],
+  );
   const xml = useMemo(
-    () => (question.length ? questionXml(question, staff) : null),
-    [question, staff],
+    () => (question.length ? questionXml(question, staff, setup?.key ?? null) : null),
+    [question, staff, setup?.key],
   );
   const engineDoc = useMemo<EngineScoreDocument | null>(() => {
     if (!xml) return null;
