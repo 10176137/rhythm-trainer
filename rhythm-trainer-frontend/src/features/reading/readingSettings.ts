@@ -1,15 +1,30 @@
-import { poolFromRanges, type PitchRange, rangeLabel } from './readingKeys';
+import { poolFromRanges, type KeySelection, type PitchRange, rangeLabel } from './readingKeys';
 export type ReadingModeChoice = 'free' | 'rhythm';
 export type ReadingComplexityChoice = 'basic' | 'intermediate' | 'advanced';
+export type ReadingStaffPreference = 'auto' | 'treble' | 'bass';
 export interface ReadingSetupValue {
   mode: ReadingModeChoice; ranges: PitchRange[]; notesPerEvent: 1 | 2 | 3 | 4;
   seed: number; task: 'practice' | 'test'; questionCount: 10 | 20 | 40;
   timeSignature: [2 | 3 | 4, 4]; bpm: number; complexity: ReadingComplexityChoice;
   measures: 2 | 4 | 8; countInMeasures: 1 | 2;
+  /** null = chromatic (不限调); otherwise pool = the key's diatonic scale. */
+  key: KeySelection | null;
+  /** Which staff (hand) generated notes are written on. */
+  staffPreference: ReadingStaffPreference;
 }
 export function defaultReadingSetup(mode: ReadingModeChoice = 'free'): ReadingSetupValue {
   return { mode, ranges: [{ startMidi: 60, endMidi: 71 }], notesPerEvent: 1, seed: Date.now() % 1_000_000,
-    task: 'practice', questionCount: 20, timeSignature: [4, 4], bpm: 60, complexity: 'basic', measures: 4, countInMeasures: 1 };
+    task: 'practice', questionCount: 20, timeSignature: [4, 4], bpm: 60, complexity: 'basic', measures: 4, countInMeasures: 1,
+    key: null, staffPreference: 'auto' };
+}
+const STAFF_PREFERENCES: readonly string[] = ['auto', 'treble', 'bass'];
+const VALID_KEY_ROOTS = new Set(['C', 'D', 'E', 'F', 'G', 'A', 'B']);
+function validKey(value: unknown): KeySelection | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as { root?: unknown; mode?: unknown };
+  if (typeof candidate.root !== 'string' || !VALID_KEY_ROOTS.has(candidate.root)) return null;
+  if (candidate.mode !== 'major' && candidate.mode !== 'minor') return null;
+  return { root: candidate.root as KeySelection['root'], mode: candidate.mode };
 }
 export function loadReadingSettings(mode: ReadingModeChoice): ReadingSetupValue {
   const fallback = defaultReadingSetup(mode);
@@ -21,13 +36,17 @@ export function loadReadingSettings(mode: ReadingModeChoice): ReadingSetupValue 
       || ![10, 20, 40].includes(v.questionCount) || !['practice', 'test'].includes(v.task)
       || !Array.isArray(v.timeSignature) || ![2, 3, 4].includes(v.timeSignature[0]) || v.timeSignature[1] !== 4
       || !Number.isFinite(v.bpm) || v.bpm < 40 || v.bpm > 180 || !['basic', 'intermediate', 'advanced'].includes(v.complexity)
-      || ![2, 4, 8].includes(v.measures) || ![1, 2].includes(v.countInMeasures)) return fallback;
-    return { ...fallback, ...v, seed: fallback.seed };
+      || ![2, 4, 8].includes(v.measures) || ![1, 2].includes(v.countInMeasures)
+      || (v.key !== null && !validKey(v.key))
+      || !STAFF_PREFERENCES.includes(v.staffPreference)) return fallback;
+    return { ...fallback, ...v, key: v.key ? validKey(v.key) : null, staffPreference: v.staffPreference, seed: fallback.seed };
   } catch { return fallback; }
 }
 export function saveReadingSettings(value: ReadingSetupValue): void {
   try { localStorage.setItem(`rhythm.reading.${value.mode}.v1`, JSON.stringify(value)); } catch { /* preference persistence is best effort */ }
 }
 export function readingConfigLabel(value: ReadingSetupValue): string {
-  return `${value.ranges.map(rangeLabel).join('、')} · ${value.notesPerEvent} 音 · ${value.mode === 'free' ? `${value.questionCount} 题 · ${value.task === 'test' ? '小测' : '练习'}` : `${value.bpm} BPM`}`;
+  const keyLabel = value.key ? ` · ${value.key.root}${value.key.mode === 'major' ? '大调' : '小调'}` : '';
+  const staffLabel = value.staffPreference === 'treble' ? ' · 右手' : value.staffPreference === 'bass' ? ' · 左手' : '';
+  return `${value.ranges.map(rangeLabel).join('、')}${keyLabel}${staffLabel} · ${value.notesPerEvent} 音 · ${value.mode === 'free' ? `${value.questionCount} 题 · ${value.task === 'test' ? '小测' : '练习'}` : `${value.bpm} BPM`}`;
 }

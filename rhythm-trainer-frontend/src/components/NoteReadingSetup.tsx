@@ -5,7 +5,8 @@
 import { useMemo, useState } from 'react';
 import {
   READING_OCTAVES,
-  poolFromRanges,
+  keyLabel,
+  readingPool,
 } from '../features/reading/readingKeys';
 
 import { defaultReadingSetup, type ReadingSetupValue, type ReadingModeChoice, type ReadingComplexityChoice } from '../features/reading/readingSettings';
@@ -28,6 +29,9 @@ const COMPLEXITY_CN: Record<ReadingComplexityChoice, string> = {
   advanced: '高级（十六分与拍内切分）',
 };
 
+const KEY_ROOTS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const;
+const STAFF_CN = { auto: '自动（按音高分谱表）', treble: '右手 · 高音谱表', bass: '左手 · 低音谱表' } as const;
+
 export default function NoteReadingSetup({
   initialValue,
   initialMode = 'free',
@@ -40,7 +44,7 @@ export default function NoteReadingSetup({
 }: Props) {
   const [value, setValue] = useState<ReadingSetupValue>(() => initialValue ?? { ...defaultReadingSetup(initialMode), mode: initialMode });
 
-  const pool = useMemo(() => poolFromRanges(value.ranges), [value.ranges]);
+  const pool = useMemo(() => readingPool(value.ranges, value.key), [value.ranges, value.key]);
   const poolReady = pool.length >= value.notesPerEvent;
   const bpmReady = value.mode !== 'rhythm' || (Number.isFinite(value.bpm) && value.bpm >= 40 && value.bpm <= 180);
   const seedReady = Number.isInteger(value.seed);
@@ -82,7 +86,59 @@ export default function NoteReadingSetup({
             return <button key={octave.id} type="button" className={selected ? 'active' : ''} aria-pressed={selected} onClick={() => toggleOctave(octave.id)}>{octave.label}</button>;
           })}
         </div>
-        <p className="reading-pool-count">已选 {value.ranges.length} 个音区 · {pool.length} 个音（含黑键）</p>
+        <p className="reading-pool-count">
+          已选 {value.ranges.length} 个音区 · {pool.length} 个音{value.key ? `（${keyLabel(value.key)} 调内音）` : '（含黑键）'}
+        </p>
+      </div>
+
+      <div className="reading-setup-block" aria-label="调性与谱表">
+        <h3>调性与谱表 <small>升降号与音池随调号；谱表决定写在哪只手一侧</small></h3>
+        <div className="reading-rhythm-grid">
+          <label>
+            调性
+            <select
+              value={value.key ? value.key.mode : 'chromatic'}
+              onChange={(event) => {
+                const choice = event.target.value;
+                patch({
+                  key: choice === 'chromatic' ? null : { root: value.key?.root ?? 'C', mode: choice as 'major' | 'minor' },
+                });
+              }}
+            >
+              <option value="chromatic">不限调（半音阶）</option>
+              <option value="major">大调</option>
+              <option value="minor">小调</option>
+            </select>
+          </label>
+          <label>
+            调（根音）
+            <select
+              value={value.key?.root ?? 'C'}
+              disabled={!value.key}
+              onChange={(event) => {
+                const root = event.target.value as (typeof KEY_ROOTS)[number];
+                patch({ key: value.key ? { root, mode: value.key.mode } : null });
+              }}
+            >
+              {KEY_ROOTS.map((root) => (
+                <option key={root} value={root}>
+                  {root}{value.key?.mode === 'minor' ? ' 小调' : ' 大调'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            谱表（手别）
+            <select
+              value={value.staffPreference}
+              onChange={(event) => patch({ staffPreference: event.target.value as ReadingSetupValue['staffPreference'] })}
+            >
+              {(Object.keys(STAFF_CN) as Array<keyof typeof STAFF_CN>).map((pref) => (
+                <option key={pref} value={pref}>{STAFF_CN[pref]}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       <div className="reading-setup-block" aria-label="目标音符数量">

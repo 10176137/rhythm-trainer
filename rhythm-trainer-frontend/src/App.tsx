@@ -2359,6 +2359,8 @@ export default function App() {
           ranges: value.ranges,
           notesPerEvent: value.notesPerEvent,
           seed: value.seed,
+          key: value.key,
+          staffPreference: value.staffPreference,
           timeSignature: value.timeSignature,
           bpm: value.bpm,
           complexity: value.complexity,
@@ -3350,6 +3352,7 @@ export default function App() {
             <FreeReadingView
               key={readingSessionVersion}
               session={readingFreeSession}
+              setup={readingFreeConfig ? { key: readingFreeConfig.key ?? null, staffPreference: readingFreeConfig.staffPreference ?? 'auto' } : null}
               input={readingInput}
               deviceConnected={deviceStatus === 'connected'}
               onInput={(midi, isRelease) => {

@@ -127,11 +127,20 @@ describe('reading generator', () => {
     })).toThrowError(/不足/);
   });
 
-  it('writes B-flat in both question and rhythm notation without changing MIDI pitch', () => {
-    const question = questionXml([70], 1);
-    expect(question).toContain('<step>B</step><alter>-1</alter><octave>4</octave>');
-    expect(importScoreText(question, 'question.musicxml').doc?.notes[0]?.midiNote).toBe(70);
-    const rhythm = generateRhythmScore({ mode: 'rhythm', ranges: [{ startMidi: 70, endMidi: 70 }], notesPerEvent: 1, seed: 3, measures: 4 });
+  it('spells accidentals by key signature without changing MIDI pitch', () => {
+    // MIDI 70 = A♯/B♭：不限调（fifths=0）写升号侧 A♯；F 大调（-1）写降号侧 B♭
+    const natural = questionXml([70], 1);
+    expect(natural).toContain('<step>A</step><alter>1</alter><octave>4</octave>');
+    expect(importScoreText(natural, 'question.musicxml').doc?.notes[0]?.midiNote).toBe(70);
+    const flat = questionXml([70], 1, { root: 'F', mode: 'major' });
+    expect(flat).toContain('<fifths>-1</fifths>');
+    expect(flat).toContain('<step>B</step><alter>-1</alter><octave>4</octave>');
+    expect(importScoreText(flat, 'question.musicxml').doc?.notes[0]?.midiNote).toBe(70);
+    // 节奏谱同理：F 大调把音高 70 记成 B♭，MIDI 不变
+    const rhythm = generateRhythmScore({
+      mode: 'rhythm', ranges: [{ startMidi: 70, endMidi: 70 }], notesPerEvent: 1, seed: 3, measures: 4,
+      key: { root: 'F', mode: 'major' },
+    });
     expect(rhythm.xml).toContain('<step>B</step><alter>-1</alter><octave>4</octave>');
     expect(importScoreText(rhythm.xml, 'rhythm.musicxml').doc?.notes.every((note) => note.midiNote === 70)).toBe(true);
   });

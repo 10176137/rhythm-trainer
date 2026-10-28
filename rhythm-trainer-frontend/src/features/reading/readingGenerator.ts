@@ -10,17 +10,31 @@
 //
 // Same config + seed + GENERATOR_VERSION => byte-identical output.
 
-import { poolFromRanges, midiLabel, type PitchRange } from './readingKeys';
+import {
+  keyFifths,
+  midiLabel,
+  poolFromRanges,
+  readingPool,
+  spellMidi,
+  type KeySelection,
+  type PitchRange,
+} from './readingKeys';
 
-export const READING_GENERATOR_VERSION = 'reading-generator-1.2.0';
+export const READING_GENERATOR_VERSION = 'reading-generator-1.2.1';
 
 export type ReadingComplexity = 'basic' | 'intermediate' | 'advanced';
+/** Which staff (hand) the generated notes are written on. */
+export type ReadingStaffPreference = 'auto' | 'treble' | 'bass';
 
 export interface ReadingConfig {
   mode: 'free' | 'rhythm';
   ranges: PitchRange[];
   notesPerEvent: 1 | 2 | 3 | 4;
   seed: number;
+  /** null/undefined = chromatic (不限调); otherwise pool = key's diatonic scale. */
+  key?: KeySelection | null;
+  /** Staff/hand placement: auto by pitch, or fixed treble (right) / bass (left). */
+  staffPreference?: ReadingStaffPreference;
   /** free only */
   questionCount?: 10 | 20 | 40;
   /** rhythm only */
@@ -75,7 +89,7 @@ function fnv1a(text: string): string {
 }
 
 function validate(config: ReadingConfig): number[] {
-  const pool = poolFromRanges(config.ranges);
+  const pool = readingPool(config.ranges, config.key ?? null);
   if (pool.length < config.notesPerEvent) {
     throw new ReadingGeneratorError(
       'POOL_TOO_SMALL',
@@ -115,11 +129,12 @@ export function generateFreeQuestions(config: ReadingConfig): GeneratedReadingQu
 }
 
 /** Free-reading question rendering: ONE measure, whole-note chord, real notation. */
-export function questionXml(midiNotes: readonly number[], staff: 1 | 2): string {
+export function questionXml(midiNotes: readonly number[], staff: 1 | 2, key: KeySelection | null = null): string {
   if (!midiNotes.length) throw new ReadingGeneratorError('EMPTY_QUESTION', '题目没有目标音');
+  const fifths = key ? keyFifths(key) : 0;
   const sorted = [...midiNotes].sort((a, b) => a - b);
   const notes = sorted.map((midi, index) => {
-    const { step, alter, octave } = midiToPitch(midi);
+    const { step, alter, octave } = spellMidi(midi, fifths);
     const chord = index > 0 ? '<chord/>' : '';
     return `<note>${chord}<pitch><step>${step}</step>${alter ? `<alter>${alter}</alter>` : ''}<octave>${octave}</octave></pitch><duration>1920</duration><voice>1</voice><type>whole</type><staff>${staff}</staff></note>`;
   }).join('');
@@ -130,25 +145,25 @@ export function questionXml(midiNotes: readonly number[], staff: 1 | 2): string 
   <part-list><score-part id="P1"><part-name>识谱训练</part-name></score-part></part-list>
   <part id="P1">
     <measure number="1">
-      <attributes><divisions>480</divisions><key><fifths>0</fifths><mode>major</mode></key><time><beats>4</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>
+      <attributes><divisions>480</divisions><key><fifths>${fifths}</fifths><mode>${key ? key.mode : 'major'}</mode></key><time><beats>4</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>
       ${notes}
     </measure>
   </part>
 </score-partwise>`;
 }
 
-export function questionStaff(midiNotes: readonly number[]): 1 | 2 {
+export function questionStaff(midiNotes: readonly number[], preference: ReadingStaffPreference = 'auto'): 1 | 2 {
+  if (preference === 'treble') return 1;
+  if (preference === 'bass') return 2;
   const sorted = [...midiNotes].sort((a, b) => a - b);
   const median = sorted[Math.floor((sorted.length - 1) / 2)];
   return median >= 60 ? 1 : 2;
 }
 
-const PITCH_STEPS = ['C', 'C', 'D', 'E', 'E', 'F', 'F', 'G', 'A', 'A', 'B', 'B'] as const;
-const PITCH_ALTERS = [0, 1, 0, -1, 0, 0, 1, 0, -1, 0, -1, 0] as const;
-
-function midiToPitch(midi: number): { step: string; alter: number; octave: number } {
-  const pc = ((midi % 12) + 12) % 12;
-  return { step: PITCH_STEPS[pc], alter: PITCH_ALTERS[pc], octave: Math.floor(midi / 12) - 1 };
+function staffFor(midi: number, preference: ReadingStaffPreference): 1 | 2 {
+  if (preference === 'treble') return 1;
+  if (preference === 'bass') return 2;
+  return midi >= 60 ? 1 : 2;
 }
 
 interface RhythmSlot {
@@ -238,6 +253,9 @@ export function generateReviewQuestions(config: ReadingConfig, failedGroups: rea
 export function generateRhythmScore(config: ReadingConfig): GeneratedRhythmScore {
   if (config.mode !== 'rhythm') throw new ReadingGeneratorError('WRONG_MODE', 'generateRhythmScore 只接受 rhythm 模式');
   const pool = validate(config);
+  const fifths = config.key ? keyFifths(config.key) : 0;
+  const keyMode = config.key ? config.key.mode : 'major';
+  const preference = config.staffPreference ?? 'auto';
   const [beats] = config.timeSignature ?? [4, 4];
   const measures = config.measures ?? 4;
   const cells = [
@@ -263,15 +281,15 @@ export function generateRhythmScore(config: ReadingConfig): GeneratedRhythmScore
         const { type, dots } = noteType(slot.beats);
         if (slot.rest) {
           restCount += 1;
-          notesXml.push(`<note><rest/><duration>${duration}</duration><voice>1</voice><type>${type}</type>${dots ? '<dot/>' : ''}<staff>1</staff></note>`);
+          notesXml.push(`<note><rest/><duration>${duration}</duration><voice>1</voice><type>${type}</type>${dots ? '<dot/>' : ''}<staff>${staffFor(preference === 'auto' ? 60 : 48, preference)}</staff></note>`);
           continue;
         }
         eventCount += 1;
         const pitches = sample();
         noteCount += pitches.length;
         pitches.forEach((midi, index) => {
-          const { step, alter, octave } = midiToPitch(midi);
-          const staff = midi >= 60 ? 1 : 2;
+          const { step, alter, octave } = spellMidi(midi, fifths);
+          const staff = staffFor(midi, preference);
           notesXml.push(
             `<note>${index > 0 ? '<chord/>' : ''}<pitch><step>${step}</step>${alter ? `<alter>${alter}</alter>` : ''}<octave>${octave}</octave></pitch><duration>${duration}</duration><voice>1</voice><type>${type}</type>${dots ? '<dot/>' : ''}<staff>${staff}</staff></note>`,
           );
@@ -279,7 +297,7 @@ export function generateRhythmScore(config: ReadingConfig): GeneratedRhythmScore
       }
     }
     const attributes = bar === 1
-      ? `<attributes><divisions>480</divisions><key><fifths>0</fifths><mode>major</mode></key><time><beats>${beats}</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>`
+      ? `<attributes><divisions>480</divisions><key><fifths>${fifths}</fifths><mode>${keyMode}</mode></key><time><beats>${beats}</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>`
       : '';
     measuresXml.push(`<measure number="${bar}">${attributes}${notesXml.join('')}</measure>`);
   }
