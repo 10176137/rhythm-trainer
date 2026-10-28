@@ -222,7 +222,6 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         setTakeId(null);
         takeIdRef.current = null;
         setTraceId(null);
-        setScoringConfig(null);
         setCaptureDiagnostics(null);
         setReportPersisted(null);
         setReportPersistenceError(null);

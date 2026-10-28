@@ -4,6 +4,7 @@ import type { ScoreDocument as EngineScoreDocument } from '../score-engine/domai
 import { OsmdScoreViewAdapter } from '../score-engine/view/score-view-adapter';
 
 interface Props {
+  width?: number;
   xml: string;
   engine: EngineScoreDocument;
   activeNoteIds: string[];
@@ -36,6 +37,7 @@ export const ENGRAVED_SCORE_WIDTH = 1510;
  * note-event IDs to OSMD graphical notes for active-target coloring and click.
  */
 export default function OsmdScoreView({
+  width = ENGRAVED_SCORE_WIDTH,
   xml,
   engine,
   activeNoteIds,
@@ -145,7 +147,7 @@ export default function OsmdScoreView({
       adapterRef.current = null;
       if (host) host.innerHTML = '';
     };
-  }, [xml, engine, layoutEpoch, zoom]);
+  }, [xml, engine, layoutEpoch, zoom, width]);
 
   // OSMD can render a 0-width page when it was mounted inside a hidden route
   // or while the score card was transiently width-less. The host is fixed at
@@ -279,7 +281,7 @@ export default function OsmdScoreView({
   }, [followSignal, follow, loading, scrollRef]);
 
   return (
-    <div ref={rootRef} className="osmd-score" style={{ width: ENGRAVED_SCORE_WIDTH, minWidth: ENGRAVED_SCORE_WIDTH }}>
+    <div ref={rootRef} className="osmd-score" style={{ width, minWidth: width }}>
       <div className="osmd-host" ref={hostRef} aria-label="专业制谱渲染" />
       {loopCovers.length > 0 && (
         <div className="osmd-loop-cover-layer" aria-hidden="true">

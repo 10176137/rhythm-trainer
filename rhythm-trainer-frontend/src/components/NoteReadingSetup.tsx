@@ -4,43 +4,16 @@
 
 import { useMemo, useState } from 'react';
 import {
-  RANGE_PRESETS,
-  clampReadingRange,
-  keyLabel,
-  midiLabel,
-  readingPool,
-  rangeLabel,
-  type KeyMode,
-  type KeyRoot,
-  type KeySelection,
-  type PitchRange,
+  READING_OCTAVES,
+  poolFromRanges,
 } from '../features/reading/readingKeys';
-import { readingPoolLabel } from '../features/reading/readingGenerator';
-import type { ReadingStaffPreference } from '../features/reading/readingGenerator';
 
-export type ReadingModeChoice = 'free' | 'rhythm';
-export type ReadingComplexityChoice = 'basic' | 'intermediate' | 'advanced';
-export type ReadingKeyChoice = 'chromatic' | 'major' | 'minor';
-
-export interface ReadingSetupValue {
-  mode: ReadingModeChoice;
-  ranges: PitchRange[];
-  notesPerEvent: 1 | 2 | 3 | 4;
-  seed: number;
-  /** null = 不限调（半音阶）. */
-  key: KeySelection | null;
-  keyChoice: ReadingKeyChoice;
-  keyRoot: KeyRoot;
-  staffPreference: ReadingStaffPreference;
-  questionCount: 10 | 20 | 40;
-  timeSignature: [2 | 3 | 4, 4];
-  bpm: number;
-  complexity: ReadingComplexityChoice;
-  measures: 2 | 4 | 8;
-  countInMeasures: 1 | 2;
-}
+import { defaultReadingSetup, type ReadingSetupValue, type ReadingModeChoice, type ReadingComplexityChoice } from '../features/reading/readingSettings';
+export type { ReadingSetupValue } from '../features/reading/readingSettings';
 
 interface Props {
+  initialValue?: ReadingSetupValue | null;
+  initialMode?: ReadingModeChoice;
   busy: boolean;
   error: string | null;
   deviceConnected: boolean;
@@ -55,34 +28,9 @@ const COMPLEXITY_CN: Record<ReadingComplexityChoice, string> = {
   advanced: '高级（十六分与拍内切分）',
 };
 
-const KEY_ROOTS: KeyRoot[] = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-
-const STAFF_CN: Record<ReadingStaffPreference, string> = {
-  auto: '自动（按音高分谱表）',
-  treble: '右手 · 高音谱表',
-  bass: '左手 · 低音谱表',
-};
-
-function defaultSetup(): ReadingSetupValue {
-  return {
-    mode: 'free',
-    ranges: [{ startMidi: 60, endMidi: 72 }],
-    notesPerEvent: 1,
-    seed: Date.now() % 1_000_000,
-    key: null,
-    keyChoice: 'chromatic',
-    keyRoot: 'C',
-    staffPreference: 'auto',
-    questionCount: 20,
-    timeSignature: [4, 4],
-    bpm: 60,
-    complexity: 'basic',
-    measures: 4,
-    countInMeasures: 1,
-  };
-}
-
 export default function NoteReadingSetup({
+  initialValue,
+  initialMode = 'free',
   busy,
   error,
   deviceConnected,
@@ -90,10 +38,9 @@ export default function NoteReadingSetup({
   handMappingReady,
   onStart,
 }: Props) {
-  const [value, setValue] = useState<ReadingSetupValue>(defaultSetup);
-  const [customRange, setCustomRange] = useState<{ start: number; end: number }>({ start: 60, end: 72 });
+  const [value, setValue] = useState<ReadingSetupValue>(() => initialValue ?? { ...defaultReadingSetup(initialMode), mode: initialMode });
 
-  const pool = useMemo(() => readingPool(value.ranges, value.key), [value.ranges, value.key]);
+  const pool = useMemo(() => poolFromRanges(value.ranges), [value.ranges]);
   const poolReady = pool.length >= value.notesPerEvent;
   const bpmReady = value.mode !== 'rhythm' || (Number.isFinite(value.bpm) && value.bpm >= 40 && value.bpm <= 180);
   const seedReady = Number.isInteger(value.seed);
@@ -101,24 +48,16 @@ export default function NoteReadingSetup({
 
   const patch = (changes: Partial<ReadingSetupValue>) => setValue((prev) => ({ ...prev, ...changes }));
 
-  const togglePreset = (presetId: string) => {
-    const preset = RANGE_PRESETS.find((item) => item.id === presetId);
-    if (!preset) return;
-    setValue((prev) => ({ ...prev, ranges: preset.ranges.map((range) => ({ ...range })) }));
-  };
-
-  const addCustomRange = () => {
-    const range = clampReadingRange({ startMidi: customRange.start, endMidi: customRange.end });
-    if (!range) return;
+  const toggleOctave = (id: string) => {
+    const octave = READING_OCTAVES.find((item) => item.id === id);
+    if (!octave) return;
     setValue((prev) => {
-      // Merge into the existing set; overlaps are unioned at pool time.
-      const merged = [...prev.ranges, range];
-      return { ...prev, ranges: merged };
+      const selected = prev.ranges.some((range) => range.startMidi === octave.range.startMidi && range.endMidi === octave.range.endMidi);
+      const ranges = selected
+        ? prev.ranges.filter((range) => range.startMidi !== octave.range.startMidi || range.endMidi !== octave.range.endMidi)
+        : [...prev.ranges, octave.range].sort((a, b) => a.startMidi - b.startMidi);
+      return { ...prev, ranges };
     });
-  };
-
-  const removeRange = (index: number) => {
-    setValue((prev) => ({ ...prev, ranges: prev.ranges.filter((_, i) => i !== index) }));
   };
 
   return (
@@ -126,148 +65,28 @@ export default function NoteReadingSetup({
       <header className="reading-setup-head">
         <div>
           <div className="eyebrow">81-KEY READING</div>
-          <h2>81 键识谱训练</h2>
-          <p>选择练习模式与音域，配置每题/每事件的目标音数量；目标谱面由真实五线谱渲染，节奏识谱走现有 Rust 评分链路。</p>
+          <h2>识谱练习</h2>
+          <p>选择音区和练习方式，然后开始识谱。</p>
         </div>
       </header>
 
-      <div className="reading-mode-cards" role="radiogroup" aria-label="练习模式">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={value.mode === 'free'}
-          className={`reading-mode-card ${value.mode === 'free' ? 'selected' : ''}`}
-          onClick={() => patch({ mode: 'free' })}
-        >
-          <strong>自由识谱</strong>
-          <span>不限时识别目标音符。弹出当前题目的全部目标琴键后进入下一题，不按反应速度评分。</span>
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={value.mode === 'rhythm'}
-          className={`reading-mode-card ${value.mode === 'rhythm' ? 'selected' : ''}`}
-          onClick={() => patch({ mode: 'rhythm' })}
-        >
-          <strong>节奏识谱</strong>
-          <span>按照乐谱、拍号和速度演奏。系统评价音高、起音时间、按键时长与同时起音准确性。</span>
-        </button>
-      </div>
-
+      {value.mode === 'free' && <div className="reading-task-choice" role="group" aria-label="训练方式">
+        <button type="button" aria-pressed={value.task === 'practice'} onClick={() => patch({ task: 'practice' })}>练习 · 可请求提示</button>
+        <button type="button" aria-pressed={value.task === 'test'} onClick={() => patch({ task: 'test' })}>小测 · 结束后反馈</button>
+      </div>}
       <div className="reading-setup-block" aria-label="音域选择">
-        <h3>音域（可多选区间，并集为目标池）</h3>
+        <h3>选择八度 <small>可多选</small></h3>
         <div className="reading-preset-row">
-          {RANGE_PRESETS.map((preset) => {
-            const active = value.ranges.length === preset.ranges.length
-              && value.ranges.every((range, index) => range.startMidi === preset.ranges[index].startMidi
-                && range.endMidi === preset.ranges[index].endMidi);
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                className={active ? 'active' : ''}
-                onClick={() => togglePreset(preset.id)}
-              >
-                {preset.label}
-              </button>
-            );
+          {READING_OCTAVES.map((octave) => {
+            const selected = value.ranges.some((range) => range.startMidi === octave.range.startMidi && range.endMidi === octave.range.endMidi);
+            return <button key={octave.id} type="button" className={selected ? 'active' : ''} aria-pressed={selected} onClick={() => toggleOctave(octave.id)}>{octave.label}</button>;
           })}
         </div>
-        <div className="reading-custom-row">
-          <label>
-            自定义起音
-            <select
-              value={customRange.start}
-              onChange={(event) => setCustomRange((prev) => ({ ...prev, start: Number(event.target.value) }))}
-            >
-              {Array.from({ length: 81 }, (_, i) => 28 + i).map((midi) => (
-                <option key={midi} value={midi}>{midiLabel(midi)}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            自定义止音
-            <select
-              value={customRange.end}
-              onChange={(event) => setCustomRange((prev) => ({ ...prev, end: Number(event.target.value) }))}
-            >
-              {Array.from({ length: 81 }, (_, i) => 28 + i).map((midi) => (
-                <option key={midi} value={midi}>{midiLabel(midi)}</option>
-              ))}
-            </select>
-          </label>
-          <button type="button" className="button button-outline button-small" onClick={addCustomRange}>
-            添加区间
-          </button>
-        </div>
-        <div className="reading-range-list">
-          {value.ranges.map((range, index) => (
-            <span key={`${range.startMidi}-${range.endMidi}-${index}`} className="reading-range-chip">
-              {rangeLabel(range)}
-              <button type="button" aria-label={`移除区间 ${rangeLabel(range)}`} onClick={() => removeRange(index)}>×</button>
-            </span>
-          ))}
-          <span className="reading-pool-count">
-            目标池 {value.key ? `${keyLabel(value.key)} · ${pool.length} 音（已按调性筛选）` : readingPoolLabel(value.ranges)}
-          </span>
-        </div>
-      </div>
-
-      <div className="reading-setup-block" aria-label="调性与谱表">
-        <div className="reading-rhythm-grid">
-          <label>
-            调性（升降号与音池随调号；不限 = 半音阶）
-            <select
-              value={value.keyChoice}
-              onChange={(event) => {
-                const choice = event.target.value as ReadingKeyChoice;
-                patch({
-                  keyChoice: choice,
-                  key: choice === 'chromatic' ? null : { root: value.keyRoot, mode: choice as KeyMode },
-                });
-              }}
-            >
-              <option value="chromatic">不限调（半音阶）</option>
-              <option value="major">大调</option>
-              <option value="minor">小调</option>
-            </select>
-          </label>
-          <label>
-            调（根音）
-            <select
-              value={value.keyRoot}
-              disabled={value.keyChoice === 'chromatic'}
-              onChange={(event) => {
-                const root = event.target.value as KeyRoot;
-                patch({
-                  keyRoot: root,
-                  key: value.keyChoice === 'chromatic' ? null : { root, mode: value.keyChoice },
-                });
-              }}
-            >
-              {KEY_ROOTS.map((root) => (
-                <option key={root} value={root}>
-                  {root}{value.keyChoice === 'minor' ? ' 小调' : ' 大调'}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            谱表（手别）
-            <select
-              value={value.staffPreference}
-              onChange={(event) => patch({ staffPreference: event.target.value as ReadingStaffPreference })}
-            >
-              {(Object.keys(STAFF_CN) as ReadingStaffPreference[]).map((pref) => (
-                <option key={pref} value={pref}>{STAFF_CN[pref]}</option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <p className="reading-pool-count">已选 {value.ranges.length} 个音区 · {pool.length} 个音（含黑键）</p>
       </div>
 
       <div className="reading-setup-block" aria-label="目标音符数量">
-        <h3>每个时间点/音符组的目标音数量</h3>
+        <h3>每题几个音</h3>
         <div className="reading-count-row" role="radiogroup">
           {([1, 2, 3, 4] as const).map((count) => (
             <button
@@ -368,7 +187,7 @@ export default function NoteReadingSetup({
         </div>
       )}
 
-      <div className="reading-setup-block" aria-label="seed">
+      <details className="reading-setup-block reading-advanced" aria-label="更多选项"><summary>更多选项</summary>
         <h3>seed（同一配置 + seed 生成完全一致的目标）</h3>
         <div className="reading-custom-row">
           <label>
@@ -388,13 +207,12 @@ export default function NoteReadingSetup({
             换一个
           </button>
         </div>
-      </div>
+      </details>
 
       <div className="reading-summary" aria-label="配置摘要">
         <span>模式 <b>{value.mode === 'free' ? '自由识谱' : '节奏识谱'}</b></span>
-        <span>目标池 <b>{value.key ? `${keyLabel(value.key)} · ${pool.length} 音` : readingPoolLabel(value.ranges)}</b></span>
+        <span>音区 <b>{value.ranges.length} 个 · {pool.length} 音</b></span>
         <span>每事件 <b>{value.notesPerEvent}</b> 音</span>
-        <span>谱表 <b>{STAFF_CN[value.staffPreference]}</b></span>
         {value.mode === 'free'
           ? <span>题目 <b>{value.questionCount}</b> 题</span>
           : (

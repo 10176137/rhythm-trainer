@@ -15,9 +15,9 @@ describe('app route registry', () => {
     expect(matchAppRoute('/workbench').route?.id).toBe('workbench');
   });
 
-  it('exposes the simplified three-item navigation', () => {
-    expect(NAV_ROUTES.map((route) => route.id)).toEqual(['teaching', 'workbench', 'progress']);
-    expect(NAV_ROUTES.map((route) => route.navTitle)).toEqual(['学习', '自由练习', '进度']);
+  it('exposes reading and the merged performance workspace', () => {
+    expect(NAV_ROUTES.map((route) => route.id)).toEqual(['performance', 'workbench']);
+    expect(NAV_ROUTES.map((route) => route.navTitle)).toEqual(['演奏', '识谱']);
     expect(NAV_ROUTES.every((route) => route.enabled)).toBe(true);
     expect(new Set(APP_ROUTES.map((route) => route.path)).size).toBe(APP_ROUTES.length);
     // Secondary pages stay reachable by URL but leave the primary nav.
@@ -29,11 +29,11 @@ describe('app route registry', () => {
     const teaching = matchAppRoute('/teaching');
     expect(teaching.route?.id).toBe('teaching');
     expect(teaching.route?.enabled).toBe(true);
-    expect(teaching.route?.nav).toBe(true);
+    expect(teaching.route?.nav).toBe(false);
     const progress = matchAppRoute('/progress');
     expect(progress.route?.id).toBe('progress');
     expect(progress.route?.enabled).toBe(true);
-    expect(progress.route?.nav).toBe(true);
+    expect(progress.route?.nav).toBe(false);
   });
 
   it('enables A1 pages and reserves later paths without enabling them', () => {

@@ -10,31 +10,17 @@
 //
 // Same config + seed + GENERATOR_VERSION => byte-identical output.
 
-import {
-  keyFifths,
-  midiLabel,
-  poolFromRanges,
-  readingPool,
-  spellMidi,
-  type KeySelection,
-  type PitchRange,
-} from './readingKeys';
+import { poolFromRanges, midiLabel, type PitchRange } from './readingKeys';
 
-export const READING_GENERATOR_VERSION = 'reading-generator-1.1.0';
+export const READING_GENERATOR_VERSION = 'reading-generator-1.2.0';
 
 export type ReadingComplexity = 'basic' | 'intermediate' | 'advanced';
-/** Which staff (hand) the generated notes are written on. */
-export type ReadingStaffPreference = 'auto' | 'treble' | 'bass';
 
 export interface ReadingConfig {
   mode: 'free' | 'rhythm';
   ranges: PitchRange[];
   notesPerEvent: 1 | 2 | 3 | 4;
   seed: number;
-  /** null/undefined = chromatic (不限调); otherwise pool = key's diatonic scale. */
-  key?: KeySelection | null;
-  /** Staff/hand placement: auto by pitch, or fixed treble (right) / bass (left). */
-  staffPreference?: ReadingStaffPreference;
   /** free only */
   questionCount?: 10 | 20 | 40;
   /** rhythm only */
@@ -89,12 +75,11 @@ function fnv1a(text: string): string {
 }
 
 function validate(config: ReadingConfig): number[] {
-  const pool = readingPool(config.ranges, config.key ?? null);
+  const pool = poolFromRanges(config.ranges);
   if (pool.length < config.notesPerEvent) {
-    const keyNote = config.key ? '（已按调性筛选）' : '';
     throw new ReadingGeneratorError(
       'POOL_TOO_SMALL',
-      `所选音域${keyNote}只有 ${pool.length} 个音，不足每事件 ${config.notesPerEvent} 个目标音；请扩大音域或减少同时音符数。`,
+      `所选音域只有 ${pool.length} 个音，不足每事件 ${config.notesPerEvent} 个目标音；请扩大音域或减少同时音符数。`,
     );
   }
   if (!Number.isInteger(config.seed)) throw new ReadingGeneratorError('INVALID_SEED', 'seed 必须是整数');
@@ -119,39 +104,22 @@ function validate(config: ReadingConfig): number[] {
   return pool;
 }
 
-/** Picks `count` distinct pitches from `candidates` using the seeded RNG. */
-function sampleDistinct(candidates: number[], count: number, rand: () => number): number[] {
-  const copy = [...candidates];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rand() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy.slice(0, count).sort((a, b) => a - b);
-}
-
 export function generateFreeQuestions(config: ReadingConfig): GeneratedReadingQuestion[] {
   if (config.mode !== 'free') throw new ReadingGeneratorError('WRONG_MODE', 'generateFreeQuestions 只接受 free 模式');
   const pool = validate(config);
   const rand = mulberry32(config.seed);
   const questions: GeneratedReadingQuestion[] = [];
-  const seen = new Set<string>();
-  for (let index = 0; index < (config.questionCount ?? 20); index += 1) {
-    // One staff side per question keeps the rendered chord on a single staff.
-    const midiNotes = eventPitches(pool, config.notesPerEvent, config.staffPreference ?? 'auto', rand);
-    seen.add(midiNotes.join(','));
-    questions.push({ midiNotes });
-  }
+  const sample = balancedSampler(pool, config.notesPerEvent, rand);
+  for (let index = 0; index < (config.questionCount ?? 20); index += 1) questions.push({ midiNotes: sample() });
   return questions;
 }
 
 /** Free-reading question rendering: ONE measure, whole-note chord, real notation. */
-export function questionXml(midiNotes: number[], staff: 1 | 2, key: KeySelection | null = null): string {
+export function questionXml(midiNotes: readonly number[], staff: 1 | 2): string {
   if (!midiNotes.length) throw new ReadingGeneratorError('EMPTY_QUESTION', '题目没有目标音');
-  const fifths = key ? keyFifths(key) : 0;
-  const mode = key ? key.mode : 'major';
   const sorted = [...midiNotes].sort((a, b) => a - b);
   const notes = sorted.map((midi, index) => {
-    const { step, alter, octave } = spellMidi(midi, fifths);
+    const { step, alter, octave } = midiToPitch(midi);
     const chord = index > 0 ? '<chord/>' : '';
     return `<note>${chord}<pitch><step>${step}</step>${alter ? `<alter>${alter}</alter>` : ''}<octave>${octave}</octave></pitch><duration>1920</duration><voice>1</voice><type>whole</type><staff>${staff}</staff></note>`;
   }).join('');
@@ -162,19 +130,25 @@ export function questionXml(midiNotes: number[], staff: 1 | 2, key: KeySelection
   <part-list><score-part id="P1"><part-name>识谱训练</part-name></score-part></part-list>
   <part id="P1">
     <measure number="1">
-      <attributes><divisions>480</divisions><key><fifths>${fifths}</fifths><mode>${mode}</mode></key><time><beats>4</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>
+      <attributes><divisions>480</divisions><key><fifths>0</fifths><mode>major</mode></key><time><beats>4</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>
       ${notes}
     </measure>
   </part>
 </score-partwise>`;
 }
 
-export function questionStaff(midiNotes: number[], preference: ReadingStaffPreference = 'auto'): 1 | 2 {
-  if (preference === 'treble') return 1;
-  if (preference === 'bass') return 2;
+export function questionStaff(midiNotes: readonly number[]): 1 | 2 {
   const sorted = [...midiNotes].sort((a, b) => a - b);
   const median = sorted[Math.floor((sorted.length - 1) / 2)];
   return median >= 60 ? 1 : 2;
+}
+
+const PITCH_STEPS = ['C', 'C', 'D', 'E', 'E', 'F', 'F', 'G', 'A', 'A', 'B', 'B'] as const;
+const PITCH_ALTERS = [0, 1, 0, -1, 0, 0, 1, 0, -1, 0, -1, 0] as const;
+
+function midiToPitch(midi: number): { step: string; alter: number; octave: number } {
+  const pc = ((midi % 12) + 12) % 12;
+  return { step: PITCH_STEPS[pc], alter: PITCH_ALTERS[pc], octave: Math.floor(midi / 12) - 1 };
 }
 
 interface RhythmSlot {
@@ -233,35 +207,37 @@ function pickCell(cells: RhythmCell[], remaining: number, rand: () => number): R
 }
 
 /**
- * Event chord: all pitches come from ONE staff side so a multi-note event
- * never spans staves. With a fixed staffPreference the "side" IS that staff;
- * with auto it splits at C4. Falls back to the whole pool when one side
- * cannot satisfy notesPerEvent.
+ * Event chord: all pitches come from ONE staff side (>=C4 treble / <C4 bass)
+ * so a multi-note event never spans staves. Falls back to the whole pool when
+ * one side cannot satisfy notesPerEvent.
  */
-function eventPitches(pool: number[], notesPerEvent: number, preference: ReadingStaffPreference, rand: () => number): number[] {
-  const inStaff = (midi: number) => staffFor(midi, preference) === 1;
-  const preferTreble = preference === 'auto' ? rand() < 0.5 : preference === 'treble';
-  const sides = preferTreble
-    ? [pool.filter(inStaff), pool.filter((midi) => !inStaff(midi))]
-    : [pool.filter((midi) => !inStaff(midi)), pool.filter(inStaff)];
-  for (const side of sides) {
-    if (side.length >= notesPerEvent) return sampleDistinct(side, notesPerEvent, rand);
-  }
-  return sampleDistinct(pool, notesPerEvent, rand);
+function balancedSampler(pool: number[], count: number, rand: () => number): () => number[] {
+  const uses = new Map(pool.map((midi) => [midi, 0]));
+  const ordered = (values: number[]) => values.map((midi) => ({ midi, tie: rand() }))
+    .sort((a, b) => uses.get(a.midi)! - uses.get(b.midi)! || a.tie - b.tie).map((item) => item.midi);
+  return () => {
+    const anchor = ordered(pool)[0];
+    const side = pool.filter((midi) => (midi >= 60) === (anchor >= 60));
+    const candidates = side.length >= count ? side : pool;
+    const result = [anchor, ...ordered(candidates.filter((midi) => midi !== anchor)).slice(0, count - 1)];
+    for (const midi of result) uses.set(midi, uses.get(midi)! + 1);
+    return result.sort((a, b) => a - b);
+  };
 }
 
-function staffFor(midi: number, preference: ReadingStaffPreference): 1 | 2 {
-  if (preference === 'treble') return 1;
-  if (preference === 'bass') return 2;
-  return midi >= 60 ? 1 : 2;
+/** Revisit the actual failed groups; interleave new coverage questions every third item. */
+export function generateReviewQuestions(config: ReadingConfig, failedGroups: readonly (readonly number[])[]): GeneratedReadingQuestion[] {
+  const pool = validate(config);
+  const groups = [...new Map(failedGroups.filter((q) => q.length === config.notesPerEvent && q.every((midi) => pool.includes(midi)))
+    .map((q) => [q.join(','), [...q]])).values()];
+  const normal = generateFreeQuestions(config);
+  if (!groups.length) return normal;
+  return normal.map((question, index) => index % 3 === 2 ? question : { midiNotes: groups[(index - Math.floor(index / 3)) % groups.length] });
 }
 
 export function generateRhythmScore(config: ReadingConfig): GeneratedRhythmScore {
   if (config.mode !== 'rhythm') throw new ReadingGeneratorError('WRONG_MODE', 'generateRhythmScore 只接受 rhythm 模式');
   const pool = validate(config);
-  const fifths = config.key ? keyFifths(config.key) : 0;
-  const keyMode = config.key ? config.key.mode : 'major';
-  const preference = config.staffPreference ?? 'auto';
   const [beats] = config.timeSignature ?? [4, 4];
   const measures = config.measures ?? 4;
   const cells = [
@@ -270,6 +246,7 @@ export function generateRhythmScore(config: ReadingConfig): GeneratedRhythmScore
     ...(config.complexity === 'advanced' ? CELLS.advanced : []),
   ];
   const rand = mulberry32(config.seed);
+  const sample = balancedSampler(pool, config.notesPerEvent, rand);
   const beatsPerBar = beats;
   let eventCount = 0;
   let noteCount = 0;
@@ -286,18 +263,15 @@ export function generateRhythmScore(config: ReadingConfig): GeneratedRhythmScore
         const { type, dots } = noteType(slot.beats);
         if (slot.rest) {
           restCount += 1;
-          // Rests follow the staff preference too: a left-hand drill must not
-          // scatter rests onto the treble staff.
-          const restStaff = staffFor(preference === 'auto' ? 60 : 48, preference);
-          notesXml.push(`<note><rest/><duration>${duration}</duration><voice>1</voice><type>${type}</type>${dots ? '<dot/>' : ''}<staff>${restStaff}</staff></note>`);
+          notesXml.push(`<note><rest/><duration>${duration}</duration><voice>1</voice><type>${type}</type>${dots ? '<dot/>' : ''}<staff>1</staff></note>`);
           continue;
         }
         eventCount += 1;
-        const pitches = eventPitches(pool, config.notesPerEvent, preference, rand);
+        const pitches = sample();
         noteCount += pitches.length;
         pitches.forEach((midi, index) => {
-          const { step, alter, octave } = spellMidi(midi, fifths);
-          const staff = staffFor(midi, preference);
+          const { step, alter, octave } = midiToPitch(midi);
+          const staff = midi >= 60 ? 1 : 2;
           notesXml.push(
             `<note>${index > 0 ? '<chord/>' : ''}<pitch><step>${step}</step>${alter ? `<alter>${alter}</alter>` : ''}<octave>${octave}</octave></pitch><duration>${duration}</duration><voice>1</voice><type>${type}</type>${dots ? '<dot/>' : ''}<staff>${staff}</staff></note>`,
           );
@@ -305,15 +279,13 @@ export function generateRhythmScore(config: ReadingConfig): GeneratedRhythmScore
       }
     }
     const attributes = bar === 1
-      ? `<attributes><divisions>480</divisions><key><fifths>${fifths}</fifths><mode>${keyMode}</mode></key><time><beats>${beats}</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>`
+      ? `<attributes><divisions>480</divisions><key><fifths>0</fifths><mode>major</mode></key><time><beats>${beats}</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>`
       : '';
     measuresXml.push(`<measure number="${bar}">${attributes}${notesXml.join('')}</measure>`);
   }
-  const keyLabel = config.key ? ` · ${config.key.root}${keyMode === 'major' ? '大调' : '小调'}` : '';
-  const staffLabel = preference === 'treble' ? ' · 右手' : preference === 'bass' ? ' · 左手' : '';
   const xml = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <score-partwise version="4.0">
-  <work><work-title>节奏识谱 · ${beats}/4 · ${measures} 小节 · ${config.complexity === 'basic' ? '基础' : config.complexity === 'intermediate' ? '进阶' : '高级'}${keyLabel}${staffLabel}</work-title></work>
+  <work><work-title>节奏识谱 · ${beats}/4 · ${measures} 小节 · ${config.complexity === 'basic' ? '基础' : config.complexity === 'intermediate' ? '进阶' : '高级'}</work-title></work>
   <identification><creator type="composer">Rhythm Trainer 识谱训练</creator><encoding><software>${READING_GENERATOR_VERSION}</software></encoding></identification>
   <part-list><score-part id="P1"><part-name>节奏识谱练习</part-name></score-part></part-list>
   <part id="P1">

@@ -9,11 +9,21 @@ import {
   questionXml,
 } from './readingGenerator';
 import { FreeReadingSession } from './freeReadingSession';
-import { READING_KEY_COUNT, keyFifths, keyScalePitchClasses, poolFromRanges, readingPool, spellMidi } from './readingKeys';
+import { READING_KEY_COUNT, poolFromRanges, READING_OCTAVES } from './readingKeys';
 
 const RANGES = [{ startMidi: 60, endMidi: 72 }];
 
 describe('reading key range', () => {
+  it('offers non-overlapping octave groups covering the keyboard', () => {
+    const ranges = READING_OCTAVES.map((octave) => octave.range);
+    const all = ranges.flatMap((range) => poolFromRanges([range]));
+    expect(all).toHaveLength(81);
+    expect(new Set(all).size).toBe(81);
+    expect(all[0]).toBe(28);
+    expect(all.at(-1)).toBe(108);
+    expect(READING_OCTAVES.find((octave) => octave.id === '4')?.range).toEqual({ startMidi: 60, endMidi: 71 });
+  });
+
   it('defines exactly 81 keys and dedupes overlapping ranges', () => {
     expect(READING_KEY_COUNT).toBe(81);
     const pool = poolFromRanges([
@@ -25,36 +35,14 @@ describe('reading key range', () => {
   });
 });
 
-describe('key selection', () => {
-  it('maps root+mode to key signatures (C 大调 0, b 小调 2, E♭ 大调 -3)', () => {
-    expect(keyFifths({ root: 'C', mode: 'major' })).toBe(0);
-    expect(keyFifths({ root: 'B', mode: 'minor' })).toBe(2);
-    expect(keyFifths({ root: 'F', mode: 'major' })).toBe(-1);
-    expect(keyFifths({ root: 'E', mode: 'major' })).toBe(4);
-    expect(keyFifths({ root: 'A', mode: 'minor' })).toBe(0);
-    expect(keyScalePitchClasses({ root: 'C', mode: 'major' })).toEqual([0, 2, 4, 5, 7, 9, 11]);
-    expect(keyScalePitchClasses({ root: 'A', mode: 'minor' })).toEqual([9, 11, 0, 2, 4, 5, 7]);
-  });
-
-  it('spells accidentals on the key’s side: sharps for sharp keys, flats for flat keys', () => {
-    // C 大调（无调号）：黑键默认升号写法
-    expect(spellMidi(61, 0)).toMatchObject({ step: 'C', alter: 1 });
-    expect(spellMidi(70, 0)).toMatchObject({ step: 'A', alter: 1 });
-    // F 大调（1 个降号）：B♭；E♭ 大调（3 个降号）：E♭/A♭/B♭
-    expect(spellMidi(70, -1)).toMatchObject({ step: 'B', alter: -1 });
-    expect(spellMidi(63, -3)).toMatchObject({ step: 'E', alter: -1 });
-    expect(spellMidi(68, -3)).toMatchObject({ step: 'A', alter: -1 });
-    expect(spellMidi(61, -3)).toMatchObject({ step: 'D', alter: -1 });
-    // G 大调（1 个升号）：F♯；自然音永远是自然写法
-    expect(spellMidi(66, 1)).toMatchObject({ step: 'F', alter: 1 });
-    expect(spellMidi(64, 1)).toMatchObject({ step: 'E', alter: 0 });
-    // 音池按调性筛选：C 大调在 C4–C5 内是 C4 与 C5 两个八度音 + 6 个中间音
-    expect(readingPool([{ startMidi: 60, endMidi: 72 }], { root: 'C', mode: 'major' }))
-      .toEqual([60, 62, 64, 65, 67, 69, 71, 72]);
-  });
-});
-
 describe('reading generator', () => {
+  it('covers each selected pitch before repeating a single-note target', () => {
+    for (const seed of [1, 3, 7, 99]) {
+      const questions = generateFreeQuestions({ mode: 'free', ranges: [{ startMidi: 60, endMidi: 71 }], notesPerEvent: 1, seed, questionCount: 20 });
+      expect(new Set(questions.slice(0, 12).flatMap((q) => q.midiNotes)).size).toBe(12);
+      expect(questions.some((q) => q.midiNotes[0] === 70)).toBe(true);
+    }
+  });
   it('is deterministic for the same config + seed and changes with the seed', () => {
     const a = generateFreeQuestions({ mode: 'free', ranges: RANGES, notesPerEvent: 2, seed: 7, questionCount: 20 });
     const b = generateFreeQuestions({ mode: 'free', ranges: RANGES, notesPerEvent: 2, seed: 7, questionCount: 20 });
@@ -130,61 +118,6 @@ describe('reading generator', () => {
     expect(questionStaff([60, 64])).toBe(1);
   });
 
-  it('honors a fixed staff preference: 左手 forces bass staff, 右手 forces treble', () => {
-    for (const [preference, expectedStaff] of [['bass', 2], ['treble', 1]] as const) {
-      const generated = generateRhythmScore({
-        mode: 'rhythm', ranges: [{ startMidi: 60, endMidi: 72 }], notesPerEvent: 2, seed: 11,
-        timeSignature: [4, 4], bpm: 60, complexity: 'basic', measures: 2, countInMeasures: 1,
-        staffPreference: preference,
-      });
-      const doc = importScoreText(generated.xml, 'reading.musicxml').doc;
-      const staves = new Set<number>();
-      for (const measure of doc?.engine?.parts[0]?.measures ?? []) {
-        for (const event of measure.events) {
-          if (event.kind === 'note') staves.add(event.source.staffNumber);
-        }
-      }
-      expect([...staves]).toEqual([expectedStaff]);
-      expect(questionStaff([60, 67], preference)).toBe(expectedStaff);
-    }
-  });
-
-  it('writes the selected key signature and flat spellings into the score', () => {
-    const generated = generateRhythmScore({
-      mode: 'rhythm', ranges: [{ startMidi: 60, endMidi: 72 }], notesPerEvent: 2, seed: 12,
-      timeSignature: [4, 4], bpm: 60, complexity: 'basic', measures: 2, countInMeasures: 1,
-      key: { root: 'E', mode: 'major' },
-    });
-    expect(generated.xml).toContain('<fifths>4</fifths>');
-    const doc = importScoreText(generated.xml, 'reading.musicxml').doc;
-    // E 大调音池内的音只允许自然音/升号侧拼写，不允许降号拼写
-    for (const measure of doc?.engine?.parts[0]?.measures ?? []) {
-      for (const event of measure.events) {
-        if (event.kind !== 'note' || !event.pitch) continue;
-        expect(['C', 'D', 'E', 'F', 'G', 'A', 'B']).toContain(event.pitch.step);
-        expect(event.pitch.alter).toBeLessThanOrEqual(1);
-      }
-    }
-    // 降调调性：F 大调（1 降号）的 B 写作 B♭
-    const flat = generateRhythmScore({
-      mode: 'rhythm', ranges: [{ startMidi: 60, endMidi: 72 }], notesPerEvent: 2, seed: 13,
-      timeSignature: [4, 4], bpm: 60, complexity: 'basic', measures: 2, countInMeasures: 1,
-      key: { root: 'F', mode: 'major' },
-    });
-    expect(flat.xml).toContain('<fifths>-1</fifths>');
-    expect(flat.xml).toContain('<alter>-1</alter>');
-    const flatDoc = importScoreText(flat.xml, 'flat.musicxml').doc;
-    const spellings = (flatDoc?.engine?.parts[0]?.measures ?? [])
-      .flatMap((measure) => measure.events)
-      .filter((event) => event.kind === 'note' && event.pitch?.midiNote === 70)
-      .map((event) => `${event.pitch?.step}${event.pitch?.alter}`);
-    expect(spellings.length).toBeGreaterThan(0);
-    expect(new Set(spellings)).toEqual(new Set(['B-1']));
-    // 题目 XML 同样携带调号
-    expect(questionXml([70], 1, { root: 'F', mode: 'major' })).toContain('<fifths>-1</fifths>');
-    expect(questionXml([70], 1)).toContain('<fifths>0</fifths>');
-  });
-
   it('rejects pools too small for the requested chord size', () => {
     expect(() => generateFreeQuestions({ mode: 'free', ranges: [{ startMidi: 60, endMidi: 60 }], notesPerEvent: 2, seed: 1 }))
       .toThrowError(ReadingGeneratorError);
@@ -192,6 +125,15 @@ describe('reading generator', () => {
       mode: 'rhythm', ranges: [{ startMidi: 60, endMidi: 61 }], notesPerEvent: 3, seed: 1,
       timeSignature: [4, 4], bpm: 60, complexity: 'basic', measures: 2,
     })).toThrowError(/不足/);
+  });
+
+  it('writes B-flat in both question and rhythm notation without changing MIDI pitch', () => {
+    const question = questionXml([70], 1);
+    expect(question).toContain('<step>B</step><alter>-1</alter><octave>4</octave>');
+    expect(importScoreText(question, 'question.musicxml').doc?.notes[0]?.midiNote).toBe(70);
+    const rhythm = generateRhythmScore({ mode: 'rhythm', ranges: [{ startMidi: 70, endMidi: 70 }], notesPerEvent: 1, seed: 3, measures: 4 });
+    expect(rhythm.xml).toContain('<step>B</step><alter>-1</alter><octave>4</octave>');
+    expect(importScoreText(rhythm.xml, 'rhythm.musicxml').doc?.notes.every((note) => note.midiNote === 70)).toBe(true);
   });
 
   it('renders question XML that parses as a real one-measure score', () => {
@@ -203,6 +145,33 @@ describe('reading generator', () => {
 });
 
 describe('free reading session', () => {
+  it('reports no assessment before input, and counts actual hits in a partial chord', () => {
+    const s = new FreeReadingSession([[60, 64], [67]]);
+    expect(s.snapshot().hitAccuracy).toBeNull();
+    expect(s.snapshot().firstTryAccuracy).toBeNull();
+    s.noteOn(60); s.noteOn(61); s.endEarly();
+    expect(s.snapshot().hitAccuracy).toBe(50);
+    expect(s.snapshot().firstTryAccuracy).toBe(0);
+  });
+
+  it('records the expected target and mistaken key separately for review', () => {
+    const s = new FreeReadingSession([[70], [60, 64]]);
+    s.noteOn(69); s.noteOn(70); s.noteOn(60); s.noteOn(65);
+    expect(s.weakestPitches().map((item) => item.midi)).toEqual([64, 70]);
+    expect(s.snapshot().confusions).toEqual([
+      { remainingTargets: [70], pressed: 69, questionIndex: 0 },
+      { remainingTargets: [64], pressed: 65, questionIndex: 1 },
+    ]);
+  });
+
+  it('records help as assisted and excludes it from first-try success', () => {
+    const s = new FreeReadingSession([[70]]);
+    s.hint(); s.noteOn(70);
+    expect(s.snapshot().hintedQuestions).toBe(1);
+    expect(s.snapshot().firstTryAccuracy).toBe(0);
+    const test = new FreeReadingSession([[70]], { task: 'test' });
+    expect(test.hint()).toBe(false);
+  });
   function session(): FreeReadingSession {
     return new FreeReadingSession([[60, 64], [67, 72], [60]]);
   }
