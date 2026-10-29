@@ -121,4 +121,25 @@ describe('practiceSettings', () => {
     expect(() => savePracticeSettings(defaultPracticeSettings, blocked)).not.toThrow();
     expect(loadPracticeSettings(blocked).config).toEqual(defaultPracticeSettings.config);
   });
+
+  it('keeps global hand rules and score overrides when saving round parameters', () => {
+    const storage = memoryStorage();
+    const handMappings = { scoreA: [{ partId: 'P1', staves: [{ staffNumber: 1, hand: 'left' }] }] };
+    savePracticeSettings({ ...defaultPracticeSettings, handMappings, pianoHands: { single: 'left', upper: 'right', lower: 'left' } }, storage);
+    savePracticeSettings({ config: { ...defaultPracticeSettings.config, tempo: 80 }, metronomeOn: false }, storage);
+    const restored = loadPracticeSettings(storage);
+    expect(restored.handMappings).toEqual(handMappings);
+    expect(restored.pianoHands?.single).toBe('left');
+    expect(restored.config.tempo).toBe(80);
+    expect(restored.metronomeOn).toBe(false);
+  });
+
+  it('validates global hand defaults and allows explicitly clearing score overrides', () => {
+    const raw = JSON.stringify({ version: 1, pianoHands: { single: 'invalid', lower: 'right' } });
+    expect(parsePracticeSettings(raw).pianoHands).toEqual({ single: 'right', upper: 'right', lower: 'right' });
+    const storage = memoryStorage();
+    savePracticeSettings({ ...defaultPracticeSettings, handMappings: { old: [] } }, storage);
+    savePracticeSettings({ ...defaultPracticeSettings, handMappings: {} }, storage);
+    expect(loadPracticeSettings(storage).handMappings).toEqual({});
+  });
 });

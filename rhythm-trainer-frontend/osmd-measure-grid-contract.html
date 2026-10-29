@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>四小节对齐 · 谱面验证</title>
+<style>
+  body{margin:0;background:#f7f7fb;color:#323449;font:14px system-ui}
+  main{padding:28px;max-width:1220px;margin:auto}
+  h1{font-size:23px;margin:0 0 8px}p{color:#858798;line-height:1.8}
+  #status{border:1px solid #dfd9f3;background:#f0ecfb;color:#7154bf;padding:12px 16px;border-radius:10px}
+  #preview{margin-top:24px;background:white;overflow:auto;border:1px solid #e6e4ee;border-radius:14px}
+  #preview>div{width:1200px}details{margin-top:20px;color:#818194}li{margin:8px 0}
+  .scratch{position:absolute;left:-20000px;top:0}
+</style>
+<main>
+  <h1>四小节对齐 · 乐谱预览</h1>
+  <p>每行固定四个等宽小节；下方共五个实际小节，末行保留三个空白位置。</p>
+  <div id="status" role="status">正在验证谱面与音符定位…</div>
+  <div id="preview" aria-label="四列小节与末行空白补位"></div>
+  <details><summary>排版与定位检查结果</summary><ol id="results"></ol></details>
+</main>
+<script type="module" src="/src/score-engine/dev/osmdMeasureGridContract.ts"></script>
+</html>

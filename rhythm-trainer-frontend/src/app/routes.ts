@@ -1,4 +1,5 @@
 export type AppRouteId =
+  | 'training'
   | 'performance'
   | 'workbench'
   | 'teaching'
@@ -33,6 +34,7 @@ export interface AppRouteDefinition {
  * placeholder, never fake data.
  */
 export const APP_ROUTES: readonly AppRouteDefinition[] = [
+  { id: 'training', path: '/training', title: '专项训练', navTitle: '专项训练', icon: '◎', nav: true, enabled: true, description: '有明确目标的拍点、均分、切分和双手训练。' },
   { id: 'performance', path: '/performance', title: '演奏', navTitle: '演奏', icon: '♫', nav: true, enabled: true, description: '读谱演奏与固定线演奏，可在页内切换。' },
   {
     id: 'teaching',
@@ -77,8 +79,9 @@ export const APP_ROUTES: readonly AppRouteDefinition[] = [
     id: 'history',
     path: '/history',
     title: '练习记录',
+    navTitle: '记录',
     icon: '◷',
-    nav: false,
+    nav: true,
     enabled: true,
     description: '已保存的练习轮次与报告。',
   },
@@ -119,10 +122,12 @@ export const APP_ROUTES: readonly AppRouteDefinition[] = [
   {
     id: 'settings',
     path: '/settings',
-    title: '练习设置',
-    nav: false,
-    enabled: false,
-    description: '独立练习设置页面，A2 交付。',
+    title: '总设置',
+    navTitle: '设置',
+    icon: '⚙',
+    nav: true,
+    enabled: true,
+    description: '管理判定、显示辅助、默认手别与曲谱设置。',
   },
   {
     id: 'report',

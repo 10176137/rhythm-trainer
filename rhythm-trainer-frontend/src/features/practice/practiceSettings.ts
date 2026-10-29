@@ -1,4 +1,5 @@
 import type { DurationEvaluationPolicy, FeedbackMode, HandSelection, JudgmentProfile, PracticeConfig, ScoreAdvanceMode } from '../../types/practice';
+import { DEFAULT_PIANO_HANDS, type PianoHandDefaults } from '../../score-engine/scope/practice-scope';
 
 /**
  * Practice preferences persisted on this device. `modeId` is deliberately not
@@ -8,6 +9,7 @@ import type { DurationEvaluationPolicy, FeedbackMode, HandSelection, JudgmentPro
 export interface PersistedPracticeSettings {
   config: PracticeConfig;
   metronomeOn: boolean;
+  pianoHands?: PianoHandDefaults;
   /** Explicit staff->hand mappings per score fingerprint (P1-4). Display-only
    * clef suggestions are never persisted here. */
   handMappings?: Record<string, unknown[]>;
@@ -22,6 +24,7 @@ export const PRACTICE_SETTINGS_STORAGE_KEY = 'rhythm-trainer.practice-settings.v
 const STORAGE_VERSION = 1;
 
 export const defaultPracticeSettings: PersistedPracticeSettings = {
+  pianoHands: DEFAULT_PIANO_HANDS,
   handMappings: {},
   config: {
     modeId: 'score',
@@ -96,6 +99,9 @@ export function parsePracticeSettings(raw: string | null): PersistedPracticeSett
         loopEndBar,
       },
       metronomeOn: typeof record.metronomeOn === 'boolean' ? record.metronomeOn : fallback.metronomeOn,
+      pianoHands: Object.fromEntries(Object.entries(DEFAULT_PIANO_HANDS).map(([key, value]) => [
+        key, pickEnum((record.pianoHands as Partial<PianoHandDefaults> | null)?.[key as keyof PianoHandDefaults], ['left', 'right'], value),
+      ])) as unknown as PianoHandDefaults,
       handMappings: record.handMappings && typeof record.handMappings === 'object' && !Array.isArray(record.handMappings)
         ? record.handMappings as Record<string, unknown[]>
         : {},
@@ -111,6 +117,7 @@ export function serializePracticeSettings(settings: PersistedPracticeSettings): 
     version: STORAGE_VERSION,
     config: preferences,
     metronomeOn: settings.metronomeOn,
+    pianoHands: settings.pianoHands ?? DEFAULT_PIANO_HANDS,
     // P1-4: an explicitly confirmed staff->hand mapping is user evidence; it
     // must survive a reload exactly like the other practice preferences.
     ...(settings.handMappings && Object.keys(settings.handMappings).length > 0
@@ -143,7 +150,13 @@ export function savePracticeSettings(
 ): void {
   if (!storage) return;
   try {
-    storage.setItem(PRACTICE_SETTINGS_STORAGE_KEY, serializePracticeSettings(settings));
+    // Independent editors must not erase per-score mappings or global defaults.
+    const existing = loadPracticeSettings(storage);
+    storage.setItem(PRACTICE_SETTINGS_STORAGE_KEY, serializePracticeSettings({
+      ...settings,
+      handMappings: settings.handMappings ?? existing.handMappings,
+      pianoHands: settings.pianoHands ?? existing.pianoHands,
+    }));
   } catch {
     // Preferences are best-effort; a full/blocked storage must not break practice.
   }

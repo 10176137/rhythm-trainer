@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import OsmdScoreView from './OsmdScoreView';
 import ReadingKeyboard, { type ReadingKeyState } from './ReadingKeyboard';
 import { questionStaff, questionXml, type ReadingStaffPreference } from '../features/reading/readingGenerator';
-import { midiLabel, type KeySelection } from '../features/reading/readingKeys';
+import { keyFifths, spelledLabel, type KeySelection } from '../features/reading/readingKeys';
 import { FreeReadingSession, type FreeReadingSnapshot } from '../features/reading/freeReadingSession';
 import { importScoreText } from '../features/score/scoreImport';
 import type { ScoreDocument as EngineScoreDocument } from '../score-engine/domain/types';
@@ -100,6 +100,10 @@ export default function FreeReadingView({
     () => (question.length ? questionXml(question, staff, setup?.key ?? null) : null),
     [question, staff, setup?.key],
   );
+  // Answer text shares the score's key-aware spelling (spellMidi): the note
+  // drawn on the staff and the note named in feedback are always the same.
+  const fifths = setup?.key ? keyFifths(setup.key) : 0;
+  const label = (midi: number) => spelledLabel(midi, fifths);
   const engineDoc = useMemo<EngineScoreDocument | null>(() => {
     if (!xml) return null;
     return importScoreText(xml, 'question.musicxml').doc?.engine ?? null;
@@ -153,7 +157,7 @@ export default function FreeReadingView({
           {weak.length ? (
             <ul>
               {weak.map((item) => (
-                <li key={item.midi}>{midiLabel(item.midi)} · 出错时尚未完成的目标</li>
+                <li key={item.midi}>{label(item.midi)} · 出错时尚未完成的目标</li>
               ))}
             </ul>
           ) : (
@@ -176,7 +180,7 @@ export default function FreeReadingView({
         <details className="reading-evidence"><summary>查看详细结果</summary>
           <p>{snapshot.task === 'test' ? '小测 · 无提示' : '练习'} · 用过提示 {snapshot.hintedQuestions} 题 · 错误输入 {snapshot.totalWrongPresses} 次</p>
           <p>首次答对 {snapshot.firstTryCorrectQuestions}/{snapshot.attemptedQuestions} 道已作答题；实际按键命中率 {snapshot.hitAccuracy == null ? '尚未评估' : `${snapshot.hitAccuracy}%`}。重复按已命中的键不重复计数。</p>
-          {snapshot.confusions.slice(0, 12).map((c, i) => <p key={i}>第 {c.questionIndex + 1} 题：目标 {c.remainingTargets.map(midiLabel).join('＋')} → 误按 {midiLabel(c.pressed)}</p>)}
+          {snapshot.confusions.slice(0, 12).map((c, i) => <p key={i}>第 {c.questionIndex + 1} 题：目标 {c.remainingTargets.map(label).join('＋')} → 误按 {label(c.pressed)}</p>)}
         </details>
 
       </section>
@@ -237,21 +241,22 @@ export default function FreeReadingView({
         <span>已命中 <b>{hitCount} / {total}</b></span>
         <span>
           最近输入：
-          {lastResult === 'hit' && <b className="text-good">✓ {lastMidi !== null ? midiLabel(lastMidi) : ''} 命中</b>}
+          {lastResult === 'hit' && <b className="text-good">✓ {lastMidi !== null ? label(lastMidi) : ''} 命中</b>}
           {lastResult === 'duplicate' && <b>重复（已计过，不重复计分）</b>}
-          {lastResult === 'wrong' && <b className="text-bad">✗ {lastMidi !== null ? midiLabel(lastMidi) : ''} 不是当前目标音</b>}
+          {lastResult === 'wrong' && <b className="text-bad">✗ {lastMidi !== null ? label(lastMidi) : ''} 不是当前目标音</b>}
           {lastResult === null && <b>—</b>}
         </span>
       </div>}
       {session.task === 'test' && <p className="reading-muted">小测不提供答案提示，结果在结束后显示。</p>}
       {session.task === 'practice' && <div className="reading-hint-action">
         <button type="button" className="text-button" disabled={paused || hintedIndex === snapshot.currentIndex} onClick={() => { if (session.hint()) { setHintedIndex(snapshot.currentIndex); refresh(); } }}>查看本题提示</button>
-        {hintedIndex === snapshot.currentIndex && <span>目标：{question.map(midiLabel).join('＋')}（本题记录为使用过提示）</span>}
+        {hintedIndex === snapshot.currentIndex && <span>目标：{question.map(label).join('＋')}（本题记录为使用过提示）</span>}
       </div>}
 
       <ReadingKeyboard
         states={session.task === 'test' ? new Map() : keyStates}
         disabled={deviceConnected || paused}
+        fifths={fifths}
         onPress={(midi) => onInput(midi, false)}
         onRelease={(midi) => onInput(midi, true)}
       />

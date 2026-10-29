@@ -2,8 +2,7 @@
 // input hits/misses and accepts clicks as simulator input when no device is
 // connected. It never pre-highlights targets (task spec §5.1).
 
-import { BLACK_PITCH_CLASSES, READING_KEY_HIGH, READING_KEY_LOW } from '../features/reading/readingKeys';
-import { midiLabel } from '../features/reading/readingKeys';
+import { BLACK_PITCH_CLASSES, READING_KEY_HIGH, READING_KEY_LOW, spelledLabel } from '../features/reading/readingKeys';
 
 export type ReadingKeyState = 'idle' | 'hit' | 'wrong' | 'pressed';
 
@@ -14,6 +13,8 @@ interface Props {
   onPress?: (midi: number) => void;
   onRelease?: (midi: number) => void;
   disabled?: boolean;
+  /** Key signature for key names: match the session score's spelling side. */
+  fifths?: number;
 }
 
 const ALL_KEYS = Array.from(
@@ -29,7 +30,8 @@ const OCTAVE_STARTS = WHITE_KEYS.filter((midi) => midi % 12 === 0);
 const WHITE_KEY_PCT = 100 / WHITE_KEYS.length;
 const BLACK_KEY_PCT = WHITE_KEY_PCT * 0.62;
 
-export default function ReadingKeyboard({ states, onPress, onRelease, disabled = false }: Props) {
+export default function ReadingKeyboard({ states, onPress, onRelease, disabled = false, fifths = 0 }: Props) {
+  const label = (midi: number) => spelledLabel(midi, fifths);
   return (
     <div className={`reading-keyboard${disabled ? ' disabled' : ''}`} aria-label="81 键键盘反馈">
       <div className="reading-keyboard-strip">
@@ -41,13 +43,13 @@ export default function ReadingKeyboard({ states, onPress, onRelease, disabled =
               type="button"
               className={`rk-white rk-${state}`}
               disabled={disabled}
-              aria-label={`${midiLabel(midi)}`}
-              title={midiLabel(midi)}
+              aria-label={`${label(midi)}`}
+              title={label(midi)}
               onPointerDown={(event) => { event.preventDefault(); onPress?.(midi); }}
               onPointerUp={() => onRelease?.(midi)}
               onPointerLeave={() => onRelease?.(midi)}
             >
-              {midi % 12 === 0 && <span>{midiLabel(midi)}</span>}
+              {midi % 12 === 0 && <span>{label(midi)}</span>}
             </button>
           );
         })}
@@ -65,8 +67,8 @@ export default function ReadingKeyboard({ states, onPress, onRelease, disabled =
                 width: `${BLACK_KEY_PCT}%`,
               }}
               disabled={disabled}
-              aria-label={midiLabel(midi)}
-              title={midiLabel(midi)}
+              aria-label={label(midi)}
+              title={label(midi)}
               onPointerDown={(event) => { event.preventDefault(); onPress?.(midi); }}
               onPointerUp={() => onRelease?.(midi)}
               onPointerLeave={() => onRelease?.(midi)}
@@ -77,7 +79,7 @@ export default function ReadingKeyboard({ states, onPress, onRelease, disabled =
       <div className="reading-keyboard-scale">
         {OCTAVE_STARTS.map((midi) => (
           <span key={`oct-${midi}`} style={{ left: `calc(${WHITE_KEY_PCT}% * ${WHITE_INDEX.get(midi)} + 2px)` }}>
-            {midiLabel(midi)}
+            {label(midi)}
           </span>
         ))}
       </div>

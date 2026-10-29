@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
+import { applyMeasureGrid, prepareMeasureGrid, renderMeasureGrid } from './osmdEngraving';
 
 interface Props {
   xml: string;
@@ -33,25 +34,32 @@ export default function ScoreReader({ xml, zoom, fitWidth = false, onRendered }:
 
     void (async () => {
       try {
-        const { OpenSheetMusicDisplay } = await import('opensheetmusicdisplay');
+        const { OpenSheetMusicDisplay, MusicSystemBuilder } = await import('opensheetmusicdisplay');
         if (cancelled) return;
-        const osmd = new OpenSheetMusicDisplay(host, {
-          autoResize: true,
-          backend: 'svg',
+        const options = {
+          autoResize: false,
+          backend: 'svg' as const,
           drawTitle: false,
           drawComposer: false,
           drawCredits: false,
-          drawPartNames: true,
+          // 与 OsmdScoreView 一致:部件名会把首行推向右侧造成行间错位。
+          drawPartNames: false,
           drawPartAbbreviations: false,
           drawMeasureNumbers: true,
           drawMeasureNumbersOnlyAtSystemStart: true,
           followCursor: false,
           disableCursor: true,
-        });
-        await osmd.load(xml);
+        };
+        // Padding is visual only; the original score remains unchanged.
+        const osmd = new OpenSheetMusicDisplay(host, options);
+        applyMeasureGrid(osmd);
+        const grid = prepareMeasureGrid(xml);
+        await osmd.load(grid.xml);
         if (cancelled) return;
         osmd.Zoom = 1;
-        osmd.render();
+        renderMeasureGrid(osmd, host, MusicSystemBuilder);
+        if (cancelled) return;
+        host.dataset.osmdGrid = JSON.stringify({ columns: 4, measures: grid.measureCount, slots: grid.slotCount });
         if (cancelled) return;
         osmdRef.current = osmd;
         setLoading(false);

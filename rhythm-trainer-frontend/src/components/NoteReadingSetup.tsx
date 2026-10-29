@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 import {
   READING_OCTAVES,
   keyLabel,
+  rangeLabel,
   readingPool,
 } from '../features/reading/readingKeys';
 
@@ -29,8 +30,14 @@ const COMPLEXITY_CN: Record<ReadingComplexityChoice, string> = {
   advanced: '高级（十六分与拍内切分）',
 };
 
+const READING_STARTERS = [
+  { id: 'starter', title: '入门认音', description: 'C4–B4 · C 大调 · 单音 · 60 BPM', settings: { ranges: [{ startMidi: 60, endMidi: 71 }], key: { root: 'C', mode: 'major' }, staffPreference: 'treble', notesPerEvent: 1, bpm: 60, complexity: 'basic' } },
+  { id: 'bass', title: '左手认音', description: 'C3–B3 · C 大调 · 单音 · 60 BPM', settings: { ranges: [{ startMidi: 48, endMidi: 59 }], key: { root: 'C', mode: 'major' }, staffPreference: 'bass', notesPerEvent: 1, bpm: 60, complexity: 'basic' } },
+  { id: 'challenge', title: '双音挑战', description: 'C4–B5 · 不限调 · 双音 · 80 BPM', settings: { ranges: [{ startMidi: 60, endMidi: 71 }, { startMidi: 72, endMidi: 83 }], key: null, staffPreference: 'treble', notesPerEvent: 2, bpm: 80, complexity: 'intermediate' } },
+] satisfies Array<{ id: string; title: string; description: string; settings: Partial<ReadingSetupValue> }>;
+
 const KEY_ROOTS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const;
-const STAFF_CN = { auto: '自动（按音高分谱表）', treble: '右手 · 高音谱表', bass: '左手 · 低音谱表' } as const;
+const STAFF_CN = { auto: '自动（按音高分谱表）', treble: '高音谱表', bass: '低音谱表' } as const;
 
 export default function NoteReadingSetup({
   initialValue,
@@ -70,10 +77,20 @@ export default function NoteReadingSetup({
         <div>
           <div className="eyebrow">81-KEY READING</div>
           <h2>识谱练习</h2>
-          <p>选择音区和练习方式，然后开始识谱。</p>
+          <p>选一个起点就能开始，也可以展开自定义调整。</p>
         </div>
       </header>
 
+      <div className="reading-starters" role="group" aria-label="快捷填入配置">
+        {READING_STARTERS.map((starter) => {
+          const selected = Object.entries(starter.settings).every(([key, setting]) => JSON.stringify(value[key as keyof ReadingSetupValue]) === JSON.stringify(setting));
+          return <button key={starter.id} type="button" className={selected ? 'selected' : ''} aria-pressed={selected} disabled={busy} onClick={() => patch(starter.settings)}>
+            <strong>{starter.title}</strong><span>{starter.description}</span><small>{selected ? '当前配置' : '填入配置 →'}</small>
+          </button>;
+        })}
+      </div>
+      <details className="reading-customize"><summary>自定义练习 <small>音区、调性、题量与节奏</small></summary>
+      <div className="reading-custom-fields">
       {value.mode === 'free' && <div className="reading-task-choice" role="group" aria-label="训练方式">
         <button type="button" aria-pressed={value.task === 'practice'} onClick={() => patch({ task: 'practice' })}>练习 · 可请求提示</button>
         <button type="button" aria-pressed={value.task === 'test'} onClick={() => patch({ task: 'test' })}>小测 · 结束后反馈</button>
@@ -92,43 +109,23 @@ export default function NoteReadingSetup({
       </div>
 
       <div className="reading-setup-block" aria-label="调性与谱表">
-        <h3>调性与谱表 <small>升降号与音池随调号；谱表决定写在哪只手一侧</small></h3>
+        <h3>调性与谱表 <small>调性决定练哪些音，谱表决定音符写在哪里</small></h3>
         <div className="reading-rhythm-grid">
           <label>
             调性
-            <select
-              value={value.key ? value.key.mode : 'chromatic'}
+            <select value={value.key ? value.key.root + ':' + value.key.mode : 'chromatic'}
               onChange={(event) => {
-                const choice = event.target.value;
-                patch({
-                  key: choice === 'chromatic' ? null : { root: value.key?.root ?? 'C', mode: choice as 'major' | 'minor' },
-                });
-              }}
-            >
-              <option value="chromatic">不限调（半音阶）</option>
-              <option value="major">大调</option>
-              <option value="minor">小调</option>
+                const [root, mode] = event.target.value.split(':');
+                patch({ key: root === 'chromatic' ? null : { root: root as (typeof KEY_ROOTS)[number], mode: mode as 'major' | 'minor' } });
+              }}>
+              <option value="chromatic">不限调（含黑键）</option>
+              {(['major', 'minor'] as const).map((mode) => <optgroup key={mode} label={mode === 'major' ? '大调' : '小调'}>
+                {KEY_ROOTS.map((root) => <option key={root} value={root + ':' + mode}>{root} {mode === 'major' ? '大调' : '小调'}</option>)}
+              </optgroup>)}
             </select>
           </label>
           <label>
-            调（根音）
-            <select
-              value={value.key?.root ?? 'C'}
-              disabled={!value.key}
-              onChange={(event) => {
-                const root = event.target.value as (typeof KEY_ROOTS)[number];
-                patch({ key: value.key ? { root, mode: value.key.mode } : null });
-              }}
-            >
-              {KEY_ROOTS.map((root) => (
-                <option key={root} value={root}>
-                  {root}{value.key?.mode === 'minor' ? ' 小调' : ' 大调'}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            谱表（手别）
+            显示谱表
             <select
               value={value.staffPreference}
               onChange={(event) => patch({ staffPreference: event.target.value as ReadingSetupValue['staffPreference'] })}
@@ -265,10 +262,14 @@ export default function NoteReadingSetup({
         </div>
       </details>
 
+      </div>
+      </details>
+
       <div className="reading-summary" aria-label="配置摘要">
         <span>模式 <b>{value.mode === 'free' ? '自由识谱' : '节奏识谱'}</b></span>
-        <span>音区 <b>{value.ranges.length} 个 · {pool.length} 音</b></span>
-        <span>每事件 <b>{value.notesPerEvent}</b> 音</span>
+        <span>音区 <b>{value.ranges.length ? value.ranges.map(rangeLabel).join('、') : '未选择'}</b></span>
+        <span><b>{value.key ? keyLabel(value.key) : '不限调'}</b> · {STAFF_CN[value.staffPreference]}</span>
+        <span>每题 <b>{value.notesPerEvent}</b> 音</span>
         {value.mode === 'free'
           ? <span>题目 <b>{value.questionCount}</b> 题</span>
           : (
@@ -278,9 +279,10 @@ export default function NoteReadingSetup({
               <span><b>{value.measures}</b> 小节 · 预备拍 <b>{value.countInMeasures}</b> 小节</span>
             </>
           )}
+        {value.mode === 'free' && <span>{value.task === 'test' ? '小测 · 结束后反馈' : '练习 · 可请求提示'}</span>}
         <span>MIDI <b>{deviceConnected ? '已连接' : '未连接（可用虚拟键盘）'}</b></span>
         {value.mode === 'rhythm' && !handMappingReady && (
-          <span className="reading-summary-warn">尚未确认「谱表→手别映射」；开始时需先在练习设置确认。</span>
+          <span className="reading-summary-warn">特殊曲谱的手别可以在「总设置」中调整。</span>
         )}
       </div>
 
@@ -293,7 +295,7 @@ export default function NoteReadingSetup({
           disabled={!ready}
           onClick={() => onStart(value)}
         >
-          {busy ? '正在生成…' : value.mode === 'free' ? '开始自由识谱' : '生成节奏谱并准备'}
+          {busy ? '正在生成…' : value.mode === 'free' ? '开始自由识谱' : '开始节奏识谱'}
         </button>
         <span className="reading-setup-note">
           {deviceConnected ? `输入设备：${deviceLabel}` : '未连接 MIDI；练习中可用底部 81 键虚拟键盘输入。'}

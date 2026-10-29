@@ -5,6 +5,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import ReportPanel from './ReportPanel';
+import HistoryFilters from './HistoryFilters';
+import { EMPTY_HISTORY_FILTER, HISTORY_SEARCH_LIMIT, filterPracticeHistory } from '../features/practice/historyFilter';
 import FollowReportPanel from './FollowReportPanel';
 import { practiceRepository, MODE_CN, fmtSigned, fmtAbs } from '../services/practiceRepository';
 import type { SessionSummary, TakeRecordDetail } from '../services/practiceRepository';
@@ -36,6 +38,7 @@ export default function HistoryView({
   onTeachingRunCreated,
   onNavigateTeaching,
 }: Props) {
+  const [filter, setFilter] = useState({ ...EMPTY_HISTORY_FILTER });
   const [items, setItems] = useState<SessionSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -43,7 +46,8 @@ export default function HistoryView({
   const [detailLoading, setDetailLoading] = useState(false);
 
   const load = useCallback(() => {
-    practiceRepository.listTakes(50)
+    setError(null);
+    practiceRepository.listTakes(HISTORY_SEARCH_LIMIT)
       .then((res) => setItems(res.items))
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, []);
@@ -78,6 +82,7 @@ export default function HistoryView({
     return <section className="card history-card"><p className="history-empty">还没有练习记录——完成一次练习后,报告会自动保存在本机。</p></section>;
   }
 
+  const filtered = filterPracticeHistory(items, filter);
   const timeline = detail?.assessment?.timelineReport ?? null;
   const followReport = detail?.assessment?.followReport ?? null;
   const snapshot = detail?.context?.practiceConfigSnapshot ?? null;
@@ -96,8 +101,11 @@ export default function HistoryView({
         </div>
         <button className="text-button" onClick={load}>重新整理</button>
       </div>
+      <HistoryFilters value={filter} items={items} count={filtered.length} onChange={setFilter} />
+      {items.length === HISTORY_SEARCH_LIMIT && <p className="history-scope-note">当前仅检索最近 {HISTORY_SEARCH_LIMIT} 条记录。</p>}
+      {!filtered.length && <div className="history-no-results"><strong>没有符合条件的练习</strong><p>试试其他关键词，或放宽模式、时间和状态条件。</p><button type="button" className="button button-outline button-small" onClick={() => setFilter({ ...EMPTY_HISTORY_FILTER })}>显示全部已加载记录</button></div>}
       <div className="history-list">
-        {items.map((item) => {
+        {filtered.map((item) => {
           const rowId = item.takeId ?? item.sessionId;
           const isFollow = item.reportKind === 'follow';
           return (

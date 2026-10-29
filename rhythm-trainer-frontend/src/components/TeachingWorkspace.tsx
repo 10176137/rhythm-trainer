@@ -346,12 +346,17 @@ export default function TeachingWorkspace({
                 </p>
               )}
 
+              <details className="teaching-setup-details"><summary>调整课程 <span>第 {startMeasure}–{endMeasure} 小节 · {bpm} BPM · {firstHand === 'right' ? '先右手' : '先左手'}</span></summary>
               <div className="teaching-setup" aria-label="课程设置">
                 <label>
                   循环范围（开始小节）
                   <input
                     type="number" min={1} max={score.barCount} value={startMeasure}
-                    onChange={(event) => setStartMeasure(Math.max(1, Math.min(score.barCount, Number(event.target.value) || 1)))}
+                    onChange={(event) => {
+                      const start = Math.max(1, Math.min(score.barCount, Number(event.target.value) || 1));
+                      setStartMeasure(start);
+                      setEndMeasure((end) => Math.max(start, end));
+                    }}
                   />
                 </label>
                 <label>
@@ -376,8 +381,9 @@ export default function TeachingWorkspace({
                   </select>
                 </label>
               </div>
+              </details>
               <p className="teaching-muted">
-                当前曲谱：{score.title} · {score.barCount} 小节 · 指纹 {score.fingerprint ? `${score.fingerprint.slice(0, 12)}…` : '—'}
+                当前曲谱：{score.title} · {score.barCount} 小节
               </p>
             </div>
             <div className="teaching-action-bar" aria-label="开始学习">

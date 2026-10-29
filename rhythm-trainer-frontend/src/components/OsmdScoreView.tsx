@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import type { ScoreDocument as EngineScoreDocument } from '../score-engine/domain/types';
 import { OsmdScoreViewAdapter } from '../score-engine/view/score-view-adapter';
+import { applyMeasureGrid, prepareMeasureGrid, renderMeasureGrid } from './osmdEngraving';
 
 interface Props {
   width?: number;
@@ -30,6 +31,8 @@ interface Props {
 
 /** Fixed natural width: no downscaling on narrow screens; the outer pane scrolls. */
 export const ENGRAVED_SCORE_WIDTH = 1510;
+const EMPTY_NOTE_IDS: string[] = [];
+const EMPTY_MEASURES: number[] = [];
 
 /**
  * Professional MusicXML engraving (OSMD/VexFlow + Bravura). This is display
@@ -45,8 +48,8 @@ export default function OsmdScoreView({
   followSignal,
   systemNoteIds,
   userNoteIds,
-  mutedNoteIds = [],
-  loopCoveredMeasures = [],
+  mutedNoteIds = EMPTY_NOTE_IDS,
+  loopCoveredMeasures = EMPTY_MEASURES,
   colorSystemNotes,
   scrollRef,
   onSelectEvent,
@@ -86,28 +89,36 @@ export default function OsmdScoreView({
     void (async () => {
       try {
         host.dataset.osmdStage = 'importing';
-        const { OpenSheetMusicDisplay } = await import('opensheetmusicdisplay');
+        const { OpenSheetMusicDisplay, MusicSystemBuilder } = await import('opensheetmusicdisplay');
         if (cancelled) return;
-        const osmd = new OpenSheetMusicDisplay(host, {
+        const options = {
           autoResize: false,
-          backend: 'svg',
+          backend: 'svg' as const,
           drawTitle: false,
           drawComposer: false,
           drawCredits: false,
-          drawPartNames: true,
+          // 部件名只画在首行,会把第一行谱面推向右侧,与后续行错位;页面
+          // 自带标题/题号上下文,这里不画,保证所有行同一左缘对齐。
+          drawPartNames: false,
           drawPartAbbreviations: false,
           drawMeasureNumbers: true,
           drawMeasureNumbersOnlyAtSystemStart: true,
           followCursor: false,
           disableCursor: true,
-        });
+        };
+        // Only the engraving receives padded XML; mapping/scoring retain engine.
+        const osmd = new OpenSheetMusicDisplay(host, options);
         osmdRef.current = osmd;
+        applyMeasureGrid(osmd);
         host.dataset.osmdStage = 'loading';
-        await osmd.load(xml);
+        const grid = prepareMeasureGrid(xml);
+        await osmd.load(grid.xml);
         if (cancelled) return;
         host.dataset.osmdStage = 'rendering';
         osmd.Zoom = zoom;
-        osmd.render();
+        renderMeasureGrid(osmd, host, MusicSystemBuilder);
+        if (cancelled) return;
+        host.dataset.osmdGrid = JSON.stringify({ columns: 4, measures: grid.measureCount, slots: grid.slotCount });
         host.dataset.osmdStage = 'done';
         if (cancelled) return;
 
@@ -218,7 +229,7 @@ export default function OsmdScoreView({
     const covered = new Set(loopCoveredMeasures);
     const update = () => {
       if (covered.size === 0) {
-        setLoopCovers([]);
+        setLoopCovers((current) => current.length ? [] : current);
         return;
       }
       const rootRect = root.getBoundingClientRect();

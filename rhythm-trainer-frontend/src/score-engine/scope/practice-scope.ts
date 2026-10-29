@@ -5,6 +5,28 @@ import type { ScoreDocument } from '../domain/types';
 
 export type PracticeHand = 'left' | 'right' | 'both';
 
+export interface PianoHandDefaults {
+  single: 'left' | 'right';
+  upper: 'left' | 'right';
+  lower: 'left' | 'right';
+}
+
+export const DEFAULT_PIANO_HANDS: PianoHandDefaults = { single: 'right', upper: 'right', lower: 'left' };
+
+/** Apply the configured staff-number policy, not a clef inference. Per-score
+ * overrides take precedence at the caller. Unknown layouts still need a map.
+ * `source=user` represents the user's global policy, not per-score confirmation. */
+export function buildDefaultPianoHandMapping(score: ScoreDocument, defaults: PianoHandDefaults): HandMappingV1 | null {
+  if (score.parts.length !== 1) return null;
+  const part = score.parts[0];
+  const staffs = distinctStaffNumbers(score, part.id);
+  if (staffs.some((staff) => staff !== 1 && staff !== 2) || part.staves > 2) return null;
+  return buildUserHandMapping(part.id, staffs.map((staffNumber) => ({
+    staffNumber,
+    hand: staffs.length === 1 ? defaults.single : staffNumber === 1 ? defaults.upper : defaults.lower,
+  })));
+}
+
 export type HandMappingSource = 'user' | 'score-metadata' | 'clef-heuristic';
 
 export interface HandMappingV1 {

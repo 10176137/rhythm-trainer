@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { countdownToFirstNoteMs, countdownWholeSeconds, countInBeatsForTempo } from './countdown';
+import { countdownToFirstNoteMs, countdownWholeSeconds, countInBeatsForTempo, practiceCountIn } from './countdown';
 
 describe('first-note countdown', () => {
+  it('keeps reading measures and canonical launch microseconds consistent', () => {
+    const config = { modeId: 'reading-rhythm', tempo: 60, timeSignature: [4, 4] as [number, number] };
+    expect(practiceCountIn(config, 1)).toEqual({ countInBeats: 4, countInUs: 4_000_000 });
+    expect(practiceCountIn({ ...config, tempo: 80, timeSignature: [3, 4] }, 2))
+      .toEqual({ countInBeats: 6, countInUs: 4_500_000 });
+    expect(practiceCountIn({ ...config, modeId: 'score' }, 2))
+      .toEqual({ countInBeats: 3, countInUs: 3_000_000 });
+  });
   it('uses a three-second preparation at every tempo', () => {
     expect(countInBeatsForTempo(40) * (60_000 / 40)).toBe(3000);
     expect(countInBeatsForTempo(80) * (60_000 / 80)).toBe(3000);

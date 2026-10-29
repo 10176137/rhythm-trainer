@@ -1,9 +1,9 @@
+import SkillTrainingPage from './components/SkillTrainingPage';
+import { createSkillDrill } from './features/practice/skillDrills';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ScoreViewer from './components/ScoreViewer';
-import ReportPanel from './components/ReportPanel';
 import HistoryView from './components/HistoryView';
 import ProfileView from './components/ProfileView';
-import FollowReportPanel from './components/FollowReportPanel';
 import AppShell from './components/AppShell';
 import RoutePlaceholder from './components/RoutePlaceholder';
 import ScoreLibraryPage from './components/ScoreLibraryPage';
@@ -12,10 +12,12 @@ import DevicePage, { type HeldDeviceNote } from './components/DevicePage';
 import LeaveGuardDialog from './components/LeaveGuardDialog';
 import { useAppRoute } from './app/useAppRoute';
 import SettingsDialog from './components/SettingsDialog';
+import SettingsPage from './components/SettingsPage';
 import ReadingHistory from './components/ReadingHistory';
 import { loadReadingSettings, saveReadingSettings, readingConfigLabel } from './features/reading/readingSettings';
+import { keyFifths, spelledLabel } from './features/reading/readingKeys';
 import { saveReadingAttempt, type ReadingAttemptPayload } from './services/readingRepository';
-import { NAV_ROUTES } from './app/routes';
+import SidebarNavigation, { navigationParent } from './components/SidebarNavigation';
 import { modeRegistry } from './config/modeRegistry';
 import type { ScoreDocument } from './core/sampleScore';
 import { buildPracticePlan } from './features/score/practicePlan';
@@ -80,7 +82,7 @@ import {
 } from './features/score/scoreLibrary';
 import ledgerDemoXml from './features/score/fixtures/ledger-lines-demo.musicxml?raw';
 import { getUnsupportedNotes } from './features/score/staffMapping';
-import { assessPracticeScope, buildUserHandMapping, handByScoreEventIdFromMapping, suggestClefHeuristicMapping, type PracticeHand, type HandMappingV1 } from './score-engine/scope/practice-scope';
+import { assessPracticeScope, buildUserHandMapping, buildDefaultPianoHandMapping, DEFAULT_PIANO_HANDS, type PianoHandDefaults, handByScoreEventIdFromMapping, suggestClefHeuristicMapping, type PracticeHand, type HandMappingV1 } from './score-engine/scope/practice-scope';
 import {
   loadScoreHintOverrides,
   resolveScoreHints,
@@ -91,7 +93,7 @@ import { DeviceBridge } from './services/deviceBridge';
 import type { MidiAdapterStatus, MidiDeviceInfo, MidiInputEvent } from './services/deviceBridge';
 import { takeTemplateRepository, TakeTemplateClientError, type TakeTemplate } from './services/takeTemplateRepository';
 import { usePracticeSession } from './features/practice/usePracticeSession';
-import { countdownToFirstNoteMs, countdownWholeSeconds, countInBeatsForTempo, DEFAULT_COUNT_IN_MS } from './features/practice/countdown';
+import { countdownToFirstNoteMs, countdownWholeSeconds, practiceCountIn } from './features/practice/countdown';
 import { SystemDuetPlayer } from './features/practice/systemDuet';
 import {
   loadPracticeSettings,
@@ -106,6 +108,11 @@ const noteForMidi = (midi: number) => {
   const names = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
   return `${names[midi % 12]}${Math.floor(midi / 12) - 1}`;
 };
+/** Reading status readouts: with a key signature, name notes the way the
+ *  generated score does (spellMidi) so text and notation never disagree. */
+const spelledNoteFor = (midi: number, fifths: number | null) => (
+  fifths !== null ? spelledLabel(midi, fifths) : noteForMidi(midi)
+);
 
 function engineModeFor(config: PracticeConfig): PracticeModeId {
   // B / rhythm reading keep their own mode identity; a bar range is a plan
@@ -174,9 +181,12 @@ export default function App() {
     if (stored && stored.source === 'user' && stored.parts.some((part) => part.partId === partId)) return stored;
     return null;
   };
+  const [pianoHands, setPianoHands] = useState<PianoHandDefaults>(initialSettings.pianoHands ?? DEFAULT_PIANO_HANDS);
+  const [mappingRequired, setMappingRequired] = useState(false);
+  const [autoStartRequested, setAutoStartRequested] = useState(false);
   const [config, setConfig] = useState<PracticeConfig>(initialSettings.config);
   const [scoreDoc, setScoreDoc] = useState<ScoreDocument>(practiceScoreDocument);
-  // Display hand must match the explicit staff→hand mapping the planner uses.
+  // Display hand must match the same global policy or score override used by the planner.
   // The import bridge only knows the piano staff default; re-apply the user's
   // mapping whenever it is confirmed or a score is loaded. The helper returns
   // the same array when nothing changes, so this cannot loop.
@@ -187,12 +197,12 @@ export default function App() {
       const stored = handMappings[prev.engine.fingerprint];
       const mapping = stored && stored.source === 'user' && stored.parts.some((part) => part.partId === partId)
         ? stored
-        : null;
+        : buildDefaultPianoHandMapping(prev.engine, pianoHands);
       if (!mapping) return prev;
       const notes = applyHandMappingToLegacyNotes(prev.notes, prev.engine, mapping);
       return notes === prev.notes ? prev : { ...prev, notes };
     });
-  }, [handMappings, scoreDoc.engine]);
+  }, [handMappings, pianoHands, scoreDoc.engine]);
   const [hintOverrides, setHintOverrides] = useState<ScoreHintOverrides>(() => loadScoreHintOverrides());
   const scoreHints = resolveScoreHints(hintOverrides, config.profile);
   const [lastInputMidi, setLastInputMidi] = useState<number | null>(null);
@@ -278,6 +288,9 @@ export default function App() {
   const [heldDeviceNotes, setHeldDeviceNotes] = useState<HeldDeviceNote[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [trainingRoomOpen, setTrainingRoomOpen] = useState(false);
+  /** Explicit navigation to the current score override in global settings. */
+  const [settingsFocusMapping, setSettingsFocusMapping] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState<PersistedPracticeSettings | null>(null);
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [pitchMismatch, setPitchMismatch] = useState(false);
@@ -843,7 +856,7 @@ export default function App() {
       channel: packet.rawBytes[0] & 0x0f,
       sourceId: packet.sourceId,
     } as MidiPerformanceEvent]);
-    setInputNote(noteForMidi(midiNote));
+    setInputNote(spelledNoteFor(midiNote, rhythmReadingFifthsRef.current));
     setPitchMismatch(false);
     // 自由识谱：设备/模拟输入喂给识谱会话，绝不进引擎计时链路。
     if (readingFreeActiveRef.current && !isRelease) {
@@ -1118,7 +1131,7 @@ export default function App() {
       channel: event.channel,
       sourceId: event.sourceId,
     } as MidiPerformanceEvent]);
-    setInputNote(noteForMidi(midiNote));
+    setInputNote(spelledNoteFor(midiNote, rhythmReadingFifthsRef.current));
     if (event.messageType !== 'note-on') return;
     setPitchMismatch(false);
     if (configRef.current.advanceMode === 'follow') {
@@ -1268,6 +1281,7 @@ export default function App() {
     context: {
       engineMode: string;
       countInBeats: number;
+      countInUs: number;
       source?: LaunchSource;
       takeTemplateId: string | null;
       partId: string;
@@ -1294,7 +1308,7 @@ export default function App() {
       range: context.range,
       handMapping: context.handMapping,
       repeatSelection: { kind: 'none' },
-      countInUs: DEFAULT_COUNT_IN_MS * 1000,
+      countInUs: context.countInUs,
       ticksPerQuarter: 960,
     });
     if (!engineDoc || !report || boundFingerprint === null) {
@@ -1324,7 +1338,7 @@ export default function App() {
           handMapping: context.handMapping,
           bpm: { numerator: launchConfig.tempo, denominator: 1 },
           // The existing "three seconds of preparation" expressed in canonical µs.
-          countInUs: 3_000_000,
+          countInUs: context.countInUs,
           ticksPerQuarter: 960,
           unsupportedNotationPolicy: 'reject-strict' as const,
         };
@@ -1360,10 +1374,10 @@ export default function App() {
             loopEndBar: currentConfig.loopEndBar,
             range: currentRange,
             handMapping: currentFingerprint
-              ? userHandMappingFor(currentFingerprint, currentPartId)
+              ? userHandMappingFor(currentFingerprint, currentPartId) ?? (currentDoc.engine ? buildDefaultPianoHandMapping(currentDoc.engine, pianoHands) : null)
               : null,
             repeatSelection: { kind: 'none' },
-            countInUs: DEFAULT_COUNT_IN_MS * 1000,
+            countInUs: practiceCountIn(currentConfig, readingCountInRef.current).countInUs,
             ticksPerQuarter: 960,
           }),
           scoreFingerprint: currentFingerprint,
@@ -1372,7 +1386,7 @@ export default function App() {
         };
       },
       accept: (response) => {
-        const countInUs = DEFAULT_COUNT_IN_MS * 1000;
+        const countInUs = context.countInUs;
         // Response binding: same score, then the mode-specific gates.
         if (response.scoreFingerprint !== boundFingerprint) {
           throw new Error('PLAN_RESPONSE_MISMATCH: 计划对应的曲谱与当前曲谱不一致');
@@ -1514,6 +1528,11 @@ export default function App() {
     );
   };
 
+  /** Unsupported layouts get an inline settings link; never interrupt with a modal. */
+  const openSettingsAtHandMapping = () => {
+    setMappingRequired(true);
+  };
+
   const launchPractice = (
     overrideConfig?: PracticeConfig,
     source?: LaunchSource,
@@ -1531,12 +1550,7 @@ export default function App() {
     // Three seconds of preparation, expressed in this tempo's beats so the
     // engine, score events, reference playback and metronome share one clock.
     // Rhythm reading honors the setup's 1/2-measure count-in instead.
-    const countInBeats = config.modeId === 'reading-rhythm'
-      ? readingCountInRef.current * config.timeSignature[0]
-      : countInBeatsForTempo(config.tempo);
-    const countInUs = config.modeId === 'reading-rhythm'
-      ? Math.round(countInBeats * (60_000_000 / config.tempo))
-      : DEFAULT_COUNT_IN_MS * 1000;
+    const { countInBeats, countInUs } = practiceCountIn(config, readingCountInRef.current);
     if (overrideConfig) {
       setConfig(overrideConfig);
       setSettingsDraft(null);
@@ -1575,14 +1589,15 @@ export default function App() {
         return false;
       }
       const partId = scoreDoc.engine?.parts[0]?.id ?? 'P1';
-      const storedMapping = userHandMappingFor(engineFingerprint, partId);
+      const storedMapping = userHandMappingFor(engineFingerprint, partId) ?? buildDefaultPianoHandMapping(scoreDoc.engine!, pianoHands);
       if (!storedMapping) {
         setStarting(false);
         addFeedback(
           '需要先指定手别映射',
-          '严格计分需要显式的谱表→手别映射；谱号推断只用于显示，不再作为默认。请在练习设置中确认手别后重试。',
+          '当前曲谱超出默认手别规则。请前往「设置 → 手别与曲谱」指定后重试。',
           'warning',
         );
+        openSettingsAtHandMapping();
         return false;
       }
       const scopeRange = {
@@ -1606,9 +1621,10 @@ export default function App() {
           .join('；');
         addFeedback(
           '练习范围无法确定',
-          `手别/Part 映射不满足严格计分要求（${codeText}）${missingText ? '：' + missingText : ''}。请在设置中完成手别映射。`,
+          `手别/Part 映射不满足严格计分要求（${codeText}）${missingText ? '：' + missingText : ''}。请前往「设置 → 手别与曲谱」补全后重试。`,
           'warning',
         );
+        openSettingsAtHandMapping();
         return false;
       }
       handByScoreEventId = handByScoreEventIdFromMapping(engineDoc, scopeForLaunch);
@@ -1668,6 +1684,7 @@ export default function App() {
         void startRustPractice('follow', config, {
           engineMode,
           countInBeats,
+          countInUs,
           takeTemplateId,
           partId: launchScope.partId,
           range: launchScope.range,
@@ -1772,6 +1789,7 @@ export default function App() {
       void startRustPractice('timeline', config, {
         engineMode,
         countInBeats,
+        countInUs,
         source,
         takeTemplateId,
         partId: launchScope.partId,
@@ -1981,7 +1999,6 @@ export default function App() {
       || JSON.stringify(pendingDraft.config) !== JSON.stringify(config)
     );
     if (draftDirty) {
-      setShowSettings(true);
       addFeedback('设置尚未保存', '请先点击「保存设置」再开始；本轮会使用已保存的配置快照。', 'warning');
       return;
     }
@@ -2229,8 +2246,14 @@ export default function App() {
     clearFollowSession();
     session.reset();
     setScoreDoc(doc);
+    const leaveGeneratedReading = route?.id === 'settings' && (config.modeId === 'reading-rhythm' || config.modeId === 'reading-free');
+    if (leaveGeneratedReading) {
+      setGeneratedReadingScore(null);
+      setReadingFreeSession(null);
+    }
     setConfig(prev => ({
       ...prev,
+      modeId: leaveGeneratedReading ? 'score' : prev.modeId,
       timeSignature: [doc.meta.timeSignature[0], doc.meta.timeSignature[1]] as [number, number],
       hand: 'both',
       loopStartBar: 1,
@@ -2240,6 +2263,7 @@ export default function App() {
       ...prev,
       config: {
         ...prev.config,
+        modeId: leaveGeneratedReading ? 'score' : prev.config.modeId,
         timeSignature: [doc.meta.timeSignature[0], doc.meta.timeSignature[1]] as [number, number],
         hand: 'both',
         loopStartBar: 1,
@@ -2320,8 +2344,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (showSettings) void refreshScoreLibrary();
-  }, [showSettings, refreshScoreLibrary]);
+    if (route?.id === 'settings') void refreshScoreLibrary();
+  }, [route?.id, refreshScoreLibrary]);
 
   // 81-key note reading (task spec: replaces the generated-exercise business).
   // Free: deterministic question set handed to a session. Rhythm: generate a
@@ -2332,6 +2356,7 @@ export default function App() {
       setReadingError('当前仍有练习；请先结束或重置，再开始识谱训练。');
       return;
     }
+    if (value.mode === 'rhythm') void ensureSharedAudioContext().catch(() => {});
     setReadingBusy(true);
     setReadingError(null);
     try {
@@ -2408,9 +2433,11 @@ export default function App() {
         setSettingsDraft((prev) => prev ? { ...prev, config: nextConfig } : prev);
         setSettingsSaved(false);
         setGeneratedReadingScore(generated);
+        setAutoStartRequested(true);
+        setSettingsDraft(null);
         addFeedback(
           '节奏识谱已就绪',
-          `${value.timeSignature[0]}/4 · ${value.measures} 小节 · ${generated.summary.eventCount} 个事件 · seed ${value.seed}；开始前请确认手别映射。`,
+          `${value.timeSignature[0]}/4 · ${value.measures} 小节 · ${generated.summary.eventCount} 个事件 · seed ${value.seed}；将直接使用总设置中的默认手别。`,
           'success',
         );
       }
@@ -2473,8 +2500,8 @@ export default function App() {
 
   useEffect(() => { void refreshTakeTemplates(); }, [refreshTakeTemplates]);
   useEffect(() => {
-    if (showSettings) void refreshTakeTemplates();
-  }, [showSettings, refreshTakeTemplates]);
+    if (route?.id === 'settings') void refreshTakeTemplates();
+  }, [route?.id, refreshTakeTemplates]);
 
   const saveCurrentAsTakeTemplate = async () => {
     if (settingsLocked) {
@@ -2523,7 +2550,7 @@ export default function App() {
       loopEndBar,
     };
     setConfig(nextConfig);
-    setSettingsDraft(null);
+    setSettingsDraft(route?.id === 'settings' ? { config: nextConfig, metronomeOn } : null);
     setSettingsSaved(true);
     savePracticeSettings({ config: nextConfig, metronomeOn });
     setAppliedTakeTemplateId(template.id);
@@ -2708,12 +2735,9 @@ export default function App() {
   };
 
   const handleStartPracticeFromReader = () => {
-    if (!showSettings) {
-      setSettingsDraft({ config, metronomeOn });
-      setSettingsSaved(false);
-      setShowSettings(true);
-    }
-    navigate('/performance');
+    void ensureSharedAudioContext().catch(() => {});
+    chooseMode('score');
+    setAutoStartRequested(true);
   };
 
   const renameScoreLibraryEntry = async () => {
@@ -2859,6 +2883,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (route?.id !== 'training') setTrainingRoomOpen(false);
     if (route?.id === 'performance' && config.modeId !== 'score' && config.modeId !== 'fixed-line') chooseMode('score');
     if (route?.id === 'workbench' && config.modeId !== 'reading-free' && config.modeId !== 'reading-rhythm') chooseMode('reading-free');
   }, [route?.id]);
@@ -2871,12 +2896,13 @@ export default function App() {
   const settingsView: PersistedPracticeSettings = settingsDraft ?? { config, metronomeOn };
 
   // P1-4: staff -> hand mapping editor. The draft starts from the user's saved
-  // mapping or, if none, from the clef heuristic as a DISPLAY suggestion with
-  // that origin marked; only "确认手别映射" persists it as source='user'.
+  // mapping or the configured piano policy. Unfamiliar layouts use a display-only
+  // suggestion until the user explicitly saves a score override.
   const engineFingerprintForMapping = scoreDoc.engine?.fingerprint ?? null;
   const mappingPartId = scoreDoc.engine?.parts[0]?.id ?? 'P1';
+  useEffect(() => { setStaffMappingOverrides({}); }, [engineFingerprintForMapping, mappingPartId]);
   const savedMappingForScore = engineFingerprintForMapping
-    ? userHandMappingFor(engineFingerprintForMapping, mappingPartId)
+    ? userHandMappingFor(engineFingerprintForMapping, mappingPartId) ?? (scoreDoc.engine ? buildDefaultPianoHandMapping(scoreDoc.engine, pianoHands) : null)
     : null;
   const staffMappingDraft: Array<{ staffNumber: number; hand: 'left' | 'right' }> = (() => {
     if (savedMappingForScore) {
@@ -2899,7 +2925,21 @@ export default function App() {
     }));
     if (staves.length === 0) return;
     rememberHandMapping(engineFingerprintForMapping, buildUserHandMapping(mappingPartId, staves));
+    setMappingRequired(false);
+    setStaffMappingOverrides({});
     addFeedback('手别映射已确认', '严格计分将使用这套谱表→手别映射；多 Part 乐谱按当前所选 Part。', 'success');
+  };
+  const customMappingForScore = engineFingerprintForMapping ? userHandMappingFor(engineFingerprintForMapping, mappingPartId) : null;
+  const mappingHasDraft = Object.entries(staffMappingOverrides).some(([staff, hand]) => staffMappingDraft.find((entry) => entry.staffNumber === Number(staff))?.hand !== hand);
+  const restoreScoreHandDefaults = () => {
+    if (!engineFingerprintForMapping || settingsLocked) return;
+    const next = { ...handMappings };
+    delete next[engineFingerprintForMapping];
+    setHandMappings(next);
+    setStaffMappingOverrides({});
+    const persisted = loadPracticeSettings();
+    savePracticeSettings({ ...persisted, handMappings: Object.fromEntries(Object.entries(next).map(([key, value]) => [key, value.parts])) });
+    setMappingRequired(false);
   };
   const selectedLibraryEntry = scoreLibrary.find(entry => entry.id === selectedLibraryId) ?? null;
   const activeLibraryEntry = scoreLibrary.find(entry => entry.id === activeLibraryId) ?? null;
@@ -2912,6 +2952,7 @@ export default function App() {
     setShowSettings(false);
     setSettingsDraft(null);
     setSettingsSaved(false);
+    setSettingsFocusMapping(false);
   };
 
   const toggleSettingsPanel = () => {
@@ -2924,8 +2965,26 @@ export default function App() {
     if (route?.id !== 'workbench' && route?.id !== 'performance') requestNavigation('/performance');
     setSettingsDraft({ config, metronomeOn });
     setSettingsSaved(false);
+    setSettingsFocusMapping(false);
     setShowSettings(true);
   };
+
+  const lastSettingsRouteRef = useRef(route?.id);
+  useEffect(() => {
+    if (route?.id === 'settings') {
+      setShowSettings(false);
+      setSettingsDraft({ config: {
+        ...configRef.current,
+        advanceMode: systemDuetRef.current || configRef.current.modeId === 'fixed-line' || configRef.current.modeId === 'reading-rhythm' ? 'timeline' : configRef.current.advanceMode,
+      }, metronomeOn });
+      setSettingsSaved(false);
+    } else if (lastSettingsRouteRef.current === 'settings') {
+      setSettingsDraft(null);
+      setSettingsSaved(false);
+      setSettingsFocusMapping(false);
+    }
+    lastSettingsRouteRef.current = route?.id;
+  }, [route?.id]);
 
   const warnSettingsLocked = () => {
     addFeedback('先结束本次练习', '为避免评估条件中途变化,请先结束或重置当前练习,再修改设置。', 'warning');
@@ -2964,6 +3023,7 @@ export default function App() {
       config: {
         ...settingsDraft.config,
         modeId: configRef.current.modeId,
+        advanceMode: systemDuet || fixedLineMode ? 'timeline' : settingsDraft.config.advanceMode,
         loopStartBar,
         loopEndBar,
       },
@@ -3004,6 +3064,19 @@ export default function App() {
     if (session.status !== 'idle' || session.error) setStarting(false);
   }, [session.status, session.error]);
 
+  // Start only after the new score/config and its display mapping have committed.
+  useEffect(() => {
+    if (!autoStartRequested || readingBusy || starting) return;
+    if (route?.id !== 'workbench' && route?.id !== 'performance' && route?.id !== 'training') { setAutoStartRequested(false); return; }
+    if (scoreDoc.engine) {
+      const partId = scoreDoc.engine.parts[0]?.id ?? 'P1';
+      const mapping = userHandMappingFor(scoreDoc.engine.fingerprint, partId) ?? buildDefaultPianoHandMapping(scoreDoc.engine, pianoHands);
+      if (mapping && applyHandMappingToLegacyNotes(scoreDoc.notes, scoreDoc.engine, mapping) !== scoreDoc.notes) return;
+    }
+    setAutoStartRequested(false);
+    startPractice();
+  }, [autoStartRequested, readingBusy, starting, scoreDoc, config.modeId, route?.id]);
+
   const uiStatus: SessionStatus = config.advanceMode === 'follow' ? followStatus : session.status;
 
   // Why a teaching practice step cannot start right now (shown inline on
@@ -3013,8 +3086,8 @@ export default function App() {
     if (scoreDoc.engine.parts.length > 1) return '多 Part 乐谱暂不支持严格练习，无法开始这一步。';
     const fingerprint = scoreDoc.engine.fingerprint;
     const partId = scoreDoc.engine.parts[0]?.id ?? 'P1';
-    if (!userHandMappingFor(fingerprint, partId)) {
-      return '尚未确认「谱表→手别映射」；请到练习工作台打开练习设置确认后回来开始这一步。';
+    if (!userHandMappingFor(fingerprint, partId) && !buildDefaultPianoHandMapping(scoreDoc.engine, pianoHands)) {
+      return '尚未指定曲谱手别；请到练习工作台打开练习设置确认后回来开始这一步。';
     }
     if (session.active || starting || followStatusRef.current === 'running' || followStatusRef.current === 'paused' || followStatusRef.current === 'processing') {
       return '当前有练习进行中；请先结束或重置，再开始教学步骤。';
@@ -3034,8 +3107,20 @@ export default function App() {
     const mode = config.modeId === 'reading-rhythm' ? 'rhythm' : 'free';
     return readingLastConfig.mode === mode ? readingLastConfig : loadReadingSettings(mode);
   }, [config.modeId, readingLastConfig]);
+  // 节奏识谱状态栏:音名与生成的谱面同拼写(spellMidi;不限调记升号侧)。
+  // 经 ref 读取,输入回调无需为它重建。
+  const rhythmReadingFifths = config.modeId === 'reading-rhythm' && generatedReadingScore
+    ? (activeReadingConfig.key ? keyFifths(activeReadingConfig.key) : 0)
+    : null;
+  const rhythmReadingFifthsRef = useRef<number | null>(null);
+  rhythmReadingFifthsRef.current = rhythmReadingFifths;
   const status = uiStatus;
-  const practiceFocus = (route?.id === 'workbench' || route?.id === 'performance') && !readingFreeSession && !readingSetupActive && (prepRemain !== null || status === 'countdown' || status === 'running' || status === 'paused');
+  const practiceWorkspaceVisible = route?.id === 'workbench' || route?.id === 'performance' || (route?.id === 'training' && trainingRoomOpen);
+  const practiceFocus = practiceWorkspaceVisible && !readingFreeSession && !readingSetupActive && (prepRemain !== null || status === 'countdown' || status === 'running' || status === 'paused');
+  // App 风格工作区：演奏/学习页在非识谱配置、非自由识谱、非完成态时占满视口，
+  // 乐谱面板与底部教练底座融合为一张卡片；完成态与识谱页恢复普通滚动。
+  const appWorkspace = practiceWorkspaceVisible
+    && !readingFreeSession && !readingSetupActive && status !== 'completed';
   const statusLabel = prepRemain !== null ? `准备 ${prepRemain}s` : status === 'countdown' ? '倒数到第一个音'
     : status === 'running' ? (config.advanceMode === 'follow' ? '跟手练习中' : '练习中')
     : status === 'paused' ? '已暂停'
@@ -3092,30 +3177,14 @@ export default function App() {
   const sidebar = (
     <aside className="sidebar">
         <div className="brand-row"><div className="brand-mark">R</div><div><div className="brand-name">Rhythm Trainer</div><div className="brand-subtitle">PRACTICE STUDIO</div></div></div>
-        <div className="sidebar-section-label">学习</div>
-        <nav className="main-nav" aria-label="主导航">
-          {NAV_ROUTES.map((navRoute) => (
-            <button
-              key={navRoute.id}
-              className={`nav-item ${route?.id === navRoute.id ? 'active' : ''}`}
-              aria-current={route?.id === navRoute.id ? 'page' : undefined}
-              aria-label={navRoute.navTitle ?? navRoute.title}
-              title={navRoute.title}
-              onClick={() => requestNavigation(navRoute.path)}
-            >
-              <span className="nav-icon">{navRoute.icon}</span>
-              <span>{navRoute.navTitle ?? navRoute.title}</span>
-              {navRoute.id === 'teaching' && <span className="nav-arrow">›</span>}
-            </button>
-          ))}
-        </nav>
+        <SidebarNavigation routeId={route?.id} onNavigate={requestNavigation} />
         <div className="sidebar-spacer" />
     </aside>
   );
 
   const topbar = (
     <header className="topbar">
-      <div className="breadcrumb"><span>学习</span><b>/</b><strong>{(route?.id === 'workbench' || route?.id === 'performance') ? currentMode.title : route?.title ?? '页面不存在'}</strong></div>
+      <div className="breadcrumb"><span>{navigationParent(route?.id)}</span><b>/</b><strong>{(route?.id === 'workbench' || route?.id === 'performance') ? currentMode.title : route?.title ?? '页面不存在'}</strong></div>
       <div className="top-actions"><div className={`device-chip ${deviceStatus === 'connected' ? 'device-ok' : ''}`}><span className="device-dot" /><span>{deviceStatus === 'connected' ? 'MIDI 已连接' : deviceStatus === 'connecting' ? 'MIDI 连接中' : deviceStatus === 'error' ? 'MIDI 错误' : 'MIDI 未连接'}</span></div>{portOptions.length > 0 && <select className="port-select" value={selectedPortId ?? ''} onChange={(e) => { setSelectedPortId(e.target.value); connectDevice(e.target.value); }} title="选择要监听的 MIDI 输入端口（只监听选中的一个）">
         {portOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
       </select>}<button className="button button-outline button-small" onClick={() => void exportMidiLog()} disabled={deviceStatus !== 'connected'}>导出日志</button><button className="button button-outline button-small" onClick={() => (deviceStatus === 'connected' ? refreshDevices() : connectDevice())} disabled={isConnecting}>{isConnecting ? '连接中…' : deviceStatus === 'connected' ? '刷新设备' : '连接键盘'}</button><button className="avatar mini-avatar">P</button></div>
@@ -3129,7 +3198,7 @@ export default function App() {
       topbar={topbar}
       notice={session.error ? <section className="card error-strip" role="alert"><strong>引擎服务异常</strong><p>{session.error}</p></section> : null}
     >
-      <div className={`page-content${fixedLineMode ? ' fixed-line-page' : ''}${status === 'completed' ? ' page-done' : ''}${readingSetupActive ? ' reading-setup-page' : ''}${readingFreeSession ? ' reading-free-page' : ''}${config.modeId === 'reading-rhythm' ? ' reading-rhythm-page' : ''}`} style={{ display: (route?.id === 'workbench' || route?.id === 'performance') ? undefined : 'none' }}>
+      <div className={`page-content${fixedLineMode ? ' fixed-line-page' : ''}${appWorkspace ? ' app-workspace' : ''}${status === 'completed' ? ' page-done' : ''}${readingSetupActive ? ' reading-setup-page' : ''}${readingFreeSession ? ' reading-free-page' : ''}${config.modeId === 'reading-rhythm' ? ' reading-rhythm-page' : ''}`} style={{ display: practiceWorkspaceVisible ? undefined : 'none' }}>
           <input
             ref={scoreFileInputRef}
             type="file"
@@ -3155,8 +3224,9 @@ export default function App() {
             }}
           />
           <div className="reading-workspace-toolbar">
-            <strong>{route?.id === 'performance' ? '演奏' : '识谱'}</strong>
-            <div className="performance-toolbar-actions">
+            <strong>{route?.id === 'training' ? scoreDoc.meta.title : route?.id === 'performance' ? '演奏' : '识谱'}</strong>
+            {route?.id === 'training' && <button type="button" className="button button-outline" disabled={practiceInProgress} onClick={() => setTrainingRoomOpen(false)}>返回专项选择</button>}
+            <div className="performance-toolbar-actions" style={{ display: route?.id === 'training' ? 'none' : undefined }}>
             <button type="button" className="mode-switch" role="switch" aria-label={route?.id === 'performance' ? '固定线演奏' : '节奏识谱'} aria-checked={config.modeId === 'fixed-line' || config.modeId === 'reading-rhythm'} disabled={practiceInProgress || readingFreeSession?.status === 'running' || readingFreeSession?.status === 'paused' || readingBusy} onClick={() => chooseMode(route?.id === 'performance' ? (config.modeId === 'fixed-line' ? 'score' : 'fixed-line') : (config.modeId === 'reading-rhythm' ? 'reading-free' : 'reading-rhythm'))}>
               {route?.id === 'performance' ? (config.modeId === 'fixed-line' ? '固定线演奏' : '读谱演奏') : (config.modeId === 'reading-rhythm' ? '节奏识谱' : '自由识谱')} <span>切换 ⇄</span>
             </button>
@@ -3167,7 +3237,7 @@ export default function App() {
           {showSettings && (
             <SettingsDialog onClose={closeSettingsPanel}><section className="settings-panel card" id="practice-settings-panel" aria-label="练习配置">
               <div className="panel-heading">
-                <div><h3>练习配置</h3><p>修改后点「保存设置」生效；练习进行中不可修改。</p></div>
+                <div><h3>练习配置</h3><p>调整速度、练习手和范围；其他偏好由总设置统一管理。</p></div>
                 <button type="button" className="icon-button settings-close" aria-label="关闭练习设置" onClick={closeSettingsPanel}>✕</button>
               </div>
               <div className="settings-summary" aria-label="本次练习配置摘要">
@@ -3181,108 +3251,11 @@ export default function App() {
                 <span>{settingsView.metronomeOn ? '节拍器开' : '节拍器关'}</span>
               </div>
               <div className="settings-grid">
+                {config.modeId !== 'reading-rhythm' && <>
                 <label className="field"><span>练习速度</span><div className="range-row"><input type="range" min="40" max="160" step="1" value={settingsView.config.tempo} disabled={settingsLocked} onChange={e => updateSettingsDraft('tempo', Number(e.target.value))} /><b>{settingsView.config.tempo} <small>BPM</small></b></div></label>
                 <label className="field"><span>练习手 / 分手练习</span><select value={settingsView.config.hand} disabled={settingsLocked || !currentMode.supportsHandSelection} onChange={e => updateSettingsDraft('hand', e.target.value as HandSelection)}><option value="both">双手</option><option value="right">右手</option><option value="left">左手</option></select></label>
-                <details className="settings-advanced"><summary>更多设置与曲谱管理</summary><div className="settings-grid settings-advanced-grid">
-                <label className="field"><span>判定档位</span><select value={settingsView.config.profile} disabled={settingsLocked} onChange={e => updateSettingsDraft('profile', e.target.value as JudgmentProfile)}><option value="relaxed">宽松 (±50/100ms)</option><option value="standard">标准 (±30/60ms)</option><option value="strict">严格 (±15/30ms)</option></select></label>
-                <label className="field"><span>时值评估 (v0.3)</span><select value={settingsView.config.durationPolicy} disabled={settingsLocked} onChange={e => updateSettingsDraft('durationPolicy', e.target.value as DurationEvaluationPolicy)}><option value="strict-keydown">严格按键时长</option><option value="disabled">只记录不评分</option></select></label>
-                <label className="field"><span>反馈时机</span><select value={settingsView.config.feedback} disabled={settingsLocked} onChange={e => updateSettingsDraft('feedback', e.target.value as FeedbackMode)}><option value="live">实时反馈</option><option value="after">结束后分析</option></select></label>
-                <label className="field"><span>练习推进</span><select value={systemDuet ? 'timeline' : settingsView.config.advanceMode} disabled={settingsLocked || systemDuet || fixedLineMode} onChange={e => updateSettingsDraft('advanceMode', e.target.value as 'timeline' | 'follow')}><option value="follow">跟手等待（光标跟着你）</option><option value="timeline">固定时间（自动判定）</option></select></label>
-                <div className="field field-wide"><span>识谱辅助（仅显示）</span><div className="hint-toggle-row">
-                  <button type="button" className={`toggle ${scoreHints.noteNames ? 'on' : ''}`} aria-pressed={scoreHints.noteNames} onClick={toggleNoteNames}><i />音名提示 {scoreHints.noteNames ? '开' : '关'}</button>
-                  <button type="button" className={`toggle ${scoreHints.positionHints ? 'on' : ''}`} aria-pressed={scoreHints.positionHints} onClick={togglePositionHints}><i />线/间提示 {scoreHints.positionHints ? '开' : '关'}</button>
-                  <button type="button" className="text-button hint-reset" onClick={() => setHintOverrides({})}>跟随默认</button>
-                </div><small className="settings-note">音名：{scoreHints.noteNamesSource === 'default' ? '跟随模式默认' : '手动'} · 线/间：{scoreHints.positionHintsSource === 'default' ? '跟随模式默认' : '手动'}；专业谱面不叠加标注，这些开关只影响点击音符详情与严格模式提示，不改变目标或分数。</small></div>
-                <div className="field field-wide"><span>乐谱来源</span><div className="hint-toggle-row">
-                  <button type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={requestScoreImport}>导入 MusicXML</button>
-                  <button type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={loadLedgerDemo}>谱表外示例</button>
-                  <button type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={restoreDefaultScore}>恢复默认乐谱</button>
-                </div><small className="settings-note">当前：{scoreDoc.meta.title} · {scoreDoc.notes.length} 个音符 · {scoreDoc.meta.staves === 1 ? '单谱表' : '双谱表'}</small></div>
-                <div className="field field-wide" aria-label="谱表手别映射">
-                  <span>谱表 → 手别映射（严格计分必需）</span>
-                  <div className="hint-toggle-row">
-                    {staffMappingDraft.map((entry) => (
-                      <label key={entry.staffNumber} className="staff-hand-mapping">
-                        谱表 {entry.staffNumber}
-                        <select
-                          aria-label={`谱表${entry.staffNumber} 手别`}
-                          value={entry.hand}
-                          disabled={settingsLocked}
-                          onChange={(e) => updateStaffMappingDraft(entry.staffNumber, e.target.value as 'left' | 'right')}
-                        >
-                          <option value="right">右手</option>
-                          <option value="left">左手</option>
-                        </select>
-                      </label>
-                    ))}
-                    <button
-                      type="button"
-                      className="button button-outline button-small"
-                      disabled={settingsLocked || staffMappingDraft.length === 0}
-                      onClick={confirmStaffMapping}
-                    >确认手别映射</button>
-                  </div>
-                  <small className="settings-note">手别只来自你在这里的确认；谱号推断仅用于初始建议，不参与严格计分。多 Part 乐谱按所选 Part 的谱表映射。</small>
-                </div>
-                <div className="field field-full score-library-field" aria-busy={scoreLibraryBusy}>
-                  <span>乐谱库 <b className="score-library-count">{scoreLibrary.length}</b></span>
-                  <div className="score-library-row">
-                    <select
-                      aria-label="选择已保存的乐谱"
-                      value={selectedLibraryId}
-                      disabled={scoreLibraryBusy || scoreLibrary.length === 0}
-                      onChange={event => setSelectedLibraryId(event.target.value)}
-                    >
-                      {scoreLibrary.length === 0 && <option value="">乐谱库为空</option>}
-                      {scoreLibrary.map(entry => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
-                    </select>
-                    <button type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy || settingsLocked} onClick={() => void loadScoreFromLibrary(selectedLibraryId)}>载入</button>
-                    <button type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy} onClick={() => void renameScoreLibraryEntry()}>重命名</button>
-                    <button type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy || settingsLocked} onClick={requestLibraryReplace}>替换 XML</button>
-                    <button type="button" className="button button-ghost button-small score-library-delete" disabled={!selectedLibraryEntry || scoreLibraryBusy} onClick={() => void removeScoreLibraryEntry()}>删除</button>
-                  </div>
-                  <small className="settings-note">
-                    {activeLibraryEntry ? `当前来自乐谱库：《${activeLibraryEntry.name}》。` : ''}
-                    {scoreLibraryBusy
-                      ? '正在读取乐谱库…'
-                      : scoreLibraryError
-                        ? `乐谱库错误：${scoreLibraryError}`
-                        : scoreLibrary.length
-                          ? `共 ${scoreLibrary.length} 份；按名称选择后点「载入」。`
-                          : '还没有保存的乐谱；导入 MusicXML 后会按文件名自动保存。'}
-                  </small>
-                </div>
-                <div className="field field-full take-template-field" aria-busy={takeTemplateBusy}>
-                  <span>本次练习 Take <b className="score-library-count">{takeTemplates.length}</b></span>
-                  <div className="score-library-row">
-                    <select
-                      aria-label="选择保存的 Take"
-                      value={selectedTakeTemplateId}
-                      disabled={takeTemplateBusy || takeTemplates.length === 0}
-                      onChange={event => setSelectedTakeTemplateId(event.target.value)}
-                    >
-                      <option value="">不关联保存的 Take</option>
-                      {takeTemplates.map(template => (
-                        <option key={template.id} value={template.id}>
-                          {template.name}{template.scoreLabel ? ` · ${template.scoreLabel}` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <button type="button" className="button button-outline button-small" disabled={!selectedTakeTemplateId || takeTemplateBusy || settingsLocked} onClick={applyTakeTemplate}>应用</button>
-                    <button type="button" className="button button-outline button-small" disabled={takeTemplateBusy || settingsLocked} onClick={() => void saveCurrentAsTakeTemplate()}>保存当前为 Take</button>
-                    <button type="button" className="button button-outline button-small" disabled={!selectedTakeTemplateId || takeTemplateBusy || settingsLocked} onClick={() => void renameTakeTemplate()}>重命名</button>
-                    <button type="button" className="button button-ghost button-small score-library-delete" disabled={!selectedTakeTemplateId || takeTemplateBusy} onClick={() => void deleteTakeTemplate()}>删除</button>
-                  </div>
-                  <small className="settings-note">
-                    {appliedTakeTemplateId
-                      ? `本次记录将关联：${takeTemplates.find(item => item.id === appliedTakeTemplateId)?.name ?? appliedTakeTemplateId}。开始练习后会创建新的 Session/Take，不会覆盖历史。`
-                      : '选择并应用一个 Take 后开始练习；每次演奏都会生成新的关联记录，历史不会被覆盖。'}
-                  </small>
-                  {takeTemplateError && <small className="report-warning">{takeTemplateError}</small>}
-                </div>
-                </div></details>
                 {settingsView.config.modeId === 'score' && (
-                  <div className="field"><span>只练所选小节（loop）</span><button type="button" className={`toggle ${settingsView.config.loopEnabled ? 'on' : ''}`} aria-pressed={settingsView.config.loopEnabled} disabled={settingsLocked} onClick={() => updateSettingsDraft('loopEnabled', !settingsView.config.loopEnabled)}><i />{settingsView.config.loopEnabled ? '已开启' : '已关闭'}</button></div>
+                  <div className="field"><span>分段练习</span><button type="button" className={`toggle ${settingsView.config.loopEnabled ? 'on' : ''}`} aria-pressed={settingsView.config.loopEnabled} disabled={settingsLocked} onClick={() => updateSettingsDraft('loopEnabled', !settingsView.config.loopEnabled)}><i />{settingsView.config.loopEnabled ? '已开启' : '已关闭'}</button></div>
                 )}
                 {settingsView.config.modeId === 'score' && settingsView.config.loopEnabled && (
                   <label className="field"><span>练习小节范围 (1–{maxBar})</span><div className="range-row">
@@ -3291,31 +3264,27 @@ export default function App() {
                     <input type="number" inputMode="numeric" aria-label="循环结束小节" min={1} max={maxBar} value={settingsView.config.loopEndBar} disabled={settingsLocked} onChange={e => updateSettingsDraft('loopEndBar', Math.max(Math.min(maxBar, Number(e.target.value) || maxBar), settingsView.config.loopStartBar))} />
                   </div></label>
                 )}
+                </>}
                 <div className="field"><span>节拍器</span><button type="button" className={`toggle ${settingsView.metronomeOn ? 'on' : ''}`} aria-pressed={settingsView.metronomeOn} disabled={settingsLocked} onClick={toggleMetronomeDraft}><i />{settingsView.metronomeOn ? '已开启' : '已关闭'}</button></div>
+
+                <label className="field"><span>练习推进</span><select value={systemDuet ? 'timeline' : settingsView.config.advanceMode} disabled={settingsLocked || systemDuet || fixedLineMode} onChange={e => updateSettingsDraft('advanceMode', e.target.value as 'timeline' | 'follow')}><option value="follow">跟手等待（光标跟着你）</option><option value="timeline">固定时间（自动判定）</option></select></label>
               </div>
-              <details className="settings-advanced settings-notes"><summary>练习限制与说明</summary><div className="settings-constraints">
-                <p><strong>预备拍：</strong>默认固定 3 秒（按当前 BPM 换算为拍数，例如 40 BPM 为 2 拍）；A2 不提供可配置选项。</p>
-                <p><strong>音频输出延迟：</strong>尚未校准（uncalibrated）；时间偏差用于练习反馈，不代表采样级物理精度。</p>
-                <p><strong>分手/循环：</strong>它们现在是练习模式的配置项，不再是独立模式；选择单手或开启“只练所选小节”即可。</p>
-                <p><strong>小节循环：</strong>当前只练所选范围一次，不跨轮重复；轮次边界仍在后续能力中。</p>
-                <p><strong>配置快照：</strong>开始后本轮配置冻结；保存后点开始/再练一次会用当前配置新开一轮，不恢复旧 Take。</p>
-                <p><strong>参考播放：</strong>系统伴弹开启时使用固定时间；运行中不修改 BPM。</p>
-              </div>
-              </details>
+              <div className="round-preference-link"><span>判定、谱面辅助与手别规则已移到总设置。</span><button type="button" className="text-button" onClick={() => { closeSettingsPanel(); requestNavigation('/settings'); }}>前往总设置 ↗</button></div>
               <div className="settings-actions">
                 <small className={`settings-save-state ${settingsSaved ? 'is-saved' : settingsDirty ? 'is-dirty' : ''}`} role="status" aria-live="polite">
-                  {settingsSaved ? '已保存，下次打开页面自动恢复。' : settingsDirty ? '有未保存的修改。' : '练习参数需点「保存设置」；识谱辅助与乐谱导入即时生效。'}
+                  {settingsSaved ? '已保存，下次打开页面自动恢复。' : settingsDirty ? '有未保存的修改。' : '可以直接开始，只有修改参数才需要保存。'}
                 </small>
                 <div className="settings-action-buttons">
                   <button type="button" className="button button-ghost settings-cancel" onClick={closeSettingsPanel}>取消</button>
-                  <button type="button" className="button button-primary settings-save" onClick={saveSettingsDraft} disabled={settingsLocked || !settingsDirty}>
-                    {settingsSaved ? '已保存' : '保存设置'}
+                  <button type="button" className="button button-primary settings-save" onClick={() => { if (settingsDirty) saveSettingsDraft(); closeSettingsPanel(); }} disabled={settingsLocked}>
+                    {settingsDirty ? '保存并完成' : '完成'}
                   </button>
                 </div>
               </div>
             </section></SettingsDialog>
           )}
 
+          {mappingRequired && <div className="practice-warning" role="alert">当前曲谱需要指定手别，普通钢琴默认规则无法覆盖它。<button type="button" className="button button-outline button-small" onClick={() => { setSettingsFocusMapping(true); requestNavigation('/settings'); }}>前往总设置</button></div>}
           <p className="calibration-note" role="note">
             音频输出延迟尚未校准（uncalibrated）。当前 onset 偏差适合练习反馈，不应视为采样级精确测量；输出延迟校准在 C2 接入。
           </p>
@@ -3341,7 +3310,7 @@ export default function App() {
               handMappingReady={(() => {
                 const fingerprint = scoreDoc.engine?.fingerprint;
                 const partId = scoreDoc.engine?.parts[0]?.id ?? 'P1';
-                return !fingerprint || !!userHandMappingFor(fingerprint, partId);
+                return !fingerprint || !!userHandMappingFor(fingerprint, partId) || !!(scoreDoc.engine && buildDefaultPianoHandMapping(scoreDoc.engine, pianoHands));
               })()}
               onStart={(value) => void handleStartReading(value)}
             />
@@ -3383,16 +3352,9 @@ export default function App() {
             />
           )}
 
-          {(readingSetupActive || (readingFreeSession && readingFreeSession.status !== 'running' && readingFreeSession.status !== 'paused')) && <ReadingHistory refreshKey={historyRefresh} />}
 
-          {config.advanceMode === 'follow' && followReport && (
-            <FollowReportPanel
-              report={followReport}
-              persistence={followPersistence}
-              onRetrySave={handleFollowRetrySave}
-              retrying={followRetrying}
-            />
-          )}
+
+          {followPersistence && !followPersistence.persisted && <div className="practice-warning" role="alert">本轮结果尚未保存。<button type="button" disabled={followRetrying} onClick={() => void handleFollowRetrySave()}>{followRetrying ? '保存中…' : '重试保存'}</button></div>}
           {session.reportPersisted === false && (
             <section className="card error-strip" role="alert">
               <strong>报告已生成但未能保存</strong>
@@ -3412,36 +3374,7 @@ export default function App() {
               <p>引擎没有返回可用的最终报告；不会显示 0 分或猜测结果。请检查输入/时钟状态后新开一轮。</p>
             </section>
           )}
-          {session.report && (
-            <ReportPanel
-              report={session.report}
-              analysis={session.analysis}
-              durations={session.durations}
-              scoreV1={session.scoreV1}
-              scoreStatus={session.scoreStatus}
-              scoringConfig={session.scoringConfig}
-              scoreConfigVersion={session.scoreConfigVersion}
-              scoreAlgorithmVersion={session.scoreAlgorithmVersion}
-              scoreInputNoteCount={session.scoreInputNoteCount}
-              scoreUnmappedNoteCount={session.scoreUnmappedNoteCount}
-              pauseAdjusted={session.pauseAdjusted}
-              sessionId={session.sessionId}
-              takeId={session.takeId}
-              scoreFingerprint={session.scoreFingerprint}
-              activeScoreFingerprint={scoreDoc.engine?.fingerprint ?? null}
-              scoreBarCount={session.scoreBarCount ?? scoreDoc.meta.barCount}
-              practiceBpm={config.tempo}
-              practiceHand={session.hand ?? config.hand}
-              retryComparison={session.retryComparison}
-              onTeachingRunCreated={(run) => {
-                // Point the teaching workspace's recovery entry at the newly
-                // created run so「打开老师带练」continues this lesson.
-                saveLastRunId(run.runId);
-                addFeedback('教学课程已创建', '可在左侧「老师带练」中继续这堂课。', 'success');
-              }}
-              onNavigateTeaching={() => navigate('/teaching')}
-            />
-          )}
+          {(session.report || followReport) && status === 'completed' && <div className="session-complete-note" role="status"><span>本轮已结束，完整结果请在练习记录中查看。</span><button type="button" className="button button-outline button-small" onClick={() => requestNavigation('/history')}>查看练习记录</button></div>}
 
 
           {feedbackItems[0]?.tone === 'warning' && !practiceFocus && <div className="practice-warning" role="status">{feedbackItems[0].title}：{feedbackItems[0].detail}</div>}
@@ -3491,9 +3424,9 @@ export default function App() {
               prepRemain={prepRemain}
               firstNoteCountdownMs={countdownRemain}
               />
-            )}</section><div className="score-status-bar score-bottom"><div><span className="small-label">当前目标音</span><strong>{currentTargetLabel}</strong></div><div><span className="small-label">当前输入</span><strong className={pitchMismatch ? 'text-bad' : ''}>{inputNote}</strong></div><div><span className="small-label">最近判定</span><strong>{hitLabel}{hitErrorMs !== null ? ` ${hitErrorMs > 0 ? '+' : ''}${Math.round(hitErrorMs)}ms` : ''}</strong></div>{countdownSeconds !== null && <div><span className="small-label">距离首音</span><strong>{countdownSeconds}</strong></div>}{config.modeId === 'reading-rhythm' && generatedReadingScore && status === 'idle' && <button className="button button-outline button-small" onClick={() => { setGeneratedReadingScore(null); setReadingError(null); setReadingSetupOpen(true); }}>识谱设置</button>}<button className="button button-outline button-small" onClick={() => simulateNote()} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}>模拟按键</button></div>
+            )}<div className="score-status-bar score-bottom"><div><span className="small-label">当前目标音</span><strong>{currentTargetLabel}</strong></div><div><span className="small-label">当前输入</span><strong className={pitchMismatch ? 'text-bad' : ''}>{inputNote}</strong></div><div><span className="small-label">最近判定</span><strong>{hitLabel}{hitErrorMs !== null ? ` ${hitErrorMs > 0 ? '+' : ''}${Math.round(hitErrorMs)}ms` : ''}</strong></div>{countdownSeconds !== null && <div><span className="small-label">距离首音</span><strong>{countdownSeconds}</strong></div>}{config.modeId === 'reading-rhythm' && generatedReadingScore && status === 'idle' && <button className="button button-outline button-small" onClick={() => { setGeneratedReadingScore(null); setReadingError(null); setReadingSetupOpen(true); }}>识谱设置</button>}<button className="button button-outline button-small" onClick={() => simulateNote()} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}>模拟按键</button></div>
 
-            <details className="practice-extra"><summary>设备与练习反馈</summary><aside className="right-column"><section className="card feedback-card"><div className="card-heading"><div><div className="eyebrow">LIVE COACH</div><h3>实时反馈</h3></div><span className="live-indicator"><i />LIVE</span></div><div className="feedback-summary"><div className={`feedback-symbol ${lastHit === 'good' ? 'feedback-good' : lastHit !== 'waiting' ? 'feedback-warn' : ''}`}>{lastHit === 'good' ? '✓' : lastHit === 'miss' ? '○' : lastHit === 'extra' ? '−' : '⌁'}</div><div><strong>{lastHit === 'good' ? '这一拍很稳' : lastHit === 'miss' ? '漏掉了这一拍' : lastHit === 'extra' ? '多了一次击打' : '等待你的演奏'}</strong><p>{status === 'countdown' ? '倒数到第一个音,听到预备拍后准备;数字归零就是第一个音的起点。' : status !== 'running' ? '开始练习后,引擎会根据输入事件给出判定。' : lastHit === 'good' ? '时机落在引擎判定窗口内。继续保持。' : '弹奏当前高亮音符,判定会出现在这里。'}</p></div></div><div className="feedback-list">{feedbackItems.slice(0, 4).map(item => <div className="feedback-entry" key={item.id}><i className={`entry-dot tone-${item.tone}`} /><div><strong>{item.title}</strong><p>{item.detail}</p></div></div>)}</div><div className="feedback-footer"><span>节奏判定:Rust 引擎 · 音高:独立提示</span><button onClick={() => addFeedback('判定依据', '节奏评分来自本地引擎的确定性匹配(目标时间表 + 击打时间戳);音高提示只对比目标音集合,不影响节奏成绩。', 'neutral')}>反馈依据 ↗</button></div></section>
+            <aside className="practice-dock"><section className="card feedback-card"><div className="card-heading"><div><div className="eyebrow">LIVE COACH</div><h3>实时反馈</h3></div><span className="live-indicator"><i />LIVE</span></div><div className="feedback-summary"><div className={`feedback-symbol ${lastHit === 'good' ? 'feedback-good' : lastHit !== 'waiting' ? 'feedback-warn' : ''}`}>{lastHit === 'good' ? '✓' : lastHit === 'miss' ? '○' : lastHit === 'extra' ? '−' : '⌁'}</div><div><strong>{lastHit === 'good' ? '这一拍很稳' : lastHit === 'miss' ? '漏掉了这一拍' : lastHit === 'extra' ? '多了一次击打' : '等待你的演奏'}</strong><p>{status === 'countdown' ? '倒数到第一个音,听到预备拍后准备;数字归零就是第一个音的起点。' : status !== 'running' ? '开始练习后,引擎会根据输入事件给出判定。' : lastHit === 'good' ? '时机落在引擎判定窗口内。继续保持。' : '弹奏当前高亮音符,判定会出现在这里。'}</p></div></div><div className="feedback-list">{feedbackItems.slice(0, 4).map(item => <div className="feedback-entry" key={item.id}><i className={`entry-dot tone-${item.tone}`} /><div><strong>{item.title}</strong><p>{item.detail}</p></div></div>)}</div><div className="feedback-footer"><span>节奏判定:Rust 引擎 · 音高:独立提示</span><button onClick={() => addFeedback('判定依据', '节奏评分来自本地引擎的确定性匹配(目标时间表 + 击打时间戳);音高提示只对比目标音集合,不影响节奏成绩。', 'neutral')}>反馈依据 ↗</button></div></section>
 
               <section className="card quick-card"><div className="card-heading"><div><div className="eyebrow">QUICK INPUT</div><h3>输入与练习状态</h3></div><span className="shortcut-key">MIDI</span></div><div className="device-row"><div className={`device-icon ${deviceStatus === 'connected' ? 'connected' : ''}`}>⌨</div><div className="device-copy"><strong>{deviceName}</strong><small>{deviceStatus === 'connected' ? `正在监听音符按下/抬起 · 输入健康：${deviceHealth}` : deviceStatus === 'connecting' ? '正在打开 Node MIDI 端口…' : deviceStatus === 'error' ? `设备错误：${deviceError ?? '未知'}` : '连接实体键盘，或使用下方模拟按键'}</small></div><button className="text-button" onClick={deviceStatus === 'connected' ? disconnectDevice : () => connectDevice()} disabled={deviceStatus === 'connecting'}>{deviceStatus === 'connecting' ? '连接中…' : deviceStatus === 'connected' ? '断开' : '连接'}</button></div><div className="virtual-keys" aria-label="模拟 MIDI 键盘">{[{note:60,label:'C4',black:false},{note:61,label:'C♯',black:true},{note:62,label:'D4',black:false},{note:63,label:'D♯',black:true},{note:64,label:'E4',black:false},{note:65,label:'F4',black:false},{note:66,label:'F♯',black:true},{note:67,label:'G4',black:false}].map(key => <button key={key.note} className={`virtual-key ${key.black ? 'black-key' : ''}`} onPointerDown={(e) => { e.preventDefault(); if (status === 'running' || status === 'countdown') virtualKeyDown(key.note); }} onPointerUp={() => virtualKeyUp(key.note)} onPointerLeave={() => virtualKeyUp(key.note)} title={`按住 ${key.label}（按下=Note On，松开=Note Off）`} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}><span>{key.label}</span></button>)}</div><div className="quick-hint">按住琴键再松开（或按 MIDI 键盘）：按下与松开都会送入引擎，用于起音判定与按键时长评估。连接实体设备后模拟按键会禁用，避免同一会话混合输入源。</div>{nodeEvents.length > 0 && (
               <div className="midi-monitor">
@@ -3519,7 +3452,7 @@ export default function App() {
                 })}
               </div>
             )}</section>
-            </aside></details>
+            </aside></section>
           </div>
 
           {status === 'completed' && <details className="practice-stats"><summary>查看本轮统计</summary>
@@ -3530,6 +3463,158 @@ export default function App() {
           <footer className="app-footer"><span>Rhythm Trainer · Frontend 0.6.0</span><span>节奏评分与报告由本地 Rust 内核完成;音高提示为独立维度,不参与节奏成绩。</span></footer>
         </div>
 
+        {route?.id === 'training' && <div style={{ display: trainingRoomOpen ? 'none' : undefined }}><SkillTrainingPage onStart={(id, level, bpm, options) => {
+          void ensureSharedAudioContext().catch(() => {});
+          try {
+            const drill = createSkillDrill(id, level, bpm, options);
+            const imported = importScoreText(drill.xml, 'skill-' + id + '.musicxml');
+            if (!imported.doc?.engine || !imported.report.strictAllowed) return false;
+            if (!applyScoreDocument(imported.doc, '专项训练已就绪')) return false;
+            const partId = imported.doc.engine.parts[0].id;
+            rememberHandMapping(imported.doc.engine.fingerprint, buildUserHandMapping(partId, drill.staffHands));
+            setConfig((previous) => ({ ...previous, modeId: 'fixed-line', tempo: bpm, hand: drill.hand, loopEnabled: false, loopStartBar: 1, loopEndBar: drill.bars, timeSignature: [4, 4], advanceMode: 'timeline' }));
+            setSettingsDraft(null);
+            setGeneratedReadingScore(null);
+            setActiveLibraryId(null);
+            setAutoStartRequested(true);
+            setTrainingRoomOpen(true);
+            return true;
+          } catch { return false; }
+        }} /></div>}
+        {route?.id === 'settings' && <SettingsPage
+          judgment={<><div className="settings-grid settings-advanced-grid">
+                <label className="field"><span>判定档位</span><select value={settingsView.config.profile} disabled={settingsLocked} onChange={e => updateSettingsDraft('profile', e.target.value as JudgmentProfile)}><option value="relaxed">宽松 (±50/100ms)</option><option value="standard">标准 (±30/60ms)</option><option value="strict">严格 (±15/30ms)</option></select></label>
+                <label className="field"><span>音符时长评估</span><select value={settingsView.config.durationPolicy} disabled={settingsLocked} onChange={e => updateSettingsDraft('durationPolicy', e.target.value as DurationEvaluationPolicy)}><option value="strict-keydown">严格按键时长</option><option value="disabled">只记录不评分</option></select></label>
+                <label className="field"><span>反馈时机</span><select value={settingsView.config.feedback} disabled={settingsLocked} onChange={e => updateSettingsDraft('feedback', e.target.value as FeedbackMode)}><option value="live">实时反馈</option><option value="after">结束后分析</option></select></label>
+                </div></>}
+          display={<><div className="settings-grid settings-advanced-grid">
+                <div className="field field-wide"><span>识谱辅助（仅显示）</span><div className="hint-toggle-row">
+                  <button type="button" className={`toggle ${scoreHints.noteNames ? 'on' : ''}`} aria-pressed={scoreHints.noteNames} onClick={toggleNoteNames}><i />音名提示 {scoreHints.noteNames ? '开' : '关'}</button>
+                  <button type="button" className={`toggle ${scoreHints.positionHints ? 'on' : ''}`} aria-pressed={scoreHints.positionHints} onClick={togglePositionHints}><i />线/间提示 {scoreHints.positionHints ? '开' : '关'}</button>
+                  <button type="button" className="text-button hint-reset" onClick={() => setHintOverrides({})}>跟随默认</button>
+                </div><small className="settings-note">音名：{scoreHints.noteNamesSource === 'default' ? '跟随模式默认' : '手动'} · 线/间：{scoreHints.positionHintsSource === 'default' ? '跟随模式默认' : '手动'}；专业谱面不叠加标注，这些开关只影响点击音符详情与严格模式提示，不改变目标或分数。</small></div>
+                </div></>}
+          hands={<div className="settings-grid piano-defaults">{([
+            ['single', '单谱表'], ['upper', '双谱表 · 上方'], ['lower', '双谱表 · 下方'],
+          ] as const).map(([key, label]) => <label key={key} className="field"><span>{label}</span>
+            <select value={pianoHands[key]} disabled={settingsLocked} onChange={(event) => {
+              const next = { ...pianoHands, [key]: event.target.value as 'left' | 'right' };
+              setPianoHands(next);
+              const persisted = loadPracticeSettings();
+              savePracticeSettings({ ...persisted, pianoHands: next });
+              setMappingRequired(false);
+            }}><option value="right">右手</option><option value="left">左手</option></select>
+          </label>)}<p className="settings-note field-wide">按谱表位置应用，自动保存。无需每首曲谱确认；已保存的曲谱自定义优先使用。</p></div>}
+          mapping={<><div className="field field-wide" aria-label="谱表手别映射">
+                  <span>当前曲谱：{scoreDoc.meta.title}</span>
+                  <div className="hint-toggle-row">
+                    {staffMappingDraft.map((entry) => (
+                      <label key={entry.staffNumber} className="staff-hand-mapping">
+                        谱表 {entry.staffNumber}
+                        <select
+                          aria-label={`谱表${entry.staffNumber} 手别`}
+                          value={staffMappingOverrides[entry.staffNumber] ?? entry.hand}
+                          disabled={settingsLocked}
+                          onChange={(e) => updateStaffMappingDraft(entry.staffNumber, e.target.value as 'left' | 'right')}
+                        >
+                          <option value="right">右手</option>
+                          <option value="left">左手</option>
+                        </select>
+                      </label>
+                    ))}
+                    <button
+                      type="button"
+                      className="button button-outline button-small"
+                      disabled={settingsLocked || staffMappingDraft.length === 0}
+                      onClick={confirmStaffMapping}
+                    >保存当前曲谱手别</button>
+                    <button type="button" className="button button-ghost button-small" disabled={settingsLocked || (!customMappingForScore && !mappingHasDraft)} onClick={restoreScoreHandDefaults}>使用默认规则</button>
+                  </div>
+                  <small className="settings-note">这里的设置只覆盖当前曲谱，保存后自动记忆；其他曲谱继续使用默认规则。</small>
+                  <small className="mapping-save-status" role="status">{mappingHasDraft ? '有未保存的手别修改。' : customMappingForScore ? '已保存当前曲谱的自定义手别。' : '当前使用总设置中的默认手别。'}</small>
+                </div>
+                </>}
+          library={<details className="preferences-management"><summary>曲谱库与示例</summary><div className="settings-grid">{true && <div className="field field-wide"><span>乐谱来源</span><div className="hint-toggle-row">
+                  <button type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={requestScoreImport}>导入 MusicXML</button>
+                  <button type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={loadLedgerDemo}>谱表外示例</button>
+                  <button type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={restoreDefaultScore}>恢复默认乐谱</button>
+                </div><small className="settings-note">当前：{scoreDoc.meta.title} · {scoreDoc.notes.length} 个音符 · {scoreDoc.meta.staves === 1 ? '单谱表' : '双谱表'}</small></div>
+                }
+                {true && <div className="field field-full score-library-field" aria-busy={scoreLibraryBusy}>
+                  <span>乐谱库 <b className="score-library-count">{scoreLibrary.length}</b></span>
+                  <div className="score-library-row">
+                    <select
+                      aria-label="选择已保存的乐谱"
+                      value={selectedLibraryId}
+                      disabled={scoreLibraryBusy || scoreLibrary.length === 0}
+                      onChange={event => setSelectedLibraryId(event.target.value)}
+                    >
+                      {scoreLibrary.length === 0 && <option value="">乐谱库为空</option>}
+                      {scoreLibrary.map(entry => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
+                    </select>
+                    <button type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy || settingsLocked} onClick={() => void loadScoreFromLibrary(selectedLibraryId)}>载入</button>
+                    <button type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy} onClick={() => void renameScoreLibraryEntry()}>重命名</button>
+                    <button type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy || settingsLocked} onClick={requestLibraryReplace}>替换 XML</button>
+                    <button type="button" className="button button-ghost button-small score-library-delete" disabled={!selectedLibraryEntry || scoreLibraryBusy} onClick={() => void removeScoreLibraryEntry()}>删除</button>
+                  </div>
+                  <small className="settings-note">
+                    {activeLibraryEntry ? `当前来自乐谱库：《${activeLibraryEntry.name}》。` : ''}
+                    {scoreLibraryBusy
+                      ? '正在读取乐谱库…'
+                      : scoreLibraryError
+                        ? `乐谱库错误：${scoreLibraryError}`
+                        : scoreLibrary.length
+                          ? `共 ${scoreLibrary.length} 份；按名称选择后点「载入」。`
+                          : '还没有保存的乐谱；导入 MusicXML 后会按文件名自动保存。'}
+                  </small>
+                </div>
+                }
+                </div></details>}
+          templates={config.modeId !== 'reading-rhythm' ? <details className="preferences-management"><summary>保存的练习方案</summary><div className="settings-grid settings-advanced-grid">
+                <div className="field field-full take-template-field" aria-busy={takeTemplateBusy}>
+                  <span>练习方案 <b className="score-library-count">{takeTemplates.length}</b></span>
+                  <div className="score-library-row">
+                    <select
+                      aria-label="选择保存的练习方案"
+                      value={selectedTakeTemplateId}
+                      disabled={takeTemplateBusy || takeTemplates.length === 0}
+                      onChange={event => setSelectedTakeTemplateId(event.target.value)}
+                    >
+                      <option value="">不使用已保存方案</option>
+                      {takeTemplates.map(template => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}{template.scoreLabel ? ` · ${template.scoreLabel}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" className="button button-outline button-small" disabled={!selectedTakeTemplateId || takeTemplateBusy || settingsLocked} onClick={applyTakeTemplate}>应用</button>
+                    <button type="button" className="button button-outline button-small" disabled={takeTemplateBusy || settingsLocked} onClick={() => void saveCurrentAsTakeTemplate()}>保存当前方案</button>
+                    <button type="button" className="button button-outline button-small" disabled={!selectedTakeTemplateId || takeTemplateBusy || settingsLocked} onClick={() => void renameTakeTemplate()}>重命名</button>
+                    <button type="button" className="button button-ghost button-small score-library-delete" disabled={!selectedTakeTemplateId || takeTemplateBusy} onClick={() => void deleteTakeTemplate()}>删除</button>
+                  </div>
+                  <small className="settings-note">
+                    {appliedTakeTemplateId
+                      ? `本次记录将关联：${takeTemplates.find(item => item.id === appliedTakeTemplateId)?.name ?? appliedTakeTemplateId}。开始练习后会创建新的 Session/Take，不会覆盖历史。`
+                      : '选择并应用一个 Take 后开始练习；每次演奏都会生成新的关联记录，历史不会被覆盖。'}
+                  </small>
+                  {takeTemplateError && <small className="report-warning">{takeTemplateError}</small>}
+                </div>
+                </div></details> : null}
+          notes={<><div className="settings-constraints">
+                <p><strong>预备拍：</strong>默认固定 3 秒（按当前 BPM 换算为拍数，例如 40 BPM 为 2 拍）；A2 不提供可配置选项。</p>
+                <p><strong>音频输出延迟：</strong>尚未校准（uncalibrated）；时间偏差用于练习反馈，不代表采样级物理精度。</p>
+                <p><strong>分手/循环：</strong>它们现在是练习模式的配置项，不再是独立模式；选择单手或开启“只练所选小节”即可。</p>
+                <p><strong>小节循环：</strong>当前只练所选范围一次，不跨轮重复；轮次边界仍在后续能力中。</p>
+                <p><strong>配置快照：</strong>开始后本轮配置冻结；保存后点开始/再练一次会用当前配置新开一轮，不恢复旧 Take。</p>
+                <p><strong>参考播放：</strong>系统伴弹开启时使用固定时间；运行中不修改 BPM。</p>
+              </div>
+              </>}
+          dirty={settingsDirty} saved={settingsSaved} locked={settingsLocked} focusMapping={settingsFocusMapping}
+          onSave={saveSettingsDraft}
+          onResetDraft={() => { setSettingsDraft({ config, metronomeOn }); setSettingsSaved(false); }}
+          onBack={() => requestNavigation(config.modeId === 'reading-free' || config.modeId === 'reading-rhythm' ? '/workbench' : '/performance')}
+          onDevices={() => requestNavigation('/device')}
+        />}
         {route?.id === 'scores' && (
           <ScoreLibraryPage
             activeLibraryId={activeLibraryId}
@@ -3567,7 +3652,8 @@ export default function App() {
           />
         )}
         {route?.id === 'history' && (
-          <div className="page-content">
+          <div className="page-content"><div className="page-heading"><div><h1>练习记录</h1><p>在这里查看演奏报告、诊断和识谱记录。</p></div></div>
+            <ReadingHistory refreshKey={historyRefresh} />
             <HistoryView
               refreshKey={historyRefresh}
               activeScoreFingerprint={scoreDoc.engine?.fingerprint ?? null}

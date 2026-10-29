@@ -4,6 +4,8 @@ import { importMusicXml } from '../import/musicxml-importer';
 import type { ScoreDocument } from '../domain/types';
 import {
   assessPracticeScope,
+  buildDefaultPianoHandMapping,
+  DEFAULT_PIANO_HANDS,
   buildUserHandMapping,
   handByScoreEventIdFromMapping,
   suggestClefHeuristicMapping,
@@ -53,6 +55,29 @@ function scope(score: ScoreDocument, overrides: Partial<PracticeScopeV1> = {}): 
     ...overrides,
   };
 }
+
+describe('global piano hand policy', () => {
+  it('creates a strict-ready default for an ordinary two-staff piano without confirmation', () => {
+    const score = twoStaffScore();
+    const mapping = buildDefaultPianoHandMapping(score, DEFAULT_PIANO_HANDS)!;
+    expect(mapping.parts[0].staves).toEqual([{ staffNumber: 1, hand: 'right' }, { staffNumber: 2, hand: 'left' }]);
+    expect(assessPracticeScope(score, scope(score, { handMapping: mapping })).ok).toBe(true);
+  });
+
+  it('applies changed global rules without reading clefs or mutating defaults', () => {
+    const score = twoStaffScore();
+    const mapping = buildDefaultPianoHandMapping(score, { single: 'left', upper: 'left', lower: 'right' })!;
+    expect(mapping.parts[0].staves[0].hand).toBe('left');
+    expect(mapping.parts[0].staves[1].hand).toBe('right');
+    expect(DEFAULT_PIANO_HANDS.upper).toBe('right');
+  });
+
+  it('does not silently map a multi-part or unfamiliar staff layout', () => {
+    expect(buildDefaultPianoHandMapping(multiPartScore(), DEFAULT_PIANO_HANDS)).toBeNull();
+    const score = twoStaffScore();
+    expect(buildDefaultPianoHandMapping({ ...score, parts: [{ ...score.parts[0], staves: 3 }] }, DEFAULT_PIANO_HANDS)).toBeNull();
+  });
+});
 
 describe('assessPracticeScope: D1 double-treble staves', () => {
   it('accepts explicit user mapping even when both staves are treble', () => {

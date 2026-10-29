@@ -132,6 +132,17 @@ export function spellMidi(midi: number, fifths: number): { step: string; alter: 
 }
 
 /**
+ * Display name matching the generated score's spelling (same spellMidi call
+ * that feeds the MusicXML). Feedback text must use this — never the fixed
+ * chromatic midiLabel — so the note on the staff and the note in the answer
+ * text are always the same name (G♯4 in sharp keys is not "A♭4").
+ */
+export function spelledLabel(midi: number, fifths: number): string {
+  const { step, alter, octave } = spellMidi(midi, fifths);
+  return `${step}${alter === 1 ? '♯' : alter === -1 ? '♭' : ''}${octave}`;
+}
+
+/**
  * Pitch pool for a reading session: union of the selected ranges, optionally
  * filtered to the selected key's diatonic scale (sorted, deduped).
  */

@@ -7,6 +7,20 @@
 /** Product default: three seconds of preparation, independent of tempo. */
 export const DEFAULT_COUNT_IN_MS = 3000;
 
+/** Shared by the plan request, launch binding, reference playback and Take.
+ * Rhythm reading uses its configured measures; ordinary playing uses 3 seconds. */
+export function practiceCountIn(config: { modeId: string; tempo: number; timeSignature: [number, number] }, readingMeasures: number) {
+  const countInBeats = config.modeId === 'reading-rhythm'
+    ? readingMeasures * config.timeSignature[0]
+    : countInBeatsForTempo(config.tempo);
+  return {
+    countInBeats,
+    countInUs: config.modeId === 'reading-rhythm'
+      ? Math.round(countInBeats * 60_000_000 / config.tempo)
+      : DEFAULT_COUNT_IN_MS * 1000,
+  };
+}
+
 /**
  * Convert a preparation duration to the tempo's beat count. The value may be
  * fractional (3 s is 3.5 beats at 70 BPM); all timeline builders accept it.

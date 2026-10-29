@@ -16,12 +16,12 @@ describe('app route registry', () => {
   });
 
   it('exposes reading and the merged performance workspace', () => {
-    expect(NAV_ROUTES.map((route) => route.id)).toEqual(['performance', 'workbench']);
-    expect(NAV_ROUTES.map((route) => route.navTitle)).toEqual(['演奏', '识谱']);
+    expect(NAV_ROUTES.map((route) => route.id)).toEqual(['training', 'performance', 'workbench', 'history', 'settings']);
+    expect(NAV_ROUTES.map((route) => route.navTitle)).toEqual(['专项训练', '演奏', '识谱', '记录', '设置']);
     expect(NAV_ROUTES.every((route) => route.enabled)).toBe(true);
     expect(new Set(APP_ROUTES.map((route) => route.path)).size).toBe(APP_ROUTES.length);
     // Secondary pages stay reachable by URL but leave the primary nav.
-    expect(APP_ROUTES.filter((route) => ['scores', 'history', 'profile', 'device'].includes(route.id))
+    expect(APP_ROUTES.filter((route) => ['scores', 'profile', 'device'].includes(route.id))
       .every((route) => route.nav === false)).toBe(true);
   });
 
@@ -51,5 +51,9 @@ describe('app route registry', () => {
   it('returns null for unknown paths', () => {
     expect(matchAppRoute('/not-a-page').route).toBeNull();
     expect(matchAppRoute('/not-a-page').path).toBe('/not-a-page');
+  });
+
+  it('makes global preferences directly reachable and part of the navigation', () => {
+    expect(matchAppRoute('/settings').route).toMatchObject({ id: 'settings', enabled: true, nav: true });
   });
 });

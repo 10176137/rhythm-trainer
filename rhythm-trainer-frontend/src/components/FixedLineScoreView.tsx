@@ -67,6 +67,16 @@ export default function FixedLineScoreView({
 }: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const judgeRef = useRef<HTMLDivElement | null>(null);
+  // Match the marker to the engraved staves rather than the entire viewport.
+  const fitJudgeLine = (system: SystemGeom, height: number) => {
+    const line = judgeRef.current;
+    if (!line) return;
+    const extent = Math.min(height - 48, system.bottom - system.top + 32);
+    line.style.top = `${Math.max(24, (height - extent) / 2)}px`;
+    line.style.height = `${Math.max(0, extent)}px`;
+    line.style.bottom = 'auto';
+  };
   const adapterRef = useRef<OsmdScoreViewAdapter | null>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
   const previousActiveRef = useRef<string[]>([]);
@@ -105,7 +115,8 @@ export default function FixedLineScoreView({
           drawTitle: false,
           drawComposer: false,
           drawCredits: false,
-          drawPartNames: true,
+          // 与 OsmdScoreView 一致:部件名会把首行推向右侧造成行间错位。
+          drawPartNames: false,
           drawPartAbbreviations: false,
           drawMeasureNumbers: true,
           drawMeasureNumbersOnlyAtSystemStart: true,
@@ -148,7 +159,7 @@ export default function FixedLineScoreView({
     const host = hostRef.current;
     const adapter = adapterRef.current;
     const wrap = wrapRef.current;
-    if (!host || !adapter || !wrap || loading || !targets.length) return;
+    if (!host || !adapter || !wrap || loading) return;
     if (attempt > 120) return; // ~2s of frames; give up rather than loop forever
     if (wrap.clientWidth === 0 || wrap.clientHeight === 0) {
       requestAnimationFrame(() => measureAnchors(attempt + 1));
@@ -157,6 +168,7 @@ export default function FixedLineScoreView({
     host.style.transform = 'translate(0px, 0px)';
     const hostRect = osmdHostRect(host);
     const stafflines = Array.from(host.querySelectorAll<SVGGElement>('g.staffline'));
+    for (const line of stafflines) line.style.display = '';
     const staves = Math.max(1, engine?.parts[0]?.staves ?? 1);
     const systems: SystemGeom[] = [];
     for (let i = 0; i < stafflines.length; i += staves) {
@@ -198,7 +210,7 @@ export default function FixedLineScoreView({
         x: noteRect.left + noteRect.width / 2 - hostRect.left,
       });
     }
-    if (!anchors.length) {
+    if (!anchors.length && targets.length) {
       requestAnimationFrame(() => measureAnchors(attempt + 1));
       return;
     }
@@ -209,13 +221,14 @@ export default function FixedLineScoreView({
       for (const line of system.stafflines) line.style.display = system.index === 0 ? '' : 'none';
     }
     currentSystemRef.current = 0;
+    if (!systems.length) return;
+    fitJudgeLine(systems[0], wrap.clientHeight);
     timeHighlightRef.current = -1;
-    applyTimeHighlight(0);
-    // Place the first system at the judgment line so the pre-start preview is readable.
-    const judgeX = wrap.clientWidth * JUDGE_RATIO;
+    applyTimeHighlight(-1);
+    // Preview one system from its left edge; the marker is hidden until start.
     const centerY = wrap.clientHeight / 2;
-    const first = anchors[0];
-    const x = judgeX - first.x;
+    if (!systems.length) return;
+    const x = 16;
     const y = centerY - (systems[0].top + systems[0].bottom) / 2;
     host.style.transform = `translate(${x}px, ${y}px)`;
   }, [targets, groups, loading, engine]);
@@ -269,9 +282,13 @@ export default function FixedLineScoreView({
       }
       const active = anchors[index];
       const next = anchors[index + 1];
-      applyTimeHighlight(active.targetIndex);
+      applyTimeHighlight(now < anchors[0].atMs ? -1 : active.targetIndex);
       let anchorX = active.x;
-      if (next && next.system === active.system && next.atMs > active.atMs) {
+      if (now < anchors[0].atMs) {
+        const lead = Math.min(300, wrap.clientWidth * 0.4);
+        anchorX = anchors[0].x - lead * (1 - now / anchors[0].atMs);
+      }
+      if (now >= anchors[0].atMs && next && next.system === active.system && next.atMs > active.atMs) {
         const progress = Math.min(1, Math.max(0, (now - active.atMs) / (next.atMs - active.atMs)));
         anchorX = active.x + (next.x - active.x) * progress;
       }
@@ -290,6 +307,7 @@ export default function FixedLineScoreView({
         currentSystemRef.current = active.system;
       }
       const judgeX = wrap.clientWidth * JUDGE_RATIO;
+      fitJudgeLine(system, wrap.clientHeight);
       const centerY = wrap.clientHeight / 2;
       const x = judgeX - anchorX;
       const y = centerY - (system.top + system.bottom) / 2;
@@ -311,7 +329,7 @@ export default function FixedLineScoreView({
       for (const line of item.stafflines) line.style.display = item.index === 0 ? '' : 'none';
     }
     currentSystemRef.current = 0;
-    const x = 24;
+    const x = 16;
     const y = wrap.clientHeight / 2 - (system.top + system.bottom) / 2;
     host.style.transform = `translate(${x}px, ${y}px)`;
   }, [displayStartMs, ready, targets.length]);
@@ -341,7 +359,7 @@ export default function FixedLineScoreView({
       </div>
       <div className="fixed-line-osmd-wrap" ref={wrapRef}>
         <div className="fixed-line-osmd-host" ref={hostRef} aria-label="固定判定线专业谱面" />
-        <div className="fixed-line-line" style={{ left: `${JUDGE_RATIO * 100}%` }}>
+        <div className="fixed-line-line" ref={judgeRef} hidden={displayStartMs === null || status === 'idle' || status === 'completed'} style={{ left: `${JUDGE_RATIO * 100}%` }}>
           <span>判定线</span>
         </div>
         {loading && <div className="fixed-line-osmd-status">正在用 Bravura 制谱引擎渲染…</div>}
