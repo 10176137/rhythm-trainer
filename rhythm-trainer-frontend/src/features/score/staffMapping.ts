@@ -1,4 +1,6 @@
 import type { NoteStep, ScoreNote, ScoreStaff } from '../../core/sampleScore';
+import { MAX_LEDGER_LINES, STAFF_BOTTOM_INDEX, supportsStaffPitch } from '../../../shared/staff-range.mjs';
+export { MAX_LEDGER_LINES } from '../../../shared/staff-range.mjs';
 
 export const NATURAL_STEPS: readonly NoteStep[] = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 const STEP_SEMITONES: Record<NoteStep, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -19,20 +21,17 @@ export const STAFF_GEOMETRY = {
     id: 'treble' as const,
     topLineY: 84,
     bottomLineY: 140,
-    bottomDiatonicIndex: 30, // E4
+    bottomDiatonicIndex: STAFF_BOTTOM_INDEX.treble,
     label: '高音谱表',
   },
   bass: {
     id: 'bass' as const,
     topLineY: 252,
     bottomLineY: 308,
-    bottomDiatonicIndex: 18, // G2
+    bottomDiatonicIndex: STAFF_BOTTOM_INDEX.bass,
     label: '低音谱表',
   },
 } as const;
-
-/** At most three ledger lines are considered reliably laid out. */
-export const MAX_LEDGER_LINES = 3;
 
 export type StaffPositionKind =
   | 'line'
@@ -98,12 +97,11 @@ export function getStaffPlacement(
   alter: number,
   octave: number,
 ): StaffPlacement | null {
-  if (Math.abs(alter) > 2) return null;
+  if (!supportsStaffPitch(staff, step, alter, octave)) return null;
 
   const geometry = staff === 'treble' ? STAFF_GEOMETRY.treble : STAFF_GEOMETRY.bass;
   const offset = diatonicIndex(step, octave) - geometry.bottomDiatonicIndex;
   const topOffset = (geometry.bottomLineY - geometry.topLineY) / (STAFF_GEOMETRY.lineGap / 2);
-  if (offset < -MAX_LEDGER_LINES * 2 || offset > topOffset + MAX_LEDGER_LINES * 2) return null;
 
   const halfGap = STAFF_GEOMETRY.lineGap / 2;
   const y = geometry.bottomLineY - offset * halfGap;

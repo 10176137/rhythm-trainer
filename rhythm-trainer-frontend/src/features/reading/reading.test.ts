@@ -1,3 +1,4 @@
+import { questionStaff, questionXml } from './readingNotation';
 import { describe, expect, it } from 'vitest';
 import { importScoreText } from '../score/scoreImport';
 import { toNumber } from '../../score-engine/domain/rational';
@@ -5,9 +6,7 @@ import {
   ReadingGeneratorError,
   generateFreeQuestions,
   generateRhythmScore,
-  questionStaff,
-  questionXml,
-} from './readingGenerator';
+} from '../../../server/training/reading-generator.mjs';
 import { FreeReadingSession } from './freeReadingSession';
 import { READING_KEY_COUNT, poolFromRanges, READING_OCTAVES } from './readingKeys';
 

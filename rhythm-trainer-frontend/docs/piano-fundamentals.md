@@ -34,9 +34,10 @@ MIDI 音符事件不能确认手型、手臂放松、抬指动作或真实音色
 
 ## 实现与验证
 
-- `skillDrillCatalog.ts`：内容分类、分级、指导语。
-- `fundamentalDrills.ts`：基本功音型、调性、谱号、参考指法。
-- `skillDrills.ts`：统一生成入口，兼容已有四类节奏练习。
+- `server/training/skill-drill-catalog.mjs`：内容分类、分级、指导语。
+- `server/training/fundamental-drills.mjs`：基本功音型、调性、谱号、参考指法。
+- `server/training/skill-drills.mjs`：统一生成入口，兼容已有四类节奏练习。
+- `server/training-service.mjs`：校验接口参数并返回生成结果；浏览器只通过接口请求，不保留生成器副本。
 - `SkillTrainingPage.tsx` / `SkillDrillPreview.tsx`：分类选择、当前项目说明、按需谱面预览。
 - 预览与启动使用相同 MusicXML；不建立第二套评分逻辑。
 - 对六项 × 三调 × 三手别 × 三级的 162 个组合检查严格导入、每声部拍数、谱面支持范围及手别作用域，另检查调号、齐奏起音与指法。

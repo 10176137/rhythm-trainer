@@ -1,7 +1,8 @@
 import { poolFromRanges, type KeySelection, type PitchRange, rangeLabel } from './readingKeys';
-export type ReadingModeChoice = 'free' | 'rhythm';
-export type ReadingComplexityChoice = 'basic' | 'intermediate' | 'advanced';
-export type ReadingStaffPreference = 'auto' | 'treble' | 'bass';
+import type { ReadingConfig, ReadingComplexity, ReadingStaffPreference as SharedStaffPreference } from '../../../shared/reading-contract';
+export type ReadingModeChoice = ReadingConfig['mode'];
+export type ReadingComplexityChoice = ReadingComplexity;
+export type ReadingStaffPreference = SharedStaffPreference;
 export interface ReadingSetupValue {
   mode: ReadingModeChoice; ranges: PitchRange[]; notesPerEvent: 1 | 2 | 3 | 4;
   seed: number; task: 'practice' | 'test'; questionCount: 10 | 20 | 40;

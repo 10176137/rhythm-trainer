@@ -43,6 +43,8 @@ import { ReadingAttemptStore, ReadingAttemptError } from './reading-attempts.mjs
 import { ProfileEvidenceCache } from './profile-evidence.mjs';
 import { TeachingOrchestrator, TeachingOrchestratorError } from './teaching-orchestrator.mjs';
 import { LESSON_CATALOG_SCHEMA_VERSION, getLessonCatalog } from './teaching-content.mjs';
+import { TrainingServiceError, getTrainingCatalog, generateSkillExercise, generateReadingExercise } from './training-service.mjs';
+import { ReadingGeneratorError } from './training/reading-generator.mjs';
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -876,6 +878,29 @@ async function handleTeachingApi(req, res, urlPath) {
 }
 
 async function handleApi(req, res, urlPath, query) {
+  if (urlPath === '/api/training' || urlPath.startsWith('/api/training/')) {
+    try {
+      if (urlPath === '/api/training/catalog' && req.method === 'GET') {
+        sendJson(res, 200, { ok: true, catalog: getTrainingCatalog() });
+      } else if (urlPath === '/api/training/drills' && req.method === 'POST') {
+        sendJson(res, 200, { ok: true, drill: generateSkillExercise(await readJsonBody(req)) });
+      } else if (urlPath === '/api/training/reading' && req.method === 'POST') {
+        const exercise = generateReadingExercise(await readJsonBody(req), { findReadingAttempt: (id) => readingAttempts.get(id) });
+        sendJson(res, 200, { ok: true, exercise });
+      } else {
+        const known = ['/api/training/catalog', '/api/training/drills', '/api/training/reading'].includes(urlPath);
+        sendJson(res, known ? 405 : 404, { ok: false, error: { code: known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', message: known ? 'method not allowed' : 'not found' } });
+      }
+    } catch (error) {
+      if (error instanceof TrainingServiceError || error instanceof ReadingGeneratorError || error instanceof ScoreLibraryError) {
+        sendJson(res, error.status ?? 400, { ok: false, error: { code: error.code, message: error.message } });
+      } else {
+        console.error('[training] 生成训练失败:', String(error?.message ?? error));
+        sendJson(res, 500, { ok: false, error: { code: 'TRAINING_GENERATION_FAILED', message: '训练生成暂时不可用，请重试' } });
+      }
+    }
+    return;
+  }
   if (urlPath === '/api/reading-attempts' || urlPath.startsWith('/api/reading-attempts/')) {
     try {
       if (urlPath === '/api/reading-attempts' && req.method === 'POST') {

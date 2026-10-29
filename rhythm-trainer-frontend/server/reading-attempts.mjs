@@ -52,8 +52,16 @@ function normalize(input) {
   summary.coveredPitches = new Set(input.questions.slice(0, snapshot.completedQuestions).flat()).size;
   summary.poolSize = pool.size;
   summary.reviewGroups = session.reviewQuestions();
+  summary.progression = readingProgression(summary, config);
   return { schemaVersion: 1, ...evidence, summary,
     evidenceFingerprint: createHash('sha256').update(JSON.stringify(evidence)).digest('hex') };
+}
+function readingProgression(summary, config) {
+  return {
+    canReview: summary.reviewGroups.length > 0,
+    canStartTest: config.task === 'practice' && summary.completedQuestions >= 10 && summary.firstTryAccuracy >= 80 && summary.hintedQuestions === 0,
+    nextNotesPerEvent: config.task === 'test' && config.notesPerEvent < 4 && summary.status === 'completed' && summary.firstTryAccuracy >= 90 ? config.notesPerEvent + 1 : null,
+  };
 }
 export class ReadingAttemptStore {
   constructor({ dir }) { this.dir = dir; }
@@ -82,7 +90,12 @@ export class ReadingAttemptStore {
   }
   get(id) {
     if (typeof id !== 'string' || !ID.test(id)) throw new ReadingAttemptError('识谱记录 ID 非法');
-    try { return JSON.parse(fs.readFileSync(path.join(this.dir, `${id}.json`), 'utf8')); }
+    try {
+      const record = JSON.parse(fs.readFileSync(path.join(this.dir, `${id}.json`), 'utf8'));
+      // Older records gain the same server-owned recommendations on read.
+      record.summary.progression = readingProgression(record.summary, record.config);
+      return record;
+    }
     catch (error) { if (error.code === 'ENOENT') return null; throw error; }
   }
   list() {

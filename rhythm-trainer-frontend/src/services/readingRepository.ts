@@ -8,6 +8,7 @@ export interface ReadingAttemptPayload {
 export interface ReadingRecord extends ReadingAttemptPayload {
   summary: Omit<FreeReadingSnapshot, 'perPitch' | 'wrongByPitch' | 'currentTargets' | 'currentHits'> & {
     weakTargets: Array<{ midi: number; wrong: number }>; coveredPitches: number; poolSize: number; reviewGroups: number[][];
+    progression?: { canReview: boolean; canStartTest: boolean; nextNotesPerEvent: 2 | 3 | 4 | null };
   };
 }
 const KEY = 'rhythm.reading.pending.v1';

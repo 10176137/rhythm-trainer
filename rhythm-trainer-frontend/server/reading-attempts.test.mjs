@@ -34,4 +34,19 @@ describe('reading attempts', () => {
     expect(() => service.save({ ...p, config: { ...p.config, task: 'test' }, events: [{ type: 'hint' }] })).toThrow();
     expect(() => service.save({ ...p, id: '../escape' })).toThrow();
   });
+  it('derives progression on the server from replayed evidence, ignoring client recommendations', () => {
+    const { service } = store(); const base = attempt();
+    const complete = { ...base, events: base.questions.map(([midi]) => ({ type: 'note', midi })), endReason: 'completed' };
+    expect(service.save({ ...complete, summary: { progression: { canStartTest: false } } }).summary.progression)
+      .toEqual({ canReview: false, canStartTest: true, nextNotesPerEvent: null });
+    expect(service.save({ ...complete, id: 'reading-test-next', config: { ...base.config, task: 'test' } }).summary.progression)
+      .toEqual({ canReview: false, canStartTest: false, nextNotesPerEvent: 2 });
+    expect(service.save({ ...complete, id: 'reading-test-hinted', events: [{ type: 'hint' }, ...complete.events] }).summary.progression.canStartTest).toBe(false);
+  });
+  it('adds server-owned recommendations when opening older saved records', () => {
+    const { dir, service } = store(); const saved = service.save(attempt());
+    delete saved.summary.progression;
+    fs.writeFileSync(path.join(dir, `${saved.id}.json`), JSON.stringify(saved));
+    expect(service.get(saved.id).summary.progression).toEqual({ canReview: true, canStartTest: false, nextNotesPerEvent: null });
+  });
 });

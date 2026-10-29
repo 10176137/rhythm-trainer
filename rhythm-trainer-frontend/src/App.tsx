@@ -1,5 +1,5 @@
 import SkillTrainingPage from './components/SkillTrainingPage';
-import { createSkillDrill } from './features/practice/skillDrills';
+import { trainingRepository } from './services/trainingRepository';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ScoreViewer from './components/ScoreViewer';
 import HistoryView from './components/HistoryView';
@@ -16,7 +16,7 @@ import SettingsPage from './components/SettingsPage';
 import ReadingHistory from './components/ReadingHistory';
 import { loadReadingSettings, saveReadingSettings, readingConfigLabel } from './features/reading/readingSettings';
 import { keyFifths, spelledLabel } from './features/reading/readingKeys';
-import { saveReadingAttempt, type ReadingAttemptPayload } from './services/readingRepository';
+import { saveReadingAttempt, type ReadingAttemptPayload, type ReadingRecord } from './services/readingRepository';
 import SidebarNavigation, { navigationParent } from './components/SidebarNavigation';
 import { modeRegistry } from './config/modeRegistry';
 import type { ScoreDocument } from './core/sampleScore';
@@ -57,7 +57,7 @@ import FixedLineScoreView from './components/FixedLineScoreView';
 import NoteReadingSetup, { type ReadingSetupValue } from './components/NoteReadingSetup';
 import FreeReadingView, { type FreeReadingInputEvent } from './components/FreeReadingView';
 import { FreeReadingSession } from './features/reading/freeReadingSession';
-import { generateFreeQuestions, generateReviewQuestions, generateRhythmScore, type GeneratedRhythmScore } from './features/reading/readingGenerator';
+import type { GeneratedRhythmScore } from '../shared/reading-contract';
 import { saveLastRunId } from './services/teachingRunRepository';
 import { WebAudioEngineAdapter } from './features/playback/audioEngineAdapter';
 import {
@@ -908,10 +908,15 @@ export default function App() {
   const readingSourcesRef = useRef(new Set<'midi' | 'virtual'>());
   const readingAttemptMetaRef = useRef<{ id: string; startedAtIso: string } | null>(null);
   const readingPayloadRef = useRef<ReadingAttemptPayload | null>(null);
-  const [readingSave, setReadingSave] = useState<{ id?: string; status: 'idle' | 'saving' | 'saved' | 'error'; message?: string }>({ status: 'idle' });
+  const [readingSave, setReadingSave] = useState<{ id?: string; status: 'idle' | 'saving' | 'saved' | 'error'; message?: string; record?: ReadingRecord }>({ status: 'idle' });
   const [readingSetupOpen, setReadingSetupOpen] = useState(false);
   const [readingInput, setReadingInput] = useState<FreeReadingInputEvent | null>(null);
   const [readingBusy, setReadingBusy] = useState(false);
+  const readingRequestRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    setReadingBusy(false);
+    return () => { readingRequestRef.current?.abort(); readingRequestRef.current = null; };
+  }, [routePath]);
   const [readingError, setReadingError] = useState<string | null>(null);
   const [generatedReadingScore, setGeneratedReadingScore] = useState<GeneratedRhythmScore | null>(null);
   const readingInputSeqRef = useRef(0);
@@ -2348,20 +2353,26 @@ export default function App() {
   }, [route?.id, refreshScoreLibrary]);
 
   // 81-key note reading (task spec: replaces the generated-exercise business).
-  // Free: deterministic question set handed to a session. Rhythm: generate a
-  // legal score through the canonical importer and reuse the EXISTING
+  // Node generates both question sets and legal rhythm scores. Import the
+  // returned notation for display and reuse the EXISTING
   // planner/timeline/Rust scoring pipeline — no second target array.
-  const handleStartReading = async (value: ReadingSetupValue, reviewGroups?: readonly (readonly number[])[]) => {
-    if (session.active || starting || readingBusy) {
+  const handleStartReading = async (value: ReadingSetupValue, reviewAttemptId?: string) => {
+    if (session.active || starting || readingBusy || readingRequestRef.current) {
       setReadingError('当前仍有练习；请先结束或重置，再开始识谱训练。');
       return;
     }
     if (value.mode === 'rhythm') void ensureSharedAudioContext().catch(() => {});
     setReadingBusy(true);
     setReadingError(null);
+    const controller = new AbortController();
+    readingRequestRef.current = controller;
     try {
+      const exercise = await trainingRepository.reading(value, reviewAttemptId, controller.signal);
+      if (controller.signal.aborted || readingRequestRef.current !== controller) return;
+      if (exercise.mode !== value.mode) throw new Error('后端返回的训练模式与当前选择不一致，请重试。');
       if (value.mode === 'free') {
-        const questions = reviewGroups ? generateReviewQuestions(value, reviewGroups) : generateFreeQuestions(value);
+        if (exercise.mode !== 'free') throw new Error('识谱题目无效');
+        const questions = exercise.questions;
         const readingSession = new FreeReadingSession(questions.map((question) => question.midiNotes), { task: value.task });
         readingSessionRef.current = readingSession;
         readingSourcesRef.current = new Set();
@@ -2379,19 +2390,8 @@ export default function App() {
           'success',
         );
       } else {
-        const generated = generateRhythmScore({
-          mode: 'rhythm',
-          ranges: value.ranges,
-          notesPerEvent: value.notesPerEvent,
-          seed: value.seed,
-          key: value.key,
-          staffPreference: value.staffPreference,
-          timeSignature: value.timeSignature,
-          bpm: value.bpm,
-          complexity: value.complexity,
-          measures: value.measures,
-          countInMeasures: value.countInMeasures,
-        });
+        if (exercise.mode !== 'rhythm') throw new Error('节奏识谱题目无效');
+        const generated = exercise.score;
         const imported = importScoreText(generated.xml, `reading-${generated.contentFingerprint}.musicxml`);
         if (!imported.doc?.engine) throw new Error('生成乐谱未通过 MusicXML 导入校验，不能开始练习。');
         if (!imported.report.strictAllowed) throw new Error('生成乐谱不允许严格计时评分，已停止。');
@@ -2412,6 +2412,7 @@ export default function App() {
             'warning',
           );
         }
+        if (controller.signal.aborted || readingRequestRef.current !== controller) return;
         setScoreDoc(imported.doc);
         setReadingFreeSession(null);
         setReadingInput(null);
@@ -2445,17 +2446,20 @@ export default function App() {
       setReadingLastConfig(value);
       setReadingSetupOpen(false);
     } catch (error) {
-      setReadingError(error instanceof Error ? error.message : String(error));
+      if (!controller.signal.aborted) setReadingError(error instanceof Error ? error.message : String(error));
     } finally {
-      setReadingBusy(false);
+      if (readingRequestRef.current === controller) {
+        readingRequestRef.current = null;
+        setReadingBusy(false);
+      }
     }
   };
 
   const persistReadingResult = async (payload: ReadingAttemptPayload) => {
     setReadingSave({ id: payload.id, status: 'saving' });
     try {
-      await saveReadingAttempt(payload);
-      setReadingSave((previous) => previous.id === payload.id ? { id: payload.id, status: 'saved' } : previous);
+      const record = await saveReadingAttempt(payload);
+      setReadingSave((previous) => previous.id === payload.id ? { id: payload.id, status: 'saved', record } : previous);
       setHistoryRefresh((value) => value + 1);
     } catch (error) {
       setReadingSave((previous) => previous.id === payload.id ? { id: payload.id, status: 'error', message: error instanceof Error ? error.message : String(error) } : previous);
@@ -3336,14 +3340,14 @@ export default function App() {
               saveStatus={readingSave}
               onRetrySave={() => { if (readingPayloadRef.current) void persistReadingResult(readingPayloadRef.current); }}
               onRetrySameConfig={() => { if (readingFreeConfig) void handleStartReading({ ...readingFreeConfig, seed: Math.floor(Math.random() * 1_000_000) }); }}
-              onReviewWeak={readingFreeConfig && readingFreeSession.reviewQuestions().length ? () => {
-                void handleStartReading({ ...readingFreeConfig, task: 'practice', questionCount: 10, seed: Math.floor(Math.random() * 1_000_000) }, readingFreeSession.reviewQuestions());
+              onReviewWeak={readingFreeConfig && readingSave.record?.summary.progression?.canReview ? () => {
+                void handleStartReading({ ...readingFreeConfig, task: 'practice', questionCount: 10, seed: Math.floor(Math.random() * 1_000_000) }, readingSave.record!.id);
               } : null}
-              onStartTest={readingFreeConfig?.task === 'practice' && readingFreeSession.completedQuestions >= 10 && readingFreeSession.snapshot().firstTryAccuracy! >= 80 && readingFreeSession.snapshot().hintedQuestions === 0 ? () => {
+              onStartTest={readingFreeConfig && readingSave.record?.summary.progression?.canStartTest ? () => {
                 void handleStartReading({ ...readingFreeConfig, task: 'test', seed: Math.floor(Math.random() * 1_000_000) });
               } : null}
-              onNextLevel={readingFreeConfig?.task === 'test' && readingFreeConfig.notesPerEvent < 4 && readingFreeSession.status === 'completed' && readingFreeSession.snapshot().firstTryAccuracy! >= 90 ? () => {
-                void handleStartReading({ ...readingFreeConfig, task: 'practice', notesPerEvent: (readingFreeConfig.notesPerEvent + 1) as 2 | 3 | 4, seed: Math.floor(Math.random() * 1_000_000) });
+              onNextLevel={readingFreeConfig && readingSave.record?.summary.progression?.nextNotesPerEvent ? () => {
+                void handleStartReading({ ...readingFreeConfig, task: 'practice', notesPerEvent: readingSave.record!.summary.progression!.nextNotesPerEvent!, seed: Math.floor(Math.random() * 1_000_000) });
               } : null}
               onChangeConfig={() => {
                 setReadingSetupOpen(true);
@@ -3463,16 +3467,15 @@ export default function App() {
           <footer className="app-footer"><span>Rhythm Trainer · Frontend 0.6.0</span><span>节奏评分与报告由本地 Rust 内核完成;音高提示为独立维度,不参与节奏成绩。</span></footer>
         </div>
 
-        {route?.id === 'training' && <div style={{ display: trainingRoomOpen ? 'none' : undefined }}><SkillTrainingPage onStart={(id, level, bpm, options) => {
+        {route?.id === 'training' && <div style={{ display: trainingRoomOpen ? 'none' : undefined }}><SkillTrainingPage onStart={(drill) => {
           void ensureSharedAudioContext().catch(() => {});
           try {
-            const drill = createSkillDrill(id, level, bpm, options);
-            const imported = importScoreText(drill.xml, 'skill-' + id + '.musicxml');
+            const imported = importScoreText(drill.xml, 'skill-' + drill.id + '.musicxml');
             if (!imported.doc?.engine || !imported.report.strictAllowed) return false;
             if (!applyScoreDocument(imported.doc, '专项训练已就绪')) return false;
             const partId = imported.doc.engine.parts[0].id;
             rememberHandMapping(imported.doc.engine.fingerprint, buildUserHandMapping(partId, drill.staffHands));
-            setConfig((previous) => ({ ...previous, modeId: 'fixed-line', tempo: bpm, hand: drill.hand, loopEnabled: false, loopStartBar: 1, loopEndBar: drill.bars, timeSignature: [4, 4], advanceMode: 'timeline' }));
+            setConfig((previous) => ({ ...previous, modeId: 'fixed-line', tempo: drill.bpm, hand: drill.hand, loopEnabled: false, loopStartBar: 1, loopEndBar: drill.bars, timeSignature: [4, 4], advanceMode: 'timeline' }));
             setSettingsDraft(null);
             setGeneratedReadingScore(null);
             setActiveLibraryId(null);

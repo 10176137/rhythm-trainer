@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSkillDrill, FUNDAMENTAL_DRILLS, type DrillKey, type DrillHand, type DrillLevel } from './skillDrills';
+import { createSkillDrill, FUNDAMENTAL_DRILLS, type DrillKey, type DrillHand, type DrillLevel } from '../../../server/training/skill-drills.mjs';
 import { importScoreText } from '../score/scoreImport';
 import { getUnsupportedNotes } from '../score/staffMapping';
 import { toNumber } from '../../score-engine/domain/rational';

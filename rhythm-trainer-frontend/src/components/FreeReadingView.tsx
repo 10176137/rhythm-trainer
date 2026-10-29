@@ -6,7 +6,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import OsmdScoreView from './OsmdScoreView';
 import ReadingKeyboard, { type ReadingKeyState } from './ReadingKeyboard';
-import { questionStaff, questionXml, type ReadingStaffPreference } from '../features/reading/readingGenerator';
+import { questionStaff, questionXml, type ReadingStaffPreference } from '../features/reading/readingNotation';
+import type { ReadingRecord } from '../services/readingRepository';
 import { keyFifths, spelledLabel, type KeySelection } from '../features/reading/readingKeys';
 import { FreeReadingSession, type FreeReadingSnapshot } from '../features/reading/freeReadingSession';
 import { importScoreText } from '../features/score/scoreImport';
@@ -32,7 +33,7 @@ interface Props {
   onReviewWeak: (() => void) | null;
   onChangeConfig: () => void;
   onExit: () => void;
-  saveStatus: { status: 'idle' | 'saving' | 'saved' | 'error'; message?: string };
+  saveStatus: { status: 'idle' | 'saving' | 'saved' | 'error'; message?: string; record?: ReadingRecord };
   onRetrySave: () => void;
   onStartTest: (() => void) | null;
   onNextLevel: (() => void) | null;
@@ -127,7 +128,8 @@ export default function FreeReadingView({
   const finished = snapshot.status === 'completed' || snapshot.status === 'ended-early';
 
   if (finished) {
-    const weak = session.weakestPitches(6);
+    const report = saveStatus.record?.summary;
+    const weak = report?.weakTargets.slice(0, 6) ?? [];
     return (
       <section className="reading-result" aria-label="自由识谱结果">
         <header className="reading-result-head">
@@ -140,15 +142,15 @@ export default function FreeReadingView({
         <div className="reading-result-grid">
           <div className="reading-result-card">
             <span>完成题数</span>
-            <b>{snapshot.completedQuestions} / {snapshot.questionCount}</b>
+            <b>{report?.completedQuestions ?? snapshot.completedQuestions} / {snapshot.questionCount}</b>
           </div>
           <div className="reading-result-card">
             <span>首次答对率</span>
-            <b>{snapshot.firstTryAccuracy == null ? '尚未评估' : `${snapshot.firstTryAccuracy}%`}</b>
+            <b>{report?.firstTryAccuracy == null ? report ? '尚未评估' : '等待计算' : `${report.firstTryAccuracy}%`}</b>
           </div>
           <div className="reading-result-card">
             <span>需要再练</span>
-            <b>{session.reviewQuestions().length} 题</b>
+            <b>{report ? `${report.reviewGroups.length} 题` : '等待计算'}</b>
           </div>
 
         </div>
@@ -161,12 +163,12 @@ export default function FreeReadingView({
               ))}
             </ul>
           ) : (
-            <p className="reading-muted">没有错误输入记录。</p>
+            <p className="reading-muted">{report ? '没有错误输入记录。' : '等待服务端校验实际输入并生成练习结果。'}</p>
           )}
           <p className="reading-muted">和弦只记录出错时尚未完成的目标组，不猜测你想按哪个音。</p>
         </div>
         <p className={`reading-save-state ${saveStatus.status === 'error' ? 'text-bad' : ''}`} role="status">
-          {saveStatus.status === 'saved' ? '结果已保存到本机' : saveStatus.status === 'saving' ? '正在保存…' : saveStatus.status === 'error' ? (saveStatus.message ?? '结果尚未保存') : ''}
+          {saveStatus.status === 'saved' ? '结果已由服务端校验并保存' : saveStatus.status === 'saving' ? '正在校验并保存…' : saveStatus.status === 'error' ? (saveStatus.message ?? '结果尚未保存') : ''}
           {saveStatus.status === 'error' && <button type="button" onClick={onRetrySave}>重试保存</button>}
         </p>
         <div className="reading-result-actions">
@@ -178,9 +180,9 @@ export default function FreeReadingView({
           <button type="button" className="text-button" onClick={onExit}>返回识谱</button>
         </div>
         <details className="reading-evidence"><summary>查看详细结果</summary>
-          <p>{snapshot.task === 'test' ? '小测 · 无提示' : '练习'} · 用过提示 {snapshot.hintedQuestions} 题 · 错误输入 {snapshot.totalWrongPresses} 次</p>
-          <p>首次答对 {snapshot.firstTryCorrectQuestions}/{snapshot.attemptedQuestions} 道已作答题；实际按键命中率 {snapshot.hitAccuracy == null ? '尚未评估' : `${snapshot.hitAccuracy}%`}。重复按已命中的键不重复计数。</p>
-          {snapshot.confusions.slice(0, 12).map((c, i) => <p key={i}>第 {c.questionIndex + 1} 题：目标 {c.remainingTargets.map(label).join('＋')} → 误按 {label(c.pressed)}</p>)}
+          {report ? <><p>{report.task === 'test' ? '小测 · 无提示' : '练习'} · 用过提示 {report.hintedQuestions} 题 · 错误输入 {report.totalWrongPresses} 次</p>
+          <p>首次答对 {report.firstTryCorrectQuestions}/{report.attemptedQuestions} 道已作答题；实际按键命中率 {report.hitAccuracy == null ? '尚未评估' : `${report.hitAccuracy}%`}。重复按已命中的键不重复计数。</p>
+          {report.confusions.slice(0, 12).map((c, i) => <p key={i}>第 {c.questionIndex + 1} 题：目标 {c.remainingTargets.map(label).join('＋')} → 误按 {label(c.pressed)}</p>)}</> : <p>服务端结果就绪后显示。</p>}
         </details>
 
       </section>

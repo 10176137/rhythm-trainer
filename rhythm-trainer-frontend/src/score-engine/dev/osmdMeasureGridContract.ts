@@ -2,7 +2,8 @@
 import { OpenSheetMusicDisplay, MusicSystemBuilder } from 'opensheetmusicdisplay';
 import { applyMeasureGrid, prepareMeasureGrid, renderMeasureGrid } from '../../components/osmdEngraving';
 import { importScoreText } from '../../features/score/scoreImport';
-import { createSkillDrill } from '../../features/practice/skillDrills';
+import denseScale from './fixtures/grid-dense-scale.musicxml?raw';
+import leftFiveFinger from './fixtures/grid-left-five-finger.musicxml?raw';
 import { OsmdScoreViewAdapter } from '../view/score-view-adapter';
 import sample from '../../features/score/fixtures/c-major-practice.musicxml?raw';
 
@@ -18,8 +19,8 @@ const cases = [
   { name: '宽窗口 / 9 小节', xml: score(9), width: 1510, zoom: 1 },
   { name: '来源文件强制换行仍按四列', xml: score(6).replace('<measure number="3">', '<measure number="3"><print new-system="yes"/>'), width: 1200, zoom: 1 },
   { name: '跨行调号与拍号说明', xml: score(5).replace('<measure number="5">', `<measure number="5">${sourceBars[0].match(/<attributes>[\s\S]*?<\/attributes>/)![0]}`), width: 1200, zoom: 1 },
-  { name: '双手密集音阶 / F 大调', xml: createSkillDrill('scales', 3, 60, { key: 'F', hand: 'both' }).xml, width: 760, zoom: 1.3 },
-  { name: '单独低音谱表 / G 大调', xml: createSkillDrill('five-finger', 2, 60, { key: 'G', hand: 'left' }).xml, width: 860, zoom: 1 },
+  { name: '双手密集音阶 / F 大调', xml: denseScale, width: 760, zoom: 1.3 },
+  { name: '单独低音谱表 / G 大调', xml: leftFiveFinger, width: 860, zoom: 1 },
 ];
 const status = document.getElementById('status')!;
 const preview = document.getElementById('preview')!;
