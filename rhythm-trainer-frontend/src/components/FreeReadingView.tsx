@@ -63,7 +63,7 @@ function useSnapshot(session: FreeReadingSession, input: FreeReadingInputEvent |
     setLastMidi(attack.midi);
     setLastResult(result === 'ignored' ? null : result);
     const next = session.snapshot();
-    if (session.task === 'practice' && attack.completedQuestion) {
+    if (attack.completedQuestion) {
       setSnapshot({ ...next, status: 'running', currentIndex: attack.questionIndex,
         currentTargets: attack.questionTargets, currentHits: attack.questionHits });
       completionTimer.current = setTimeout(() => {
@@ -225,16 +225,16 @@ export default function FreeReadingView({
       <div className="reading-score-stage">
         {question.length ? (
           <ReadingScoreFeedback targets={question} staff={staff} musicKey={setup?.key ?? null}
-            hits={session.task === 'practice' ? snapshot.currentHits : []}
-            wrongPitches={session.task === 'practice' && !paused ? input?.heldWrongPitches ?? [] : []} />
+            hits={snapshot.currentHits}
+            wrongPitches={!paused ? input?.heldWrongPitches ?? [] : []} />
         ) : (
           <p className="report-warning">题目渲染缺失。</p>
         )}
         {paused && <div className="reading-paused-overlay">已暂停 — 输入被忽略，按「继续」恢复</div>}
       </div>
 
-      {session.task === 'practice' && <p className="reading-hint">目标音弹对后变绿；右侧红色音符是你正在按下的错误音，松键后消失。</p>}
-      {session.task === 'practice' && <div className="reading-feedback" aria-live="polite">
+      <p className="reading-hint">目标音弹对后变绿；右侧红色音符是你正在按下的错误音，松键后消失。{session.task === 'test' ? '小测不提供事先答案提示，统计在结束后汇总。' : ''}</p>
+      <div className="reading-feedback" aria-live="polite">
         <span>已命中 <b>{hitCount} / {total}</b></span>
         <span>
           最近输入：
@@ -243,15 +243,14 @@ export default function FreeReadingView({
           {lastResult === 'wrong' && <b className="text-bad">✗ {lastMidi !== null ? label(lastMidi) : ''} 不是当前目标音</b>}
           {lastResult === null && <b>—</b>}
         </span>
-      </div>}
-      {session.task === 'test' && <p className="reading-muted">小测不提供答案提示，结果在结束后显示。</p>}
+      </div>
       {session.task === 'practice' && <div className="reading-hint-action">
         <button type="button" className="text-button" disabled={paused || hintedIndex === snapshot.currentIndex} onClick={() => { if (session.hint()) { setHintedIndex(snapshot.currentIndex); refresh(); } }}>查看本题提示</button>
         {hintedIndex === snapshot.currentIndex && <span>目标：{question.map(label).join('＋')}（本题记录为使用过提示）</span>}
       </div>}
 
       {(!focus || !deviceConnected) && <ReadingKeyboard
-        states={session.task === 'test' ? new Map() : keyStates}
+        states={keyStates}
         disabled={deviceConnected || paused}
         fifths={fifths}
         onPress={(midi) => onInput(midi, false)}

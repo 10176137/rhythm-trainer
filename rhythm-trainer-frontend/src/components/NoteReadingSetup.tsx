@@ -93,7 +93,7 @@ export default function NoteReadingSetup({
       <div className="reading-custom-fields">
       {value.mode === 'free' && <div className="reading-task-choice" role="group" aria-label="训练方式">
         <button type="button" aria-pressed={value.task === 'practice'} onClick={() => patch({ task: 'practice' })}>练习 · 可请求提示</button>
-        <button type="button" aria-pressed={value.task === 'test'} onClick={() => patch({ task: 'test' })}>小测 · 结束后反馈</button>
+        <button type="button" aria-pressed={value.task === 'test'} onClick={() => patch({ task: 'test' })}>小测 · 无答案提示</button>
       </div>}
       <div className="reading-setup-block" aria-label="音域选择">
         <h3>选择八度 <small>可多选</small></h3>
@@ -279,7 +279,7 @@ export default function NoteReadingSetup({
               <span><b>{value.measures}</b> 小节 · 预备拍 <b>{value.countInMeasures}</b> 小节</span>
             </>
           )}
-        {value.mode === 'free' && <span>{value.task === 'test' ? '小测 · 结束后反馈' : '练习 · 可请求提示'}</span>}
+        {value.mode === 'free' && <span>{value.task === 'test' ? '小测 · 无答案提示' : '练习 · 可请求提示'}</span>}
         <span>MIDI <b>{deviceConnected ? '已连接' : '未连接（可用虚拟键盘）'}</b></span>
         {value.mode === 'rhythm' && !handMappingReady && (
           <span className="reading-summary-warn">特殊曲谱的手别可以在「总设置」中调整。</span>

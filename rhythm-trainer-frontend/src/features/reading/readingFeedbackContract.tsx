@@ -8,7 +8,9 @@ import { forwardReadingInput, heldReadingErrors, type ReadingInputFeedback } fro
 import '../../styles.css';
 
 function Contract() {
-  const [session] = useState(() => new FreeReadingSession([[60, 64, 67], [72], [48, 52]]));
+  const [session] = useState(() => new FreeReadingSession([[60, 64, 67], [72], [48, 52]], {
+    task: new URLSearchParams(location.search).get('task') === 'test' ? 'test' : 'practice',
+  }));
   const [input, setInput] = useState<FreeReadingInputEvent | null>(null);
   const [focused, setFocused] = useState(true);
   const [deviceConnected, setDeviceConnected] = useState(false);
