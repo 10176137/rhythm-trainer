@@ -18,7 +18,7 @@ import SettingsPage from './components/SettingsPage';
 import ReadingHistory from './components/ReadingHistory';
 import { loadReadingSettings, saveReadingSettings, readingConfigLabel } from './features/reading/readingSettings';
 import { keyFifths, spelledLabel } from './features/reading/readingKeys';
-import { saveReadingAttempt, type ReadingAttemptPayload, type ReadingRecord } from './services/readingRepository';
+import { createReadingAttemptId, saveReadingAttempt, type ReadingAttemptPayload, type ReadingRecord } from './services/readingRepository';
 import SidebarNavigation, { navigationParent } from './components/SidebarNavigation';
 import { modeRegistry } from './config/modeRegistry';
 import type { ScoreDocument } from './core/sampleScore';
@@ -2382,7 +2382,7 @@ export default function App() {
         const readingSession = new FreeReadingSession(questions.map((question) => question.midiNotes), { task: value.task });
         readingSessionRef.current = readingSession;
         readingSourcesRef.current = new Set();
-        readingAttemptMetaRef.current = { id: crypto.randomUUID(), startedAtIso: new Date().toISOString() };
+        readingAttemptMetaRef.current = { id: createReadingAttemptId(), startedAtIso: new Date().toISOString() };
         readingPayloadRef.current = null;
         setReadingSave({ status: 'idle' });
         setConfig((prev) => ({ ...prev, modeId: 'reading-free' }));
