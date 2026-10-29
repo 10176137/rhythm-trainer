@@ -20,6 +20,8 @@ export interface FreeReadingInputEvent extends ReadingInputFeedback {
 
 interface Props {
   session: FreeReadingSession;
+  focus?: boolean;
+  onToggleFocus?: () => void;
   /** The setup the session was generated from (key/staff preference for rendering). */
   setup: { key: KeySelection | null; staffPreference: ReadingStaffPreference } | null;
   /** Bumps whenever App forwards a new MIDI note-on/off. */
@@ -80,6 +82,8 @@ function useSnapshot(session: FreeReadingSession, input: FreeReadingInputEvent |
 
 export default function FreeReadingView({
   session,
+  focus = false,
+  onToggleFocus,
   setup,
   input,
   deviceConnected,
@@ -187,7 +191,7 @@ export default function FreeReadingView({
   }
 
   return (
-    <section className="reading-practice" aria-label="自由识谱练习">
+    <section className={`reading-practice${focus ? ' is-focused' : ''}`} aria-label="自由识谱练习">
       <header className="reading-topbar">
         <div className="reading-topbar-title">
           <span className="eyebrow">{session.task === 'test' ? '识谱小测' : '识谱练习'}</span>
@@ -212,6 +216,9 @@ export default function FreeReadingView({
           >
             结束并查看结果
           </button>
+          {onToggleFocus && <button type="button" className="button button-outline button-small" onClick={onToggleFocus}>
+            {focus ? '退出专注' : '进入专注'}
+          </button>}
         </div>
       </header>
 
@@ -243,13 +250,13 @@ export default function FreeReadingView({
         {hintedIndex === snapshot.currentIndex && <span>目标：{question.map(label).join('＋')}（本题记录为使用过提示）</span>}
       </div>}
 
-      <ReadingKeyboard
+      {(!focus || !deviceConnected) && <ReadingKeyboard
         states={session.task === 'test' ? new Map() : keyStates}
         disabled={deviceConnected || paused}
         fifths={fifths}
         onPress={(midi) => onInput(midi, false)}
         onRelease={(midi) => onInput(midi, true)}
-      />
+      />}
       <p className="reading-hint">
         {deviceConnected
           ? '已连接 MIDI 设备：直接在琴上弹奏；下方键盘仅作反馈显示。'

@@ -907,6 +907,7 @@ export default function App() {
   // Re-render the countdown readout while counting in.
   const [nowTick, setNowTick] = useState(0);
   const [readingFreeSession, setReadingFreeSession] = useState<FreeReadingSession | null>(null);
+  const [readingFocusEnabled, setReadingFocusEnabled] = useState(true);
   const [readingSessionVersion, setReadingSessionVersion] = useState(0);
   const [readingFreeConfig, setReadingFreeConfig] = useState<ReadingSetupValue | null>(null);
   const [readingLastConfig, setReadingLastConfig] = useState<ReadingSetupValue>(() => loadReadingSettings('free'));
@@ -2395,6 +2396,7 @@ export default function App() {
         setReadingFreeConfig(value);
         setReadingInput(null);
         setReadingFreeSession(readingSession);
+        setReadingFocusEnabled(true);
         setReadingSessionVersion((version) => version + 1);
         addFeedback(
           '自由识谱开始',
@@ -2480,6 +2482,7 @@ export default function App() {
   const finishReadingResult = (endReason: 'completed' | 'ended-early') => {
     const meta = readingAttemptMetaRef.current;
     if (!readingFreeSession || !readingFreeConfig || !meta) return;
+    setReadingFocusEnabled(false);
     const sources = readingSourcesRef.current;
     const payload: ReadingAttemptPayload = { ...meta, finishedAtIso: new Date().toISOString(), config: readingFreeConfig,
       questions: readingFreeSession.questions, events: readingFreeSession.evidence(), endReason,
@@ -3132,7 +3135,8 @@ export default function App() {
   rhythmReadingFifthsRef.current = rhythmReadingFifths;
   const status = uiStatus;
   const practiceWorkspaceVisible = route?.id === 'workbench' || route?.id === 'performance' || (route?.id === 'training' && trainingRoomOpen);
-  const practiceFocus = practiceWorkspaceVisible && !readingFreeSession && !readingSetupActive && (prepRemain !== null || status === 'countdown' || status === 'running' || status === 'paused');
+  const readingFocus = practiceWorkspaceVisible && readingFreeSession !== null && readingFocusEnabled;
+  const practiceFocus = readingFocus || (practiceWorkspaceVisible && !readingFreeSession && !readingSetupActive && (prepRemain !== null || status === 'countdown' || status === 'running' || status === 'paused'));
   // App 风格工作区：演奏/学习页在非识谱配置、非自由识谱、非完成态时占满视口，
   // 乐谱面板与底部教练底座融合为一张卡片；完成态与识谱页恢复普通滚动。
   const appWorkspace = practiceWorkspaceVisible
@@ -3337,6 +3341,8 @@ export default function App() {
             <FreeReadingView
               key={readingSessionVersion}
               session={readingFreeSession}
+              focus={readingFocus}
+              onToggleFocus={() => setReadingFocusEnabled((enabled) => !enabled)}
               setup={readingFreeConfig ? { key: readingFreeConfig.key ?? null, staffPreference: readingFreeConfig.staffPreference ?? 'auto' } : null}
               input={readingInput}
               deviceConnected={deviceStatus === 'connected'}
