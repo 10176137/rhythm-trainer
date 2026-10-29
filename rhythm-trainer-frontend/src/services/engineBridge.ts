@@ -10,6 +10,7 @@ import type {
   EngineServerMessage,
   EngineAtom,
   EngineJudgment,
+  EngineNoteFeedback,
   EngineTarget,
   DurationEvaluationPolicy,
   EngineIngestMidiPacket,
@@ -52,6 +53,7 @@ export interface EngineStartTiming {
 export interface EngineHandlers {
   onStarted: (targets: EngineTarget[], bpm: number, profile: EngineProfile, captureEpoch?: number, scoringConfig?: EngineScoringConfig, timing?: EngineStartTiming) => void;
   onJudgments: (items: EngineJudgment[]) => void;
+  onNoteFeedback?: (items: EngineNoteFeedback[]) => void;
   onPaused: () => void;
   onResumed: (deltaMs: number) => void;
   onReport: (message: EngineReportMessage) => void;
@@ -154,6 +156,7 @@ export class EngineBridge {
             break;
           case 'judgments':
             this.handlers.onJudgments(message.items);
+            if (message.noteFeedback?.length) this.handlers.onNoteFeedback?.(message.noteFeedback);
             break;
           case 'paused':
             this.handlers.onPaused();

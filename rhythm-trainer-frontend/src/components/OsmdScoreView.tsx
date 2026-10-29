@@ -182,7 +182,7 @@ export default function OsmdScoreView({
     return () => observer?.disconnect();
   }, [loading, layoutEpoch]);
 
-  // Current target = green. Notes the system has played = red; everything
+  // Current target = blue position cue, not a successful judgment. Notes the system has played = red; everything
   // else stays the engraver's default black.
   useEffect(() => {
     const adapter = adapterRef.current;

@@ -18,6 +18,7 @@
 // targets at countInMs + beat offsets in the same relative domain. Fine clock
 // synchronization is a separate subsystem and is intentionally not faked here.
 
+import { LiveNoteFeedback } from './live-note-feedback.mjs';
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -1299,10 +1300,24 @@ wss.on('connection', (socket) => {
   // the bridge here: score reports use scoringSeq, duration matching uses the
   // original transport seq. A future Take-model contract should carry both.
   const scoringSeqToSourceSeq = new Map();
+  let liveNoteFeedback = null;
+  let liveFeedbackErrorLogged = false;
 
   const send = (payload) => {
     if (socket.readyState === socket.OPEN) socket.send(JSON.stringify({ protocolVersion: 1, ...payload }));
   };
+
+  function sendJudgments(items, nowMs) {
+    let noteFeedback;
+    if (liveNoteFeedback) {
+      try { noteFeedback = liveNoteFeedback.update(nowMs); }
+      catch (error) {
+        if (!liveFeedbackErrorLogged) console.warn('[engine] Live note feedback unavailable:', error.message);
+        liveFeedbackErrorLogged = true;
+      }
+    }
+    send({ type: 'judgments', items, ...(noteFeedback?.length ? { noteFeedback } : {}) });
+  }
 
   // A newly connected device panel needs the current state without waiting for
   // the next adapter event.
@@ -1426,7 +1441,8 @@ wss.on('connection', (socket) => {
         failActiveTake('invalid_input');
         throw err;
       }
-      send({ type: 'judgments', items: native.processPending() });
+      liveNoteFeedback?.addOnset(String(admission.decisionId), decoded.noteNumber, atMs);
+      sendJudgments(native.processPending(), atMs);
     }
   }
 
@@ -2782,6 +2798,10 @@ wss.on('connection', (socket) => {
           takeTemplateUpdatedAtIso: takeTemplate?.updatedAtIso ?? null,
         };
         meta.assisted = scoringConfig.feedback === 'live';
+        liveNoteFeedback = scoringConfig.feedback === 'live' && ['fixed-line', 'reading-rhythm'].includes(msg.modeId) && scoreEvents?.length
+          ? new LiveNoteFeedback(scoreEvents, targets, addon.scorePerformance)
+          : null;
+        liveFeedbackErrorLogged = false;
         send({
           type: 'started', bpm, profile, countInBeats, countInUs, targets,
           countInMs,
@@ -2817,7 +2837,7 @@ wss.on('connection', (socket) => {
           failActiveTake('invalid_input');
           throw err;
         }
-        send({ type: 'judgments', items: native.processPending() });
+        sendJudgments(native.processPending(), atMs);
         break;
       }
       case 'note-on':
@@ -2856,7 +2876,7 @@ wss.on('connection', (socket) => {
         const nowMs = Number(msg.nowMs);
         if (!Number.isFinite(nowMs)) return;
         lastNowMs = nowMs;
-        send({ type: 'judgments', items: native.advance(nowMs) });
+        sendJudgments(native.advance(nowMs), nowMs);
         break;
       }
       case 'pause': {
@@ -2878,7 +2898,7 @@ wss.on('connection', (socket) => {
           atSourceMs: pausedSourceMs,
           segmentId: pauseSegment.segmentId,
         });
-        send({ type: 'judgments', items: judgments });
+        sendJudgments(judgments, nowMs);
         send({ type: 'paused' });
         break;
       }
@@ -2889,6 +2909,7 @@ wss.on('connection', (socket) => {
         if (coordinator && activeTake) coordinator.resume(activeTake.takeId, nowMs);
         native.resume(nowMs);
         const deltaMs = pausedAtMs === null ? 0 : nowMs - pausedAtMs;
+        if (pausedAtMs !== null) liveNoteFeedback?.resume(pausedAtMs, deltaMs);
         const openSegment = pauseSegments.find((segment) => segment.endSession === null);
         if (openSegment) openSegment.endSession = nowMs;
         pauseSegmentSeq += 1;
@@ -2919,6 +2940,7 @@ wss.on('connection', (socket) => {
     // the sink so events arriving during finalization cannot enter the take.
     try { midiAdapter.flush(); } catch { /* adapter diagnostics already emitted */ }
     if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
+    sendJudgments([], Infinity);
     const finishedTake = activeTake;
     if (interrupted) {
       // A browser/device switch closes this socket. Preserve the captured Take

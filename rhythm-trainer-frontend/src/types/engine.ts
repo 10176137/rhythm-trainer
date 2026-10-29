@@ -42,6 +42,12 @@ export interface EngineTarget {
   nominalDurationMs: number;
 }
 
+/** Server-authoritative live pitch/onset display state, not a duration verdict. */
+export interface EngineNoteFeedback {
+  scoreEventId: string;
+  state: 'pending' | 'hit' | 'wrong' | 'miss';
+}
+
 export interface EngineJudgment {
   grade: 'perfect' | 'good' | 'miss' | 'extra';
   targetId: string | null;
@@ -587,7 +593,7 @@ export type EngineServerMessage =
       practiceSessionId?: string; takeId?: string; takeIndex?: number;
       scoringConfig?: EngineScoringConfig;
     }
-  | { type: 'judgments'; items: EngineJudgment[] }
+  | { type: 'judgments'; items: EngineJudgment[]; noteFeedback?: EngineNoteFeedback[] }
   | { type: 'paused' }
   | { type: 'resumed'; deltaMs: number; resumedAtMs: number }
   | { type: 'clock-pong'; id: string; clientSendPerfMs: number; serverReceivePerfMs: number; serverSendPerfMs: number }

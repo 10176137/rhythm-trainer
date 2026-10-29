@@ -161,6 +161,51 @@ describe('R2-3h: plan protocol over the real engine server', () => {
     expect(started.countInBeats).toBe(0);
     await request(socket, { type: 'finish', protocolVersion: 1 }, 'report');
   });
+  for (const scenario of ['silence', 'wrong-pitch', 'correct-chord', 'after-feedback']) {
+    it(`streams truthful fixed-line note colors for ${scenario}`, async () => {
+      const requestId = `live-feedback-${scenario}`;
+      const plan = await request(socket, {
+        type: 'plan-request', protocolVersion: 1, requestId, mode: 'timeline',
+        document: CORPUS.document, report: CORPUS.report, config: { ...CONFIG, countInUs: 1000000 },
+      }, 'plan-response', requestId);
+      expect(plan.ok).toBe(true);
+      const scoreEvents = engineScoreEventsFor(plan);
+      const started = await request(socket, {
+        type: 'start', protocolVersion: 1, modeId: 'fixed-line', bpm: CONFIG.bpm.numerator,
+        feedback: scenario === 'after-feedback' ? 'after' : 'live',
+        profile: 'standard', countInBeats: CONFIG.bpm.numerator / 60, countInUs: 1000000, ticksPerQuarter: 960,
+        atoms: plan.plan.atoms, scoreEvents, scoreFingerprint: plan.scoreFingerprint,
+        playbackPlanId: plan.plan.runtimeIds.planId, planRequestId: plan.requestId,
+        plannerAuthority: plan.plannerAuthority, plannerVersion: plan.plannerVersion, planFingerprint: plan.planFingerprint,
+        hand: 'both', scoreBarCount: CORPUS.document.parts[0].measures.length,
+      }, 'started');
+      const first = started.targets[0];
+      const group = scoreEvents.filter((event) => Math.abs(event.targetOnsetMs - first.atMs) < .01);
+      let seq = 0;
+      const raw = (pitch, atMs) => ({ type: 'raw-midi', protocolVersion: 1, ingest: {
+        packet: { sourceId: 'live-test', sourceSeq: ++seq, clockDomainId: 'mock-clock', capturedAtMs: atMs,
+          rawBytes: [0x90, pitch, 90], transport: 'mock', captureEpoch: started.captureEpoch },
+        sessionTimeMs: atMs, clockMappingId: 'live-test', clockUncertaintyMs: 0, clockQuality: 'good',
+      } });
+      // Count-in input is retained as evidence but must never turn a note green.
+      socket.send(JSON.stringify(raw(group[0].pitch, 0)));
+      const before = await request(socket, { type: 'tick', nowMs: 0 }, 'judgments');
+      expect(before.noteFeedback ?? []).toEqual([]);
+      const colors = new Map();
+      const remember = (message) => { for (const item of message.noteFeedback ?? []) colors.set(item.scoreEventId, item.state); };
+      if (scenario === 'correct-chord' || scenario === 'after-feedback') {
+        for (const event of [...group].reverse()) remember(await request(socket, raw(event.pitch, first.atMs + seq), 'judgments'));
+      } else if (scenario === 'wrong-pitch') {
+        const pitch = Array.from({ length: 128 }, (_, n) => n).find((value) => !group.some((event) => event.pitch === value));
+        remember(await request(socket, raw(pitch, first.atMs), 'judgments'));
+      }
+      remember(await request(socket, { type: 'tick', nowMs: first.atMs + first.goodWindowMs + 1 }, 'judgments'));
+      if (scenario === 'after-feedback') expect(colors.size).toBe(0);
+      else if (scenario === 'correct-chord') expect(group.map((event) => colors.get(event.scoreEventId))).toEqual(group.map(() => 'hit'));
+      else expect(group.every((event) => ['wrong', 'miss'].includes(colors.get(event.scoreEventId)))).toBe(true);
+      await request(socket, { type: 'finish', protocolVersion: 1 }, 'report');
+    });
+  }
   it('reports the server-side planner authority (single source of truth)', async () => {
     const status = await request(socket, { protocolVersion: 1, type: 'planner-status' }, 'planner-status');
     expect(status.authority).toBe('rust');

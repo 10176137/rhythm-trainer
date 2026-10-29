@@ -6,7 +6,7 @@ import type {
 import type { ScoreDocument, ScoreEvent } from '../domain/types';
 import { beatToString, subtractBeat } from '../domain/rational';
 
-export type HighlightState = 'current' | 'system' | 'user' | 'error' | 'muted' | 'default';
+export type HighlightState = 'current' | 'hit' | 'system' | 'user' | 'error' | 'muted' | 'default';
 
 /**
  * Mapping version. Bump this whenever the anchor key or conflict policy changes;
@@ -68,7 +68,8 @@ export interface ScoreViewAdapter {
 }
 
 const COLORS: Record<HighlightState, string> = {
-  current: '#1d9b72',
+  current: '#2f6fdb',
+  hit: '#1d9b72',
   system: '#c34b58',
   user: '#2f6fdb',
   error: '#c34b58',

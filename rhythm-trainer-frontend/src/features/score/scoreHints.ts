@@ -16,7 +16,7 @@ export interface ScoreHintState {
 export const SCORE_HINTS_STORAGE_KEY = 'rhythm-trainer.score-hints.v3';
 
 /**
- * The default presentation is the clean score: black/gray notes with a green
+ * The default presentation is the clean score: black/gray notes with a blue
  * current-beat pill and no answer labels. Hints are opt-in from settings; the
  * profile parameter remains so strict mode can keep them off if defaults change.
  */

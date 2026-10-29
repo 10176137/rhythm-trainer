@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EngineBridge } from '../../services/engineBridge';
 import type { PlanRequestInput, PlannerStatus } from '../../services/engineBridge';
 import type { RustPlanResponse } from '../../score-engine/plan/rust-plan';
-import type { DurationEvaluationPolicy, EngineAtom, EngineCaptureDiagnostics, EngineDurationReport, EngineIngestMidiPacket, EngineProfile, EngineJudgment, EngineReport, EngineScoringConfig, EngineScoreEvent, EngineSessionScoreReport, EngineScoreStatus, EngineTarget, EngineTimingAnalysis, FollowEventMessage, FollowReportMessage, FollowStartRequest, FollowStartedMessage, PersistRetryResultMessage } from '../../types/engine';
+import type { EngineNoteFeedback, DurationEvaluationPolicy, EngineAtom, EngineCaptureDiagnostics, EngineDurationReport, EngineIngestMidiPacket, EngineProfile, EngineJudgment, EngineReport, EngineScoringConfig, EngineScoreEvent, EngineSessionScoreReport, EngineScoreStatus, EngineTarget, EngineTimingAnalysis, FollowEventMessage, FollowReportMessage, FollowStartRequest, FollowStartedMessage, PersistRetryResultMessage } from '../../types/engine';
 import type { HandSelection, SessionStatus } from '../../types/practice';
 import type { RetryComparison, TeachingPrescription } from '../../types/teaching';
 import { Metronome, buildBeatClicks } from './metronome';
@@ -101,6 +101,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   /** Backend-authoritative first-note time for the countdown overlay. */
   const [firstTargetAtMs, setFirstTargetAtMs] = useState<number | null>(null);
   const [countInMs, setCountInMs] = useState<number | null>(null);
+  const [noteFeedback, setNoteFeedback] = useState<EngineNoteFeedback[]>([]);
   const [judgments, setJudgments] = useState<EngineJudgment[]>([]);
   const [report, setReport] = useState<EngineReport | null>(null);
   const [analysis, setAnalysis] = useState<EngineTimingAnalysis | { error: string } | null>(null);
@@ -217,6 +218,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         setFirstTargetAtMs(timing?.firstTargetAtMs ?? decorated[0]?.atMs ?? null);
         setCountInMs(timing?.countInMs ?? null);
         setJudgments([]);
+        setNoteFeedback([]);
         setReport(null);
         setSessionId(null);
         setTakeId(null);
@@ -258,6 +260,13 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
           });
         }
         startTickTimer(bridge);
+      },
+      onNoteFeedback: (items) => {
+        setNoteFeedback((previous) => {
+          const merged = new Map(previous.map((item) => [item.scoreEventId, item]));
+          for (const item of items) merged.set(item.scoreEventId, item);
+          return [...merged.values()];
+        });
       },
       onJudgments: (items) => {
         if (items.length === 0) return;
@@ -444,6 +453,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     setFirstTargetAtMs(null);
     setCountInMs(null);
     setJudgments([]);
+    setNoteFeedback([]);
     setReport(null);
     setSessionId(null);
     setTakeId(null);
@@ -567,6 +577,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     setFirstTargetAtMs(null);
     setCountInMs(null);
     setJudgments([]);
+    setNoteFeedback([]);
     setReport(null);
     setSessionId(null);
     setTakeId(null);
@@ -670,7 +681,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   const getCaptureEpoch = useCallback(() => captureEpochRef.current, []);
 
   return {
-    status, active, targets, firstTargetAtMs, countInMs, judgments, report, analysis, sessionId, takeId, traceId, scoringConfig, durations, captureDiagnostics, reportPersisted, reportPersistenceError,
+    status, active, targets, firstTargetAtMs, countInMs, judgments, noteFeedback, report, analysis, sessionId, takeId, traceId, scoringConfig, durations, captureDiagnostics, reportPersisted, reportPersistenceError,
     scoreV1, scoreStatus, scoreConfigVersion, scoreAlgorithmVersion, scoreInputNoteCount, scoreUnmappedNoteCount, pauseAdjusted,
     scoreFingerprint, hand, scoreBarCount, sourceReportId, sourceTakeId, prescriptionId, prescription,
     takeTemplateId, takeTemplateName, retryComparison,

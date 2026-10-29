@@ -341,3 +341,24 @@ fn u_missing_release_has_no_duration_verdict() {
     assert_eq!(report.duration.graded, 0);
     assert_eq!(report.duration.mean_ratio, None);
 }
+
+#[test]
+fn incomplete_chord_reserves_high_tone_for_its_own_target() {
+    let score = score_events(&[1000.0, 1000.0, 1000.0], &[60, 64, 67]);
+    let perf = performed(&[1000.0], &[67], &[]);
+    let report = score_performance(&score, &perf, &ScoringConfig::default()).unwrap();
+    assert_eq!(report.pitch.correct, 1);
+    assert_eq!(report.pitch.wrong_pitch, 0);
+    assert_eq!(report.pitch.missed, 2);
+    assert_eq!(report.alignment.pairs[0].score_event_id, "s3");
+}
+
+#[test]
+fn wrong_chord_tone_does_not_steal_a_later_correct_tone() {
+    let score = score_events(&[1000.0, 1000.0, 1000.0], &[60, 64, 67]);
+    let perf = performed(&[1000.0, 1010.0], &[67, 61], &[]);
+    let report = score_performance(&score, &perf, &ScoringConfig::default()).unwrap();
+    assert_eq!(report.pitch.correct, 1);
+    assert_eq!(report.pitch.wrong_pitch, 1);
+    assert_eq!(report.pitch.missed, 1);
+}

@@ -12,7 +12,7 @@
 use crate::CoreError;
 use std::collections::BTreeMap;
 
-pub const SCORING_ALGORITHM_VERSION: &str = "scoring-v1.0.0";
+pub const SCORING_ALGORITHM_VERSION: &str = "scoring-v1.0.1";
 
 // ---------------------------------------------------------------------------
 // Versioned configuration (spec §7.2/§8: no magic numbers outside here).
@@ -202,7 +202,7 @@ pub fn align_performances(
                 i += group_size;
                 continue;
             }
-            for group_target in &targets[i..i + group_size] {
+            for (group_offset, group_target) in targets[i..i + group_size].iter().enumerate() {
                 let mut best: Option<usize> = None;
                 let mut best_error = f64::INFINITY;
                 for candidate in candidate_start..candidate_end {
@@ -224,6 +224,14 @@ pub fn align_performances(
                     let mut fallback_error = f64::INFINITY;
                     for candidate in candidate_start..candidate_end {
                         if consumed[candidate] {
+                            continue;
+                        }
+                        // Preserve a candidate whose pitch belongs to a later
+                        // tone in this chord. Missing low tones must not consume
+                        // an actually played high tone as a wrong-pitch fallback.
+                        if targets[i + group_offset + 1..i + group_size].iter().any(|other| {
+                            other.pitch == performed_sorted[candidate].pitch
+                        }) {
                             continue;
                         }
                         let error = (performed_sorted[candidate].onset_ms - group_target.target_onset_ms).abs();

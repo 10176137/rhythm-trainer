@@ -334,6 +334,7 @@ export default function App() {
   const elapsedBeforePauseRef = useRef(0);
   const expectedNotesRef = useRef<{ midiNote: number; noteName: string }[][]>([]);
   const planGroupsRef = useRef<string[][]>([]);
+  const feedbackSourceIdsRef = useRef(new Map<string, string>());
   const lastExtraFeedbackRef = useRef(0);
 
   const addFeedback = useCallback((title: string, detail: string, tone: FeedbackMessage['tone']) => {
@@ -1451,6 +1452,7 @@ export default function App() {
         const groupNoteIds = parsed.groups.map((group) => [...group.scoreEventIds]);
         expectedNotesRef.current = expectedNotes;
         planGroupsRef.current = groupNoteIds;
+        feedbackSourceIdsRef.current = new Map(parsed.occurrences.map((item) => [item.occurrenceId, item.scoreEventId]));
         const toleranceMs = launchConfig.profile === 'strict' ? 30 : launchConfig.profile === 'relaxed' ? 100 : 60;
 
         if (mode === 'follow') {
@@ -1873,6 +1875,7 @@ export default function App() {
         });
         assertPracticePlanBundle(timelineBundle);
         scoreEvents = engineScoreEventsFromBundle(timelineBundle);
+        feedbackSourceIdsRef.current = new Map(scopedPlan.occurrences.map((item) => [item.occurrenceId, item.scoreEventId]));
         guideGroups = scopedPlan.groups;
         referencePlanRef.current = reference.plan;
         pendingReferencePlanRef.current = reference.plan;
@@ -3425,6 +3428,8 @@ export default function App() {
                 engine={scoreDoc.engine ?? null}
                 targets={session.targets}
                 groups={planGroupsRef.current}
+                noteFeedback={session.noteFeedback}
+                feedbackSourceIds={feedbackSourceIdsRef.current}
                 status={status}
                 tempo={config.tempo}
                 displayStartMs={displayStartRef.current}

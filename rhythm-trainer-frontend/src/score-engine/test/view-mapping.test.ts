@@ -78,7 +78,9 @@ describe('ScoreViewAdapter mapping', () => {
     expect(summary.mappingVersion).toBe('osmd-structural-2');
     expect(summary.ok).toBe(true);
     expect(adapter.highlightScoreEvent(doc.parts[0].measures[0].events[0].id, 'current')).toBe(true);
-    expect(colors).toContain('#1d9b72');
+    expect(colors.at(-1)).toBe('#2f6fdb');
+    adapter.highlightScoreEvent(doc.parts[0].measures[0].events[0].id, 'hit');
+    expect(colors.at(-1)).toBe('#1d9b72');
     adapter.highlightScoreEvent(doc.parts[0].measures[0].events[0].id, 'system');
     expect(colors).toContain('#c34b58');
     adapter.highlightScoreEvent(doc.parts[0].measures[0].events[0].id, 'user');

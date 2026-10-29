@@ -9,6 +9,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
+import { fixedLineGroupHighlights } from '../features/practice/fixedLineFeedback';
+import type { EngineNoteFeedback } from '../types/engine';
+import type { HighlightState } from '../score-engine/view/score-view-adapter';
 import { OsmdScoreViewAdapter } from '../score-engine/view/score-view-adapter';
 import type { ScoreDocument as EngineScoreDocument } from '../score-engine/domain/types';
 import type { SessionStatus } from '../types/practice';
@@ -19,6 +22,8 @@ interface Props {
   engine: EngineScoreDocument | null;
   targets: readonly PracticeTarget[];
   groups: readonly string[][];
+  noteFeedback: readonly EngineNoteFeedback[];
+  feedbackSourceIds: ReadonlyMap<string, string>;
   status: SessionStatus;
   tempo: number;
   /** performance.now() when the session display clock started (incl. count-in). */
@@ -60,6 +65,8 @@ export default function FixedLineScoreView({
   engine,
   targets,
   groups,
+  noteFeedback,
+  feedbackSourceIds,
   status,
   tempo,
   displayStartMs,
@@ -79,7 +86,9 @@ export default function FixedLineScoreView({
   };
   const adapterRef = useRef<OsmdScoreViewAdapter | null>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
-  const previousActiveRef = useRef<string[]>([]);
+  const previousColorsRef = useRef(new Map<string, HighlightState>());
+  const feedbackRef = useRef(noteFeedback);
+  feedbackRef.current = noteFeedback;
   const timeHighlightRef = useRef(-1);
   const anchorsRef = useRef<TargetAnchor[]>([]);
   const systemsRef = useRef<SystemGeom[]>([]);
@@ -103,7 +112,8 @@ export default function FixedLineScoreView({
     anchorsRef.current = [];
     systemsRef.current = [];
     currentSystemRef.current = -1;
-    previousActiveRef.current = [];
+    timeHighlightRef.current = -1;
+    previousColorsRef.current.clear();
 
     void (async () => {
       try {
@@ -223,8 +233,7 @@ export default function FixedLineScoreView({
     currentSystemRef.current = 0;
     if (!systems.length) return;
     fitJudgeLine(systems[0], wrap.clientHeight);
-    timeHighlightRef.current = -1;
-    applyTimeHighlight(-1);
+    applyTimeHighlight(timeHighlightRef.current);
     // Preview one system from its left edge; the marker is hidden until start.
     const centerY = wrap.clientHeight / 2;
     if (!systems.length) return;
@@ -247,19 +256,25 @@ export default function FixedLineScoreView({
     return () => observer.disconnect();
   }, [measureAnchors]);
 
-  // The green highlight follows the TARGET AT THE FIXED LINE, derived from the
-  // same target times as the animation. It must not lag behind when a target
-  // is missed: the line is the time reference.
+  // Time controls only the blue position cue. Green/red come from the
+  // backend's Rust pitch/onset feedback and persist after the cursor advances.
   const applyTimeHighlight = (index: number) => {
-    if (timeHighlightRef.current === index) return;
     const adapter = adapterRef.current;
     if (!adapter) return;
-    for (const id of previousActiveRef.current) adapter.highlightScoreEvent(id, 'default');
-    const ids = groups[index] ?? [];
-    for (const id of ids) adapter.highlightScoreEvent(id, 'current');
-    previousActiveRef.current = [...ids];
+    const colors = fixedLineGroupHighlights(groups, feedbackRef.current, index, feedbackSourceIds);
+    for (const [id] of previousColorsRef.current) {
+      if (!colors.has(id)) adapter.highlightScoreEvent(id, 'default');
+    }
+    for (const [id, color] of colors) {
+      if (previousColorsRef.current.get(id) !== color) adapter.highlightScoreEvent(id, color);
+    }
+    previousColorsRef.current = colors;
     timeHighlightRef.current = index;
   };
+
+  useEffect(() => {
+    if (!loading) applyTimeHighlight(timeHighlightRef.current);
+  }, [noteFeedback, groups, feedbackSourceIds, loading, ready]);
 
   // Critical: if the OSMD render finished after the plan, anchors may not have
   // been measured yet (ready changes). The anchor effect above depends on ready.
@@ -282,7 +297,8 @@ export default function FixedLineScoreView({
       }
       const active = anchors[index];
       const next = anchors[index + 1];
-      applyTimeHighlight(now < anchors[0].atMs ? -1 : active.targetIndex);
+      const currentIndex = now < anchors[0].atMs ? -1 : active.targetIndex;
+      if (currentIndex !== timeHighlightRef.current) applyTimeHighlight(currentIndex);
       let anchorX = active.x;
       if (now < anchors[0].atMs) {
         const lead = Math.min(300, wrap.clientWidth * 0.4);
@@ -355,7 +371,7 @@ export default function FixedLineScoreView({
         <span className="fixed-line-meta">
           {tempo} BPM · 与专业谱面同一份 OSMD 排版
         </span>
-        <span className="fixed-line-hint">音符到达判定线时演奏</span>
+        <span className="fixed-line-hint">蓝色提示位置 · 绿色为音高与起音命中 · 红色为错音或漏音</span>
       </div>
       <div className="fixed-line-osmd-wrap" ref={wrapRef}>
         <div className="fixed-line-osmd-host" ref={hostRef} aria-label="固定判定线专业谱面" />
