@@ -1653,11 +1653,16 @@ export default function App() {
       )).filter((note) => (
         !loopActive || (note.bar >= config.loopStartBar && note.bar <= config.loopEndBar)
       ));
-      const unsupported = getUnsupportedNotes(launchNotes, maxBar);
+      // The professional score reads 8va/8vb from source MusicXML. Its
+      // sounding pitches must not be checked against the simple SVG range.
+      const renderer = scoreDoc.sourceXml && scoreDoc.engine ? 'osmd' : 'simple';
+      const unsupported = getUnsupportedNotes(launchNotes, maxBar, renderer);
       if (unsupported.length > 0) {
+        const examples = unsupported.slice(0, 3).map(({ note, reason }) => `${reason}（第 ${note.bar} 小节）`);
+        const remaining = unsupported.length - examples.length;
         addFeedback(
           '谱面超出支持范围',
-          `${unsupported.map(({ note, reason }) => `${reason}（第 ${note.bar} 小节）`).join('；')}。为避免绘制错误音符后继续判分，本次练习不会启动。`,
+          `${examples.join('；')}${remaining > 0 ? `；另有 ${remaining} 处` : ''}。请检查谱面后重试，本次练习不会启动。`,
           'warning',
         );
         return false;

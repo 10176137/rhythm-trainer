@@ -4,6 +4,7 @@ import { applyMeasureGrid, prepareMeasureGrid, renderMeasureGrid } from '../../c
 import { importScoreText } from '../../features/score/scoreImport';
 import denseScale from './fixtures/grid-dense-scale.musicxml?raw';
 import leftFiveFinger from './fixtures/grid-left-five-finger.musicxml?raw';
+import octaveShifts from '../../features/score/fixtures/octave-shifts.musicxml?raw';
 import { OsmdScoreViewAdapter } from '../view/score-view-adapter';
 import sample from '../../features/score/fixtures/c-major-practice.musicxml?raw';
 
@@ -21,6 +22,7 @@ const cases = [
   { name: '跨行调号与拍号说明', xml: score(5).replace('<measure number="5">', `<measure number="5">${sourceBars[0].match(/<attributes>[\s\S]*?<\/attributes>/)![0]}`), width: 1200, zoom: 1 },
   { name: '双手密集音阶 / F 大调', xml: denseScale, width: 760, zoom: 1.3 },
   { name: '单独低音谱表 / G 大调', xml: leftFiveFinger, width: 860, zoom: 1 },
+  { name: '高低八度记号 / 保留实际 MIDI 与音符定位', xml: octaveShifts, width: 1200, zoom: 1 },
 ];
 const status = document.getElementById('status')!;
 const preview = document.getElementById('preview')!;

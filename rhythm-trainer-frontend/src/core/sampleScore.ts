@@ -4,9 +4,9 @@ export type ScoreHand = 'left' | 'right';
 export type ScoreNoteType = 'whole' | 'half' | 'quarter' | 'eighth' | '16th';
 
 /**
- * One notated score event. Pitch is stored as written (step/alter/octave), not
- * as a screen coordinate: the staff position is derived in the score layer so
- * a display hint can never move a note.
+ * One score event. Pitch preserves MusicXML's sounding step/alter/octave and
+ * MIDI value, never a screen coordinate. Professional engraving reads written
+ * octave shifts (8va/8vb) from sourceXml; display hints cannot move targets.
  */
 export interface ScoreNote {
   id: string;

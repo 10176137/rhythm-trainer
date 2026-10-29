@@ -153,8 +153,17 @@ export function formatPositionLabel(placement: StaffPlacement): string {
   return placement.positionLabel;
 }
 
-/** Returns a user-facing explanation when a note cannot be drawn reliably. */
-export function getUnsupportedReason(note: ScoreNote): string | null {
+export type ScoreRenderer = 'simple' | 'osmd';
+
+/**
+ * MusicXML stores sounding pitch, including under 8va/8vb. Only the simple
+ * SVG mapper has a three-ledger-line limit; OSMD reads the original notation.
+ * Pitch integrity checks apply to both renderers and never transpose targets.
+ */
+export function getUnsupportedReason(note: ScoreNote, renderer: ScoreRenderer = 'simple'): string | null {
+  if (!Number.isInteger(note.midiNote) || note.midiNote < 0 || note.midiNote > 127) {
+    return `${note.noteName} 的 MIDI 音高无效（应为 0–127 的整数）`;
+  }
   if (Math.abs(note.alter) > 2) {
     return `${note.noteName} 的变音记号超出当前支持范围（最多双升/双降）`;
   }
@@ -162,7 +171,7 @@ export function getUnsupportedReason(note: ScoreNote): string | null {
   if (writtenMidi !== note.midiNote) {
     return `${note.noteName} 的书写音高与 MIDI 音高不一致（应为 ${writtenMidi}，实际 ${note.midiNote}）`;
   }
-  if (!getStaffPlacement(note.staff, note.step, note.alter, note.octave)) {
+  if (renderer === 'simple' && !getStaffPlacement(note.staff, note.step, note.alter, note.octave)) {
     return `${note.noteName} 超出当前支持范围（最多 ${MAX_LEDGER_LINES} 条加线）`;
   }
   return null;
@@ -176,12 +185,16 @@ export function accidentalGlyph(alter: number): string {
   return '';
 }
 
-export function getUnsupportedNotes(notes: readonly ScoreNote[], barCount = 2): { note: ScoreNote; reason: string }[] {
+export function getUnsupportedNotes(
+  notes: readonly ScoreNote[],
+  barCount = 2,
+  renderer: ScoreRenderer = 'simple',
+): { note: ScoreNote; reason: string }[] {
   return notes.flatMap((note) => {
-    if (note.bar < 1 || note.bar > barCount) {
+    if (!Number.isInteger(note.bar) || note.bar < 1 || note.bar > barCount) {
       return [{ note, reason: '小节号超出当前谱面范围' }];
     }
-    const reason = getUnsupportedReason(note);
+    const reason = getUnsupportedReason(note, renderer);
     return reason ? [{ note, reason }] : [];
   });
 }
