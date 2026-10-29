@@ -84,7 +84,7 @@ describe('ScoreViewAdapter mapping', () => {
     adapter.highlightScoreEvent(doc.parts[0].measures[0].events[0].id, 'system');
     expect(colors).toContain('#c34b58');
     adapter.highlightScoreEvent(doc.parts[0].measures[0].events[0].id, 'user');
-    expect(colors).toContain('#2f6fdb');
+    expect(colors.at(-1)).toBe('#1d9b72');
     adapter.clearHighlights();
     expect(colors).toContain('#20252d');
     const after = JSON.stringify(buildScoreOccurrences(plan, tempo));

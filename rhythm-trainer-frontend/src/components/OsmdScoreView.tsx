@@ -182,8 +182,8 @@ export default function OsmdScoreView({
     return () => observer?.disconnect();
   }, [loading, layoutEpoch]);
 
-  // Current target = blue position cue, not a successful judgment. Notes the system has played = red; everything
-  // else stays the engraver's default black.
+  // Current target = blue; completed user targets = green; system notes = red.
+  // The user-paced guide owns completion highlights independently of timing grades.
   useEffect(() => {
     const adapter = adapterRef.current;
     if (!adapter || loading) return;

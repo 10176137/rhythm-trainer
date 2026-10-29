@@ -85,6 +85,7 @@ import {
 } from './features/score/scoreLibrary';
 import ledgerDemoXml from './features/score/fixtures/ledger-lines-demo.musicxml?raw';
 import { getUnsupportedNotes } from './features/score/staffMapping';
+import { timelineHitNoteIds } from './features/practice/scoreHighlightFeedback';
 import { assessPracticeScope, buildUserHandMapping, buildDefaultPianoHandMapping, DEFAULT_PIANO_HANDS, type PianoHandDefaults, handByScoreEventIdFromMapping, suggestClefHeuristicMapping, type PracticeHand, type HandMappingV1 } from './score-engine/scope/practice-scope';
 import {
   loadScoreHintOverrides,
@@ -524,9 +525,10 @@ export default function App() {
 
   const session = usePracticeSession({
     onJudgment: (judgment) => {
-      if (judgment.grade === 'perfect' || judgment.grade === 'good') {
+      const hitIds = timelineHitNoteIds(judgment, planGroupsRef.current, guideSessionRef.current !== null);
+      if (hitIds.length > 0) {
         setFollowPulse((value) => value + 1);
-        markUserNotes(judgment.targetIndex !== null ? planGroupsRef.current[judgment.targetIndex] : undefined);
+        markUserNotes(hitIds);
       }
       if (config.feedback === 'live') {
         if (judgment.grade === 'miss') {
@@ -806,7 +808,7 @@ export default function App() {
     return true;
   };
 
-  /** User-paced green cursor while the system duet plays on the fixed clock. */
+  /** User-paced blue cursor while the system duet plays on the fixed clock. */
   const handleGuideNote = useCallback((midiNote: number) => {
     const guide = guideSessionRef.current;
     if (!guide) return;
@@ -1037,7 +1039,7 @@ export default function App() {
           const firstBeat = Math.min(...visibleTargetNotes.map((note) => note.beat));
           return visibleTargetNotes.filter((note) => note.beat === firstBeat).map((note) => note.id);
         })();
-  // With the system duet, the green cursor is user-paced (FollowSession guide)
+  // With the system duet, the blue cursor is user-paced (FollowSession guide)
   // and does not advance when the fixed clock advances or a miss occurs.
   const activeNoteIds = guideGroup ? [...guideGroup.scoreEventIds] : engineActiveNoteIds;
   const activeNoteKey = activeNoteIds.join('|');

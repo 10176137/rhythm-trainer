@@ -36,7 +36,7 @@ interface Props {
   followPulse?: number;
   /** Target note IDs the system has played (red in the professional score). */
   systemNoteIds?: string[];
-  /** Target note IDs the player has hit correctly (blue). */
+  /** Target note IDs the player has hit correctly (green). */
   userNoteIds?: string[];
   /** System duet: the system plays the correct notes as an audible guide. */
   systemDuet?: boolean;
@@ -385,7 +385,7 @@ export default function ScoreViewer({
 
       <div className="score-display-note">
         <i />
-        <span>当前目标会在专业谱面上高亮；只有弹对当前目标后才会自动跟随滚动，手动往下查看不会被拉回。</span>
+        <span>蓝色是当前目标，绿色是你弹对的音，红色是系统伴弹；只有弹对当前目标后才会自动跟随滚动，手动往下查看不会被拉回。</span>
       </div>
       <p className="score-source-line">
         {meta.integration === 'fixture' ? meta.integrationNote : `导入：${meta.sourceFile.split(/[\\/]/).pop()}。${meta.integrationNote}`}

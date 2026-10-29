@@ -71,7 +71,7 @@ const COLORS: Record<HighlightState, string> = {
   current: '#2f6fdb',
   hit: '#1d9b72',
   system: '#c34b58',
-  user: '#2f6fdb',
+  user: '#1d9b72',
   error: '#c34b58',
   muted: '#b9bdc5',
   default: '#20252d',

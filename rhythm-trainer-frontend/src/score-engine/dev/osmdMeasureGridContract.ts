@@ -2,6 +2,7 @@
 import { OpenSheetMusicDisplay, MusicSystemBuilder } from 'opensheetmusicdisplay';
 import { applyMeasureGrid, prepareMeasureGrid, renderMeasureGrid } from '../../components/osmdEngraving';
 import { importScoreText } from '../../features/score/scoreImport';
+import { timelineHitNoteIds } from '../../features/practice/scoreHighlightFeedback';
 import denseScale from './fixtures/grid-dense-scale.musicxml?raw';
 import leftFiveFinger from './fixtures/grid-left-five-finger.musicxml?raw';
 import octaveShifts from '../../features/score/fixtures/octave-shifts.musicxml?raw';
@@ -74,7 +75,28 @@ async function run() {
       row.textContent = `通过 · ${entry.name} · ${systems.length} 行 · ${mapping.mappedEventCount} 个音符完整定位`;
       results.append(row);
       if (entry.name === '5 小节 / 1200px') {
-        adapter.highlightScoreEvent(first.id, 'default');
+        adapter.clearHighlights();
+        const notes = original.parts[0].measures.flatMap((measure) => measure.events).filter((event) => event.kind === 'note');
+        const next = notes.find((note) => note.source.measureOrdinal === 1 && note.onsetBeat.numerator !== first.onsetBeat.numerator)!;
+        const future = notes.find((note) => note.source.measureOrdinal === 5)!;
+        // Replay the display bug: the user is in measure one while the
+        // independent rhythm clock has a hit in measure five.
+        const timingIds = timelineHitNoteIds({ grade: 'good', targetIndex: 1 }, [[first.id], [future.id]], true);
+        for (const id of timingIds) adapter.highlightScoreEvent(id, 'user');
+        adapter.highlightScoreEvent(first.id, 'user');
+        adapter.highlightScoreEvent(next.id, 'current');
+        const colors = (id: string) => adapter.getGraphicalNotes(id).flatMap((note) => {
+          const heads = (note as unknown as { getNoteheadSVGs(): HTMLElement[] }).getNoteheadSVGs();
+          return heads.flatMap((head) => [head, ...head.querySelectorAll('[fill]')])
+            .map((node) => node.getAttribute('fill')).filter(Boolean);
+        });
+        assert(colors(first.id).includes('#1d9b72'), '弹对音符应为绿色');
+        assert(colors(next.id).includes('#2f6fdb'), '当前目标应为蓝色');
+        assert(colors(future.id).includes('#20252d'), '未弹到的第五小节必须保持黑色');
+        const isolation = document.createElement('p');
+        isolation.textContent = '高亮隔离通过：第一小节已弹为绿色、当前目标为蓝色；第五小节保持黑色。';
+        isolation.dataset.highlightIsolation = 'pass';
+        preview.before(isolation);
         wrapper.className = '';
         preview.append(wrapper);
       } else wrapper.remove();
