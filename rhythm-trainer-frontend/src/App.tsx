@@ -1557,6 +1557,8 @@ export default function App() {
   ) => {
     if (session.active || starting || followStatusRef.current === 'running' || followStatusRef.current === 'paused' || followStatusRef.current === 'processing') return false;
     const config = overrideConfig ?? configRef.current;
+    // Untimed reading owns its session; stale performance callbacks cannot start a Take.
+    if (config.modeId === 'reading-free' || readingFreeActiveRef.current) return false;
     if (source && !(config.modeId === 'loop' || (config.modeId === 'score' && config.loopEnabled))) return false;
     if (source && (!scoreDoc.engine || scoreDoc.engine.fingerprint !== source.scoreFingerprint)) {
       addFeedback('复练曲谱不一致', '当前打开曲谱与来源报告不一致，未创建复练任务。', 'warning');
@@ -2010,6 +2012,7 @@ export default function App() {
   };
 
   const startPractice = () => {
+    if (configRef.current.modeId === 'reading-free' || readingFreeActiveRef.current) return;
     if (prepRemain !== null) return;
     const pendingDraft = settingsDraft;
     const draftDirty = pendingDraft !== null && (
@@ -3216,7 +3219,7 @@ export default function App() {
       focus={practiceFocus}
       sidebar={sidebar}
       topbar={topbar}
-      notice={session.error ? <section className="card error-strip" role="alert"><strong>引擎服务异常</strong><p>{session.error}</p></section> : null}
+      notice={config.modeId !== 'reading-free' && session.error ? <section className="card error-strip" role="alert"><strong>引擎服务异常</strong><p>{session.error}</p></section> : null}
     >
       <div className={`page-content${fixedLineMode ? ' fixed-line-page' : ''}${appWorkspace ? ' app-workspace' : ''}${status === 'completed' ? ' page-done' : ''}${readingSetupActive ? ' reading-setup-page' : ''}${readingFreeSession ? ' reading-free-page' : ''}${config.modeId === 'reading-rhythm' ? ' reading-rhythm-page' : ''}`} style={{ display: practiceWorkspaceVisible ? undefined : 'none' }}>
           <input
@@ -3424,7 +3427,8 @@ export default function App() {
           </section>}
 
           {feedbackItems[0]?.tone === 'warning' && !practiceFocus && <div className="practice-warning" role="status">{feedbackItems[0].title}：{feedbackItems[0].detail}</div>}
-          <div className="workspace-grid" style={{ display: route?.id === 'training' && status === 'completed' ? 'none' : undefined }}>
+          {/* Unmount performance controls here so focus styles cannot reveal a second toolbar. */}
+          {!readingFreeSession && !readingSetupActive && config.modeId !== 'reading-free' && <div className="workspace-grid" style={{ display: route?.id === 'training' && status === 'completed' ? 'none' : undefined }}>
             <section className="card score-card">
           <section className="session-strip">
             <div className="session-main"><div className="session-art">{currentMode.icon}</div><div className="session-copy"><div className="session-title-row"><h2>{route?.id === 'training' && trainingDrill ? trainingDrill.title : currentMode.title}</h2><span className={`status-pill ${statusClass}`}><i />{statusLabel}</span></div><p>{currentMode.description}</p><div className="session-tags"><span>♩ {config.tempo} BPM</span><span>♬ {config.hand === 'both' ? '双手' : config.hand === 'right' ? '右手' : '左手'}</span>{session.takeTemplateName && <span>Take {session.takeTemplateName}</span>}<span>◉ {config.feedback === 'live' ? '实时反馈' : '结束后分析'}</span><span>{config.advanceMode === 'follow' ? '◉ 光标跟随' : '⏱ 固定时间'}</span><span>♪ 参考 {referenceStatusLabel}{referencePositionLabel ? ` · ${referencePositionLabel}` : ''}</span><span>⌨ {deviceStatus === 'connected' ? `输入 ${deviceHealth}` : 'MIDI 未连接'}</span><span className="uncalibrated-tag">音频延迟未校准</span><span>⚖ {(session.scoringConfig?.judgmentProfile ?? config.profile) === 'strict' ? '严格' : (session.scoringConfig?.judgmentProfile ?? config.profile) === 'relaxed' ? '宽松' : '标准'}判定{session.scoringConfig?.judgmentProfileSource === 'mode-default' ? '（模式默认）' : ''}</span></div></div></div>
@@ -3501,7 +3505,7 @@ export default function App() {
               </div>
             )}</section>
             </aside></section>
-          </div>
+          </div>}
 
           {route?.id !== 'training' && status === 'completed' && <details className="practice-stats"><summary>查看本轮统计</summary>
           <section className="metrics-grid"><div className="metric-card card"><div className="metric-label">当前进度 <span>◷</span></div><div className="metric-value">{config.advanceMode === 'follow' ? (followView?.completed ?? 0) : engineTargets ? Math.min(session.nextUnmatchedIndex, session.liveStats.total) : 0}<small> / {config.advanceMode === 'follow' ? (followView?.total ?? 0) : engineTargets ? session.liveStats.total : scopedTargetCount}</small></div><div className="progress-track"><div style={{ width: `${config.advanceMode === 'follow' ? (followView?.total ? Math.min(100, (followView.completed / followView.total) * 100) : 0) : engineTargets && session.liveStats.total ? Math.min(100, session.nextUnmatchedIndex / session.liveStats.total * 100) : 0}%` }} /></div><div className="metric-foot">引擎已判定的目标进度</div></div><div className="metric-card card"><div className="metric-label">输入次数 <span>⌁</span></div><div className="metric-value">{events.filter(e => e.type === 'note-on').length}<small> 次</small></div><div className="metric-foot">本次会话采集到的按键</div></div><div className="metric-card card"><div className="metric-label">引擎命中 <span>％</span></div><div className="metric-value">{liveHitRate ?? '—'}<small>{liveHitRate !== null ? '%' : ''}</small></div><div className="metric-foot">实时判定 Perfect+Good / 目标数</div></div><div className="metric-card card"><div className="metric-label">引擎统计 <span>♫</span></div><div className="metric-value metric-note">{matchedLabel}</div><div className="metric-foot">命中 / 目标(漏拍与多击见报告)</div></div></section>
