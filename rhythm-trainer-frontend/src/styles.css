@@ -440,6 +440,7 @@
    rendering, fit its SVG to the visible pane; sounding pitches and anchors stay
    unchanged. Native SVG sizing keeps the full scroll height after rotation. */
 .osmd-score.is-fit{max-width:100%;flex-shrink:0}
+.training-program-panel{padding:24px;margin-bottom:24px}.training-program-panel>h2{margin:0 0 10px}.training-program-panel p,.training-program-panel small{color:#7c8597;line-height:1.8}.training-program-panel fieldset{border:1px solid #e9e7f2;border-radius:12px;margin:18px 0;padding:16px}.training-program-panel label{display:flex;flex-direction:column;gap:8px;font-size:12px;color:#687287}.training-program-panel select,.training-program-panel input[type=number]{padding:10px;border:1px solid #dedfeb;border-radius:8px;background:white;min-width:0;width:100%}.program-projects{display:flex;flex-wrap:wrap;gap:14px;margin:12px 0 18px}.program-projects label{flex-direction:row;align-items:center}.program-review-table{overflow-x:auto}.program-review-table table{width:100%;border-collapse:collapse;font-size:12px}.program-review-table td,.program-review-table th{padding:12px;text-align:left;border-bottom:1px solid #ececf4}.training-program-review{padding:18px;border:1px solid #e9e7f2;border-radius:12px;margin:14px 0}.training-program-review small{color:#949aaa}
 .osmd-score.is-fit .osmd-host[data-osmd-stage="done"]{width:100%!important}
 .osmd-score.is-fit .osmd-host[data-osmd-stage="done"] svg{max-width:100%}
 .osmd-status{position:absolute;left:18px;top:14px;padding:8px 12px;border-radius:8px;background:#f6f7fb;color:#7d8697;font-size:11px}

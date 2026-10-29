@@ -38,6 +38,16 @@ afterAll(async () => {
 const free = { mode: 'free', ranges: [{ startMidi: 60, endMidi: 71 }], notesPerEvent: 1, seed: 7, questionCount: 10, key: { root: 'C', mode: 'major' }, staffPreference: 'treble', task: 'practice' };
 
 describe('server-owned training HTTP API', () => {
+  it('creates a real six-domain assessment and rejects fabricated result submissions', async () => {
+    const created = await api('POST', '/api/training/programs', { mode: 'assessment' });
+    expect(created.status).toBe(200);
+    expect(created.data.drill.program.sections).toHaveLength(6);
+    expect(importScoreText(created.data.drill.xml, 'baseline.musicxml').report.strictAllowed).toBe(true);
+    const review = `/api/training/programs/${created.data.drill.program.id}/review`;
+    expect((await api('POST', review, { takeId: 'missing-take' })).status).toBe(400);
+    expect((await api('POST', review, { takeId: 'missing-take', accuracy: 1 })).status).toBe(400);
+    expect((await api('POST', '/api/training/programs', { mode: 'timed', minutes: 1000 })).status).toBe(400);
+  });
   it('serves one authoritative catalog and generates reproducible, playable material', async () => {
     const catalog = await api('GET', '/api/training/catalog');
     expect(catalog.status).toBe(200);

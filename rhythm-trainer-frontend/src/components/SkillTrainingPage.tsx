@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react';
 import type { DrillId, DrillLevel, DrillKey, DrillHand, GeneratedSkillDrill } from '../../shared/training-contract';
 import { useSkillDrill } from '../features/practice/useSkillDrill';
 import SkillDrillPreview from './SkillDrillPreview';
+import TrainingProgramPanel from './TrainingProgramPanel';
 
 const HAND_LABELS = { right: '右手', left: '左手', both: '双手同向' };
 
 export default function SkillTrainingPage({ onStart }: { onStart: (drill: GeneratedSkillDrill) => boolean }) {
   const [selected, setSelected] = useState<DrillId>('five-finger');
+  const [view, setView] = useState<'program' | 'single'>('program');
   const [category, setCategory] = useState<'fundamentals' | 'rhythm'>('fundamentals');
   const [level, setLevel] = useState<DrillLevel>(1);
   const [bpm, setBpm] = useState(60);
@@ -26,6 +28,8 @@ export default function SkillTrainingPage({ onStart }: { onStart: (drill: Genera
 
   return <div className="page-content skill-training-page">
     <header className="page-heading"><div><div className="eyebrow">FOCUSED PRACTICE</div><h1>专项训练</h1><p>从五指位置到音阶与和弦，把基本功拆成能听、能看、能练的小步骤。</p></div></header>
+    <div className="skill-category-switch" role="group" aria-label="训练工作区"><button type="button" aria-pressed={view === 'program'} onClick={() => setView('program')}>训练计划与测试</button><button type="button" aria-pressed={view === 'single'} onClick={() => setView('single')}>单项打磨</button></div>
+    {view === 'program' ? <TrainingProgramPanel onStart={onStart} /> : <>
     <div className="skill-category-switch" role="group" aria-label="专项训练分类">
       <button type="button" aria-pressed={category === 'fundamentals'} onClick={() => { setCategory('fundamentals'); choose('five-finger'); }}>键盘基本功 <small>五指 · 音阶 · 和弦</small></button>
       <button type="button" aria-pressed={category === 'rhythm'} onClick={() => { setCategory('rhythm'); choose('pulse'); }}>节奏与配合 <small>拍点 · 均分 · 切分</small></button>
@@ -56,5 +60,6 @@ export default function SkillTrainingPage({ onStart }: { onStart: (drill: Genera
     <section className="card skill-preview-card"><button type="button" className="skill-preview-toggle" aria-expanded={previewOpen} onClick={() => setPreviewOpen((value) => !value)}>{previewOpen ? '收起练习谱' : `先看练习谱${fingered ? ' · 含参考指法' : ''}`} <span aria-hidden="true">{previewOpen ? '⌃' : '⌄'}</span></button>
       {previewOpen && (generated ? <SkillDrillPreview xml={generated.xml} /> : <p role="status">{generationError || '正在准备练习谱…'}</p>)}</section>
     <details className="skill-research-notes"><summary>基本功的设计依据与反馈范围</summary><p>练习谱为本应用编排的短音型，不是考级试题。内容分类参考 <a href="https://www.rcmusic.com/learning/about-the-royal-conservatory-certificate-program/curriculum-and-disciplines" target="_blank" rel="noreferrer">RCM 的技术训练分类</a> 和 <a href="https://www.esm.rochester.edu/classpiano/overview/" target="_blank" rel="noreferrer">Eastman 的钢琴课程说明</a>；音阶参考指法可查 <a href="https://www.pianoscales.org/major.html" target="_blank" rel="noreferrer">Piano Scales</a>。</p><p>报告依据 MIDI 音高、起音和松键时间。指法、姿态、是否放松以及真实音色均衡不能靠这些数据确认；本应用不为这些项目生成分数。</p></details>
+    </>}
   </div>;
 }

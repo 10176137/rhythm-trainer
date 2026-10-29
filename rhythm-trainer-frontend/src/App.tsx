@@ -1,5 +1,7 @@
 import ReportPanel from './components/ReportPanel';
-import type { GeneratedSkillDrill } from '../shared/training-contract';
+import type { GeneratedSkillDrill, TrainingProgramReview } from '../shared/training-contract';
+import { ProgramReview } from './components/TrainingProgramPanel';
+import { runTrainingProgramFlow } from './features/practice/trainingProgramFlow';
 import SkillTrainingPage from './components/SkillTrainingPage';
 import { trainingRepository } from './services/trainingRepository';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -294,6 +296,15 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [trainingRoomOpen, setTrainingRoomOpen] = useState(false);
   const [trainingDrill, setTrainingDrill] = useState<GeneratedSkillDrill | null>(null);
+  const [programReview, setProgramReview] = useState<TrainingProgramReview | null>(null);
+  const [programError, setProgramError] = useState('');
+  const [programBusy, setProgramBusy] = useState(false);
+  const [programCompleted, setProgramCompleted] = useState(false);
+  const [programRetry, setProgramRetry] = useState(0);
+  const programStopRef = useRef(false);
+  const programSettingsRef = useRef<Pick<PracticeConfig, 'profile' | 'feedback' | 'durationPolicy'> | null>(null);
+  const programControllerRef = useRef<AbortController | null>(null);
+  const skillLaunchRef = useRef<(drill: GeneratedSkillDrill) => boolean>(() => false);
   /** Explicit navigation to the current score override in global settings. */
   const [settingsFocusMapping, setSettingsFocusMapping] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState<PersistedPracticeSettings | null>(null);
@@ -2110,6 +2121,7 @@ export default function App() {
   };
 
   const finishPractice = () => {
+    programStopRef.current = true;
     if (config.advanceMode === 'follow') {
       if (followStatusRef.current === 'idle'
         || followStatusRef.current === 'processing'
@@ -2240,6 +2252,9 @@ export default function App() {
       return;
     }
 
+    programStopRef.current = true;
+    programControllerRef.current?.abort();
+    setProgramBusy(false);
     cancelPrep();
     clearReferencePlayback('reset');
     systemPlayerRef.current?.stopAll();
@@ -3132,6 +3147,40 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, [uiStatus, session.status]);
 
+  const launchSkillTraining = (drill: GeneratedSkillDrill): boolean => {
+    if (window.location.pathname !== '/training') return false;
+    void ensureSharedAudioContext().catch(() => {});
+    try {
+      const imported = importScoreText(drill.xml, 'skill-' + drill.id + '.musicxml');
+      if (!imported.doc?.engine || !imported.report.strictAllowed) return false;
+      if (!applyScoreDocument(imported.doc, '专项训练已就绪')) return false;
+      const partId = imported.doc.engine.parts[0].id;
+      rememberHandMapping(imported.doc.engine.fingerprint, buildUserHandMapping(partId, drill.staffHands));
+      if (drill.program && !programSettingsRef.current) {
+        const { profile, feedback, durationPolicy } = configRef.current;
+        programSettingsRef.current = { profile, feedback, durationPolicy };
+      }
+      setConfig((previous) => ({ ...previous, profile: drill.program ? 'standard' : previous.profile, feedback: drill.program ? (drill.program.config.mode === 'assessment' ? 'after' : 'live') : previous.feedback, durationPolicy: drill.program ? 'strict-keydown' : previous.durationPolicy, modeId: 'fixed-line', tempo: drill.bpm, hand: drill.hand, loopEnabled: false, loopStartBar: 1, loopEndBar: drill.bars, timeSignature: [4, 4], advanceMode: 'timeline' }));
+      setSettingsDraft(null);
+      setGeneratedReadingScore(null);
+      setActiveLibraryId(null);
+      setTrainingDrill(drill);
+      programStopRef.current = false; setProgramBusy(false); setProgramReview(null); setProgramError(''); setProgramCompleted(false);
+      setMetronomeOn(true);
+      setSystemDuet(false);
+      setAutoStartRequested(true);
+      setTrainingRoomOpen(true);
+      return true;
+    } catch { return false; }
+
+  };
+  skillLaunchRef.current = launchSkillTraining;
+  useEffect(() => {
+    if (route?.id === 'training' && trainingRoomOpen) return;
+    const preferences = programSettingsRef.current;
+    if (preferences) { programSettingsRef.current = null; setConfig((previous) => ({ ...previous, ...preferences })); }
+  }, [route?.id, trainingRoomOpen]);
+
   const activeReadingConfig = useMemo(() => {
     const mode = config.modeId === 'reading-rhythm' ? 'rhythm' : 'free';
     return readingLastConfig.mode === mode ? readingLastConfig : loadReadingSettings(mode);
@@ -3144,6 +3193,24 @@ export default function App() {
   const rhythmReadingFifthsRef = useRef<number | null>(null);
   rhythmReadingFifthsRef.current = rhythmReadingFifths;
   const status = uiStatus;
+  useEffect(() => {
+    const program = trainingDrill?.program;
+    const takeId = session.takeId;
+    if (route?.id !== 'training' || !program || session.status !== 'completed' || !takeId || session.reportPersisted !== true) return;
+    const controller = new AbortController();
+    programControllerRef.current = controller;
+    setProgramBusy(true); setProgramError('');
+    void (async () => {
+      try {
+        await runTrainingProgramFlow({ program, takeId, signal: controller.signal,
+          isStopped: () => programStopRef.current, onReview: setProgramReview,
+          onLaunch: (next) => skillLaunchRef.current(next), onComplete: () => setProgramCompleted(true) });
+      } catch (error) {
+        if (!controller.signal.aborted) setProgramError(error instanceof Error ? error.message : '专项结果读取失败');
+      } finally { if (!controller.signal.aborted) setProgramBusy(false); }
+    })();
+    return () => { controller.abort(); };
+  }, [route?.id, trainingDrill?.program?.id, session.status, session.takeId, session.reportPersisted, programRetry]);
   const practiceWorkspaceVisible = route?.id === 'workbench' || route?.id === 'performance' || (route?.id === 'training' && trainingRoomOpen);
   const readingFocus = practiceWorkspaceVisible && readingFreeSession !== null && readingFocusEnabled;
   const practiceFocus = readingFocus || (practiceWorkspaceVisible && !readingFreeSession && !readingSetupActive && (prepRemain !== null || status === 'countdown' || status === 'running' || status === 'paused'));
@@ -3409,6 +3476,12 @@ export default function App() {
           {route?.id === 'training' && trainingDrill && <section className="card training-round-context" aria-label="本轮专项">
             <strong>{trainingDrill.title}</strong>
             <p>{trainingDrill.lesson.pattern}</p>
+            {programReview && <ProgramReview review={programReview} />}
+            {programCompleted && <p role="status">本次定时训练计划已完成，结果已保存。</p>}
+            {trainingDrill.program?.remainingSeconds != null && !programCompleted && <p>本段约 {Math.round(trainingDrill.program.seconds)} 秒；完成后计划还剩约 {Math.ceil(trainingDrill.program.remainingSeconds / 60)} 分钟。</p>}
+            {programBusy && <p role="status">正在读取已保存的引擎结果{trainingDrill.program?.config.mode === 'continuous' ? '，合格证据确认后自动准备下一段' : ''}…</p>}
+            {programError && <div role="alert"><p>{programError}</p><button className="button button-outline" onClick={() => setProgramRetry((n) => n + 1)}>重试读取结果</button></div>}
+            {trainingDrill.program && trainingDrill.program.config.mode !== 'assessment' && programBusy && <button className="button button-outline" onClick={() => { programStopRef.current = true; programControllerRef.current?.abort(); setProgramBusy(false); }}>停止接续</button>}
             {status === 'completed' && <>
               <h2>本轮已结束</h2>
               <p>本轮关注：{trainingDrill.lesson.review}</p>
@@ -3448,7 +3521,7 @@ export default function App() {
                 engine={scoreDoc.engine ?? null}
                 targets={session.targets}
                 groups={planGroupsRef.current}
-                noteFeedback={session.noteFeedback}
+                noteFeedback={config.feedback === 'after' ? [] : session.noteFeedback}
                 feedbackSourceIds={feedbackSourceIdsRef.current}
                 status={status}
                 tempo={config.tempo}
@@ -3522,26 +3595,7 @@ export default function App() {
           <footer className="app-footer"><span>Rhythm Trainer · Frontend 0.6.0</span><span>节奏评分与报告由本地 Rust 内核完成;音高提示为独立维度,不参与节奏成绩。</span></footer>
         </div>
 
-        {route?.id === 'training' && <div style={{ display: trainingRoomOpen ? 'none' : undefined }}><SkillTrainingPage onStart={(drill) => {
-          void ensureSharedAudioContext().catch(() => {});
-          try {
-            const imported = importScoreText(drill.xml, 'skill-' + drill.id + '.musicxml');
-            if (!imported.doc?.engine || !imported.report.strictAllowed) return false;
-            if (!applyScoreDocument(imported.doc, '专项训练已就绪')) return false;
-            const partId = imported.doc.engine.parts[0].id;
-            rememberHandMapping(imported.doc.engine.fingerprint, buildUserHandMapping(partId, drill.staffHands));
-            setConfig((previous) => ({ ...previous, modeId: 'fixed-line', tempo: drill.bpm, hand: drill.hand, loopEnabled: false, loopStartBar: 1, loopEndBar: drill.bars, timeSignature: [4, 4], advanceMode: 'timeline' }));
-            setSettingsDraft(null);
-            setGeneratedReadingScore(null);
-            setActiveLibraryId(null);
-            setTrainingDrill(drill);
-            setMetronomeOn(true);
-            setSystemDuet(false);
-            setAutoStartRequested(true);
-            setTrainingRoomOpen(true);
-            return true;
-          } catch { return false; }
-        }} /></div>}
+        {route?.id === 'training' && <div style={{ display: trainingRoomOpen ? 'none' : undefined }}><SkillTrainingPage onStart={launchSkillTraining} /></div>}
         {route?.id === 'settings' && <SettingsPage
           judgment={<><div className="settings-grid settings-advanced-grid">
                 <label className="field"><span>判定档位</span><select value={settingsView.config.profile} disabled={settingsLocked} onChange={e => updateSettingsDraft('profile', e.target.value as JudgmentProfile)}><option value="relaxed">宽松 (±50/100ms)</option><option value="standard">标准 (±30/60ms)</option><option value="strict">严格 (±15/30ms)</option></select></label>

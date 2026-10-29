@@ -1,4 +1,4 @@
-import type { TrainingCatalog, SkillDrillRequest, GeneratedSkillDrill } from '../../shared/training-contract';
+import type { TrainingCatalog, SkillDrillRequest, GeneratedSkillDrill, TrainingProgramConfig, TrainingProgramReview } from '../../shared/training-contract';
 import type { ReadingConfig, GeneratedReadingExercise } from '../../shared/reading-contract';
 
 async function request<T extends { schemaVersion: 1 }>(path: string, field: string, input?: unknown, signal?: AbortSignal): Promise<T> {
@@ -24,6 +24,9 @@ async function request<T extends { schemaVersion: 1 }>(path: string, field: stri
 }
 
 export const trainingRepository = {
+  program(input: TrainingProgramConfig, signal?: AbortSignal) { return request<GeneratedSkillDrill>('/api/training/programs', 'drill', input, signal); },
+  nextProgram(id: string, takeId: string, signal?: AbortSignal) { return request<{ schemaVersion: 1; drill: GeneratedSkillDrill | null }>(`/api/training/programs/${encodeURIComponent(id)}/next`, 'next', { takeId }, signal); },
+  reviewProgram(id: string, takeId: string, signal?: AbortSignal) { return request<TrainingProgramReview>(`/api/training/programs/${encodeURIComponent(id)}/review`, 'review', { takeId }, signal); },
   catalog(signal?: AbortSignal) { return request<TrainingCatalog>('/api/training/catalog', 'catalog', undefined, signal); },
   skillDrill(input: SkillDrillRequest, signal?: AbortSignal) { return request<GeneratedSkillDrill>('/api/training/drills', 'drill', input, signal); },
   reading(config: ReadingConfig, reviewAttemptId?: string, signal?: AbortSignal) {

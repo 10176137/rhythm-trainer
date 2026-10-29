@@ -45,6 +45,7 @@ import { ProfileEvidenceCache } from './profile-evidence.mjs';
 import { TeachingOrchestrator, TeachingOrchestratorError } from './teaching-orchestrator.mjs';
 import { LESSON_CATALOG_SCHEMA_VERSION, getLessonCatalog } from './teaching-content.mjs';
 import { TrainingServiceError, getTrainingCatalog, generateSkillExercise, generateReadingExercise } from './training-service.mjs';
+import { TrainingProgramStore } from './training-programs.mjs';
 import { ReadingGeneratorError } from './training/reading-generator.mjs';
 
 const require = createRequire(import.meta.url);
@@ -141,6 +142,15 @@ const SCORES_DIR = path.join(DATA_DIR, 'scores');
 const TAKE_TEMPLATES_DIR = path.join(DATA_DIR, 'take-templates');
 const LESSON_RUNS_DIR = path.join(DATA_DIR, 'lesson-runs');
 const PROFILE_FILE = path.join(DATA_DIR, 'profile.json');
+const trainingPrograms = new TrainingProgramStore({
+  dir: path.join(DATA_DIR, 'training-programs'), snapshotDir: SCORE_SNAPSHOTS_DIR, readTake: (id) => readTakeById(id),
+  readScoreXml: (take) => {
+    const fingerprint = take.score?.scoreFingerprint;
+    if (typeof fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(fingerprint)) return null;
+    const file = path.join(SCORE_SNAPSHOTS_DIR, `${fingerprint}.musicxml`);
+    return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+  },
+});
 
 function ensureDirSync(dir) {
   fs.mkdirSync(dir, { recursive: true });
@@ -460,7 +470,9 @@ function listAllTakes() {
 
 /** Content-addressed snapshot so a replaced score cannot rewrite history. */
 function ensureScoreSnapshot(scoreId, fingerprint) {
-  if (!scoreId || !fingerprint) return null;
+  if (!fingerprint || !/^[a-f0-9]{64}$/.test(fingerprint)) return null;
+  if (fs.existsSync(path.join(SCORE_SNAPSHOTS_DIR, `${fingerprint}.musicxml`))) return `score-snapshots/${fingerprint}.musicxml`;
+  if (!scoreId) return null;
   try {
     const entry = scoreLibrary.get(scoreId);
     const actual = entry?.importReportSummary?.fingerprint;
@@ -885,11 +897,17 @@ async function handleApi(req, res, urlPath, query) {
         sendJson(res, 200, { ok: true, catalog: getTrainingCatalog() });
       } else if (urlPath === '/api/training/drills' && req.method === 'POST') {
         sendJson(res, 200, { ok: true, drill: generateSkillExercise(await readJsonBody(req)) });
+      } else if (urlPath === '/api/training/programs' && req.method === 'POST') {
+        sendJson(res, 200, { ok: true, drill: trainingPrograms.create(await readJsonBody(req)) });
+      } else if (/^\/api\/training\/programs\/[A-Za-z0-9_-]+\/next$/.test(urlPath) && req.method === 'POST') {
+        sendJson(res, 200, { ok: true, next: { schemaVersion: 1, drill: trainingPrograms.next(urlPath.split('/')[4], await readJsonBody(req)) } });
+      } else if (/^\/api\/training\/programs\/[A-Za-z0-9_-]+\/review$/.test(urlPath) && req.method === 'POST') {
+        sendJson(res, 200, { ok: true, review: trainingPrograms.review(urlPath.split('/')[4], await readJsonBody(req)) });
       } else if (urlPath === '/api/training/reading' && req.method === 'POST') {
         const exercise = generateReadingExercise(await readJsonBody(req), { findReadingAttempt: (id) => readingAttempts.get(id) });
         sendJson(res, 200, { ok: true, exercise });
       } else {
-        const known = ['/api/training/catalog', '/api/training/drills', '/api/training/reading'].includes(urlPath);
+        const known = ['/api/training/catalog', '/api/training/drills', '/api/training/reading', '/api/training/programs'].includes(urlPath);
         sendJson(res, known ? 405 : 404, { ok: false, error: { code: known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', message: known ? 'method not allowed' : 'not found' } });
       }
     } catch (error) {
