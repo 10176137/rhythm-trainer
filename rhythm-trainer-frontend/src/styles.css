@@ -1008,6 +1008,7 @@
 .reading-topbar-actions{display:flex;gap:8px;flex-shrink:0}
 .reading-score-stage{position:relative;flex:1;min-height:0;background:#fff;border:1px solid #e9ebf2;border-radius:13px;overflow:auto;padding:14px 16px}
 .reading-paused-overlay{position:absolute;inset:0;display:grid;place-items:center;background:#ffffffd9;color:#5d50d2;font-size:14px;font-weight:600;z-index:5}
+.reading-note-feedback{min-height:300px}.reading-note-engraving{position:relative;width:760px;max-width:none;min-height:300px;margin:0 auto}.reading-engraving-layer{background:#fff}.reading-note-feedback>p{color:#c34b58;font-size:12px}
 .reading-feedback{display:flex;gap:22px;align-items:center;background:#fff;border:1px solid #e9ebf2;border-radius:11px;padding:9px 15px;font-size:12px;color:#4c5268;flex-shrink:0}
 .reading-feedback b.text-good{color:#168765}
 .reading-feedback b.text-bad{color:#c34b58}

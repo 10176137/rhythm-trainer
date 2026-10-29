@@ -4,20 +4,18 @@
 // simulator input, never a target pre-highlight.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import OsmdScoreView from './OsmdScoreView';
+import ReadingScoreFeedback from './ReadingScoreFeedback';
 import ReadingKeyboard, { type ReadingKeyState } from './ReadingKeyboard';
-import { questionStaff, questionXml, type ReadingStaffPreference } from '../features/reading/readingNotation';
+import { questionStaff, type ReadingStaffPreference } from '../features/reading/readingNotation';
+import type { ReadingInputFeedback } from '../features/reading/readingInput';
 import type { ReadingRecord } from '../services/readingRepository';
 import { keyFifths, spelledLabel, type KeySelection } from '../features/reading/readingKeys';
 import { FreeReadingSession, type FreeReadingSnapshot } from '../features/reading/freeReadingSession';
-import { importScoreText } from '../features/score/scoreImport';
-import type { ScoreDocument as EngineScoreDocument } from '../score-engine/domain/types';
 
-export interface FreeReadingInputEvent {
-  midi: number;
-  isRelease: boolean;
+export interface FreeReadingInputEvent extends ReadingInputFeedback {
   seq: number;
-  result: 'hit' | 'duplicate' | 'wrong' | 'ignored';
+  heldWrongPitches: number[];
+  attack: (ReadingInputFeedback & { seq: number }) | null;
 }
 
 interface Props {
@@ -43,27 +41,41 @@ function useSnapshot(session: FreeReadingSession, input: FreeReadingInputEvent |
   snapshot: FreeReadingSnapshot;
   lastResult: 'hit' | 'duplicate' | 'wrong' | null;
   lastMidi: number | null;
-  wrongFlash: number;
   refresh: () => void;
 } {
   const [snapshot, setSnapshot] = useState<FreeReadingSnapshot>(() => session.snapshot());
   const [lastResult, setLastResult] = useState<'hit' | 'duplicate' | 'wrong' | null>(null);
   const [lastMidi, setLastMidi] = useState<number | null>(null);
-  const [wrongFlash, setWrongFlash] = useState(0);
   const lastSeqRef = useRef(0);
+  const completionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (completionTimer.current !== null) clearTimeout(completionTimer.current); }, []);
 
   useEffect(() => {
-    if (!input || input.seq === lastSeqRef.current) return;
-    lastSeqRef.current = input.seq;
-    if (input.isRelease) { setSnapshot(session.snapshot()); return; }
-    const result = input.result;
-    setLastMidi(input.midi);
+    const attack = input?.attack;
+    if (!attack || attack.seq === lastSeqRef.current) return;
+    lastSeqRef.current = attack.seq;
+    if (completionTimer.current !== null) clearTimeout(completionTimer.current);
+    completionTimer.current = null;
+    const result = attack.result;
+    setLastMidi(attack.midi);
     setLastResult(result === 'ignored' ? null : result);
-    if (result === 'wrong') setWrongFlash((value) => value + 1);
-    setSnapshot(session.snapshot());
+    const next = session.snapshot();
+    if (session.task === 'practice' && attack.completedQuestion) {
+      setSnapshot({ ...next, status: 'running', currentIndex: attack.questionIndex,
+        currentTargets: attack.questionTargets, currentHits: attack.questionHits });
+      completionTimer.current = setTimeout(() => {
+        completionTimer.current = null;
+        setSnapshot(session.snapshot());
+      }, 360);
+    } else setSnapshot(next);
   }, [input, session]);
 
-  return { snapshot, lastResult, lastMidi, wrongFlash, refresh: () => setSnapshot(session.snapshot()) };
+  return { snapshot, lastResult, lastMidi, refresh: () => {
+    if (completionTimer.current !== null) clearTimeout(completionTimer.current);
+    completionTimer.current = null;
+    setSnapshot(session.snapshot());
+  } };
 }
 
 export default function FreeReadingView({
@@ -79,11 +91,10 @@ export default function FreeReadingView({
   onExit,
   saveStatus, onRetrySave, onStartTest, onNextLevel,
 }: Props) {
-  const { snapshot, lastResult, lastMidi, wrongFlash, refresh } = useSnapshot(session, input);
+  const { snapshot, lastResult, lastMidi, refresh } = useSnapshot(session, input);
   const finishedRef = useRef(false);
   const [paused, setPaused] = useState(false);
   const [hintedIndex, setHintedIndex] = useState<number | null>(null);
-  const scoreScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if ((snapshot.status === 'completed' || snapshot.status === 'ended-early') && !finishedRef.current) {
@@ -97,31 +108,17 @@ export default function FreeReadingView({
     () => (question.length ? questionStaff(question, setup?.staffPreference ?? 'auto') : 1),
     [question, setup?.staffPreference],
   );
-  const xml = useMemo(
-    () => (question.length ? questionXml(question, staff, setup?.key ?? null) : null),
-    [question, staff, setup?.key],
-  );
   // Answer text shares the score's key-aware spelling (spellMidi): the note
   // drawn on the staff and the note named in feedback are always the same.
   const fifths = setup?.key ? keyFifths(setup.key) : 0;
   const label = (midi: number) => spelledLabel(midi, fifths);
-  const engineDoc = useMemo<EngineScoreDocument | null>(() => {
-    if (!xml) return null;
-    return importScoreText(xml, 'question.musicxml').doc?.engine ?? null;
-  }, [xml]);
 
   const keyStates = useMemo(() => {
     const states = new Map<number, ReadingKeyState>();
-    if (lastMidi !== null) {
-      if (lastResult === 'wrong') states.set(lastMidi, 'wrong');
-      else if (lastResult === 'hit' || lastResult === 'duplicate') states.set(lastMidi, 'hit');
-    }
-    if (!paused && lastResult === 'wrong' && lastMidi !== null) {
-      // wrongFlash drives a re-render; CSS transition handles the fade.
-      void wrongFlash;
-    }
+    for (const midi of snapshot.currentHits) states.set(midi, 'hit');
+    for (const midi of input?.heldWrongPitches ?? []) states.set(midi, 'wrong');
     return states;
-  }, [lastMidi, lastResult, paused, wrongFlash]);
+  }, [snapshot.currentHits, input?.heldWrongPitches]);
 
   const hitCount = snapshot.currentHits.length;
   const total = snapshot.currentTargets.length;
@@ -219,26 +216,17 @@ export default function FreeReadingView({
       </header>
 
       <div className="reading-score-stage">
-        {xml && engineDoc ? (
-          <OsmdScoreView
-            xml={xml}
-            engine={engineDoc}
-            activeNoteIds={[]}
-            follow={false}
-            followSignal={0}
-            systemNoteIds={[]}
-            userNoteIds={[]}
-            colorSystemNotes={false}
-            zoom={2.4}
-            scrollRef={scoreScrollRef}
-            onSelectEvent={() => {}}
-          />
+        {question.length ? (
+          <ReadingScoreFeedback targets={question} staff={staff} musicKey={setup?.key ?? null}
+            hits={session.task === 'practice' ? snapshot.currentHits : []}
+            wrongPitches={session.task === 'practice' && !paused ? input?.heldWrongPitches ?? [] : []} />
         ) : (
           <p className="report-warning">题目渲染缺失。</p>
         )}
         {paused && <div className="reading-paused-overlay">已暂停 — 输入被忽略，按「继续」恢复</div>}
       </div>
 
+      {session.task === 'practice' && <p className="reading-hint">目标音弹对后变绿；右侧红色音符是你正在按下的错误音，松键后消失。</p>}
       {session.task === 'practice' && <div className="reading-feedback" aria-live="polite">
         <span>已命中 <b>{hitCount} / {total}</b></span>
         <span>

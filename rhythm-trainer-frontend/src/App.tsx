@@ -59,7 +59,7 @@ import FixedLineScoreView from './components/FixedLineScoreView';
 import NoteReadingSetup, { type ReadingSetupValue } from './components/NoteReadingSetup';
 import FreeReadingView, { type FreeReadingInputEvent } from './components/FreeReadingView';
 import { FreeReadingSession } from './features/reading/freeReadingSession';
-import { forwardReadingInput, type ReadingInputFeedback } from './features/reading/readingInput';
+import { forwardReadingInput, heldReadingErrors, type ReadingInputFeedback } from './features/reading/readingInput';
 import type { GeneratedRhythmScore } from '../shared/reading-contract';
 import { saveLastRunId } from './services/teachingRunRepository';
 import { WebAudioEngineAdapter } from './features/playback/audioEngineAdapter';
@@ -844,7 +844,10 @@ export default function App() {
 
   const handleReadingFeedback = useCallback((input: ReadingInputFeedback) => {
     if (input.result !== 'ignored') readingSourcesRef.current.add(input.source);
-    setReadingInput({ ...input, seq: ++readingInputSeqRef.current });
+    const seq = ++readingInputSeqRef.current;
+    setReadingInput((previous) => ({ ...input, seq,
+      heldWrongPitches: heldReadingErrors(previous?.heldWrongPitches ?? [], input),
+      attack: input.isRelease ? previous?.attack ?? null : { ...input, seq } }));
   }, []);
 
   /** Virtual/browser MIDI input path — raw packets in, engine outputs out.
@@ -3338,10 +3341,7 @@ export default function App() {
               input={readingInput}
               deviceConnected={deviceStatus === 'connected'}
               onInput={(midi, isRelease) => {
-                readingInputSeqRef.current += 1;
-                const result = !isRelease ? readingSessionRef.current?.noteOn(midi) ?? 'ignored' : 'ignored';
-                if (result !== 'ignored') readingSourcesRef.current.add('virtual');
-                setReadingInput({ midi, isRelease, seq: readingInputSeqRef.current, result });
+                forwardReadingInput(readingSessionRef.current, { midi, isRelease, source: 'virtual' }, handleReadingFeedback);
                 setLastInputMidi(midi);
                 setInputNote(noteForMidi(midi));
               }}

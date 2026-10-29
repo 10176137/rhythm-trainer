@@ -8,6 +8,17 @@ interface ReadingNoteInput {
 
 export interface ReadingInputFeedback extends ReadingNoteInput {
   result: ReturnType<FreeReadingSession['noteOn']>;
+  questionIndex: number;
+  questionTargets: readonly number[];
+  questionHits: readonly number[];
+  completedQuestion: boolean;
+}
+
+export function heldReadingErrors(previous: readonly number[], input: ReadingInputFeedback): number[] {
+  const held = new Set(previous);
+  if (input.isRelease || input.result === 'hit' || input.result === 'duplicate') held.delete(input.midi);
+  else if (input.result === 'wrong') held.add(input.midi);
+  return [...held].sort((a, b) => a - b);
 }
 
 /** Both hardware and virtual input reach untimed reading before timed modes. */
@@ -16,8 +27,15 @@ export function forwardReadingInput(
   input: ReadingNoteInput,
   onFeedback: (feedback: ReadingInputFeedback) => void,
 ): boolean {
-  if (!session || (session.status !== 'running' && session.status !== 'paused')) return false;
-  // Consumed releases and paused input must not fall through to timed scoring.
-  if (!input.isRelease) onFeedback({ ...input, result: session.noteOn(input.midi) });
+  if (!session || (session.status !== 'running' && session.status !== 'paused'
+    && !(input.isRelease && session.status === 'completed'))) return false;
+  const questionIndex = session.currentIndex;
+  const questionTargets = [...session.currentTargets];
+  const completedBefore = session.completedQuestions;
+  // Releases update held-note visuals, but never become answer evidence.
+  const result = input.isRelease ? 'ignored' : session.noteOn(input.midi);
+  onFeedback({ ...input, result, questionIndex, questionTargets,
+    questionHits: session.currentIndex === questionIndex ? [...session.currentHits] : questionTargets,
+    completedQuestion: session.completedQuestions > completedBefore });
   return true;
 }

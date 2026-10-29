@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FreeReadingSession } from './freeReadingSession';
-import { forwardReadingInput, type ReadingInputFeedback } from './readingInput';
+import { forwardReadingInput, heldReadingErrors, type ReadingInputFeedback } from './readingInput';
 
 describe('untimed reading input routing', () => {
   it.each(['midi', 'virtual'] as const)('advances chords from %s input and emits feedback for rendering', (source) => {
@@ -23,7 +23,9 @@ describe('untimed reading input routing', () => {
     forwardReadingInput(session, { midi: 60, isRelease: false, source: 'midi' }, feedback);
     expect(forwardReadingInput(session, { midi: 60, isRelease: true, source: 'midi' }, feedback)).toBe(true);
     expect(session.completedQuestions).toBe(1);
-    expect(feedback).toHaveBeenCalledTimes(1);
+    expect(feedback).toHaveBeenCalledTimes(2);
+    expect(feedback).toHaveBeenLastCalledWith(expect.objectContaining({ isRelease: true, result: 'ignored' }));
+    expect(session.evidence()).toEqual([{ type: 'note', midi: 60 }]);
   });
 
   it('keeps paused hardware notes out of timed scoring and answer evidence', () => {
@@ -44,5 +46,42 @@ describe('untimed reading input routing', () => {
     session.endEarly();
     expect(forwardReadingInput(session, input, feedback)).toBe(false);
     expect(feedback).not.toHaveBeenCalled();
+  });
+
+  it('retains the answered question and its green hits after automatic advancement', () => {
+    const session = new FreeReadingSession([[60], [67]]);
+    const feedback = vi.fn();
+    forwardReadingInput(session, { midi: 60, isRelease: false, source: 'midi' }, feedback);
+    expect(session.currentIndex).toBe(1);
+    expect(feedback).toHaveBeenLastCalledWith(expect.objectContaining({
+      questionIndex: 0, questionTargets: [60], questionHits: [60], completedQuestion: true,
+    }));
+  });
+
+  it('removes only the released wrong note, including releases while paused', () => {
+    const session = new FreeReadingSession([[60, 64, 67]]);
+    let held: number[] = [];
+    const feedback = (event: ReadingInputFeedback) => { held = heldReadingErrors(held, event); };
+    for (const midi of [61, 66, 60]) forwardReadingInput(session, { midi, isRelease: false, source: 'midi' }, feedback);
+    expect(held).toEqual([61, 66]);
+    session.pause();
+    forwardReadingInput(session, { midi: 61, isRelease: true, source: 'midi' }, feedback);
+    expect(held).toEqual([66]);
+    forwardReadingInput(session, { midi: 66, isRelease: true, source: 'midi' }, feedback);
+    expect(held).toEqual([]);
+    expect(session.evidence()).toHaveLength(3);
+  });
+
+  it('still clears held errors during the final green feedback after completion', () => {
+    const session = new FreeReadingSession([[60]]);
+    let held: number[] = [];
+    const feedback = (event: ReadingInputFeedback) => { held = heldReadingErrors(held, event); };
+    forwardReadingInput(session, { midi: 61, isRelease: false, source: 'midi' }, feedback);
+    forwardReadingInput(session, { midi: 60, isRelease: false, source: 'midi' }, feedback);
+    expect(session.status).toBe('completed');
+    expect(held).toEqual([61]);
+    forwardReadingInput(session, { midi: 61, isRelease: true, source: 'midi' }, feedback);
+    expect(held).toEqual([]);
+    expect(session.evidence()).toHaveLength(2);
   });
 });
