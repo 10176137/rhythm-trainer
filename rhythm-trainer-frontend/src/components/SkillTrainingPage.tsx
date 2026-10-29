@@ -34,18 +34,19 @@ export default function SkillTrainingPage({ onStart }: { onStart: (drill: Genera
     <div className={`skill-drill-grid ${basic ? 'fundamentals-grid' : ''}`} role="group" aria-label="选择训练目标">{catalog.drills.filter((entry) => entry.category === category).map((entry, index) => <button type="button" key={entry.id} aria-pressed={selected === entry.id} onClick={() => choose(entry.id)}><span className="skill-drill-icon" aria-hidden="true">{entry.icon}</span><strong>{entry.title}</strong><small>{entry.subtitle}</small>{basic && <span className="skill-drill-number">{String(index + 1).padStart(2, '0')}</span>}</button>)}</div>
     <section className="card skill-drill-detail" aria-label="专项练习计划"><div>
       <span className="eyebrow">练什么 · 怎样练</span><h2>{drill.title}</h2><p>{drill.goal}</p>
-      <ol className="skill-instructions">{drill.steps.map((step) => <li key={step}>{step}</li>)}</ol>
+      {generated && <p className="skill-round-pattern"><strong>本轮 · {generated.lesson.label}</strong></p>}
+      <ol className="skill-instructions">{(generated?.lesson.instructions ?? []).map((step) => <li key={step}>{step}</li>)}</ol>
       {basic && <div className="skill-start-notes"><strong>本轮起点</strong><p>{generated ? Object.entries(generated.startPitchLabels).map(([side, label]) => `${side === 'left' ? '左手' : '右手'}：${label}`).join('　·　') : '正在更新练习谱…'}</p>
         {fingered && <small>谱面数字：1 拇指 · 2 食指 · 3 中指 · 4 无名指 · 5 小指。数字为参考指法。</small>}</div>}
-      <div className="skill-review"><strong>练完看什么</strong><p>{drill.review}</p></div>
-      <div className="skill-self-check"><strong>自己检查</strong><p>{drill.selfCheck}</p></div>
+      <div className="skill-review"><strong>练完看什么</strong><p>{generated?.lesson.review ?? drill.review}</p></div>
+      <div className="skill-self-check"><strong>自己检查</strong><p>{generated?.lesson.selfCheck ?? drill.selfCheck}</p></div>
     </div>
       <div className="skill-drill-controls">
         <label>训练级别<select value={level} onChange={(event) => setLevel(Number(event.target.value) as DrillLevel)}>{drill.levels.map((label, index) => <option key={label} value={index + 1}>{index + 1} · {label}</option>)}</select></label>
         {basic && <div className="skill-hand-key"><label>练习手<select value={hand} onChange={(event) => setHand(event.target.value as DrillHand)}>{catalog.hands.map((value) => <option key={value.id} value={value.id}>{value.label}</option>)}</select></label>
           <label>调性<select value={key} onChange={(event) => setKey(event.target.value as DrillKey)}>{catalog.keys.map((value) => <option key={value.id} value={value.id}>{value.label}</option>)}</select></label></div>}
         <label>速度 <b>{bpm} BPM</b><input aria-label="专项训练速度" type="range" min={catalog.tempo.min} max={catalog.tempo.max} step={catalog.tempo.step} value={bpm} onChange={(event) => setBpm(Number(event.target.value))} /></label>
-        <p role="status">{generated ? `${generated.bars} 小节 · ${generated.keyLabel} · ${HAND_LABELS[generated.hand]} · ${generated.countInMs / 1000} 秒预备` : generationError ? '练习谱尚未就绪' : '正在生成练习谱…'}</p>
+        <p role="status">{generated ? `${generated.bars} 小节 · ${generated.keyLabel} · ${generated.hand === 'both' && !basic ? '双手配合' : HAND_LABELS[generated.hand]} · ${generated.countInMs / 1000} 秒预备` : generationError ? '练习谱尚未就绪' : '正在生成练习谱…'}</p>
         <button type="button" className="button button-primary" disabled={!generated} onClick={() => { if (generated && !onStart(generated)) setError('暂时无法开始，请先结束当前练习或检查曲谱生成结果。'); }}>开始专项训练</button>
         {generationError && <div><p role="alert">{generationError}</p><button type="button" className="text-button" onClick={retryGeneration}>重新生成</button></div>}
         {error && <p role="alert">{error}</p>}

@@ -1,13 +1,14 @@
 // Domain authority for exercise content. UI sends intent; Node chooses notes,
 // rhythms, spelling, fingering, register and review material. Rust still owns
 // timed planning/scoring. There is no browser generator fallback.
+import { skillLesson } from './training/skill-lesson.mjs';
 import { createSkillDrill } from './training/skill-drills.mjs';
 import { SKILL_DRILLS, DRILL_KEYS } from './training/skill-drill-catalog.mjs';
 import { generateFreeQuestions, generateReviewQuestions, generateRhythmScore, READING_GENERATOR_VERSION } from './training/reading-generator.mjs';
 import { spelledLabel, READING_KEY_LOW, READING_KEY_HIGH } from '../shared/reading-keys.mjs';
 
 export const TRAINING_SCHEMA_VERSION = 1;
-export const SKILL_GENERATOR_VERSION = 'skill-drills-node-1';
+export const SKILL_GENERATOR_VERSION = 'skill-drills-node-2';
 const TEMPO = { min: 40, max: 140, step: 5, default: 60 };
 
 export class TrainingServiceError extends Error {
@@ -49,10 +50,12 @@ export function generateSkillExercise(input) {
   } else requireValue(input.options === undefined, '节奏训练的手别与调性由训练项目决定');
   const material = createSkillDrill(input.id, input.level, input.bpm, options);
   const key = options?.key ?? 'C';
+  const startPitchLabels = Object.fromEntries(Object.entries(material.startPitches).map(([hand, midi]) => [hand, spelledLabel(midi, DRILL_KEYS[key].fifths)]));
   return {
     schemaVersion: TRAINING_SCHEMA_VERSION, generatorVersion: SKILL_GENERATOR_VERSION,
     id: input.id, level: input.level, bpm: input.bpm, key, ...material,
-    startPitchLabels: Object.fromEntries(Object.entries(material.startPitches).map(([hand, midi]) => [hand, spelledLabel(midi, DRILL_KEYS[key].fifths)])),
+    startPitchLabels,
+    lesson: skillLesson(definition, input.level, material, startPitchLabels),
     countInMs: 3000,
   };
 }

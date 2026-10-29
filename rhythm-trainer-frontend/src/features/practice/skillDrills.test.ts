@@ -31,3 +31,28 @@ describe('playable skill drills', () => {
     expect(() => createSkillDrill('pulse', 4 as DrillLevel, 60)).toThrow();
   });
 });
+
+
+describe('rhythm drills isolate the advertised skill', () => {
+  const events = (id: 'pulse' | 'subdivision' | 'syncopation' | 'coordination', level: DrillLevel) =>
+    importScoreText(createSkillDrill(id, level, 60).xml, 'rhythm.musicxml').doc!.engine!.parts[0].measures.flatMap((measure) => measure.events);
+  it('keeps one pitch per hand so rhythm levels do not become sight-reading tests', () => {
+    for (const id of ['pulse', 'subdivision', 'syncopation', 'coordination'] as const) for (const level of [1, 2, 3] as DrillLevel[]) {
+      const notes = events(id, level).filter((event) => event.kind === 'note');
+      expect(new Set(notes.filter((note) => note.source.staffNumber === 1).map((note) => note.pitch?.midiNote))).toEqual(new Set([60]));
+      if (id === 'coordination') expect(new Set(notes.filter((note) => note.source.staffNumber === 2).map((note) => note.pitch?.midiNote))).toEqual(new Set([48]));
+    }
+  });
+  it('includes real offbeat sustains in advanced syncopation', () => {
+    const notes = events('syncopation', 3).filter((event) => event.kind === 'note');
+    expect(notes.some((event) => toNumber(event.onsetBeat) % 1 === .5 && toNumber(event.durationBeat) === 1.5)).toBe(true);
+  });
+  it('trains both alternating hands and shared attacks in coordination level 3', () => {
+    const notes = events('coordination', 3).filter((event) => event.kind === 'note');
+    const right = notes.filter((note) => note.source.staffNumber === 1).map((note) => toNumber(note.onsetBeat));
+    const left = notes.filter((note) => note.source.staffNumber === 2).map((note) => toNumber(note.onsetBeat));
+    expect(right.some((at) => left.includes(at))).toBe(true);
+    expect(right.some((at) => !left.includes(at))).toBe(true);
+    expect(left.some((at) => !right.includes(at))).toBe(true);
+  });
+});

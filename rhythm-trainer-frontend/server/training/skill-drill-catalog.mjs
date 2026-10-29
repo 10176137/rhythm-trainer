@@ -19,7 +19,7 @@ export const FUNDAMENTAL_DRILLS = [
         id: 'broken-chords', category: 'fundamentals', title: '分解和弦', subtitle: '把和弦的音逐个弹开', icon: '♬',
         goal: '把三和弦拆成单音，熟悉根音、三音、五音的位置关系，为伴奏音型打基础。',
         review: '看音高是否遗漏、重复音是否清楚、连续音符是否均匀。',
-        levels: ['原位三和弦音型 · 四分音符', '原位与转位轮换 · 八分音符', '低高中过渡的伴奏音型 · 八分音符'],
+        levels: ['原位三和弦音型 · 四分音符', '原位与转位轮换 · 八分音符', 'I–IV–V–I 分解音型 · 八分音符'],
         steps: ['先在键盘上找出本调主和弦的三个音，例如 C 大调的 C–E–G。', '按乐谱顺序把音逐个弹出，不要把这一项弹成同时落键的和弦。', '低音与高音切换时保持拍子，转位不熟悉就退回一级。'],
         selfCheck: '这是音高与时间练习，不衡量手指力量或手部姿态；先用舒适的速度完成音型。',
     },
@@ -49,10 +49,10 @@ export const FUNDAMENTAL_DRILLS = [
     },
 ];
 export const RHYTHM_DRILLS = [
-    { id: 'pulse', category: 'rhythm', title: '稳定拍点', subtitle: '把每一拍弹得均匀', goal: '跟住节拍器，保持连续，不因错音停下来。', review: '在报告里关注起音偏差和漏拍。', icon: '◷', levels: ['固定音 · 四分音符', '五音变化 · 四分音符', '间隔变化 · 四分音符'], steps: ['先以 60 BPM 听清预备拍。', '心里持续数拍，错过一音也继续。', '练完看记录，再决定是否加 5 BPM。'], selfCheck: '不要把速度快当成唯一目标。' },
-    { id: 'subdivision', category: 'rhythm', title: '八分均分', subtitle: '让一拍里的两个音一样长', goal: '边数「1 和 2 和」，边保持前后两个八分音符间隔相等。', review: '关注节奏与连续性，避免前长后短。', icon: '♫', levels: ['四分与八分交替', '连续八分音符', '不同分组交替'], steps: ['先跟节拍器数「1 和 2 和」。', '让同一拍内两个音的间隔一样长。', '保持当前速度，先把均分弹稳。'], selfCheck: '以耳朵听均匀程度，不只看有没有弹对。' },
-    { id: 'syncopation', category: 'rhythm', title: '切分节奏', subtitle: '休止时心里的拍子也不停', goal: '先数拍再进入，准确弹在弱拍位置；长音期间继续默数。', review: '关注休止后的起音和音符时长。', icon: '⌁', levels: ['弱拍进入', '切分位置变化', '连续切分组合'], steps: ['看清开头的休止符。', '保持内心节拍，在弱拍位置进入。', '长音期间继续默数再接下一音。'], selfCheck: '休止也属于练习，不要提前弹。' },
-    { id: 'coordination', category: 'rhythm', title: '双手配合', subtitle: '从同时落键到交替配合', goal: '左手维持低音，右手保持旋律节奏；合手位置一起落键。', review: '关注音高遗漏、同时起音和连续性。', icon: 'Ⅱ', levels: ['双手一起落键', '右手八分，左手二分', '加入休止与交替'], steps: ['先看清上下谱表。', '合手位置同时弹，保持低音所写时值。', '一级熟悉后，再加入不同节奏。'], selfCheck: '本项不自动判断两手的力度平衡。' },
+    { id: 'pulse', category: 'rhythm', title: '稳定拍点', subtitle: '把每一拍弹得均匀', goal: '跟住节拍器，保持连续，不因错音停下来。', review: '在报告里关注起音偏差和漏拍。', icon: '◷', levels: ['固定音四分音符 · 4 小节', '固定音四分音符 · 8 小节', '句尾休止 · 保持内心拍点'], steps: ['先以 60 BPM 听清预备拍。', '心里持续数拍，错过一音也继续。', '练完看记录，再决定是否加 5 BPM。'], selfCheck: '不要把速度快当成唯一目标。' },
+    { id: 'subdivision', category: 'rhythm', title: '八分均分', subtitle: '让一拍里的两个音一样长', goal: '边数「1 和 2 和」，边保持前后两个八分音符间隔相等。', review: '关注节奏与连续性，避免前长后短。', icon: '♫', levels: ['四分与八分整小节交替', '连续八分音符', '小节内四分与八分交替'], steps: ['先跟节拍器数「1 和 2 和」。', '让同一拍内两个音的间隔一样长。', '保持当前速度，先把均分弹稳。'], selfCheck: '以耳朵听均匀程度，不只看有没有弹对。' },
+    { id: 'syncopation', category: 'rhythm', title: '切分节奏', subtitle: '休止时心里的拍子也不停', goal: '先数拍再进入，准确弹在弱拍位置；长音期间继续默数。', review: '关注休止后的起音和音符时长。', icon: '⌁', levels: ['前半拍休止后进入', '弱拍长音跨过正拍', '附点长音与半拍休止'], steps: ['看清开头的休止符。', '保持内心节拍，在弱拍位置进入。', '长音期间继续默数再接下一音。'], selfCheck: '休止也属于练习，不要提前弹。' },
+    { id: 'coordination', category: 'rhythm', title: '双手配合', subtitle: '从同时落键到交替配合', goal: '左手维持低音，右手保持旋律节奏；合手位置一起落键。', review: '关注音高遗漏、同时起音和连续性。', icon: 'Ⅱ', levels: ['双手四分音符同奏', '右手八分，左手二分', '双手交替与合手落键'], steps: ['先看清上下谱表。', '合手位置同时弹，保持低音所写时值。', '一级熟悉后，再加入不同节奏。'], selfCheck: '本项不自动判断两手的力度平衡。' },
 ];
 export const SKILL_DRILLS = [...FUNDAMENTAL_DRILLS, ...RHYTHM_DRILLS];
 export const DRILL_KEYS = { C: { label: 'C 大调', fifths: 0, root: 60 }, G: { label: 'G 大调', fifths: 1, root: 67 }, F: { label: 'F 大调', fifths: -1, root: 65 } };

@@ -1,3 +1,5 @@
+import ReportPanel from './components/ReportPanel';
+import type { GeneratedSkillDrill } from '../shared/training-contract';
 import SkillTrainingPage from './components/SkillTrainingPage';
 import { trainingRepository } from './services/trainingRepository';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -289,6 +291,7 @@ export default function App() {
   const [elapsed, setElapsed] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [trainingRoomOpen, setTrainingRoomOpen] = useState(false);
+  const [trainingDrill, setTrainingDrill] = useState<GeneratedSkillDrill | null>(null);
   /** Explicit navigation to the current score override in global settings. */
   const [settingsFocusMapping, setSettingsFocusMapping] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState<PersistedPracticeSettings | null>(null);
@@ -3228,8 +3231,8 @@ export default function App() {
             }}
           />
           <div className="reading-workspace-toolbar">
-            <strong>{route?.id === 'training' ? scoreDoc.meta.title : route?.id === 'performance' ? '演奏' : '识谱'}</strong>
-            {route?.id === 'training' && <button type="button" className="button button-outline" disabled={practiceInProgress} onClick={() => setTrainingRoomOpen(false)}>返回专项选择</button>}
+            <strong>{route?.id === 'training' ? '专项训练' : route?.id === 'performance' ? '演奏' : '识谱'}</strong>
+            {route?.id === 'training' && status !== 'completed' && <button type="button" className="button button-outline" disabled={practiceInProgress || reportUnsaved} onClick={() => { resetPractice(); setTrainingRoomOpen(false); }}>返回专项选择</button>}
             <div className="performance-toolbar-actions" style={{ display: route?.id === 'training' ? 'none' : undefined }}>
             <button type="button" className="mode-switch" role="switch" aria-label={route?.id === 'performance' ? '固定线演奏' : '节奏识谱'} aria-checked={config.modeId === 'fixed-line' || config.modeId === 'reading-rhythm'} disabled={practiceInProgress || readingFreeSession?.status === 'running' || readingFreeSession?.status === 'paused' || readingBusy} onClick={() => chooseMode(route?.id === 'performance' ? (config.modeId === 'fixed-line' ? 'score' : 'fixed-line') : (config.modeId === 'reading-rhythm' ? 'reading-free' : 'reading-rhythm'))}>
               {route?.id === 'performance' ? (config.modeId === 'fixed-line' ? '固定线演奏' : '读谱演奏') : (config.modeId === 'reading-rhythm' ? '节奏识谱' : '自由识谱')} <span>切换 ⇄</span>
@@ -3378,14 +3381,41 @@ export default function App() {
               <p>引擎没有返回可用的最终报告；不会显示 0 分或猜测结果。请检查输入/时钟状态后新开一轮。</p>
             </section>
           )}
-          {(session.report || followReport) && status === 'completed' && <div className="session-complete-note" role="status"><span>本轮已结束，完整结果请在练习记录中查看。</span><button type="button" className="button button-outline button-small" onClick={() => requestNavigation('/history')}>查看练习记录</button></div>}
+          {route?.id !== 'training' && (session.report || followReport) && status === 'completed' && <div className="session-complete-note" role="status"><span>本轮已结束，完整结果请在练习记录中查看。</span><button type="button" className="button button-outline button-small" onClick={() => requestNavigation('/history')}>查看练习记录</button></div>}
 
+
+          {route?.id === 'training' && trainingDrill && <section className="card training-round-context" aria-label="本轮专项">
+            <strong>{trainingDrill.title}</strong>
+            <p>{trainingDrill.lesson.pattern}</p>
+            {status === 'completed' && <>
+              <h2>本轮已结束</h2>
+              <p>本轮关注：{trainingDrill.lesson.review}</p>
+              {session.report && session.scoreInputNoteCount > 0 && <div className="training-result-stats" aria-label="本轮引擎统计">
+                <span>节奏命中率 <b>{Math.round(session.report.stats.targetHitRate * 100)}%</b></span>
+                <span>漏击 <b>{session.report.stats.missCount}</b></span>
+                <span>平均起音偏差 <b>{session.report.stats.meanAbsoluteMs == null ? '—' : `${session.report.stats.meanAbsoluteMs.toFixed(1)} ms`}</b></span>
+              </div>}
+              {session.report && session.scoreInputNoteCount === 0 && <p role="status">本轮未记录到演奏输入，尚不能评估练习效果。连接键盘后再试一次。</p>}
+              {session.report && !session.report.trustworthy && <p role="status">本轮测量可信度不足，请展开报告查看原因；这些数值不能用于判断是否掌握。</p>}
+              {session.report && <details className="training-round-report">
+                <summary>本轮结果 · {session.reportPersisted ? '已保存' : '等待保存'}</summary>
+                <ReportPanel report={session.report} analysis={session.analysis} durations={session.durations}
+                  scoreV1={session.scoreV1} scoreStatus={session.scoreStatus} scoringConfig={session.scoringConfig}
+                  practiceBpm={trainingDrill.bpm} practiceHand={trainingDrill.hand} />
+              </details>}
+              <p className="training-self-check">自查：{trainingDrill.lesson.selfCheck}</p>
+              <div className="training-result-actions">
+                <button type="button" className="button button-primary" disabled={reportUnsaved} onClick={startPractice}>再练同一专项</button>
+                <button type="button" className="button button-outline" disabled={reportUnsaved} onClick={() => { resetPractice(); setTrainingRoomOpen(false); }}>调整本专项</button>
+              </div>
+            </>}
+          </section>}
 
           {feedbackItems[0]?.tone === 'warning' && !practiceFocus && <div className="practice-warning" role="status">{feedbackItems[0].title}：{feedbackItems[0].detail}</div>}
-          <div className="workspace-grid">
+          <div className="workspace-grid" style={{ display: route?.id === 'training' && status === 'completed' ? 'none' : undefined }}>
             <section className="card score-card">
           <section className="session-strip">
-            <div className="session-main"><div className="session-art">{currentMode.icon}</div><div className="session-copy"><div className="session-title-row"><h2>{currentMode.title}</h2><span className={`status-pill ${statusClass}`}><i />{statusLabel}</span></div><p>{currentMode.description}</p><div className="session-tags"><span>♩ {config.tempo} BPM</span><span>♬ {config.hand === 'both' ? '双手' : config.hand === 'right' ? '右手' : '左手'}</span>{session.takeTemplateName && <span>Take {session.takeTemplateName}</span>}<span>◉ {config.feedback === 'live' ? '实时反馈' : '结束后分析'}</span><span>{config.advanceMode === 'follow' ? '◉ 光标跟随' : '⏱ 固定时间'}</span><span>♪ 参考 {referenceStatusLabel}{referencePositionLabel ? ` · ${referencePositionLabel}` : ''}</span><span>⌨ {deviceStatus === 'connected' ? `输入 ${deviceHealth}` : 'MIDI 未连接'}</span><span className="uncalibrated-tag">音频延迟未校准</span><span>⚖ {(session.scoringConfig?.judgmentProfile ?? config.profile) === 'strict' ? '严格' : (session.scoringConfig?.judgmentProfile ?? config.profile) === 'relaxed' ? '宽松' : '标准'}判定{session.scoringConfig?.judgmentProfileSource === 'mode-default' ? '（模式默认）' : ''}</span></div></div></div>
+            <div className="session-main"><div className="session-art">{currentMode.icon}</div><div className="session-copy"><div className="session-title-row"><h2>{route?.id === 'training' && trainingDrill ? trainingDrill.title : currentMode.title}</h2><span className={`status-pill ${statusClass}`}><i />{statusLabel}</span></div><p>{currentMode.description}</p><div className="session-tags"><span>♩ {config.tempo} BPM</span><span>♬ {config.hand === 'both' ? '双手' : config.hand === 'right' ? '右手' : '左手'}</span>{session.takeTemplateName && <span>Take {session.takeTemplateName}</span>}<span>◉ {config.feedback === 'live' ? '实时反馈' : '结束后分析'}</span><span>{config.advanceMode === 'follow' ? '◉ 光标跟随' : '⏱ 固定时间'}</span><span>♪ 参考 {referenceStatusLabel}{referencePositionLabel ? ` · ${referencePositionLabel}` : ''}</span><span>⌨ {deviceStatus === 'connected' ? `输入 ${deviceHealth}` : 'MIDI 未连接'}</span><span className="uncalibrated-tag">音频延迟未校准</span><span>⚖ {(session.scoringConfig?.judgmentProfile ?? config.profile) === 'strict' ? '严格' : (session.scoringConfig?.judgmentProfile ?? config.profile) === 'relaxed' ? '宽松' : '标准'}判定{session.scoringConfig?.judgmentProfileSource === 'mode-default' ? '（模式默认）' : ''}</span></div></div></div>
             <div className="session-controls"><span className="focus-session-label" role="status">{statusLabel}</span><div className="elapsed"><small>本次练习</small><strong>{formatTime(elapsed)}</strong></div>{prepRemain !== null ? <button className="button button-primary" disabled>准备 {prepRemain}s…</button> : status === 'running' || status === 'countdown' ? <button className="button button-primary" onClick={pausePractice}>Ⅱ 暂停</button> : status === 'paused' ? <button className="button button-primary" onClick={resumePractice}>▶ 继续练习</button> : <button className="button button-primary" onClick={startPractice} disabled={status === 'processing' || starting || settingsDirty}>{status === 'completed' ? '↻ 再练一次' : '▶ 开始练习'}</button>}<button className="button button-ghost" onClick={prepRemain !== null && !session.active ? cancelPrep : finishPractice} disabled={(status === 'idle' && prepRemain === null) || status === 'completed' || status === 'processing'}>结束</button><button className="button button-ghost" onClick={resetPractice} disabled={practiceInProgress}>重置</button></div>
           </section>
 
@@ -3459,7 +3489,7 @@ export default function App() {
             </aside></section>
           </div>
 
-          {status === 'completed' && <details className="practice-stats"><summary>查看本轮统计</summary>
+          {route?.id !== 'training' && status === 'completed' && <details className="practice-stats"><summary>查看本轮统计</summary>
           <section className="metrics-grid"><div className="metric-card card"><div className="metric-label">当前进度 <span>◷</span></div><div className="metric-value">{config.advanceMode === 'follow' ? (followView?.completed ?? 0) : engineTargets ? Math.min(session.nextUnmatchedIndex, session.liveStats.total) : 0}<small> / {config.advanceMode === 'follow' ? (followView?.total ?? 0) : engineTargets ? session.liveStats.total : scopedTargetCount}</small></div><div className="progress-track"><div style={{ width: `${config.advanceMode === 'follow' ? (followView?.total ? Math.min(100, (followView.completed / followView.total) * 100) : 0) : engineTargets && session.liveStats.total ? Math.min(100, session.nextUnmatchedIndex / session.liveStats.total * 100) : 0}%` }} /></div><div className="metric-foot">引擎已判定的目标进度</div></div><div className="metric-card card"><div className="metric-label">输入次数 <span>⌁</span></div><div className="metric-value">{events.filter(e => e.type === 'note-on').length}<small> 次</small></div><div className="metric-foot">本次会话采集到的按键</div></div><div className="metric-card card"><div className="metric-label">引擎命中 <span>％</span></div><div className="metric-value">{liveHitRate ?? '—'}<small>{liveHitRate !== null ? '%' : ''}</small></div><div className="metric-foot">实时判定 Perfect+Good / 目标数</div></div><div className="metric-card card"><div className="metric-label">引擎统计 <span>♫</span></div><div className="metric-value metric-note">{matchedLabel}</div><div className="metric-foot">命中 / 目标(漏拍与多击见报告)</div></div></section>
           </details>}
 
@@ -3479,6 +3509,9 @@ export default function App() {
             setSettingsDraft(null);
             setGeneratedReadingScore(null);
             setActiveLibraryId(null);
+            setTrainingDrill(drill);
+            setMetronomeOn(true);
+            setSystemDuet(false);
             setAutoStartRequested(true);
             setTrainingRoomOpen(true);
             return true;

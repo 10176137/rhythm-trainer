@@ -37,6 +37,7 @@ export interface GeneratedSkillDrill extends SkillDrillMaterial {
   key: DrillKey;
   startPitchLabels: Partial<Record<'left' | 'right', string>>;
   countInMs: number;
+  lesson: { label: string; pattern: string; instructions: string[]; review: string; selfCheck: string };
 }
 export interface TrainingCatalog {
   schemaVersion: 1;
