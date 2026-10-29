@@ -1,0 +1,48 @@
+import { describe, expect, it, vi } from 'vitest';
+import { FreeReadingSession } from './freeReadingSession';
+import { forwardReadingInput, type ReadingInputFeedback } from './readingInput';
+
+describe('untimed reading input routing', () => {
+  it.each(['midi', 'virtual'] as const)('advances chords from %s input and emits feedback for rendering', (source) => {
+    const session = new FreeReadingSession([[60, 64], [67]]);
+    const feedback: ReadingInputFeedback[] = [];
+    const emit = (value: ReadingInputFeedback) => { feedback.push(value); };
+    for (const midi of [60, 64, 67]) {
+      expect(forwardReadingInput(session, { midi, isRelease: false, source }, emit)).toBe(true);
+    }
+    expect(session.status).toBe('completed');
+    expect(feedback.map((value) => [value.midi, value.result, value.source])).toEqual([
+      [60, 'hit', source], [64, 'hit', source], [67, 'hit', source],
+    ]);
+    expect(session.evidence()).toEqual([60, 64, 67].map((midi) => ({ type: 'note', midi })));
+  });
+
+  it('consumes hardware Note Off without treating it as a second answer', () => {
+    const session = new FreeReadingSession([[60], [60]]);
+    const feedback = vi.fn();
+    forwardReadingInput(session, { midi: 60, isRelease: false, source: 'midi' }, feedback);
+    expect(forwardReadingInput(session, { midi: 60, isRelease: true, source: 'midi' }, feedback)).toBe(true);
+    expect(session.completedQuestions).toBe(1);
+    expect(feedback).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps paused hardware notes out of timed scoring and answer evidence', () => {
+    const session = new FreeReadingSession([[60], [64]]);
+    session.pause();
+    const feedback = vi.fn();
+    expect(forwardReadingInput(session, { midi: 60, isRelease: false, source: 'midi' }, feedback)).toBe(true);
+    expect(feedback).toHaveBeenCalledWith(expect.objectContaining({ result: 'ignored', source: 'midi' }));
+    expect(session.evidence()).toEqual([]);
+    expect(session.completedQuestions).toBe(0);
+  });
+
+  it('leaves other practice modes alone when no reading session is active', () => {
+    const feedback = vi.fn();
+    const input = { midi: 60, isRelease: false, source: 'midi' } as const;
+    expect(forwardReadingInput(null, input, feedback)).toBe(false);
+    const session = new FreeReadingSession([[60]]);
+    session.endEarly();
+    expect(forwardReadingInput(session, input, feedback)).toBe(false);
+    expect(feedback).not.toHaveBeenCalled();
+  });
+});

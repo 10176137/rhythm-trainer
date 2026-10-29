@@ -59,6 +59,7 @@ import FixedLineScoreView from './components/FixedLineScoreView';
 import NoteReadingSetup, { type ReadingSetupValue } from './components/NoteReadingSetup';
 import FreeReadingView, { type FreeReadingInputEvent } from './components/FreeReadingView';
 import { FreeReadingSession } from './features/reading/freeReadingSession';
+import { forwardReadingInput, type ReadingInputFeedback } from './features/reading/readingInput';
 import type { GeneratedRhythmScore } from '../shared/reading-contract';
 import { saveLastRunId } from './services/teachingRunRepository';
 import { WebAudioEngineAdapter } from './features/playback/audioEngineAdapter';
@@ -841,7 +842,12 @@ export default function App() {
     };
   };
 
-  /** v0.6: the only input path — raw packets in, engine outputs out.
+  const handleReadingFeedback = useCallback((input: ReadingInputFeedback) => {
+    if (input.result !== 'ignored') readingSourcesRef.current.add(input.source);
+    setReadingInput({ ...input, seq: ++readingInputSeqRef.current });
+  }, []);
+
+  /** Virtual/browser MIDI input path — raw packets in, engine outputs out.
    *  Note identity below is a UI view model derived from packet bytes. */
   const handleRawPacket = useCallback((packet: EngineRawMidiPacket) => {
     const command = packet.rawBytes[0] & 0xf0;
@@ -862,15 +868,9 @@ export default function App() {
     } as MidiPerformanceEvent]);
     setInputNote(spelledNoteFor(midiNote, rhythmReadingFifthsRef.current));
     setPitchMismatch(false);
-    // 自由识谱：设备/模拟输入喂给识谱会话，绝不进引擎计时链路。
-    if (readingFreeActiveRef.current && !isRelease) {
-      readingInputSeqRef.current += 1;
-      const result = readingSessionRef.current?.noteOn(midiNote) ?? 'ignored';
-      if (result !== 'ignored') readingSourcesRef.current.add(packet.transport === 'mock' ? 'virtual' : 'midi');
-      setReadingInput({ midi: midiNote, isRelease, seq: readingInputSeqRef.current, result });
-      return;
-    }
-    if (readingFreeActiveRef.current && isRelease) return;
+    if (forwardReadingInput(readingSessionRef.current, {
+      midi: midiNote, isRelease, source: packet.transport === 'mock' ? 'virtual' : 'midi',
+    }, handleReadingFeedback)) return;
     if (configRef.current.modeId === 'free') return;
     if (configRef.current.advanceMode === 'follow') {
       if (!isRelease && followStatusRef.current === 'running') {
@@ -898,7 +898,7 @@ export default function App() {
         addFeedback('音高提示', `${targetText}你按的是 ${noteForMidi(midiNote)}。音高不计入节奏评分,但会影响音乐效果。`, 'warning');
       }
     }
-  }, [addFeedback, handleGuideNote, session]);
+  }, [addFeedback, handleGuideNote, handleReadingFeedback, session]);
 
 
   // Re-render the countdown readout while counting in.
@@ -1141,6 +1141,9 @@ export default function App() {
       sourceId: event.sourceId,
     } as MidiPerformanceEvent]);
     setInputNote(spelledNoteFor(midiNote, rhythmReadingFifthsRef.current));
+    if (forwardReadingInput(readingSessionRef.current, {
+      midi: midiNote, isRelease: event.messageType === 'note-off', source: 'midi',
+    }, handleReadingFeedback)) return;
     if (event.messageType !== 'note-on') return;
     setPitchMismatch(false);
     if (configRef.current.advanceMode === 'follow') {
@@ -1164,7 +1167,7 @@ export default function App() {
         addFeedback('音高提示', `${targetText}你按的是 ${noteForMidi(midiNote)}。音高不计入节奏评分，但会影响音乐效果。`, 'warning');
       }
     }
-  }, [addFeedback, handleGuideNote]);
+  }, [addFeedback, handleGuideNote, handleReadingFeedback]);
 
   const handleDeviceStatus = useCallback((status: MidiAdapterStatus) => {
     setDeviceHealth(status.inputHealth);
