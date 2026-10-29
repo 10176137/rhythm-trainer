@@ -436,6 +436,12 @@
 .osmd-score{position:relative;width:1510px;min-width:1510px;background:#fff;padding:6px 0 2px}
 .osmd-host{width:100%;min-height:120px}
 .osmd-host svg{display:block;width:100%!important;height:auto!important}
+/* Let the engraver reserve the space dense four-measure rows need. Only after
+   rendering, fit its SVG to the visible pane; sounding pitches and anchors stay
+   unchanged. Native SVG sizing keeps the full scroll height after rotation. */
+.osmd-score.is-fit{max-width:100%;flex-shrink:0}
+.osmd-score.is-fit .osmd-host[data-osmd-stage="done"]{width:100%!important}
+.osmd-score.is-fit .osmd-host[data-osmd-stage="done"] svg{max-width:100%}
 .osmd-status{position:absolute;left:18px;top:14px;padding:8px 12px;border-radius:8px;background:#f6f7fb;color:#7d8697;font-size:11px}
 .osmd-status-error{background:#fdf3f4;color:#b3545f;border:1px solid #f7dfe2;right:18px;top:auto;bottom:14px}
 @media (pointer:coarse), (max-width:1100px){

@@ -106,22 +106,7 @@ export default function ScoreViewer({
   const [osmdRevision, setOsmdRevision] = useState(0);
   const [horizontalScroll, setHorizontalScroll] = useState({ max: 0, value: 0 });
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const [engravedWidth, setEngravedWidth] = useState(ENGRAVED_SCORE_WIDTH);
-
   const canEngrave = Boolean(sourceXml && engine);
-  useEffect(() => {
-    if (!focus) { setEngravedWidth(ENGRAVED_SCORE_WIDTH); return; }
-    const container = scrollRef.current;
-    if (!container) return;
-    const update = () => {
-      const available = container.clientWidth - 40;
-      if (available > 0) setEngravedWidth(Math.max(760, Math.min(ENGRAVED_SCORE_WIDTH, Math.floor(available / 20) * 20)));
-    };
-    update();
-    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
-    observer?.observe(container);
-    return () => observer?.disconnect();
-  }, [focus, canEngrave]);
   const selectedNote = pickedId ? score.find((note) => note.id === pickedId) ?? null : null;
   const selectedPlacement = selectedNote
     ? getStaffPlacement(selectedNote.staff, selectedNote.step, selectedNote.alter, selectedNote.octave)
@@ -295,8 +280,8 @@ export default function ScoreViewer({
               </div>
             )}
             <OsmdScoreView
-              width={engravedWidth}
-              zoom={focus ? 1.3 : 1}
+              width={ENGRAVED_SCORE_WIDTH}
+              fitWidth={focus}
               xml={sourceXml!}
               engine={engine!}
               activeNoteIds={activeNoteIds}

@@ -6,6 +6,8 @@ import { applyMeasureGrid, prepareMeasureGrid, renderMeasureGrid } from './osmdE
 
 interface Props {
   width?: number;
+  /** Fit the final SVG to the viewport after native four-measure engraving. */
+  fitWidth?: boolean;
   xml: string;
   engine: EngineScoreDocument;
   activeNoteIds: string[];
@@ -41,6 +43,7 @@ const EMPTY_MEASURES: number[] = [];
  */
 export default function OsmdScoreView({
   width = ENGRAVED_SCORE_WIDTH,
+  fitWidth = false,
   xml,
   engine,
   activeNoteIds,
@@ -158,6 +161,8 @@ export default function OsmdScoreView({
       adapterRef.current = null;
       if (host) host.innerHTML = '';
     };
+  // Fitting is CSS-only: entering focus and rotating the screen preserve the
+  // existing SVG, note mapping and highlights instead of restarting engraving.
   }, [xml, engine, layoutEpoch, zoom, width]);
 
   // OSMD can render a 0-width page when it was mounted inside a hidden route
@@ -292,7 +297,11 @@ export default function OsmdScoreView({
   }, [followSignal, follow, loading, scrollRef]);
 
   return (
-    <div ref={rootRef} className="osmd-score" style={{ width, minWidth: width }}>
+    <div
+      ref={rootRef}
+      className={`osmd-score${fitWidth ? ' is-fit' : ''}`}
+      style={fitWidth ? { width: '100%', minWidth: 0 } : { width, minWidth: width }}
+    >
       <div className="osmd-host" ref={hostRef} aria-label="专业制谱渲染" />
       {loopCovers.length > 0 && (
         <div className="osmd-loop-cover-layer" aria-hidden="true">
