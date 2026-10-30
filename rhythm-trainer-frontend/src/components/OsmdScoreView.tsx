@@ -75,6 +75,7 @@ export default function OsmdScoreView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [layoutEpoch, setLayoutEpoch] = useState(0);
+  const [viewportEpoch, setViewportEpoch] = useState(0);
   const [loopCovers, setLoopCovers] = useState<Array<{ measure: number; left: number; top: number; width: number; height: number }>>([]);
 
   useEffect(() => {
@@ -276,6 +277,48 @@ export default function OsmdScoreView({
     };
   }, [loopCoveredMeasures, loading]);
 
+  const systemRects = () => {
+    const lines = [...hostRef.current?.querySelectorAll<SVGGElement>('g.staffline') ?? []];
+    const staves = Math.max(1, engine.parts.reduce((sum, part) => sum + part.staves, 0));
+    return Array.from({ length: Math.ceil(lines.length / staves) }, (_, index) => {
+      const group = lines.slice(index * staves, (index + 1) * staves);
+      const rects = group.map((line) => line.getBoundingClientRect());
+      return { lines: group, top: Math.min(...rects.map((rect) => rect.top)), bottom: Math.max(...rects.map((rect) => rect.bottom)) };
+    });
+  };
+
+  // Display-only trailing space lets even the final system reach the top.
+  const followViewport = followSignal > 0;
+  useEffect(() => {
+    const outer = scrollRef.current;
+    const root = rootRef.current;
+    if (loading || !outer || !root || !followViewport) return;
+    root.style.marginBlock = '0px';
+    const update = () => {
+      const last = systemRects().at(-1);
+      if (!last) return;
+      const rootRect = root.getBoundingClientRect();
+      const currentPadding = parseFloat(root.style.paddingBottom) || 0;
+      const naturalHeight = rootRect.height - currentPadding;
+      const lastTop = last.top - rootRect.top;
+      const style = getComputedStyle(outer);
+      const padding = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+      root.style.paddingBottom = `${Math.max(0, outer.clientHeight + lastTop - naturalHeight - padding + 2)}px`;
+    };
+    update();
+    let width = outer.clientWidth;
+    let height = outer.clientHeight;
+    const observer = new ResizeObserver(() => {
+      update();
+      if (outer.clientWidth !== width || outer.clientHeight !== height) {
+        width = outer.clientWidth; height = outer.clientHeight;
+        setViewportEpoch((value) => value + 1);
+      }
+    });
+    observer.observe(outer);
+    return () => { observer.disconnect(); root.style.paddingBottom = ''; root.style.marginBlock = ''; };
+  }, [loading, fitWidth, engine, scrollRef, followViewport]);
+
   // Follow only on an explicit signal: a correct target hit, or the user
   // re-enabling follow. Engine target changes, misses and manual scrolling do
   // not yank the page away from where the player is reading.
@@ -288,13 +331,14 @@ export default function OsmdScoreView({
     const graphical = adapter.getGraphicalNotes(eventId)[0] as unknown as { getSVGGElement?: () => SVGGElement };
     const element = graphical?.getSVGGElement?.();
     if (!element) return;
-    const noteRect = element.getBoundingClientRect();
+    const line = element.closest('g.staffline');
+    const system = systemRects().find((system) => line && system.lines.includes(line as SVGGElement));
+    if (!system) return;
     const viewRect = outer.getBoundingClientRect();
-    const margin = Math.min(56, viewRect.height * 0.2);
-    if (noteRect.top >= viewRect.top + margin && noteRect.bottom <= viewRect.bottom - margin) return;
-    const top = outer.scrollTop + (noteRect.top - viewRect.top) - margin;
-    outer.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-  }, [followSignal, follow, loading, scrollRef]);
+    const margin = parseFloat(getComputedStyle(outer).paddingTop) || 8;
+    const top = Math.max(0, outer.scrollTop + system.top - viewRect.top - margin);
+    if (Math.abs(outer.scrollTop - top) > 2) outer.scrollTo({ top, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  }, [followSignal, follow, loading, fitWidth, viewportEpoch, scrollRef]);
 
   return (
     <div

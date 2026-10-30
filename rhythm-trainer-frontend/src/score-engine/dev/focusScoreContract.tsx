@@ -9,11 +9,16 @@ import ordinary from '../../features/score/fixtures/c-major-practice.musicxml?ra
 import octave from '../../features/score/fixtures/octave-shifts.musicxml?raw';
 import '../../styles.css';
 
-const fixtures = [dense, ordinary, octave];
+const sourceBars = [...ordinary.matchAll(/<measure\b[\s\S]*?<\/measure>/g)].map((match) => match[0]);
+const longScore = ordinary.replace(/<measure\b[\s\S]*<\/measure>/, Array.from({ length: 32 }, (_, index) =>
+  sourceBars[index === 0 ? 0 : 1 + (index - 1) % 3].replace(/number="\d+"/, `number="${index + 1}"`)).join(''));
+const fixtures = [dense, ordinary, octave, longScore];
 
 function FocusScoreContract() {
   const [choice, setChoice] = useState(0);
   const [focus, setFocus] = useState(true);
+  const [activeBar, setActiveBar] = useState(1);
+  const [pulse, setPulse] = useState(0);
   const statusRef = useRef<HTMLSpanElement>(null);
   const doc = useMemo(() => importScoreText(fixtures[choice], 'focus-contract.musicxml').doc!, [choice]);
   const engineBefore = useMemo(() => JSON.stringify(doc.engine), [doc]);
@@ -71,12 +76,18 @@ function FocusScoreContract() {
               <span id="focus-contract-status" ref={statusRef} className="focus-session-label">专注模式适配验证…</span>
               <button className="button button-outline" onClick={() => setFocus((current) => !current)}>{focus ? '切换普通视图' : '进入专注'}</button>
               <select aria-label="验证谱例" value={choice} onChange={(event) => setChoice(Number(event.target.value))}>
-                <option value={0}>密集音阶</option><option value={1}>普通双手</option><option value={2}>高低八度</option>
+                <option value={0}>密集音阶</option><option value={1}>普通双手</option><option value={2}>高低八度</option><option value={3}>长谱跟随</option>
               </select>
+              {choice === 3 && <>
+                {[5, 9, 29].map((bar) => <button key={bar} onClick={() => { setActiveBar(bar); setPulse((value) => value + 1); }}>模拟弹对到第{bar}小节</button>)}
+                <button onClick={() => setActiveBar(9)}>只推进时钟到第9小节</button>
+                <span data-follow-progress={activeBar}>显示目标：第 {activeBar} 小节 · 只验证显示，不评分</span>
+              </>}
             </div>
           </section>
           <ScoreViewer focus={focus} score={doc.notes} meta={doc.meta} warnings={[]} tempo={60}
-            strictAssessment={false} activeNoteIds={doc.notes.slice(1, 2).map((note) => note.id)}
+            strictAssessment={false} activeNoteIds={choice === 3 ? doc.notes.filter((note) => note.bar === activeBar).slice(0, 1).map((note) => note.id) : doc.notes.slice(1, 2).map((note) => note.id)}
+            followPulse={pulse}
             userNoteIds={doc.notes.slice(0, 1).map((note) => note.id)} hand="both" modeId="score"
             showNoteNames={false} showPositionHints={false} lastInputMidi={null}
             sourceXml={doc.sourceXml} engine={doc.engine} />

@@ -10,6 +10,9 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import WebSocket from 'ws';
+import { generateSkillExercise } from './training-service.mjs';
+import { importScoreText } from '../src/features/score/scoreImport.ts';
+import { projectScoreDocumentV1 } from '../src/score-engine/contract-v1/plan-fingerprint.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -206,6 +209,48 @@ describe('R2-3h: plan protocol over the real engine server', () => {
       await request(socket, { type: 'finish', protocolVersion: 1 }, 'report');
     });
   }
+  it.each(['clean', 'extra-first', 'extra-last', 'wrong-replaces-G'])('keeps real triad feedback and saved pitch evidence consistent: %s', async (scenario) => {
+    const drill = generateSkillExercise({ id: 'triads', level: 1, bpm: 60, options: { key: 'C', hand: 'right' } });
+    const imported = importScoreText(drill.xml, 'triads.musicxml');
+    const { dto } = projectScoreDocumentV1(imported.doc.engine, imported.report);
+    const config = { partId: 'P1', range: { startMeasureOrdinal: 1, endMeasureOrdinal: 4 }, repeatSelection: { kind: 'none' },
+      hand: 'right', handMapping: { schemaVersion: 1, mappingVersion: 'hand-mapping-1', source: 'user', parts: [{ partId: 'P1', staves: drill.staffHands }] },
+      bpm: { numerator: 60, denominator: 1 }, ticksPerQuarter: 960, countInUs: 1000000, unsupportedNotationPolicy: 'reject-strict' };
+    const plan = await request(socket, { type: 'plan-request', protocolVersion: 1, requestId: `triad-${scenario}`, mode: 'timeline', document: dto, report: imported.report, config }, 'plan-response', `triad-${scenario}`);
+    expect(plan.ok).toBe(true);
+    const scoreEvents = engineScoreEventsFor(plan);
+    expect(scoreEvents).toHaveLength(15);
+    const firstOnset = scoreEvents[0].targetOnsetMs;
+    const firstChord = scoreEvents.filter((event) => event.targetOnsetMs === firstOnset);
+    expect(firstChord.map((event) => event.pitch).sort((a, b) => a - b)).toEqual([60, 64, 67]);
+    const started = await request(socket, { type: 'start', protocolVersion: 1, modeId: 'fixed-line', bpm: 60, profile: 'standard', feedback: 'live',
+      countInBeats: 1, countInUs: 1000000, ticksPerQuarter: 960, atoms: plan.plan.atoms, scoreEvents,
+      scoreFingerprint: plan.scoreFingerprint, playbackPlanId: plan.plan.runtimeIds.planId, planRequestId: plan.requestId,
+      plannerAuthority: plan.plannerAuthority, plannerVersion: plan.plannerVersion, planFingerprint: plan.planFingerprint, hand: 'right', scoreBarCount: 4 }, 'started');
+    const notes = scoreEvents.map((event) => ({ pitch: scenario === 'wrong-replaces-G' && event.targetOnsetMs === firstOnset && event.pitch === 67 ? 66 : event.pitch,
+      onset: event.targetOnsetMs + 10, duration: event.targetDurationMs }));
+    if (scenario.startsWith('extra-')) notes.push({ pitch: 66, onset: firstOnset + (scenario === 'extra-first' ? 5 : 15), duration: 500 });
+    const packets = notes.flatMap((note) => [{ atMs: note.onset, bytes: [0x90, note.pitch, 90] }, { atMs: note.onset + note.duration, bytes: [0x80, note.pitch, 40] }]).sort((a, b) => a.atMs - b.atMs);
+    const colors = new Map();
+    const remember = (raw) => { const message = JSON.parse(String(raw)); for (const item of message.noteFeedback ?? []) colors.set(item.scoreEventId, item); };
+    socket.on('message', remember);
+    try {
+      packets.forEach((packet, index) => socket.send(JSON.stringify({ type: 'raw-midi', protocolVersion: 1, ingest: {
+        packet: { sourceId: 'triad-test', sourceSeq: index + 1, clockDomainId: 'mock-clock', capturedAtMs: packet.atMs, rawBytes: packet.bytes, transport: 'mock', captureEpoch: started.captureEpoch },
+        sessionTimeMs: packet.atMs, clockMappingId: 'triad-test', clockUncertaintyMs: 0, clockQuality: 'good' } })));
+      await request(socket, { type: 'tick', nowMs: packets.at(-1).atMs + 1000 }, 'judgments');
+      const report = await request(socket, { type: 'finish', protocolVersion: 1 }, 'report');
+      expect(report.persisted).toBe(true);
+      const extra = scenario.startsWith('extra-') ? 1 : 0;
+      const wrong = scenario === 'wrong-replaces-G' ? 1 : 0;
+      expect(report.scoreV1.pitch).toMatchObject({ correct: 15 - wrong, wrongPitch: wrong, missed: 0, extra });
+      expect(report.scoreV1.pitch.precision).toBeCloseTo((15 - wrong) / (15 + extra));
+      const saved = JSON.parse(readFileSync(path.join(DATA_DIR, 'takes', `${report.takeId}.json`), 'utf8'));
+      expect(saved.assessment.timelineReport.scoreV1.pitch).toEqual(report.scoreV1.pitch);
+      for (const event of firstChord) expect(colors.get(event.scoreEventId)).toMatchObject({ state: wrong && event.pitch === 67 ? 'wrong' : 'hit', ...(extra ? { extraCount: 1 } : {}) });
+      expect(scoreEvents.filter((event) => event.targetOnsetMs !== firstOnset).every((event) => !colors.get(event.scoreEventId)?.extraCount)).toBe(true);
+    } finally { socket.off('message', remember); }
+  });
   it('reports the server-side planner authority (single source of truth)', async () => {
     const status = await request(socket, { protocolVersion: 1, type: 'planner-status' }, 'planner-status');
     expect(status.authority).toBe('rust');

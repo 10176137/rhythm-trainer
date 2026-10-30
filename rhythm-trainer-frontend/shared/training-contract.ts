@@ -20,6 +20,7 @@ export interface SkillDrillDefinition {
 
 /** Wire contracts only. Exercise rules and catalog contents live on Node. */
 export interface SkillDrillMaterial {
+  phrase?: { strategyVersion: string; id: string; seed: number; variant: number; pattern: string; stages: Array<{ label: string; startBar: number; endBar: number }> };
   xml: string;
   title: string;
   bars: number;
@@ -48,15 +49,18 @@ export interface TrainingCatalog {
   hands: Array<{ id: DrillHand; label: string }>;
   tempo: { min: number; max: number; step: number; default: number };
 }
-export interface SkillDrillRequest { id: DrillId; level: DrillLevel; bpm: number; options?: DrillOptions }
+export interface SkillDrillRequest { id: DrillId; level: DrillLevel; bpm: number; options?: DrillOptions; seed?: number }
 
 export interface TrainingProgramConfig {
   mode: 'timed' | 'continuous' | 'assessment'; minutes: 2 | 5 | 10;
   variation: 'repeat' | 'shuffle'; ids: DrillId[]; keys: DrillKey[];
   hand: DrillHand; level: DrillLevel; bpm: number; seed?: number;
 }
-export interface ProgramSection { id: DrillId; title: string; startBar: number; endBar: number; key: DrillKey; hand: DrillHand }
-export interface TrainingProgram { id: string; rootId: string; config: TrainingProgramConfig; sections: ProgramSection[]; seconds: number; remainingSeconds: number | null; benchmarkVersion: string | null }
+export interface ProgramSection { id: DrillId; title: string; startBar: number; endBar: number; key: DrillKey; hand: DrillHand; phraseId?: string; pattern?: string }
+export interface TrainingProgram {
+  id: string; rootId: string; config: TrainingProgramConfig; sections: ProgramSection[]; seconds: number; remainingSeconds: number | null; benchmarkVersion: string | null;
+  generationState?: { rngState: number; lastChoice: string; queue: Array<{ id: DrillId; key: DrillKey; signature: string }>; phraseCounts: Record<string, number> };
+}
 export interface TrainingProgramReview {
   reviewVersion?: string;
   finishedAtIso?: string;

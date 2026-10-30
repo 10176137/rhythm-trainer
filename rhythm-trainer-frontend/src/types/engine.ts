@@ -46,6 +46,8 @@ export interface EngineTarget {
 export interface EngineNoteFeedback {
   scoreEventId: string;
   state: 'pending' | 'hit' | 'wrong' | 'miss';
+  /** Rust-unmatched extra attacks within this onset group's timing window. */
+  extraCount?: number;
 }
 
 export interface EngineJudgment {

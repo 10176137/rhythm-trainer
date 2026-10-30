@@ -3,11 +3,17 @@ import { OpenSheetMusicDisplay, MusicSystemBuilder } from 'opensheetmusicdisplay
 import { applyMeasureGrid, prepareMeasureGrid, renderMeasureGrid } from '../../components/osmdEngraving';
 import { importScoreText } from '../../features/score/scoreImport';
 import { timelineHitNoteIds } from '../../features/practice/scoreHighlightFeedback';
+import { fixedLineGroupHighlights } from '../../features/practice/fixedLineFeedback';
 import denseScale from './fixtures/grid-dense-scale.musicxml?raw';
 import leftFiveFinger from './fixtures/grid-left-five-finger.musicxml?raw';
 import octaveShifts from '../../features/score/fixtures/octave-shifts.musicxml?raw';
 import { OsmdScoreViewAdapter } from '../view/score-view-adapter';
 import sample from '../../features/score/fixtures/c-major-practice.musicxml?raw';
+
+// Hand-authored two-attack fixture, independent of the exercise generator.
+const triads = `<?xml version="1.0" encoding="UTF-8"?><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
+<note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration><type>half</type></note><note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration><type>half</type></note><note><chord/><pitch><step>G</step><octave>4</octave></pitch><duration>2</duration><type>half</type></note>
+<note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration><type>half</type></note><note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration><type>half</type></note><note><chord/><pitch><step>G</step><octave>4</octave></pitch><duration>2</duration><type>half</type></note></measure></part></score-partwise>`;
 
 const sourceBars = [...sample.matchAll(/<measure\b[\s\S]*?<\/measure>/g)].map((match) => match[0]);
 function score(count: number) {
@@ -24,6 +30,7 @@ const cases = [
   { name: '双手密集音阶 / F 大调', xml: denseScale, width: 760, zoom: 1.3 },
   { name: '单独低音谱表 / G 大调', xml: leftFiveFinger, width: 860, zoom: 1 },
   { name: '高低八度记号 / 保留实际 MIDI 与音符定位', xml: octaveShifts, width: 1200, zoom: 1 },
+  { name: '和弦多按错音 / 不显示整组成功', xml: triads, width: 1200, zoom: 1 },
 ];
 const status = document.getElementById('status')!;
 const preview = document.getElementById('preview')!;
@@ -97,6 +104,25 @@ async function run() {
         isolation.textContent = '高亮隔离通过：第一小节已弹为绿色、当前目标为蓝色；第五小节保持黑色。';
         isolation.dataset.highlightIsolation = 'pass';
         preview.before(isolation);
+        wrapper.className = '';
+        preview.append(wrapper);
+      } else if (entry.xml === triads) {
+        adapter.clearHighlights();
+        const notes = original.parts[0].measures[0].events.filter((event) => event.kind === 'note');
+        const group = notes.slice(0, 3).map((event) => event.id);
+        const feedback = group.map((scoreEventId) => ({ scoreEventId, state: 'hit' as const }));
+        const fills = (id: string) => adapter.getGraphicalNotes(id).flatMap((note) =>
+          (note as unknown as { getNoteheadSVGs(): HTMLElement[] }).getNoteheadSVGs().flatMap((head) =>
+            [head, ...head.querySelectorAll('[fill]')].map((node) => node.getAttribute('fill'))));
+        for (const [id, color] of fixedLineGroupHighlights([group], feedback, -1)) adapter.highlightScoreEvent(id, color);
+        assert(group.every((id) => fills(id).includes('#1d9b72')), '三个正确音齐全且无多余音时应为绿色');
+        for (const [id, color] of fixedLineGroupHighlights([group], feedback.map((item) => ({ ...item, extraCount: 1 })), -1)) adapter.highlightScoreEvent(id, color);
+        assert(group.every((id) => fills(id).includes('#c34b58') && !fills(id).includes('#1d9b72')), '多按一个错音后整组应为红色');
+        assert(fills(notes[3].id).includes('#20252d'), '下一组未弹的和弦应保持黑色');
+        const caption = document.createElement('p');
+        caption.textContent = '和弦反馈通过：C–E–G 全部命中但多按 F♯，整组红色；下一组保持黑色。';
+        caption.dataset.chordExtra = 'pass';
+        preview.append(caption);
         wrapper.className = '';
         preview.append(wrapper);
       } else wrapper.remove();

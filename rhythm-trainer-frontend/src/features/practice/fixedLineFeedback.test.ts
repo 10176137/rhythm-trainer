@@ -14,6 +14,12 @@ describe('fixed-line highlight meaning', () => {
     const colors = fixedLineGroupHighlights([['source-a']], [{ scoreEventId: 'occ-a', state: 'hit' }], 0, new Map([['occ-a', 'source-a']]));
     expect(colors.get('source-a')).toBe('hit');
   });
+  it('does not paint a complete chord green when the server reports an extra tone', () => {
+    const feedback = ['c', 'e', 'g'].map((scoreEventId) => ({ scoreEventId, state: 'hit' as const, extraCount: 1 }));
+    const colors = fixedLineGroupHighlights([['c', 'e', 'g'], ['next']], feedback, 1);
+    expect(['c', 'e', 'g'].map((id) => colors.get(id))).toEqual(['error', 'error', 'error']);
+    expect(colors.get('next')).toBe('current');
+  });
   it('keeps errors red after the time cursor advances', () => {
     const colors = fixedLineGroupHighlights([['a'], ['b']], [{ scoreEventId: 'a', state: 'miss' }], 1);
     expect(colors.get('a')).toBe('error');

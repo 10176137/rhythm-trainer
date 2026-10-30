@@ -15,14 +15,15 @@ export default function SkillTrainingPage({ onStart }: { onStart: (drill: Genera
   const [key, setKey] = useState<DrillKey>('C');
   const [hand, setHand] = useState<DrillHand>('right');
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [seed, setSeed] = useState(0);
   const [error, setError] = useState('');
   const basic = category === 'fundamentals';
   const options = useMemo(() => basic ? { key, hand } : undefined, [basic, key, hand]);
-  const request = useMemo(() => ({ id: selected, level, bpm, ...(options ? { options } : {}) }), [selected, level, bpm, options]);
+  const request = useMemo(() => ({ id: selected, level, bpm, seed, ...(options ? { options } : {}) }), [selected, level, bpm, seed, options]);
   const { catalog, catalogError, generated, generationError, retryCatalog, retryGeneration } = useSkillDrill(request);
   const drill = catalog?.drills.find((entry) => entry.id === selected);
   const fingered = drill?.hasReferenceFingering ?? false;
-  const choose = (id: DrillId) => { setSelected(id); setLevel(1); setPreviewOpen(false); setError(''); };
+  const choose = (id: DrillId) => { setSelected(id); setLevel(1); setSeed(0); setPreviewOpen(false); setError(''); };
 
   if (!catalog || !drill) return <div className="page-content skill-training-page"><header className="page-heading"><h1>专项训练</h1></header><section className="card"><p role={catalogError ? 'alert' : 'status'}>{catalogError || '正在载入训练项目…'}</p>{catalogError && <button type="button" className="button button-outline" onClick={retryCatalog}>重新载入</button>}</section></div>;
 
@@ -52,6 +53,7 @@ export default function SkillTrainingPage({ onStart }: { onStart: (drill: Genera
         <label>速度 <b>{bpm} BPM</b><input aria-label="专项训练速度" type="range" min={catalog.tempo.min} max={catalog.tempo.max} step={catalog.tempo.step} value={bpm} onChange={(event) => setBpm(Number(event.target.value))} /></label>
         <p role="status">{generated ? `${generated.bars} 小节 · ${generated.keyLabel} · ${generated.hand === 'both' && !basic ? '双手配合' : HAND_LABELS[generated.hand]} · ${generated.countInMs / 1000} 秒预备` : generationError ? '练习谱尚未就绪' : '正在生成练习谱…'}</p>
         <button type="button" className="button button-primary" disabled={!generated} onClick={() => { if (generated && !onStart(generated)) setError('暂时无法开始，请先结束当前练习或检查曲谱生成结果。'); }}>开始专项训练</button>
+        {selected !== 'pulse' && <button type="button" className="text-button" disabled={!generated} onClick={() => setSeed((value) => (value + 1) >>> 0)}>换一组乐句</button>}
         {generationError && <div><p role="alert">{generationError}</p><button type="button" className="text-button" onClick={retryGeneration}>重新生成</button></div>}
         {error && <p role="alert">{error}</p>}
         <small>先用 40–60 BPM 练稳，再单独增加速度或难度；级别由你选择，不自动判定已掌握。</small>

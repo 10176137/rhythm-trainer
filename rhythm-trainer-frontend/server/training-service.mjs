@@ -8,7 +8,7 @@ import { generateFreeQuestions, generateReviewQuestions, generateRhythmScore, RE
 import { spelledLabel, READING_KEY_LOW, READING_KEY_HIGH } from '../shared/reading-keys.mjs';
 
 export const TRAINING_SCHEMA_VERSION = 1;
-export const SKILL_GENERATOR_VERSION = 'skill-drills-node-2';
+export const SKILL_GENERATOR_VERSION = 'skill-drills-node-3';
 const TEMPO = { min: 40, max: 140, step: 5, default: 60 };
 
 export class TrainingServiceError extends Error {
@@ -36,9 +36,10 @@ export function getTrainingCatalog() {
   });
 }
 
-export function generateSkillExercise(input) {
+export function generateSkillExercise(input, { baseline = false, variant = 0 } = {}) {
   object(input, '请求');
-  fields(input, ['id', 'level', 'bpm', 'options']);
+  fields(input, ['id', 'level', 'bpm', 'options', 'seed']);
+  requireValue(input.seed === undefined || (Number.isInteger(input.seed) && input.seed >= 0 && input.seed <= 0xffffffff), '乐句种子必须是 32 位非负整数');
   const definition = SKILL_DRILLS.find((entry) => entry.id === input.id);
   requireValue(definition && [1, 2, 3].includes(input.level), '训练项目或级别无效');
   requireValue(Number.isInteger(input.bpm) && input.bpm >= TEMPO.min && input.bpm <= TEMPO.max, '专项训练速度必须为 40–140 BPM 的整数');
@@ -48,7 +49,7 @@ export function generateSkillExercise(input) {
     fields(options, ['key', 'hand']);
     requireValue(Object.hasOwn(DRILL_KEYS, options.key) && ['right', 'left', 'both'].includes(options.hand), '调性或手别无效');
   } else requireValue(input.options === undefined, '节奏训练的手别与调性由训练项目决定');
-  const material = createSkillDrill(input.id, input.level, input.bpm, options);
+  const material = createSkillDrill(input.id, input.level, input.bpm, options, baseline ? undefined : { seed: input.seed ?? 0, variant });
   const key = options?.key ?? 'C';
   const startPitchLabels = Object.fromEntries(Object.entries(material.startPitches).map(([hand, midi]) => [hand, spelledLabel(midi, DRILL_KEYS[key].fifths)]));
   return {

@@ -32,14 +32,17 @@ export function normalizeProgram(input) {
 }
 
 /** Whole authored phrases, randomized on Node; no random notes or fingering changes. */
-export function generateProgram(input, { remainingSeconds } = {}) {
+export function generateProgram(input, { remainingSeconds, generationState } = {}) {
   const config = normalizeProgram(input);
-  let seed = config.seed >>> 0;
+  let seed = generationState?.rngState ?? config.seed >>> 0;
   const choose = (values) => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return values[seed % values.length]; };
   const sections = [];
   const measures = [];
   let seconds = 0;
-  let lastChoice = '';
+  let lastChoice = generationState?.lastChoice ?? '';
+  let queue = structuredClone(generationState?.queue ?? []);
+  const phraseCounts = { ...generationState?.phraseCounts };
+  const candidates = config.ids.flatMap((id) => (SKILL_DRILLS.find((drill) => drill.id === id).category === 'fundamentals' ? config.keys : ['C']).map((key) => ({ id, key, signature: `${id}:${key}` })));
   // Bound tablet engraving cost even for a ten-minute high-tempo program.
   // The server advances the remaining budget only after a bound saved Take.
   const budget = remainingSeconds ?? config.minutes * 60;
@@ -48,13 +51,25 @@ export function generateProgram(input, { remainingSeconds } = {}) {
     let id, hand, key;
     if (config.mode === 'assessment') [id, hand, key] = BENCHMARK[index];
     else {
-      const candidates = config.ids.flatMap((id) => config.keys.map((key) => ({ id, key, signature: `${id}:${key}` })));
-      const pool = candidates.filter((c) => c.signature !== lastChoice);
-      const item = config.variation === 'repeat' ? candidates[0] : choose(pool.length ? pool : candidates);
+      if (!queue.length) {
+        queue = [...candidates];
+        for (let i = queue.length - 1; i > 0; i--) {
+          const j = choose(Array.from({ length: i + 1 }, (_, index) => index));
+          [queue[i], queue[j]] = [queue[j], queue[i]];
+        }
+      }
+      if (queue.length > 1 && queue[0].signature === lastChoice) [queue[0], queue[1]] = [queue[1], queue[0]];
+      const item = config.variation === 'repeat' ? candidates[0] : queue.shift();
       ({ id, key } = item); hand = config.hand; lastChoice = item.signature;
     }
     const definition = SKILL_DRILLS.find((d) => d.id === id);
-    const drill = generateSkillExercise({ id, level: config.level, bpm: config.bpm, ...(definition.category === 'fundamentals' ? { options: { key, hand } } : {}) });
+    const signature = `${id}:${key}`;
+    const variant = config.variation === 'shuffle' ? phraseCounts[signature] ?? 0 : 0;
+    const drill = generateSkillExercise({ id, level: config.level, bpm: config.bpm,
+      seed: config.variation === 'repeat' ? 0 : config.seed,
+      ...(definition.category === 'fundamentals' ? { options: { key, hand } } : {}) },
+      { baseline: config.mode === 'assessment', variant });
+    phraseCounts[signature] = variant + 1;
     const startBar = measures.length + 1;
     const stageName = `${index + 1}. ${drill.title}`;
     for (const [bar, match] of [...drill.xml.matchAll(/<measure\b[^>]*>([\s\S]*?)<\/measure>/g)].entries()) {
@@ -69,13 +84,15 @@ export function generateProgram(input, { remainingSeconds } = {}) {
       measures.push(`<measure number="${measures.length + 1}">${attributes}${tempo}${music}</measure>`);
     }
     seconds += drill.bars * 4 * 60 / config.bpm;
-    sections.push({ id, title: drill.title, startBar, endBar: measures.length, key: drill.key, hand: drill.hand });
+    sections.push({ id, title: drill.title, startBar, endBar: measures.length, key: drill.key, hand: drill.hand,
+      ...(drill.phrase ? { phraseId: drill.phrase.id, pattern: drill.phrase.pattern } : {}) });
   }
   const title = config.mode === 'assessment' ? '基础能力测试 · 六项基线' : config.mode === 'continuous' ? '连续基本功 · 自动换段' : `定时基本功 · 约 ${config.minutes} 分钟`;
   const xml = `<?xml version="1.0" encoding="UTF-8"?><score-partwise version="4.0"><work><work-title>${title}</work-title></work><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1">${measures.join('')}</part></score-partwise>`;
-  return { schemaVersion: 1, generatorVersion: 'skill-program-node-1', id: config.ids[0], level: config.level, bpm: config.bpm, key: sections[0].key, xml, title, bars: measures.length, staffHands: [{ staffNumber: 1, hand: 'right' }, { staffNumber: 2, hand: 'left' }], hand: 'both', startPitches: {}, startPitchLabels: {}, countInMs: 3000,
-    lesson: { label: title, pattern: `${sections.length} 个完整音型 · 约 ${Math.ceil(seconds / 60)} 分钟`, instructions: ['先看每段上方的项目名称、调号和练习手，再按谱演奏。', '保持舒适速度，遇到错误先把本段练稳；随机训练改变完整音型与调性，不随机打乱指法。', config.mode === 'assessment' ? '测试关闭伴弹和即时答案；六项都完成后查看后端能力画像。' : '先单手，再双手；同一速度稳定后再增加难度。'], review: '比较音高正确率、漏音和起音偏差，不只看节奏命中率。', selfCheck: 'MIDI 能验证音高和时间，不能确认实际指法、手腕放松或音色；这不是考级等级鉴定。' },
-    program: { id: '', config, sections, seconds, remainingSeconds: config.mode === 'timed' ? Math.max(0, budget - seconds) : null, benchmarkVersion: config.mode === 'assessment' ? 'piano-baseline-1' : null } };
+  return { schemaVersion: 1, generatorVersion: 'skill-program-node-2', id: config.ids[0], level: config.level, bpm: config.bpm, key: sections[0].key, xml, title, bars: measures.length, staffHands: [{ staffNumber: 1, hand: 'right' }, { staffNumber: 2, hand: 'left' }], hand: 'both', startPitches: {}, startPitchLabels: {}, countInMs: 3000,
+    lesson: { label: title, pattern: `${sections.length} 个完整乐句 · 约 ${Math.ceil(seconds / 60)} 分钟`, instructions: ['先看每段上方的项目名称、调号和练习手，再按谱演奏。', config.mode === 'assessment' ? '本测试使用固定音型与次序，以便在相同条件下比较。' : '每句先练基础音型，再作受限变式，最后收束；随机训练轮换项目、调性和完整乐句，不打乱指法。', config.mode === 'assessment' ? '测试关闭伴弹和即时答案；六项都完成后查看后端能力画像。' : '先单手，再双手；同一速度稳定后再增加难度。'], review: '比较音高正确率、漏音和起音偏差，不只看节奏命中率。', selfCheck: 'MIDI 能验证音高和时间，不能确认实际指法、手腕放松或音色；这不是考级等级鉴定。' },
+    program: { id: '', config, sections, seconds, remainingSeconds: config.mode === 'timed' ? Math.max(0, budget - seconds) : null, benchmarkVersion: config.mode === 'assessment' ? 'piano-baseline-1' : null,
+      ...(config.mode !== 'assessment' ? { generationState: { rngState: seed, lastChoice, queue, phraseCounts } } : {}) } };
 }
 
 function targetedAdvice(drill, section) {
@@ -139,8 +156,7 @@ export class TrainingProgramStore {
     const program = record.drill.program;
     if (program.config.mode === 'assessment' || (program.config.mode === 'timed' && program.remainingSeconds <= 0)) return null;
     if (record.next?.[input.takeId]) return JSON.parse(fs.readFileSync(path.join(this.dir, `${record.next[input.takeId]}.json`), 'utf8')).drill;
-    const { seed, ...config } = program.config;
-    const drill = this.create(config, { remainingSeconds: program.remainingSeconds ?? undefined, rootId: program.rootId });
+    const drill = this.create(program.config, { remainingSeconds: program.remainingSeconds ?? undefined, rootId: program.rootId, generationState: program.generationState });
     record.next ??= {}; record.next[input.takeId] = drill.program.id; this.write(id, record);
     return drill;
   }

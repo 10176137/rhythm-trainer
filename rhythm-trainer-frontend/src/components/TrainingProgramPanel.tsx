@@ -37,9 +37,9 @@ export default function TrainingProgramPanel({ onStart }: { onStart: (drill: Gen
     {config.mode !== 'assessment' ? <fieldset disabled={busy}><legend>练习配置</legend>
       <div className="program-projects">{OPTIONS.map(([id, title]) => <label key={id}><input type="checkbox" checked={config.ids.includes(id)} onChange={(e) => change('ids', e.target.checked ? [...config.ids, id] : config.ids.filter((x) => x !== id))}/>{title}</label>)}</div>
       <div className="settings-grid">
-        <label>出题方式<select value={config.variation} onChange={(e) => change('variation', e.target.value as 'repeat' | 'shuffle')}><option value="shuffle">随机轮换所选项目与调性</option><option value="repeat">重复第一个项目与调性</option></select></label>
+        <label>出题方式<select value={config.variation} onChange={(e) => change('variation', e.target.value as 'repeat' | 'shuffle')}><option value="shuffle">轮换项目、调性与乐句</option><option value="repeat">重复第一个项目与调性</option></select></label>
         <label>练习手<select value={config.hand} onChange={(e) => change('hand', e.target.value as TrainingProgramConfig['hand'])}><option value="right">右手</option><option value="left">左手</option><option value="both">双手</option></select></label>
-        <label>难度<select value={config.level} onChange={(e) => change('level', Number(e.target.value) as 1 | 2 | 3)}><option value={1}>1 · 基础慢练</option><option value={2}>2 · 连续音型</option><option value={3}>3 · 扩展与变化</option></select></label>
+        <label>难度<select value={config.level} onChange={(e) => change('level', Number(e.target.value) as 1 | 2 | 3)}><option value={1}>入门 · 基础音型</option><option value={2}>普通 · 音型与节奏变式</option><option value={3}>进阶 · 扩展音域与组合</option></select></label>
         <label>速度 BPM<input type="number" min={40} max={140} value={config.bpm} onChange={(e) => change('bpm', Number(e.target.value))}/></label>
       </div>
       <div className="program-projects" role="group" aria-label="随机调性范围">{(['C', 'G', 'F'] as const).map((key) => <label key={key}><input type="checkbox" checked={config.keys.includes(key)} onChange={(e) => change('keys', e.target.checked ? [...config.keys, key] : config.keys.filter((x) => x !== key))}/>{key} 大调</label>)}</div>

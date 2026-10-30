@@ -54,7 +54,7 @@ const PATTERNS = {
 
 export function skillLesson(definition, level, material, startPitchLabels) {
   const hands = Object.entries(startPitchLabels).map(([hand, pitch]) => `${hand === 'left' ? '左手' : '右手'} ${pitch}`).join('，');
-  const pattern = PATTERNS[definition.id][level - 1];
+  const pattern = material.phrase?.pattern ?? PATTERNS[definition.id][level - 1];
   return {
     label: definition.levels[level - 1], pattern,
     instructions: [

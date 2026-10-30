@@ -1,6 +1,7 @@
 import { spellMidi } from '../../shared/reading-keys.mjs';
 import { supportsStaffPitch } from '../../shared/staff-range.mjs';
 import { DRILL_KEYS, FUNDAMENTAL_DRILLS } from './skill-drill-catalog.mjs';
+import { fundamentalPhrase } from './phrase-strategy.mjs';
 const MAJOR = [0, 2, 4, 5, 7, 9, 11];
 export function degreeMidi(degree, root) {
     return root + Math.floor(degree / 7) * 12 + MAJOR[degree % 7];
@@ -56,7 +57,7 @@ function tokenAt(id, level, index) {
     }
     return [(level === 1 ? [0, 4] : level === 2 ? [0, 7] : [0, 7, 2, 9, 4, 11, 2, 7])[index % (level === 3 ? 8 : 2)]];
 }
-export function createFundamentalDrill(id, level, bpm, options) {
+export function createFundamentalDrill(id, level, bpm, options, variation) {
     const definition = FUNDAMENTAL_DRILLS.find((entry) => entry.id === id);
     if (!definition || ![1, 2, 3].includes(level) || !Number.isInteger(bpm) || bpm < 40 || bpm > 140
         || !Object.hasOwn(DRILL_KEYS, options.key) || !['right', 'left', 'both'].includes(options.hand))
@@ -67,40 +68,46 @@ export function createFundamentalDrill(id, level, bpm, options) {
     const perBar = 4 / beats;
     const hands = options.hand === 'both' ? ['right', 'left'] : [options.hand];
     const staffHands = hands.map((hand, i) => ({ staffNumber: i + 1, hand }));
-    const tokens = Array.from({ length: bars * perBar }, (_, index) => {
+    const degrees = Array.from({ length: bars * perBar }, (_, index) => {
         if (index === bars * perBar - 1 && ['five-finger', 'broken-chords', 'leaps'].includes(id))
             return [0];
         if (index === bars * perBar - 1 && id === 'triads')
             return [0, 2, 4];
         return tokenAt(id, level, index);
     });
+    const base = Array.from({ length: bars }, (_, bar) => degrees.slice(bar * perBar, (bar + 1) * perBar).map((degrees) => ({ degrees, beats })));
+    const phrase = variation ? fundamentalPhrase(id, level, base, variation) : null;
+    const measures = phrase?.bars ?? base;
+    const tokens = measures.flat();
+    const roots = {};
     const startPitches = {};
     for (const hand of hands) {
         const base = key.root - (hand === 'left' ? 12 : 0);
         // Keep every authored note inside the same staff range accepted at launch.
         // Move the whole pattern an octave, preserving intervals and fingerings.
-        const root = [base, base - 12].find((candidate) => tokens.every((token) => !token || token.every((degree) => {
+        const root = [base, base - 12].find((candidate) => tokens.every((token) => !token.degrees || token.degrees.every((degree) => {
             const pitch = spellMidi(degreeMidi(degree, candidate), key.fifths);
             return supportsStaffPitch(hand === 'left' ? 'bass' : 'treble', pitch.step, pitch.alter, pitch.octave);
         })));
         if (root === undefined)
             throw new Error('当前音型超出练习谱表范围');
-        startPitches[hand] = root;
+        roots[hand] = root;
+        startPitches[hand] = degreeMidi(tokens.find((token) => token.degrees)?.degrees[0] ?? 0, root);
     }
     const title = `${definition.title} · ${key.label} · ${options.hand === 'both' ? '双手' : options.hand === 'left' ? '左手' : '右手'} · 第 ${level} 级`;
-    const renderNote = (degree, staff, hand, chord) => {
-        const pitch = degree === null ? null : spellMidi(degreeMidi(degree, startPitches[hand]), key.fifths);
+    const renderNote = (degree, beats, staff, hand, chord) => {
+        const pitch = degree === null ? null : spellMidi(degreeMidi(degree, roots[hand]), key.fifths);
         const finger = degree === null ? null : fingerFor(id, degree, hand, options.key, level);
-        return `<note>${chord ? '<chord/>' : ''}${pitch ? `<pitch><step>${pitch.step}</step>${pitch.alter ? `<alter>${pitch.alter}</alter>` : ''}<octave>${pitch.octave}</octave></pitch>` : '<rest/>'}<duration>${beats * 480}</duration><voice>${staff}</voice><type>${beats === 2 ? 'half' : beats === 1 ? 'quarter' : 'eighth'}</type><staff>${staff}</staff>${finger ? `<notations><technical><fingering placement="above">${finger}</fingering></technical></notations>` : ''}</note>`;
+        const type = { 4: 'whole', 2: 'half', 1: 'quarter', .5: 'eighth', .25: '16th', .75: 'eighth', 1.5: 'quarter', 3: 'half' }[beats];
+        if (!type) throw new Error('不支持的练习时值');
+        return `<note>${chord ? '<chord/>' : ''}${pitch ? `<pitch><step>${pitch.step}</step>${pitch.alter ? `<alter>${pitch.alter}</alter>` : ''}<octave>${pitch.octave}</octave></pitch>` : '<rest/>'}<duration>${beats * 480}</duration><voice>${staff}</voice><type>${type}</type>${[.75, 1.5, 3].includes(beats) ? '<dot/>' : ''}<staff>${staff}</staff>${finger ? `<notations><technical><fingering placement="above">${finger}</fingering></technical></notations>` : ''}</note>`;
     };
     const xml = `<?xml version="1.0" encoding="UTF-8"?><score-partwise version="4.0"><work><work-title>${title}</work-title></work><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1">${Array.from({ length: bars }, (_, bar) => {
         const attributes = bar === 0 ? `<attributes><divisions>480</divisions><key><fifths>${key.fifths}</fifths><mode>major</mode></key><time><beats>4</beats><beat-type>4</beat-type></time><staves>${hands.length}</staves>${staffHands.map(({ staffNumber, hand }) => `<clef number="${staffNumber}"><sign>${hand === 'left' ? 'F' : 'G'}</sign><line>${hand === 'left' ? 4 : 2}</line></clef>`).join('')}</attributes><direction><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>${bpm}</per-minute></metronome></direction-type><sound tempo="${bpm}"/></direction>` : '';
-        const voices = staffHands.map(({ staffNumber, hand }, handIndex) => `${handIndex ? '<backup><duration>1920</duration></backup>' : ''}${Array.from({ length: perBar }, (_, slot) => {
-            const index = bar * perBar + slot;
-            const token = tokens[index];
-            return token === null ? renderNote(null, staffNumber, hand, false) : token.map((degree, i) => renderNote(degree, staffNumber, hand, i > 0)).join('');
+        const voices = staffHands.map(({ staffNumber, hand }, handIndex) => `${handIndex ? '<backup><duration>1920</duration></backup>' : ''}${measures[bar].map(({ degrees, beats }) => {
+            return degrees === null ? renderNote(null, beats, staffNumber, hand, false) : degrees.map((degree, i) => renderNote(degree, beats, staffNumber, hand, i > 0)).join('');
         }).join('')}`).join('');
-        return `<measure number="${bar + 1}">${attributes}${voices}</measure>`;
+        return `<measure number="${bar + 1}">${attributes}${voices}${phrase && bar === bars - 1 ? '<barline location="right"><bar-style>light-heavy</bar-style></barline>' : ''}</measure>`;
     }).join('')}</part></score-partwise>`;
-    return { xml, title, bars, staffHands, startPitches, keyLabel: key.label, hand: options.hand };
+    return { xml, title, bars, staffHands, startPitches, keyLabel: key.label, hand: options.hand, ...(phrase ? { phrase: phrase.metadata } : {}) };
 }

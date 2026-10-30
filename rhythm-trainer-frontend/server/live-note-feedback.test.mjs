@@ -33,6 +33,34 @@ describe('authoritative live pitch/onset feedback', () => {
     feedback.addOnset('p3', 64, 1020);
     expect(feedback.update(1020)).toEqual([{ scoreEventId: 'c', state: 'hit' }, { scoreEventId: 'e', state: 'hit' }]);
   });
+  it.each([{ pitches: [66, 60, 64, 67] }, { pitches: [60, 64, 67, 66] }])('reports the extra tone in a complete chord regardless of arrival order: $pitches', ({ pitches }) => {
+    const feedback = new LiveNoteFeedback([event('c', 60), event('e', 64), event('g', 67)], [target()], scorePerformance);
+    const shown = new Map();
+    pitches.forEach((pitch, index) => {
+      feedback.addOnset(`p${index}`, pitch, 1000 + index * 5);
+      for (const item of feedback.update(1000 + index * 5)) shown.set(item.scoreEventId, item);
+    });
+    expect([...shown.values()]).toHaveLength(3);
+    for (const id of ['c', 'e', 'g']) expect(shown.get(id)).toEqual({ scoreEventId: id, state: 'hit', extraCount: 1 });
+    expect(feedback.update(1061)).toEqual([]);
+  });
+  it('does not attach a gap extra to a correct chord or contaminate the next chord', () => {
+    const events = [event('c', 60), event('e', 64), event('g', 67), event('next', 72, 2000)];
+    const feedback = new LiveNoteFeedback(events, [target(), target(2000)], scorePerformance);
+    [60, 64, 67].forEach((pitch, index) => feedback.addOnset(`p${index}`, pitch, 1000));
+    feedback.update(1000);
+    feedback.addOnset('gap', 66, 1500);
+    expect(feedback.update(1500)).toEqual([]);
+    feedback.addOnset('next', 72, 2000);
+    expect(feedback.update(2000)).toEqual([{ scoreEventId: 'next', state: 'hit' }]);
+  });
+  it('assigns an extra to the nearest onset when timing windows overlap', () => {
+    const feedback = new LiveNoteFeedback([event('a', 60), event('b', 64, 1100)], [target(), target(1100)], scorePerformance);
+    feedback.addOnset('a', 60, 1000); feedback.addOnset('b', 64, 1100);
+    feedback.update(1100);
+    feedback.addOnset('extra', 66, 1055);
+    expect(feedback.update(1100)).toEqual([{ scoreEventId: 'b', state: 'hit', extraCount: 1 }]);
+  });
   it('shifts future deadlines on resume and keeps past results intact', () => {
     const feedback = new LiveNoteFeedback([event('a', 60), event('b', 62, 2000)], [target(), target(2000)], scorePerformance);
     feedback.addOnset('p1', 60, 1000);

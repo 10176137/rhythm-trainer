@@ -56,13 +56,13 @@ describe('server-owned training HTTP API', () => {
     const input = { id: 'scales', level: 3, bpm: 60, options: { key: 'F', hand: 'left' } };
     const generated = await api('POST', '/api/training/drills', input);
     expect(generated.status).toBe(200);
-    expect(generated.data.drill).toMatchObject({ id: 'scales', hand: 'left', bars: 8, startPitchLabels: { left: 'F2' }, generatorVersion: 'skill-drills-node-2' });
+    expect(generated.data.drill).toMatchObject({ id: 'scales', hand: 'left', bars: 8, startPitchLabels: { left: 'F2' }, generatorVersion: 'skill-drills-node-3' });
     expect(importScoreText(generated.data.drill.xml, 'server.musicxml').report.strictAllowed).toBe(true);
     expect((await api('POST', '/api/training/drills', input)).data.drill).toEqual(generated.data.drill);
   });
   it('binds lesson instructions to the selected key, hand and level', async () => {
     const { data } = await api('POST', '/api/training/drills', { id: 'five-finger', level: 2, bpm: 55, options: { key: 'F', hand: 'left' } });
-    expect(data.drill.lesson).toMatchObject({ label: '五音内间隔音型 · 八分音符' });
+    expect(data.drill.lesson).toMatchObject({ label: '普通 · 五音内间隔与节奏变式' });
     expect(data.drill.lesson.instructions[0]).toContain('左手');
     expect(data.drill.lesson.instructions[0]).toContain('F 大调');
     expect(data.drill.lesson.instructions[0]).toContain(data.drill.startPitchLabels.left);

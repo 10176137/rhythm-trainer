@@ -8,6 +8,7 @@ export class LiveNoteFeedback {
   #scorePerformance;
   #performed = new Map();
   #alignment = new Map();
+  #extrasByOnset = new Map();
   #shown = new Map();
   #dirty = false;
 
@@ -40,6 +41,25 @@ export class LiveNoteFeedback {
       // Calling code treats failure as unavailable feedback, never as success.
       const report = this.#scorePerformance(this.#events, [...this.#performed.values()]);
       this.#alignment = new Map(report.eventResults.filter((item) => item.scoreEventId).map((item) => [item.scoreEventId, item]));
+      this.#extrasByOnset.clear();
+      // Rust decides which inputs are EXTRA. Associate only nearby extras with
+      // the closest validated attack for display; gaps stay in the final report.
+      const groups = new Map(this.#events.map((event) => [event.targetOnsetMs, this.#windows.get(event.scoreEventId)]));
+      for (const item of report.eventResults) {
+        if (item.result !== 'EXTRA') continue;
+        const note = this.#performed.get(item.performedNoteId);
+        if (!note) continue;
+        let closest;
+        let distance = Infinity;
+        for (const [onset, window] of groups) {
+          const error = Math.abs(note.onsetMs - onset);
+          if (error <= window && (error < distance || (error === distance && onset < closest))) {
+            closest = onset;
+            distance = error;
+          }
+        }
+        if (closest !== undefined) this.#extrasByOnset.set(closest, (this.#extrasByOnset.get(closest) ?? 0) + 1);
+      }
       this.#dirty = false;
     }
     const changes = [];
@@ -51,9 +71,12 @@ export class LiveNoteFeedback {
       if (result?.result === 'MATCH' && inWindow) state = 'hit';
       else if (result?.result === 'WRONG_PITCH' && inWindow) state = 'wrong';
       else if (nowMs > event.targetOnsetMs + window) state = 'miss';
-      if (state === (this.#shown.get(event.scoreEventId) ?? 'pending')) continue;
-      this.#shown.set(event.scoreEventId, state);
-      changes.push({ scoreEventId: event.scoreEventId, state });
+      const extraCount = this.#extrasByOnset.get(event.targetOnsetMs) ?? 0;
+      const previous = this.#shown.get(event.scoreEventId);
+      if (state === (previous?.state ?? 'pending') && extraCount === (previous?.extraCount ?? 0)) continue;
+      this.#shown.set(event.scoreEventId, { state, extraCount });
+      changes.push({ scoreEventId: event.scoreEventId, state,
+        ...(extraCount || previous?.extraCount ? { extraCount } : {}) });
     }
     return changes;
   }

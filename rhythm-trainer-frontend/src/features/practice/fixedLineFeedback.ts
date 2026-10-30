@@ -10,13 +10,13 @@ export function fixedLineGroupHighlights(
   activeIndex: number,
   sourceIds: ReadonlyMap<string, string> = new Map(),
 ): Map<string, HighlightState> {
-  const states = new Map(feedback.map((item) => [sourceIds.get(item.scoreEventId) ?? item.scoreEventId, item.state]));
+  const states = new Map(feedback.map((item) => [sourceIds.get(item.scoreEventId) ?? item.scoreEventId, item]));
   const colors = new Map<string, HighlightState>();
   groups.forEach((ids, index) => {
-    const allHit = ids.length > 0 && ids.every((id) => states.get(id) === 'hit');
-    const error = ids.some((id) => states.get(id) === 'wrong' || states.get(id) === 'miss');
-    const partial = ids.some((id) => states.get(id) === 'hit');
-    const color: HighlightState = allHit ? 'hit' : error ? 'error' : index === activeIndex || partial ? 'current' : 'default';
+    const allHit = ids.length > 0 && ids.every((id) => states.get(id)?.state === 'hit');
+    const error = ids.some((id) => states.get(id)?.state === 'wrong' || states.get(id)?.state === 'miss' || (states.get(id)?.extraCount ?? 0) > 0);
+    const partial = ids.some((id) => states.get(id)?.state === 'hit');
+    const color: HighlightState = error ? 'error' : allHit ? 'hit' : index === activeIndex || partial ? 'current' : 'default';
     for (const id of ids) colors.set(id, color);
   });
   return colors;

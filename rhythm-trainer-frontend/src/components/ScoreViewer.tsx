@@ -101,7 +101,8 @@ export default function ScoreViewer({
       .filter((measure) => measure < loopStartBar! || measure > loopEndBar!);
   }, [modeId, loopStartBar, loopEndBar, meta.barCount, score]);
   const [pickedId, setPickedId] = useState<string | null>(null);
-  const [follow, setFollow] = useState(true);
+  const [manualAtPulse, setManualAtPulse] = useState<number | null>(null);
+  const browsing = manualAtPulse !== null && manualAtPulse === followPulse;
   const [followRequest, setFollowRequest] = useState(0);
   const [osmdRevision, setOsmdRevision] = useState(0);
   const [horizontalScroll, setHorizontalScroll] = useState({ max: 0, value: 0 });
@@ -128,7 +129,7 @@ export default function ScoreViewer({
 
   useEffect(() => {
     setPickedId(null);
-    setFollow(true);
+    setManualAtPulse(null);
     setFollowRequest((value) => value + 1);
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
@@ -153,14 +154,11 @@ export default function ScoreViewer({
     };
   }, [osmdRevision, canEngrave]);
 
-  const toggleFollow = () => {
-    if (follow) {
-      setFollow(false);
-      return;
-    }
-    setFollow(true);
+  const resumeFollow = () => {
+    setManualAtPulse(null);
     setFollowRequest((value) => value + 1);
   };
+  const browseScore = () => setManualAtPulse(followPulse);
 
   return (
     <div className="score-wrap">
@@ -208,12 +206,12 @@ export default function ScoreViewer({
             <span className="score-system-current">当前第 {activeBar ?? 1} 小节</span>
             <button
               type="button"
-              className={`score-window-follow${follow ? ' on' : ''}`}
-              aria-pressed={follow}
-              onClick={toggleFollow}
-              title="只在弹对当前目标后跟随；手动滚动不会被拉回"
+              className={`score-window-follow${browsing ? '' : ' on'}`}
+              aria-pressed={!browsing}
+              onClick={resumeFollow}
+              title="手动翻谱后停留浏览；点击回到当前，或弹对当前目标后恢复跟随"
             >
-              <i />{follow ? '弹对后跟随' : '跟随'}
+              <i />{browsing ? '回到当前' : '跟随中'}
             </button>
             <button
               type="button"
@@ -259,6 +257,13 @@ export default function ScoreViewer({
           <div
             className="score-canvas score-systems"
             ref={scrollRef}
+            role="region"
+            aria-label="可滚动乐谱"
+            tabIndex={0}
+            onWheel={browseScore}
+            onTouchStart={browseScore}
+            onPointerDown={browseScore}
+            onKeyDown={(event) => { if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) browseScore(); }}
             onScroll={(event) => {
               const container = event.currentTarget;
               setHorizontalScroll((prev) => (
@@ -266,6 +271,9 @@ export default function ScoreViewer({
               ));
             }}
           >
+            {browsing && <div className="score-follow-return">
+              <button type="button" className="button button-outline button-small" onPointerDown={(event) => event.stopPropagation()} onClick={resumeFollow}>回到当前</button>
+            </div>}
             {prepRemain !== null ? (
               <div className="prep-overlay" role="status" aria-live="assertive">
                 <strong>{prepRemain}</strong>
@@ -285,7 +293,7 @@ export default function ScoreViewer({
               xml={sourceXml!}
               engine={engine!}
               activeNoteIds={activeNoteIds}
-              follow={follow}
+              follow={!browsing}
               followSignal={followPulse + followRequest}
               systemNoteIds={systemNoteIds}
               userNoteIds={userNoteIds}

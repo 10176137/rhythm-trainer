@@ -391,6 +391,8 @@
 .score-system-count{font-size:10px;color:#8992a3;font-weight:600}
 .score-system-current{font-size:10px;color:#9ba2b1;margin-right:auto;font-variant-numeric:tabular-nums}
 .score-systems{position:relative;max-height:560px;overflow:auto;padding:8px 7px 6px;scroll-behavior:smooth;overscroll-behavior:contain}
+.score-follow-return{position:sticky;top:8px;z-index:8;height:0;display:flex;justify-content:flex-end;pointer-events:none}
+.score-follow-return button{pointer-events:auto;background:#fff;box-shadow:0 3px 14px #35304c16}
 .score-system{padding:4px 0}
 .score-system + .score-system{border-top:1px dashed #eef0f5;margin-top:6px;padding-top:10px}
 .score-system{width:960px;margin-left:auto;margin-right:auto}.score-system svg{display:block;width:960px;min-width:960px;max-width:none;height:auto}
