@@ -7,4 +7,8 @@ import BackendConnectionGate from '../components/BackendConnectionGate';
 import '../styles.css';
 
 Capacitor.isNativePlatform = () => true;
+const route = new URLSearchParams(location.search).get('route') ?? '/workbench';
+if (['/workbench', '/performance', '/training', '/settings', '/history'].includes(route)) {
+  window.history.replaceState(null, '', route);
+}
 ReactDOM.createRoot(document.getElementById('root')!).render(<BackendConnectionGate><App /></BackendConnectionGate>);
