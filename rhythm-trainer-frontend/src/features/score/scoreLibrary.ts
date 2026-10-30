@@ -1,3 +1,4 @@
+import { backendUrl, backendStorageKey } from '../../services/backendEndpoint';
 /** REST client for the named MusicXML library owned by the engine service. */
 
 import type { StoredImportSummary } from './scoreStatus';
@@ -53,7 +54,7 @@ interface ApiEnvelope {
 async function request(path: string, init?: RequestInit): Promise<ApiEnvelope> {
   let response: Response;
   try {
-    response = await fetch(path, {
+    response = await fetch(backendUrl(path), {
       ...init,
       headers: init?.body
         ? { 'content-type': 'application/json', ...(init?.headers ?? {}) }
@@ -137,7 +138,7 @@ export function loadStoredActiveScoreId(
 ): string | null {
   if (!storage) return null;
   try {
-    return parseActiveScoreId(storage.getItem(ACTIVE_SCORE_STORAGE_KEY));
+    return parseActiveScoreId(storage.getItem(backendStorageKey(ACTIVE_SCORE_STORAGE_KEY)));
   } catch {
     return null;
   }
@@ -149,8 +150,8 @@ export function saveStoredActiveScoreId(
 ): void {
   if (!storage) return;
   try {
-    if (id) storage.setItem(ACTIVE_SCORE_STORAGE_KEY, parseActiveScoreId(id) ?? '');
-    else storage.removeItem(ACTIVE_SCORE_STORAGE_KEY);
+    if (id) storage.setItem(backendStorageKey(ACTIVE_SCORE_STORAGE_KEY), parseActiveScoreId(id) ?? '');
+    else storage.removeItem(backendStorageKey(ACTIVE_SCORE_STORAGE_KEY));
   } catch {
     // Best effort; a blocked storage must not break score loading.
   }

@@ -1,3 +1,4 @@
+import { backendWebSocketUrl, notifyBackendDisconnected } from './backendEndpoint';
 // Frontend client for the Node MIDI device API. This is intentionally
 // separate from EngineBridge: device enumeration/status and the input monitor
 // exist before a practice session starts. Both use the same /ws endpoint.
@@ -66,7 +67,7 @@ export class DeviceBridge {
 
   private open() {
     if (this.closed) return;
-    const socket = new WebSocket(`ws://${location.host}/ws`);
+    const socket = new WebSocket(backendWebSocketUrl());
     this.socket = socket;
     socket.onopen = () => {
       this.send({ type: 'midi-refresh' });
@@ -108,6 +109,7 @@ export class DeviceBridge {
     socket.onclose = () => {
       this.socket = null;
       if (this.closed || this.retryTimer !== null) return;
+      notifyBackendDisconnected();
       this.retryTimer = window.setTimeout(() => {
         this.retryTimer = null;
         this.open();

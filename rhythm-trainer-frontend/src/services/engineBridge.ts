@@ -1,3 +1,4 @@
+import { backendWebSocketUrl, notifyBackendDisconnected } from './backendEndpoint';
 // WebSocket bridge to the local engine service. The service hosts the Rust
 // core; this client never scores anything itself. All times are session-
 // relative milliseconds (performance.now() anchored at session start).
@@ -68,6 +69,8 @@ export interface EngineHandlers {
 export class EngineBridge {
   private socket: WebSocket | null = null;
   private handlers: EngineHandlers;
+  private connectionPromise: Promise<void> | null = null;
+  private cancelConnection: (() => void) | null = null;
   private clockPingSeq = 0;
   /** In-flight plan requests keyed by requestId. */
   private pendingPlans = new Map<string, {
@@ -106,22 +109,33 @@ export class EngineBridge {
       this.startClockSync(this.socket);
       return Promise.resolve();
     }
-    return new Promise((resolve, reject) => {
+    if (this.connectionPromise) return this.connectionPromise;
+    this.connectionPromise = new Promise((resolve, reject) => {
       let settled = false;
-      const socket = new WebSocket(`ws://${location.host}/ws`);
-      socket.onopen = () => {
+      const socket = new WebSocket(backendWebSocketUrl());
+      this.socket = socket;
+      const rejectConnection = (message: string) => {
+        if (settled) return;
         settled = true;
-        this.socket = socket;
+        this.connectionPromise = null;
+        this.cancelConnection = null;
+        reject(new Error(message));
+      };
+      this.cancelConnection = () => rejectConnection('引擎连接已取消。');
+      socket.onopen = () => {
+        if (this.socket !== socket || settled) { socket.close(); return; }
+        settled = true;
+        this.connectionPromise = null;
+        this.cancelConnection = null;
         this.startClockSync(socket);
         resolve();
       };
       socket.onerror = () => {
-        if (!settled) {
-          settled = true;
-          reject(new Error('无法连接本地引擎服务。请先运行 npm run server,再刷新页面。'));
-        }
+        rejectConnection('无法连接电脑引擎，请确认电脑服务已启动。');
       };
       socket.onclose = () => {
+        rejectConnection('引擎连接已断开。');
+        if (this.socket !== socket) return;
         this.socket = null;
         this.rejectPendingPlans('PLANNER_UNAVAILABLE: 引擎服务已断开，计划请求失败');
         for (const [takeId, waiter] of this.pendingRetries) {
@@ -129,9 +143,11 @@ export class EngineBridge {
           waiter.reject(new Error('ENGINE_UNAVAILABLE: 引擎服务已断开，保存重试失败'));
           this.pendingRetries.delete(takeId);
         }
+        notifyBackendDisconnected();
         this.handlers.onDisconnected();
       };
       socket.onmessage = (event) => {
+        if (this.socket !== socket) return;
         let message: EngineServerMessage;
         try {
           message = JSON.parse(event.data) as EngineServerMessage;
@@ -232,6 +248,7 @@ export class EngineBridge {
         }
       };
     });
+    return this.connectionPromise;
   }
 
   private rejectPendingPlans(message: string) {
@@ -500,7 +517,15 @@ export class EngineBridge {
   }
 
   close() {
-    this.socket?.close();
+    const socket = this.socket;
+    this.cancelConnection?.();
     this.socket = null;
+    this.rejectPendingPlans('PLANNER_UNAVAILABLE: 引擎连接已取消');
+    for (const waiter of this.pendingRetries.values()) {
+      clearTimeout(waiter.timer);
+      waiter.reject(new Error('ENGINE_UNAVAILABLE: 引擎连接已取消'));
+    }
+    this.pendingRetries.clear();
+    socket?.close();
   }
 }

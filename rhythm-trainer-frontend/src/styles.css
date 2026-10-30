@@ -1207,3 +1207,29 @@
 .training-result-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
 .practice-focus .training-round-context{display:none}
 .training-result-stats{display:flex;flex-wrap:wrap;gap:14px 28px;margin:14px 0;color:#7c8194;font-size:12px}.training-result-stats b{display:block;color:#303747;font-size:22px;font-variant-numeric:tabular-nums}
+
+/* Native container: preserve readable notation and reserve iPad safe areas. */
+.native-app{height:100dvh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);background:#fff}
+.native-app-content,.native-app .app-shell{height:100%}
+.native-app input,.native-app select,.computer-connection input{font-size:16px}
+.native-app .practice-focus .score-card,.native-app .practice-focus .score-systems{height:calc(100dvh - 76px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+.native-app .practice-focus .session-strip{height:calc(76px + env(safe-area-inset-bottom));padding-bottom:calc(10px + env(safe-area-inset-bottom));padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
+.native-app .practice-focus .page-content.reading-free-page{height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+.native-app .settings-dialog{max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+.native-computer-button{position:fixed;z-index:30;left:max(12px,env(safe-area-inset-left));bottom:max(12px,env(safe-area-inset-bottom));min-height:44px;border:1px solid #e4e2ef;border-radius:12px;background:#fff;color:#66558c;padding:10px 14px;font-size:12px;box-shadow:0 3px 14px #252d3c10}
+.native-app:has(.practice-focus)>.native-computer-button{display:none}
+.native-app .sidebar{padding-bottom:76px}
+.computer-connection{min-height:100dvh;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));background:#f7f7fc}
+.computer-connection-card{width:min(100%,440px);padding:32px;border:1px solid #e9e7f3;border-radius:22px;background:#fff;box-shadow:0 12px 45px #38304a08;display:flex;flex-direction:column;gap:16px}
+.computer-connection-mark{font-size:32px;color:var(--violet)}
+.computer-connection-card h1,.computer-connection-card h2{font-size:24px;margin:0;color:var(--ink)}
+.computer-connection-card p{font-size:14px;line-height:1.8;color:#7c8192;margin:0}
+.computer-connection-card label{font-size:13px;font-weight:600;margin-top:12px}
+.computer-connection-card input{width:100%;min-height:52px;border:1px solid #dcd8ec;border-radius:12px;padding:12px;color:var(--ink);background:#fff}
+.computer-connection-card small{font-size:12px;line-height:1.8;color:#9295a3}
+.computer-connection-card .button{min-height:48px;justify-content:center;font-size:15px}
+.computer-connection-card .computer-connection-error{color:#b33f4e;font-size:13px}
+.computer-connection-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:#20213d80;overflow:auto;padding:max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom))}
+.computer-connection-card input:focus-visible,.native-computer-button:focus-visible{outline:2px solid var(--violet);outline-offset:3px}
+@media(pointer:coarse){.button,.icon-button,.navigation-parent,.nav-item,.mode-item,.reading-preset-row button,.skill-category-switch button{min-height:44px}.button,.icon-button{touch-action:manipulation}.score-systems,.score-scroll,.fixed-line-viewport{overscroll-behavior:contain}}
+@media(max-height:540px){.computer-connection{place-items:start center}.computer-connection-card{padding:24px;gap:12px}}

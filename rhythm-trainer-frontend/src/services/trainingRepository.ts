@@ -1,10 +1,11 @@
+import { backendUrl } from './backendEndpoint';
 import type { TrainingCatalog, SkillDrillRequest, GeneratedSkillDrill, TrainingProgramConfig, TrainingProgramReview } from '../../shared/training-contract';
 import type { ReadingConfig, GeneratedReadingExercise } from '../../shared/reading-contract';
 
 async function request<T extends { schemaVersion: 1 }>(path: string, field: string, input?: unknown, signal?: AbortSignal): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(path, {
+    response = await fetch(backendUrl(path), {
       method: input === undefined ? 'GET' : 'POST', signal,
       ...(input === undefined ? {} : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) }),
     });

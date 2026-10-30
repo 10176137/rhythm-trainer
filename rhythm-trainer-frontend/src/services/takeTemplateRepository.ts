@@ -1,3 +1,4 @@
+import { backendUrl } from './backendEndpoint';
 import type { PracticeConfig } from '../types/practice';
 
 export interface TakeTemplate {
@@ -57,7 +58,7 @@ const jsonHeaders = { 'content-type': 'application/json' };
 export const takeTemplateRepository = {
   async list(): Promise<TakeTemplate[]> {
     const body = await parseResponse<{ items: TakeTemplate[] }>(
-      await fetch('/api/take-templates'),
+      await fetch(backendUrl('/api/take-templates')),
       '/api/take-templates',
     );
     return body.items ?? [];
@@ -65,7 +66,7 @@ export const takeTemplateRepository = {
 
   async create(input: TakeTemplateInput): Promise<TakeTemplate> {
     const body = await parseResponse<{ take: TakeTemplate }>(
-      await fetch('/api/take-templates', {
+      await fetch(backendUrl('/api/take-templates'), {
         method: 'POST',
         headers: jsonHeaders,
         body: JSON.stringify(input),
@@ -77,7 +78,7 @@ export const takeTemplateRepository = {
 
   async update(id: string, patch: Partial<TakeTemplateInput>): Promise<TakeTemplate> {
     const body = await parseResponse<{ take: TakeTemplate }>(
-      await fetch(`/api/take-templates/${encodeURIComponent(id)}`, {
+      await fetch(backendUrl(`/api/take-templates/${encodeURIComponent(id)}`), {
         method: 'PUT',
         headers: jsonHeaders,
         body: JSON.stringify(patch),
@@ -89,7 +90,7 @@ export const takeTemplateRepository = {
 
   async remove(id: string): Promise<void> {
     await parseResponse<{ ok: boolean }>(
-      await fetch(`/api/take-templates/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+      await fetch(backendUrl(`/api/take-templates/${encodeURIComponent(id)}`), { method: 'DELETE' }),
       `/api/take-templates/${id}`,
     );
   },

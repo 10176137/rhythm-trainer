@@ -1,3 +1,4 @@
+import { backendUrl } from './services/backendEndpoint';
 import ReportPanel from './components/ReportPanel';
 import type { GeneratedSkillDrill, TrainingProgramReview } from '../shared/training-contract';
 import { ProgramReview } from './components/TrainingProgramPanel';
@@ -1255,7 +1256,7 @@ export default function App() {
       const endpoint = session.traceId
         ? `/api/traces/${encodeURIComponent(session.traceId)}`
         : '/api/midi/trace';
-      const response = await fetch(endpoint);
+      const response = await fetch(backendUrl(endpoint));
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const trace = await response.json();
       const blob = new Blob([JSON.stringify(trace, null, 2)], { type: 'application/json' });

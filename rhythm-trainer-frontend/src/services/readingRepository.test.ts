@@ -1,11 +1,29 @@
 import { webcrypto } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defaultReadingSetup } from '../features/reading/readingSettings';
-import { createReadingAttemptId, saveReadingAttempt, type ReadingAttemptPayload } from './readingRepository';
+import { createReadingAttemptId, pendingReadingAttempts, saveReadingAttempt, type ReadingAttemptPayload } from './readingRepository';
+import { activateBackendOrigin } from './backendEndpoint';
 
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => { activateBackendOrigin(null); vi.unstubAllGlobals(); });
 
 describe('reading attempt identity', () => {
+  it('keeps failed native saves on their original computer when switching connections', async () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => stored.set(key, value) });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
+    const payload: ReadingAttemptPayload = {
+      id: 'db718d18-ad95-4fa5-a9e6-ac050a311985', startedAtIso: '2026-10-30T01:00:00.000Z', finishedAtIso: '2026-10-30T01:01:00.000Z',
+      config: { ...defaultReadingSetup('free'), questionCount: 10, seed: 1 },
+      questions: Array.from({ length: 10 }, () => [60]), events: [], endReason: 'ended-early', source: 'midi',
+    };
+    activateBackendOrigin('http://piano-a.local:8788');
+    await expect(saveReadingAttempt(payload)).rejects.toThrow();
+    // New document after a native reload: modules start without an origin.
+    activateBackendOrigin(null); activateBackendOrigin('http://piano-b.local:8788');
+    expect(pendingReadingAttempts()).toEqual([]);
+    activateBackendOrigin(null); activateBackendOrigin('http://piano-a.local:8788');
+    expect(pendingReadingAttempts()).toEqual([payload]);
+  });
   it('uses native UUIDs when available and preserves the Crypto receiver', () => {
     const id = 'db718d18-ad95-4fa5-a9e6-ac050a311985';
     const randomUUID = vi.fn(function (this: unknown) {

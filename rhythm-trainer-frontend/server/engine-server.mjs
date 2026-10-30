@@ -1,3 +1,4 @@
+import { applyLanCors } from './lan-origin.mjs';
 'use strict';
 
 // Local engine service for the Rhythm Trainer frontend.
@@ -1115,6 +1116,7 @@ async function handleApi(req, res, urlPath, query) {
 const server = http.createServer((req, res) => {
   const parsed = new URL(req.url || '/', 'http://localhost');
   if (parsed.pathname.startsWith('/api/')) {
+    if (applyLanCors(req, res)) return;
     handleApi(req, res, parsed.pathname, parsed.searchParams).catch((error) => {
       console.error('[engine] API 处理失败:', String((error && error.message) || error));
       if (!res.headersSent) sendJson(res, 500, { error: 'internal error' });

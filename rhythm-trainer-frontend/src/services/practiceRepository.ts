@@ -1,3 +1,4 @@
+import { backendUrl } from './backendEndpoint';
 // REST client for the engine service's persistence API.
 // Same-origin paths (/api/...) — in dev, Vite proxies them to the engine.
 
@@ -158,7 +159,7 @@ export interface ProfileResponse {
 export type StatsLike = Pick<EngineStats, 'targetHitRate' | 'meanAbsoluteMs'>;
 
 async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+  const res = await fetch(backendUrl(url));
   if (!res.ok) throw new Error(`API ${url} 失败 (${res.status})`);
   return res.json() as Promise<T>;
 }

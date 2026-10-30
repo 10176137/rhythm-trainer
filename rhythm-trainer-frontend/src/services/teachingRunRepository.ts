@@ -1,3 +1,4 @@
+import { backendUrl, backendStorageKey } from './backendEndpoint';
 // REST client for the Node Teaching Orchestrator (same-origin /api/teaching).
 // The browser never sends reports/diagnostics/prescriptions — only user intent
 // and already-persisted Take ids; the server reads the authoritative Take.
@@ -259,7 +260,7 @@ export class TeachingApiError extends Error {
 }
 
 async function request<T>(method: string, urlPath: string, body?: unknown): Promise<T> {
-  const response = await fetch(urlPath, {
+  const response = await fetch(backendUrl(urlPath), {
     method,
     headers: body === undefined ? undefined : { 'content-type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -284,7 +285,7 @@ const LAST_RUN_KEY = 'rhythm-trainer.teaching.last-run.v1';
 /** At most a recovery pointer; the server run is the only state authority. */
 export function loadLastRunId(): string | null {
   try {
-    const value = window.localStorage.getItem(LAST_RUN_KEY);
+    const value = window.localStorage.getItem(backendStorageKey(LAST_RUN_KEY));
     return value && /^[A-Za-z0-9_-]{1,160}$/.test(value) ? value : null;
   } catch {
     return null;
@@ -293,8 +294,8 @@ export function loadLastRunId(): string | null {
 
 export function saveLastRunId(runId: string | null): void {
   try {
-    if (runId) window.localStorage.setItem(LAST_RUN_KEY, runId);
-    else window.localStorage.removeItem(LAST_RUN_KEY);
+    if (runId) window.localStorage.setItem(backendStorageKey(LAST_RUN_KEY), runId);
+    else window.localStorage.removeItem(backendStorageKey(LAST_RUN_KEY));
   } catch { /* best effort */ }
 }
 
