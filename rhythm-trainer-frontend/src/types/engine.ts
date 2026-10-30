@@ -631,6 +631,7 @@ export type EngineServerMessage =
 
 export interface EngineStartRequest {
   type: 'start';
+  feedback?: 'live' | 'after';
   modeId: string;
   bpm: number;
   profile: EngineProfile;

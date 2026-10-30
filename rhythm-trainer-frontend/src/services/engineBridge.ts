@@ -458,7 +458,10 @@ export class EngineBridge {
     prescription?: TeachingPrescription;
     takeTemplateId?: string;
   }) {
-    this.send({ type: 'start', ...request });
+    // Preserve the selected feedback mode from the same frozen launch config.
+    // Without this field the server defaults to live, even for a baseline test.
+    const feedback = request.configSnapshot?.feedback;
+    this.send({ type: 'start', ...request, ...(['live', 'after'].includes(String(feedback)) ? { feedback: feedback as 'live' | 'after' } : {}) });
   }
 
   hit(seq: number, atMs: number, notes: number[]) {

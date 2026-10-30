@@ -1,7 +1,7 @@
 import ReportPanel from './components/ReportPanel';
 import type { GeneratedSkillDrill, TrainingProgramReview } from '../shared/training-contract';
 import { ProgramReview } from './components/TrainingProgramPanel';
-import { runTrainingProgramFlow } from './features/practice/trainingProgramFlow';
+import { runTrainingProgramFlow, shouldFinishTrainingSegment } from './features/practice/trainingProgramFlow';
 import SkillTrainingPage from './components/SkillTrainingPage';
 import { trainingRepository } from './services/trainingRepository';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -3211,6 +3211,25 @@ export default function App() {
     })();
     return () => { controller.abort(); };
   }, [route?.id, trainingDrill?.program?.id, session.status, session.takeId, session.reportPersisted, programRetry]);
+  useEffect(() => {
+    const program = trainingDrill?.program;
+    const origin = session.originPerfMs;
+    if (route?.id !== 'training' || !trainingRoomOpen || !program || session.status !== 'running' || origin === null) return;
+    let requested = false;
+    const checkEnd = () => {
+      const first = session.targets[0];
+      if (requested || !shouldFinishTrainingSegment({ program, status: session.status,
+        countInMs: session.countInMs, elapsedMs: performance.now() - origin,
+        pauseShiftMs: first ? first.displayAtMs - first.atMs : 0 })) return;
+      requested = true;
+      referencePlaybackRef.current?.stop('finish');
+      // Keep automatic continuation enabled. The user-facing End action stops it.
+      session.finish();
+    };
+    checkEnd();
+    const timer = window.setInterval(checkEnd, 100);
+    return () => window.clearInterval(timer);
+  }, [route?.id, trainingRoomOpen, trainingDrill?.program, session.status, session.originPerfMs, session.countInMs, session.targets, session.finish]);
   const practiceWorkspaceVisible = route?.id === 'workbench' || route?.id === 'performance' || (route?.id === 'training' && trainingRoomOpen);
   const readingFocus = practiceWorkspaceVisible && readingFreeSession !== null && readingFocusEnabled;
   const practiceFocus = readingFocus || (practiceWorkspaceVisible && !readingFreeSession && !readingSetupActive && (prepRemain !== null || status === 'countdown' || status === 'running' || status === 'paused'));

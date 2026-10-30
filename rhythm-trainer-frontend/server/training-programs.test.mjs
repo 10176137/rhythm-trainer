@@ -14,7 +14,7 @@ function takeFor(drill, change = {}) {
   return { takeId: 'take-test', score: { scoreFingerprint: createHash('sha256').update(drill.xml).digest('hex') }, lifecycle: { endReason: 'completed', startedAtIso: new Date(Date.now() + 1000).toISOString() },
     context: { plannerAuthority: 'rust', practiceConfigSnapshot: { tempo: drill.bpm, profile: 'standard', hand: 'both', advanceMode: 'timeline', feedback: 'after' } },
     evidence: { captureDiagnostics: { scoreInputNoteCount: events.length } },
-    assessment: { trustworthy: true, scoreStatus: 'AVAILABLE', timelineReport: { scoreV1: { eventResults: events, confidence: 'high', dataDegraded: false } } }, ...change };
+    assessment: { trustworthy: true, scoreStatus: 'AVAILABLE', timelineReport: { assisted: false, scoringConfig: { feedback: 'after' }, scoreV1: { eventResults: events, confidence: 'high', dataDegraded: false } } }, ...change };
 }
 
 describe('real piano program material', () => {
@@ -91,6 +91,35 @@ describe('evidence-backed ability review', () => {
     expect(review.sections[0]).toMatchObject({ accuracy: .8, correct: 8, wrong: 1, missing: 1, status: 'developing', meanAbsoluteMs: 20 });
     expect(review.advice).toContain('五指');
   });
+  it('targets timing weaknesses even when all sections have perfect pitch accuracy', () => {
+    const drill = generateProgram({ mode: 'assessment' });
+    const take = takeFor(drill);
+    const section = drill.program.sections.find((item) => item.id === 'scales');
+    for (const event of take.assessment.timelineReport.scoreV1.eventResults) {
+      if (event.measure >= section.startBar && event.measure <= section.endBar) event.onsetErrorMs = 120;
+    }
+    const result = reviewProgram(drill, take);
+    expect(result.assessable).toBe(true);
+    expect(result.advice).toContain('音阶');
+    expect(result.advice).toContain('起音');
+    expect(result.advice).not.toContain('提高');
+  });
+  it('does not accept a baseline whose effective engine feedback was live', () => {
+    const drill = generateProgram({ mode: 'assessment' });
+    const take = takeFor(drill);
+    take.assessment.timelineReport.assisted = true;
+    take.assessment.timelineReport.scoringConfig.feedback = 'live';
+    expect(reviewProgram(drill, take).assessable).toBe(false);
+  });
+  it('does not drop ambiguous target notes to manufacture a perfect baseline', () => {
+    const drill = generateProgram({ mode: 'assessment' });
+    const take = takeFor(drill);
+    take.assessment.timelineReport.scoreV1.eventResults[0].result = 'AMBIGUOUS';
+    const result = reviewProgram(drill, take);
+    expect(result.assessable).toBe(false);
+    expect(result.sections.every((section) => section.accuracy === null)).toBe(true);
+    expect(result.label).toContain('证据不足');
+  });
   it('never awards a level for no input, interrupted, degraded or untrusted evidence', () => {
     const drill = generateProgram({ mode: 'assessment' });
     const takes = [takeFor(drill, { evidence: { captureDiagnostics: { scoreInputNoteCount: 0 } } }), takeFor(drill, { lifecycle: { endReason: 'interrupted' } }), takeFor(drill, { context: { plannerAuthority: 'rts' } })];
@@ -117,6 +146,21 @@ describe('evidence-backed ability review', () => {
       xml = drill.xml; current.context.practiceConfigSnapshot.tempo = 120;
       expect(() => store.review(drill.program.id, { takeId: current.takeId })).toThrow('配置');
       expect(() => store.review('../bad', { takeId: current.takeId })).toThrow();
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+  it('rechecks old cached reviews instead of preserving an ambiguous perfect result', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'training-review-upgrade-'));
+    let take; let xml;
+    try {
+      const store = new TrainingProgramStore({ dir, readTake: () => take, readScoreXml: () => xml });
+      const drill = store.create({ mode: 'assessment' }); take = takeFor(drill); xml = drill.xml;
+      store.review(drill.program.id, { takeId: take.takeId });
+      const file = path.join(dir, drill.program.id + '.json');
+      const record = JSON.parse(fs.readFileSync(file, 'utf8'));
+      delete record.reviews[take.takeId].reviewVersion;
+      fs.writeFileSync(file, JSON.stringify(record));
+      take.assessment.timelineReport.scoreV1.eventResults[0].result = 'AMBIGUOUS';
+      expect(store.review(drill.program.id, { takeId: take.takeId })).toMatchObject({ assessable: false, reviewVersion: 'piano-program-review-2' });
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   });
   it('prevents an old or already-consumed take from skipping another identical exercise', () => {

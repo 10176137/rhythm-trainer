@@ -36,3 +36,20 @@ export async function runTrainingProgramFlow(
     if (!options.onLaunch(next.drill)) throw new Error('下一段未能启动，请重新选择训练计划。');
   } else options.onComplete();
 }
+
+
+/** UI stop request at the backend-authored score boundary. Grades and
+ * continuation eligibility still come from the saved engine report. */
+export function shouldFinishTrainingSegment(input: {
+  program: TrainingProgram | undefined;
+  status: string;
+  countInMs: number | null;
+  elapsedMs: number;
+  pauseShiftMs: number;
+}): boolean {
+  const { program, status, countInMs, elapsedMs, pauseShiftMs } = input;
+  if (!program || status !== 'running' || countInMs === null) return false;
+  if (!Number.isFinite(program.seconds) || program.seconds <= 0
+    || !Number.isFinite(countInMs) || !Number.isFinite(elapsedMs) || !Number.isFinite(pauseShiftMs)) return false;
+  return elapsedMs >= countInMs + program.seconds * 1000 + pauseShiftMs;
+}

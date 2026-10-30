@@ -58,6 +58,7 @@ export interface TrainingProgramConfig {
 export interface ProgramSection { id: DrillId; title: string; startBar: number; endBar: number; key: DrillKey; hand: DrillHand }
 export interface TrainingProgram { id: string; rootId: string; config: TrainingProgramConfig; sections: ProgramSection[]; seconds: number; remainingSeconds: number | null; benchmarkVersion: string | null }
 export interface TrainingProgramReview {
+  reviewVersion?: string;
   finishedAtIso?: string;
   unlocatedExtras?: number;
   comparison?: { previousTakeId: string; before: number; now: number; changePoints: number };

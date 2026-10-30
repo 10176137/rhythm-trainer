@@ -4,6 +4,7 @@ import { randomUUID, randomInt, createHash } from 'node:crypto';
 import { generateSkillExercise, TrainingServiceError } from './training-service.mjs';
 import { SKILL_DRILLS } from './training/skill-drill-catalog.mjs';
 
+const REVIEW_VERSION = 'piano-program-review-2';
 const hash = (xml) => createHash('sha256').update(xml).digest('hex');
 const requireValue = (ok, message) => { if (!ok) throw new TrainingServiceError('INVALID_PROGRAM', message); };
 const escape = (s) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -77,6 +78,14 @@ export function generateProgram(input, { remainingSeconds } = {}) {
     program: { id: '', config, sections, seconds, remainingSeconds: config.mode === 'timed' ? Math.max(0, budget - seconds) : null, benchmarkVersion: config.mode === 'assessment' ? 'piano-baseline-1' : null } };
 }
 
+function targetedAdvice(drill, section) {
+  const tempo = drill.bpm > 40 ? `降到 ${Math.max(40, drill.bpm - 5)} BPM` : '保持 40 BPM';
+  const focus = section.accuracy >= .95
+    ? '重点练起音均匀与拍点，先把平均起音偏差稳定到 60ms 以内，再考虑变速。'
+    : '分手练到音高正确率至少 95%，再比较时间偏差。';
+  return `先练「${section.title}」，${tempo}，${focus}`;
+}
+
 /** Reviews only committed engine evidence, bound to the exact generated XML. */
 export function reviewProgram(drill, take) {
   const report = take.assessment?.timelineReport?.scoreV1;
@@ -84,7 +93,10 @@ export function reviewProgram(drill, take) {
     && Number.isInteger(take.evidence?.captureDiagnostics?.scoreInputNoteCount) && take.evidence.captureDiagnostics.scoreInputNoteCount > 0
     && take.assessment?.scoreStatus === 'AVAILABLE' && report && Array.isArray(report.eventResults)
     && ['high', 'medium'].includes(report.confidence) && report.dataDegraded !== true
-    && take.lifecycle?.endReason === 'completed';
+    && report.eventResults.every((event) => ['MATCH', 'WRONG_PITCH', 'MISSING', 'EXTRA'].includes(event.result))
+    && take.lifecycle?.endReason === 'completed'
+    && (drill.program.config.mode !== 'assessment'
+      || (take.assessment.timelineReport.scoringConfig?.feedback === 'after' && take.assessment.timelineReport.assisted === false));
   const sections = drill.program.sections.map((section) => {
     const events = usable ? report.eventResults.filter((e) => e.measure >= section.startBar && e.measure <= section.endBar) : [];
     const targets = events.filter((e) => ['MATCH', 'WRONG_PITCH', 'MISSING'].includes(e.result));
@@ -98,10 +110,10 @@ export function reviewProgram(drill, take) {
   });
   const assessable = usable && sections.every((s) => s.targets > 0 && s.correct + s.wrong + s.extra > 0);
   const unlocatedExtras = usable ? report.eventResults.filter((e) => e.result === 'EXTRA' && (!Number.isInteger(e.measure) || e.measure < 1 || e.measure > drill.bars)).length : 0;
-  const weakest = sections.filter((s) => s.accuracy !== null).sort((a, b) => a.accuracy - b.accuracy)[0];
-  return { schemaVersion: 1, programId: drill.program.id, takeId: take.takeId, assessable: Boolean(assessable), sections, unlocatedExtras,
+  const weakest = sections.filter((s) => s.accuracy !== null).sort((a, b) => Number(a.status === 'stable') - Number(b.status === 'stable') || a.accuracy - b.accuracy || (b.meanAbsoluteMs ?? 0) - (a.meanAbsoluteMs ?? 0))[0];
+  return { schemaVersion: 1, reviewVersion: REVIEW_VERSION, programId: drill.program.id, takeId: take.takeId, assessable: Boolean(assessable), sections, unlocatedExtras,
     label: !assessable ? '证据不足，暂不判断水平' : unlocatedExtras === 0 && sections.every((s) => s.status === 'stable') ? '本轮基本功较稳定' : '已建立能力基线',
-    advice: !assessable ? '尚有未完成项目，或输入证据不足。确认 MIDI 输入，完整弹完后再测试；没有演奏输入不会获得通过。' : unlocatedExtras > 0 ? '本轮还有无法归到具体小节的多余音。先保持速度，减少额外击键，不建议提速。' : weakest.status !== 'stable' ? `先练「${weakest.title}」，${drill.bpm > 40 ? `降到 ${Math.max(40, drill.bpm - 5)} BPM` : '保持 40 BPM'}，分手练到音高正确率至少 95%，再比较时间偏差。` : drill.bpm >= 140 ? '保持当前速度，改变调性检验稳定性；不必继续追求更快。' : '保持当前速度，在不同调性下连续三次稳定后，再尝试提高 5 BPM。',
+    advice: !assessable ? '尚有未完成项目，或输入证据不足。确认 MIDI 输入，完整弹完后再测试；没有演奏输入不会获得通过。' : unlocatedExtras > 0 ? '本轮还有无法归到具体小节的多余音。先保持速度，减少额外击键，不建议提速。' : weakest.status !== 'stable' ? targetedAdvice(drill, weakest) : drill.bpm >= 140 ? '保持当前速度，改变调性检验稳定性；不必继续追求更快。' : '保持当前速度，在不同调性下连续三次稳定后，再尝试提高 5 BPM。',
     criteria: '应用内参考：正确音数 ÷（目标音数＋多余音数）至少 95%，平均起音偏差不超过 60ms。仅评价本轮可测能力，不等同钢琴考级。',
   };
 }
@@ -146,7 +158,7 @@ export class TrainingProgramStore {
     const config = take.context?.practiceConfigSnapshot;
     requireValue(config?.tempo === record.drill.bpm && config?.profile === 'standard' && config?.hand === 'both' && config?.advanceMode === 'timeline', '演奏配置与训练计划不一致');
     if (record.drill.program.config.mode === 'assessment') requireValue(config.feedback === 'after', '能力测试必须使用结束后反馈');
-    if (record.reviews[input.takeId]) return record.reviews[input.takeId];
+    if (record.reviews[input.takeId]?.reviewVersion === REVIEW_VERSION) return record.reviews[input.takeId];
     const linksFile = path.join(this.dir, 'take-links.json');
     const links = fs.existsSync(linksFile) ? JSON.parse(fs.readFileSync(linksFile, 'utf8')) : {};
     requireValue(!links[input.takeId] || links[input.takeId] === id, '该演奏记录已用于其他训练段，请重新演奏');
@@ -159,7 +171,7 @@ export class TrainingProgramStore {
         try {
           const saved = JSON.parse(fs.readFileSync(path.join(this.dir, name), 'utf8'));
           if (saved.drill.program.benchmarkVersion !== record.drill.program.benchmarkVersion) continue;
-          prior.push(...Object.values(saved.reviews).filter((r) => r.assessable && r.takeId !== result.takeId && r.finishedAtIso < result.finishedAtIso));
+          prior.push(...Object.values(saved.reviews).filter((r) => r.reviewVersion === REVIEW_VERSION && r.assessable && r.takeId !== result.takeId && r.finishedAtIso < result.finishedAtIso));
         } catch { /* An unreadable record cannot become comparison evidence. */ }
       }
       prior.sort((a, b) => b.finishedAtIso.localeCompare(a.finishedAtIso));

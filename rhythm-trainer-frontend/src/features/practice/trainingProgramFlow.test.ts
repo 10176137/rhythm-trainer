@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { GeneratedSkillDrill, TrainingProgram, TrainingProgramReview } from '../../../shared/training-contract';
-import { runTrainingProgramFlow } from './trainingProgramFlow';
+import { runTrainingProgramFlow, shouldFinishTrainingSegment } from './trainingProgramFlow';
 
 function setup() {
   const controller = new AbortController();
@@ -42,5 +42,23 @@ describe('continuous program UI lifecycle', () => {
     const s = setup(); s.repository.reviewProgram.mockRejectedValue(new Error('not saved'));
     await expect(runTrainingProgramFlow(s.options, s.repository)).rejects.toThrow('not saved');
     expect(s.repository.nextProgram).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('training segment completion boundary', () => {
+  const running = { program: { seconds: 60 } as TrainingProgram, status: 'running' as const, countInMs: 3000, elapsedMs: 62999, pauseShiftMs: 0 };
+  it('finishes at the whole score end including count-in and trailing rests', () => {
+    expect(shouldFinishTrainingSegment(running)).toBe(false);
+    expect(shouldFinishTrainingSegment({ ...running, elapsedMs: 63000 })).toBe(true);
+  });
+  it('excludes time spent paused and never closes a paused segment', () => {
+    expect(shouldFinishTrainingSegment({ ...running, elapsedMs: 70000, pauseShiftMs: 10000 })).toBe(false);
+    expect(shouldFinishTrainingSegment({ ...running, elapsedMs: 73000, pauseShiftMs: 10000 })).toBe(true);
+    expect(shouldFinishTrainingSegment({ ...running, elapsedMs: 80000, status: 'paused' })).toBe(false);
+  });
+  it('leaves manual single-drill sessions and sessions without engine timing alone', () => {
+    expect(shouldFinishTrainingSegment({ ...running, elapsedMs: 80000, program: undefined })).toBe(false);
+    expect(shouldFinishTrainingSegment({ ...running, elapsedMs: 80000, countInMs: null })).toBe(false);
   });
 });
