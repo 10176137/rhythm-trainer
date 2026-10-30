@@ -10,7 +10,7 @@ export interface ReadingSetupValue {
   measures: 2 | 4 | 8; countInMeasures: 1 | 2;
   /** null = chromatic (不限调); otherwise pool = the key's diatonic scale. */
   key: KeySelection | null;
-  /** Which staff (hand) generated notes are written on. */
+  /** Which notation staff generated notes are written on; does not identify the player's hand. */
   staffPreference: ReadingStaffPreference;
 }
 export function defaultReadingSetup(mode: ReadingModeChoice = 'free'): ReadingSetupValue {
@@ -48,6 +48,6 @@ export function saveReadingSettings(value: ReadingSetupValue): void {
 }
 export function readingConfigLabel(value: ReadingSetupValue): string {
   const keyLabel = value.key ? ` · ${value.key.root}${value.key.mode === 'major' ? '大调' : '小调'}` : '';
-  const staffLabel = value.staffPreference === 'treble' ? ' · 右手' : value.staffPreference === 'bass' ? ' · 左手' : '';
+  const staffLabel = value.staffPreference === 'treble' ? ' · 高音谱表' : value.staffPreference === 'bass' ? ' · 低音谱表' : ' · 自动分谱表';
   return `${value.ranges.map(rangeLabel).join('、')}${keyLabel}${staffLabel} · ${value.notesPerEvent} 音 · ${value.mode === 'free' ? `${value.questionCount} 题 · ${value.task === 'test' ? '小测' : '练习'}` : `${value.bpm} BPM`}`;
 }

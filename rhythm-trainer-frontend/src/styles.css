@@ -1127,6 +1127,18 @@
 .reading-starters button{padding:14px;border-radius:14px;background:#fbfbfe;transition:background .15s,border-color .15s}
 .reading-starters button.selected{box-shadow:none;background:#f2efff;border-color:#8979e7}
 .reading-starters small{font-size:10px;color:#7161c6;margin-top:2px}
+.reading-config-switch{display:flex;gap:4px;padding:4px;border-radius:12px;background:#f1f2f8;width:fit-content;margin:20px 0 16px}
+.reading-config-switch button{border:0;background:transparent;color:#737b90;border-radius:9px;padding:10px 18px;font-size:13px;min-height:44px;cursor:pointer}
+.reading-config-switch button[aria-pressed="true"]{background:#fff;color:#5847c4;box-shadow:0 2px 8px #34304a0a;font-weight:600}
+.reading-config-switch button:focus-visible{outline:2px solid #7566dc;outline-offset:2px}
+.reading-config-help{font-size:11px;color:#81899b;line-height:1.7;margin:0}
+.reading-template-panel .reading-starters{margin-top:14px}
+.reading-template-action{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:11px;color:#81899b;margin-bottom:18px}
+.reading-template-action .text-button{min-height:44px}
+.reading-customize.reading-custom-editor{padding:16px;margin-top:0}
+.reading-custom-heading{border-bottom:1px solid #ececf5;padding-bottom:14px}
+.reading-custom-heading h3{font-size:14px;color:#45405e;margin:0 0 5px}
+.reading-summary-title{flex-basis:100%;color:#5e537a}
 .reading-customize{padding:0;border-color:#e8e9f2;overflow:hidden;background:#fff}
 .reading-customize>summary{padding:14px 16px;background:#fafaff;color:#4b426f}
 .reading-customize[open]{padding:0 16px 16px}.reading-custom-fields{display:grid;grid-template-columns:1fr 1fr;gap:0 22px}

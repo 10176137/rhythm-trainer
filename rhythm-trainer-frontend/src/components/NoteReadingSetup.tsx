@@ -2,7 +2,7 @@
 // state; generation and session state live in App / feature modules. Single
 // screen, fixed action area, no page-level scrolling on desktop.
 
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import {
   READING_OCTAVES,
   keyLabel,
@@ -31,10 +31,23 @@ const COMPLEXITY_CN: Record<ReadingComplexityChoice, string> = {
 };
 
 const READING_STARTERS = [
-  { id: 'starter', title: '入门认音', description: 'C4–B4 · C 大调 · 单音 · 60 BPM', settings: { ranges: [{ startMidi: 60, endMidi: 71 }], key: { root: 'C', mode: 'major' }, staffPreference: 'treble', notesPerEvent: 1, bpm: 60, complexity: 'basic' } },
-  { id: 'bass', title: '左手认音', description: 'C3–B3 · C 大调 · 单音 · 60 BPM', settings: { ranges: [{ startMidi: 48, endMidi: 59 }], key: { root: 'C', mode: 'major' }, staffPreference: 'bass', notesPerEvent: 1, bpm: 60, complexity: 'basic' } },
-  { id: 'challenge', title: '双音挑战', description: 'C4–B5 · 不限调 · 双音 · 80 BPM', settings: { ranges: [{ startMidi: 60, endMidi: 71 }, { startMidi: 72, endMidi: 83 }], key: null, staffPreference: 'treble', notesPerEvent: 2, bpm: 80, complexity: 'intermediate' } },
+  { id: 'starter', title: '高音谱表入门', description: 'C4–B4 · C 大调 · 单音', settings: { ranges: [{ startMidi: 60, endMidi: 71 }], key: { root: 'C', mode: 'major' }, staffPreference: 'treble', notesPerEvent: 1, bpm: 60, complexity: 'basic' } },
+  { id: 'bass', title: '低音谱表入门', description: 'C3–B3 · C 大调 · 单音', settings: { ranges: [{ startMidi: 48, endMidi: 59 }], key: { root: 'C', mode: 'major' }, staffPreference: 'bass', notesPerEvent: 1, bpm: 60, complexity: 'basic' } },
+  { id: 'challenge', title: '高音双音进阶', description: 'C4–B5 · 不限调 · 双音', settings: { ranges: [{ startMidi: 60, endMidi: 71 }, { startMidi: 72, endMidi: 83 }], key: null, staffPreference: 'treble', notesPerEvent: 2, bpm: 80, complexity: 'intermediate' } },
 ] satisfies Array<{ id: string; title: string; description: string; settings: Partial<ReadingSetupValue> }>;
+
+function starterValue(starter: typeof READING_STARTERS[number], current: ReadingSetupValue): ReadingSetupValue {
+  return { ...defaultReadingSetup(current.mode), ...starter.settings, seed: current.seed };
+}
+
+function matchingStarter(value: ReadingSetupValue) {
+  const fields: Array<keyof ReadingSetupValue> = ['ranges', 'key', 'staffPreference', 'notesPerEvent',
+    ...(value.mode === 'free' ? ['task', 'questionCount'] as const : ['bpm', 'complexity', 'timeSignature', 'measures', 'countInMeasures'] as const)];
+  return READING_STARTERS.find((starter) => {
+    const candidate = starterValue(starter, value);
+    return fields.every((key) => JSON.stringify(value[key]) === JSON.stringify(candidate[key]));
+  });
+}
 
 const KEY_ROOTS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const;
 const STAFF_CN = { auto: '自动（按音高分谱表）', treble: '高音谱表', bass: '低音谱表' } as const;
@@ -50,6 +63,9 @@ export default function NoteReadingSetup({
   onStart,
 }: Props) {
   const [value, setValue] = useState<ReadingSetupValue>(() => initialValue ?? { ...defaultReadingSetup(initialMode), mode: initialMode });
+  const [editor, setEditor] = useState<'templates' | 'custom'>(() => initialValue && !matchingStarter(initialValue) ? 'custom' : 'templates');
+  const editorId = useId();
+  const starter = matchingStarter(value);
 
   const pool = useMemo(() => readingPool(value.ranges, value.key), [value.ranges, value.key]);
   const poolReady = pool.length >= value.notesPerEvent;
@@ -77,19 +93,31 @@ export default function NoteReadingSetup({
         <div>
           <div className="eyebrow">81-KEY READING</div>
           <h2>识谱练习</h2>
-          <p>选一个起点就能开始，也可以展开自定义调整。</p>
+          <p>使用推荐方案，或自行配置本轮练习。</p>
         </div>
       </header>
 
-      <div className="reading-starters" role="group" aria-label="快捷填入配置">
-        {READING_STARTERS.map((starter) => {
-          const selected = Object.entries(starter.settings).every(([key, setting]) => JSON.stringify(value[key as keyof ReadingSetupValue]) === JSON.stringify(setting));
-          return <button key={starter.id} type="button" className={selected ? 'selected' : ''} aria-pressed={selected} disabled={busy} onClick={() => patch(starter.settings)}>
-            <strong>{starter.title}</strong><span>{starter.description}</span><small>{selected ? '当前配置' : '填入配置 →'}</small>
-          </button>;
-        })}
+      <div className="reading-config-switch" role="group" aria-label="配置方式">
+        <button type="button" aria-pressed={editor === 'templates'} onClick={() => setEditor('templates')}>推荐方案</button>
+        <button type="button" aria-pressed={editor === 'custom'} onClick={() => setEditor('custom')}>自定义配置</button>
       </div>
-      <details className="reading-customize"><summary>自定义练习 <small>音区、调性、题量与节奏</small></summary>
+      {editor === 'templates' ? <section className="reading-template-panel" aria-label="推荐方案">
+        <p className="reading-config-help">选择后使用整套参数；想调整其中一项，可进入自定义配置。</p>
+        <div className="reading-starters" role="group" aria-label="选择练习方案">
+          {READING_STARTERS.map((item) => {
+            const selected = starter?.id === item.id;
+            return <button key={item.id} type="button" className={selected ? 'selected' : ''} aria-pressed={selected} disabled={busy} onClick={() => setValue((current) => starterValue(item, current))}>
+              <strong>{item.title}</strong><span>{item.description}</span>
+              <span>{value.mode === 'free' ? '20 题 · 练习' : `4/4 拍 · ${item.settings.bpm} BPM · 4 小节`}</span>
+              <small>{selected ? '已选用' : '使用此方案 →'}</small>
+            </button>;
+          })}
+        </div>
+        <div className="reading-template-action"><span>{starter ? `已选：${starter.title}` : '当前为自定义配置；选择方案会替换当前参数。'}</span>
+          <button type="button" className="text-button" onClick={() => setEditor('custom')}>调整当前参数 →</button>
+        </div>
+      </section> : <section className="reading-customize reading-custom-editor" aria-labelledby={`${editorId}-custom`}>
+      <div className="reading-custom-heading"><h3 id={`${editorId}-custom`}>自定义配置</h3><p className="reading-config-help">修改直接更新本轮参数，开始时以下方摘要为准。</p></div>
       <div className="reading-custom-fields">
       {value.mode === 'free' && <div className="reading-task-choice" role="group" aria-label="训练方式">
         <button type="button" aria-pressed={value.task === 'practice'} onClick={() => patch({ task: 'practice' })}>练习 · 可请求提示</button>
@@ -109,7 +137,7 @@ export default function NoteReadingSetup({
       </div>
 
       <div className="reading-setup-block" aria-label="调性与谱表">
-        <h3>调性与谱表 <small>调性决定练哪些音，谱表决定音符写在哪里</small></h3>
+        <h3>调性与谱号 <small>音区决定音的高低，谱号决定音符写在哪种谱表上。</small></h3>
         <div className="reading-rhythm-grid">
           <label>
             调性
@@ -125,7 +153,7 @@ export default function NoteReadingSetup({
             </select>
           </label>
           <label>
-            显示谱表
+            识谱谱号
             <select
               value={value.staffPreference}
               onChange={(event) => patch({ staffPreference: event.target.value as ReadingSetupValue['staffPreference'] })}
@@ -134,6 +162,7 @@ export default function NoteReadingSetup({
                 <option key={pref} value={pref}>{STAFF_CN[pref]}</option>
               ))}
             </select>
+            <small className="reading-config-help">谱号不限制弹奏用手；MIDI 只识别按下的琴键。</small>
           </label>
         </div>
       </div>
@@ -263,9 +292,10 @@ export default function NoteReadingSetup({
       </details>
 
       </div>
-      </details>
+      </section>}
 
       <div className="reading-summary" aria-label="配置摘要">
+        <span className="reading-summary-title">本轮配置 · <b>{starter?.title ?? '自定义'}</b></span>
         <span>模式 <b>{value.mode === 'free' ? '自由识谱' : '节奏识谱'}</b></span>
         <span>音区 <b>{value.ranges.length ? value.ranges.map(rangeLabel).join('、') : '未选择'}</b></span>
         <span><b>{value.key ? keyLabel(value.key) : '不限调'}</b> · {STAFF_CN[value.staffPreference]}</span>
