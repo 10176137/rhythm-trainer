@@ -11,14 +11,20 @@
  */
 
 /** @typedef {{ readyState?: number }} LeaseSocket */
-/** @typedef {{ socket: LeaseSocket, takeId: unknown, practiceSessionId?: unknown }} TimelineLease */
-/** @typedef {{ socket: LeaseSocket, takeId: unknown }} FollowLease */
+import { randomUUID } from 'node:crypto';
+/** @typedef {{ socket: LeaseSocket, takeId: unknown, practiceSessionId?: unknown, leaseId?: string, interrupt?: (sameConnection: boolean) => void }} TimelineLease */
+/** @typedef {{ socket: LeaseSocket, takeId: unknown, leaseId?: string, interrupt?: (sameConnection: boolean) => void }} FollowLease */
 
 const SOCKET_OPEN = 1;
 
 /** @param {LeaseSocket | null | undefined} socket */
 function isOpen(socket) {
   return socket?.readyState === SOCKET_OPEN;
+}
+
+export class SessionBusyError extends Error {
+  /** @param {string} message @param {ReturnType<SessionOwnership['conflictFor']>} conflict */
+  constructor(message, conflict) { super(message); this.code = 'SESSION_BUSY'; this.conflict = conflict; }
 }
 
 export class SessionOwnership {
@@ -28,6 +34,28 @@ export class SessionOwnership {
   followLease = null;
   /** @type {((event: unknown) => void) | null} */
   nodeSink = null;
+
+  /** Opaque generation identifies one Take, never an engine-local counter.
+   * @param {LeaseSocket} socket */
+  conflictFor(socket) {
+    const lease = this.timelineLease ?? this.followLease;
+    return lease ? { leaseId: lease.leaseId, kind: this.timelineLease ? 'timeline' : 'follow', self: lease.socket === socket } : null;
+  }
+
+  /** Explicit compare-and-takeover. A stale tap cannot interrupt a newer Take.
+   * @param {LeaseSocket} socket @param {unknown} expectedLeaseId */
+  takeOver(socket, expectedLeaseId) {
+    const conflict = this.conflictFor(socket);
+    if ((conflict?.leaseId ?? null) !== expectedLeaseId) {
+      throw new SessionBusyError('练习占用状态已变化，请确认后重新接管', conflict);
+    }
+    const lease = this.timelineLease ?? this.followLease;
+    if (lease) {
+      if (!lease.interrupt) throw new Error('当前练习无法接管，请先在原设备结束');
+      lease.interrupt(lease.socket === socket);
+    }
+    if (this.timelineLease || this.followLease) throw new Error('原练习未释放，暂时无法接管');
+  }
 
   /**
    * Throws the user-facing conflict instead of silently replacing a live Take.
@@ -39,17 +67,17 @@ export class SessionOwnership {
       // A lease held by a closed socket must not block the next practice; the
       // close handler normally releases it, this is the last-resort takeover.
       if (isOpen(lease.socket)) {
-        throw new Error('另一个设备有进行中的练习，请先结束那一轮或等待其断连保存');
+        throw new SessionBusyError('另一个设备有进行中的练习，请先结束那一轮或接管练习', this.conflictFor(socket));
       }
       this.timelineLease = null;
     }
     if (hasFollowRuntime || (this.followLease && this.followLease.socket === socket)) {
-      throw new Error('已有进行中的跟手练习，请先结束当前轮次');
+      throw new SessionBusyError('已有进行中的跟手练习，请先结束当前轮次', this.conflictFor(socket));
     }
     if (this.followLease && this.followLease.socket !== socket) {
-      throw new Error('另一个设备有进行中的跟手练习，请先结束那一轮或等待其断连保存');
+      throw new SessionBusyError('另一个设备有进行中的跟手练习，请先结束那一轮或接管练习', this.conflictFor(socket));
     }
-    if (hasNative) throw new Error('已有进行中的练习轮次，请先结束当前轮次');
+    if (hasNative) throw new SessionBusyError('已有进行中的练习轮次，请先结束当前轮次', this.conflictFor(socket));
   }
 
   /**
@@ -57,28 +85,28 @@ export class SessionOwnership {
    */
   assertFollowStartAllowed({ socket, hasNative, hasActiveTake, hasFollowRuntime }) {
     if (this.followLease && this.followLease.socket !== socket) {
-      throw new Error('另一个设备有进行中的跟手练习，请先结束那一轮或等待其断连保存');
+      throw new SessionBusyError('另一个设备有进行中的跟手练习，请先结束那一轮或接管练习', this.conflictFor(socket));
     }
     if (this.timelineLease || hasNative || hasActiveTake) {
-      throw new Error('已有进行中的练习轮次，请先结束当前轮次');
+      throw new SessionBusyError('已有进行中的练习轮次，请先结束当前轮次', this.conflictFor(socket));
     }
-    if (hasFollowRuntime) throw new Error('已有进行中的跟手练习');
+    if (hasFollowRuntime) throw new SessionBusyError('已有进行中的跟手练习', this.conflictFor(socket));
   }
 
-  /** @param {{ socket: LeaseSocket, takeId: unknown, practiceSessionId?: unknown }} lease */
+  /** @param {TimelineLease} lease */
   claimTimeline(lease) {
     if (this.timelineLease && this.timelineLease.socket !== lease.socket) {
       throw new Error('练习租约已被其他连接占用，请重新确认当前轮次');
     }
-    this.timelineLease = lease;
+    this.timelineLease = { ...lease, leaseId: randomUUID() };
   }
 
-  /** @param {{ socket: LeaseSocket, takeId: unknown }} lease */
+  /** @param {FollowLease} lease */
   claimFollow(lease) {
     if (this.followLease && this.followLease.socket !== lease.socket) {
       throw new Error('跟手练习租约已被其他连接占用，请重新确认当前轮次');
     }
-    this.followLease = lease;
+    this.followLease = { ...lease, leaseId: randomUUID() };
   }
 
   /** Release is scoped to the owner; another connection cannot free it. */

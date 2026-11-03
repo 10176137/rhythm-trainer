@@ -1,8 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { SessionOwnership } from './session-ownership.mjs';
+import { SessionOwnership, SessionBusyError } from './session-ownership.mjs';
 
 const openSocket = () => ({ readyState: 1 });
 const closedSocket = () => ({ readyState: 3 });
+
+describe('explicit Take takeover', () => {
+  it('scopes takeover to an opaque generation and never interrupts a newer Take', () => {
+    const ownership = new SessionOwnership(); const owner = openSocket(); const next = openSocket();
+    let interrupted = 0;
+    const interrupt = () => { interrupted++; ownership.releaseTimeline(owner); };
+    ownership.claimTimeline({ socket: owner, takeId: 1, interrupt });
+    const old = ownership.conflictFor(next);
+    expect(old).toMatchObject({ kind: 'timeline', self: false });
+    ownership.releaseTimeline(owner);
+    ownership.claimTimeline({ socket: owner, takeId: 1, interrupt });
+    expect(() => ownership.takeOver(next, old?.leaseId)).toThrow(SessionBusyError);
+    expect(interrupted).toBe(0);
+    ownership.takeOver(next, ownership.conflictFor(next)?.leaseId);
+    expect(interrupted).toBe(1); expect(ownership.conflictFor(next)).toBeNull();
+  });
+  it('can recover its own orphaned runtime and reports finalization failure', () => {
+    const ownership = new SessionOwnership(); const owner = openSocket();
+    ownership.claimFollow({ socket: owner, takeId: 'follow', interrupt: same => {
+      expect(same).toBe(true); ownership.releaseFollow(owner); throw new Error('disk failure');
+    } });
+    expect(() => ownership.takeOver(owner, ownership.conflictFor(owner)?.leaseId)).toThrow('disk failure');
+    expect(ownership.conflictFor(owner)).toBeNull();
+    expect(() => ownership.takeOver(owner, null)).not.toThrow();
+  });
+});
 
 describe('SessionOwnership start checks', () => {
   it('rejects a second connection while another one owns the timeline take', () => {

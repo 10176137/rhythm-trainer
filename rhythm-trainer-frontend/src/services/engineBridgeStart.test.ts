@@ -13,6 +13,29 @@ class Socket {
   close() { this.readyState = 3; this.onclose?.(); }
 }
 afterEach(() => { vi.unstubAllGlobals(); });
+it('surfaces a structured ownership conflict even while rejecting Follow start', async () => {
+  vi.stubGlobal('WebSocket', Socket); vi.stubGlobal('location', { host: '127.0.0.1:5173' });
+  vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn(), dispatchEvent: vi.fn() });
+  const onSessionConflict = vi.fn();
+  const bridge = new EngineBridge({ onStarted: vi.fn(), onJudgments: vi.fn(), onPaused: vi.fn(), onResumed: vi.fn(), onReport: vi.fn(), onError: vi.fn(), onDisconnected: vi.fn(), onSessionConflict });
+  try {
+    await bridge.connect();
+    const started = bridge.startFollow({ groups: [], bpm: 60, plannerAuthority: 'rust' });
+    const rejected = expect(started).rejects.toThrow('占用');
+    const conflict = { leaseId: 'lease-unique', kind: 'timeline', self: false };
+    Socket.latest.onmessage?.({ data: JSON.stringify({ type: 'error', code: 'SESSION_BUSY', conflict, message: '被占用' }) });
+    await rejected; expect(onSessionConflict).toHaveBeenCalledWith(conflict, '被占用');
+    const result = bridge.requestSessionControl('takeover', 'lease-unique');
+    const sent = Socket.sent.at(-1)!;
+    expect(sent).toMatchObject({ type: 'session-control', action: 'takeover', expectedLeaseId: 'lease-unique' });
+    Socket.latest.onmessage?.({ data: JSON.stringify({ type: 'session-control-result', requestId: 'old-request', ok: true }) });
+    Socket.latest.onmessage?.({ data: JSON.stringify({ type: 'session-control-result', requestId: sent.requestId, ok: false, conflict, message: '已变化' }) });
+    await expect(result).resolves.toMatchObject({ ok: false, message: '已变化' });
+    const lost = bridge.requestSessionControl('status');
+    const disconnected = expect(lost).rejects.toThrow('已断开');
+    Socket.latest.close(); await disconnected;
+  } finally { bridge.close(); }
+});
 describe('engine start preserves configured feedback', () => {
   it.each(['after', 'live'])('forwards %s feedback from the frozen launch configuration', async (feedback) => {
     vi.stubGlobal('WebSocket', Socket);

@@ -21,6 +21,8 @@ import type {
   FollowStartRequest,
   FollowStartedMessage,
   PersistRetryResultMessage,
+  SessionConflict,
+  SessionControlResult,
 } from '../types/engine';
 import type { HandSelection } from '../types/practice';
 import type { TeachingPrescription } from '../types/teaching';
@@ -55,6 +57,8 @@ export interface EngineStartTiming {
 }
 
 export interface EngineHandlers {
+  onSessionConflict?: (conflict: SessionConflict | null, message: string) => void;
+  onSessionRevoked?: (message: string) => void;
   onClockStarted?: (message: Extract<EngineServerMessage, { type: 'clock-started' }>) => void;
   onStarted: (targets: EngineTarget[], bpm: number, profile: EngineProfile, captureEpoch?: number, scoringConfig?: EngineScoringConfig, timing?: EngineStartTiming) => void;
   onJudgments: (items: EngineJudgment[]) => void;
@@ -105,6 +109,7 @@ export class EngineBridge {
   private requestSeq = 0;
   private timelineTakeId: string | undefined;
   private followTakeId: string | undefined;
+  private pendingControl = new Map<string, { resolve: (result: SessionControlResult) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
   constructor(handlers: EngineHandlers) {
     this.handlers = handlers;
@@ -163,6 +168,14 @@ export class EngineBridge {
           return;
         }
         switch (message.type) {
+          case 'session-revoked':
+            this.handlers.onSessionRevoked?.(message.message);
+            break;
+          case 'session-control-result': {
+            const waiter = this.pendingControl.get(message.requestId);
+            if (waiter) { this.pendingControl.delete(message.requestId); clearTimeout(waiter.timer); waiter.resolve(message); }
+            break;
+          }
           case 'clock-started':
             this.handlers.onClockStarted?.(message);
             break;
@@ -227,6 +240,8 @@ export class EngineBridge {
             break;
           }
           case 'error': {
+            if (message.code === 'SESSION_BUSY') this.handlers.onSessionConflict?.(message.conflict ?? null, message.message);
+            if (message.code === 'SESSION_REVOKED') this.handlers.onSessionRevoked?.(message.message);
             // A failed follow-start has no dedicated error frame; reject the
             // pending start so the launch path can surface one message and
             // clear its optimistic UI. Other errors stay in the normal
@@ -266,6 +281,8 @@ export class EngineBridge {
   }
 
   private rejectPendingPlans(message: string) {
+    for (const waiter of this.pendingControl.values()) { clearTimeout(waiter.timer); waiter.reject(new Error(message)); }
+    this.pendingControl.clear();
     for (const [requestId, pending] of this.pendingPlans) {
       clearTimeout(pending.timer);
       this.settledPlans.add(requestId);
@@ -412,6 +429,16 @@ export class EngineBridge {
 
   followAbandon() {
     this.send({ type: 'follow-abandon', takeId: this.followTakeId });
+  }
+
+  requestSessionControl(action: 'status' | 'takeover', expectedLeaseId?: string | null, timeoutMs = 10000): Promise<SessionControlResult> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || this.socket.readyState !== WebSocket.OPEN) { reject(new Error('引擎未连接，请刷新页面后重试接管。')); return; }
+      const requestId = `control-${++this.requestSeq}`;
+      const timer = setTimeout(() => { this.pendingControl.delete(requestId); reject(new Error('接管请求超时，请重试。')); }, timeoutMs);
+      this.pendingControl.set(requestId, { resolve, reject, timer });
+      this.send({ type: 'session-control', protocolVersion: 1, requestId, action, ...(action === 'takeover' ? { expectedLeaseId: expectedLeaseId ?? null } : {}) });
+    });
   }
 
   /**

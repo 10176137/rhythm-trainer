@@ -111,6 +111,7 @@ import { DeviceBridge } from './services/deviceBridge';
 import type { MidiAdapterStatus, MidiDeviceInfo, MidiInputEvent } from './services/deviceBridge';
 import { takeTemplateRepository, TakeTemplateClientError, type TakeTemplate } from './services/takeTemplateRepository';
 import { usePracticeSession } from './features/practice/usePracticeSession';
+import SessionControlNotice from './components/SessionControlNotice';
 import { countdownToFirstNoteMs, countdownWholeSeconds, practiceCountIn } from './features/practice/countdown';
 import { SystemDuetPlayer } from './features/practice/systemDuet';
 import {
@@ -577,6 +578,13 @@ export default function App() {
     onError: (message) => {
       setStarting(false);
       addFeedback('引擎提示', message, 'warning');
+    },
+    onControlLost: () => {
+      stopRoundRepeatRef.current = true; programStopRef.current = true;
+      programControllerRef.current?.abort(); setProgramBusy(false);
+      setAutoStartRequested(false); setStarting(false);
+      referencePlaybackRef.current?.stop('session-taken-over');
+      systemPlayerRef.current?.stopAll(); clearDuetTimers(); elapsedClock.pause();
     },
     onStarted: (info) => {
       displayStartRef.current = info.originPerfMs;
@@ -3294,7 +3302,7 @@ export default function App() {
       if (autoStartRequested) setAutoStartRequested(false);
       return;
     }
-    if (!autoStartRequested || readingBusy || starting) return;
+    if (!autoStartRequested || readingBusy || starting || session.control.conflict) return;
     if (practiceInProgress || reportUnsaved || scorePick.pending || audition.active || settingsDirty) return;
     if (performanceStandbyKey && !plannerAuthorityRef.current) return;
     if (config.modeId === 'score' && config.loopEnabled && config.loopSelectionPending) return;
@@ -3306,7 +3314,7 @@ export default function App() {
     }
     setAutoStartRequested(false);
     startPractice();
-  }, [autoStartRequested, readingBusy, starting, scoreDoc, config, route?.id, practiceInProgress, reportUnsaved, scorePick.pending, audition.active, settingsDirty, plannerAuthorityVersion]);
+  }, [autoStartRequested, readingBusy, starting, scoreDoc, config, route?.id, practiceInProgress, reportUnsaved, scorePick.pending, audition.active, settingsDirty, plannerAuthorityVersion, session.control.conflict]);
 
   const uiStatus: SessionStatus = config.advanceMode === 'follow' ? followStatus : session.status;
 
@@ -3478,18 +3486,20 @@ export default function App() {
   const sessionControls = <PracticeSessionControls status={status} statusLabel={statusLabel} elapsed={elapsed}
     automaticStart={route?.id === 'performance' && automaticallyStartsPerformance(config.modeId)}
     starting={starting} preparing={prepRemain} active={session.active} waitingForFirstInput={session.waitingForFirstInput || performanceWaiting}
-    locked={practiceInProgress || reportUnsaved} startDisabled={reportUnsaved || settingsDirty || (config.modeId === 'score' && config.loopEnabled && config.loopSelectionPending === true)} onStart={startPractice} onPause={pausePractice} onResume={resumePractice}
+    locked={practiceInProgress || reportUnsaved} startDisabled={Boolean(session.control.conflict) || reportUnsaved || settingsDirty || (config.modeId === 'score' && config.loopEnabled && config.loopSelectionPending === true)} onStart={startPractice} onPause={pausePractice} onResume={resumePractice}
     onFinish={finishPractice} onCancelPreparation={cancelPrep} onReset={resetPractice} />;
 
   return (
     <AppShell
       immersive={route?.id === 'performance' && !readingSetupActive && !readingFreeSession && config.modeId !== 'reading-free'}
-      revealControls={status === 'paused' || status === 'completed' || Boolean(session.error)
+      revealControls={status === 'paused' || status === 'completed' || Boolean(session.error) || Boolean(session.control.conflict)
         || (config.modeId === 'fixed-line' && status === 'idle' && !starting)}
       focus={practiceFocus}
       sidebar={sidebar}
       topbar={topbar}
-      notice={config.modeId !== 'reading-free' && session.error ? <section className="card error-strip" role="alert"><strong>引擎服务异常</strong><p>{session.error}</p></section> : null}
+      notice={session.control.conflict ? <SessionControlNotice message={session.control.conflict.message} busy={session.control.busy}
+        onTakeover={() => { void session.control.takeover().then(ok => { if (ok) { resetPractice(); setAutoStartRequested(true); addFeedback('已接管练习', '当前页面已取得练习控制权。', 'success'); } }); }} />
+        : config.modeId !== 'reading-free' && session.error ? <section className="card error-strip" role="alert"><strong>引擎服务异常</strong><p>{session.error}</p></section> : null}
     >
       <div className={`page-content${fixedLineMode ? ' fixed-line-page' : ''}${appWorkspace ? ' app-workspace' : ''}${status === 'completed' ? ' page-done' : ''}${readingSetupActive ? ' reading-setup-page' : ''}${readingFreeSession ? ' reading-free-page' : ''}${config.modeId === 'reading-rhythm' ? ' reading-rhythm-page' : ''}${route?.id === 'performance' && !fixedLineMode ? ' performance-page' : ''}`} style={{ display: practiceWorkspaceVisible ? undefined : 'none' }}>
           <input
@@ -3638,7 +3648,7 @@ export default function App() {
             onRetry={() => setProgramRetry((n) => n + 1)} onStop={() => { programStopRef.current = true; programControllerRef.current?.abort(); setProgramBusy(false); }}
             onAdjust={() => { resetPractice(); setTrainingRoomOpen(false); }} />}
 
-          {feedbackItems[0]?.tone === 'warning' && !practiceFocus && <div className="practice-warning" role="status">{feedbackItems[0].title}：{feedbackItems[0].detail}</div>}
+          {feedbackItems[0]?.tone === 'warning' && !practiceFocus && !session.control.conflict && <div className="practice-warning" role="status">{feedbackItems[0].title}：{feedbackItems[0].detail}</div>}
           {/* Unmount performance controls here so focus styles cannot reveal a second toolbar. */}
           {!readingFreeSession && !readingSetupActive && config.modeId !== 'reading-free' && <div className="performance-main" style={{ display: route?.id === 'training' && status === 'completed' ? 'none' : undefined }}>
             <section className="card score-card">

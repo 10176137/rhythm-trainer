@@ -22,6 +22,15 @@ beforeEach(async () => {
   await act(async () => fake.handlers.onStarted([], 60, 'standard', 7, undefined, { armed: true, countInMs: 3000, firstTargetAtMs: 4000 }));
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+it('stops the old page after takeover and blocks automatic starts even after reset', async () => {
+  await act(async () => fake.handlers.onSessionRevoked?.('练习已被其他页面接管'));
+  expect(session.status).toBe('idle'); expect(session.waitingForFirstInput).toBe(false);
+  expect(session.control.conflict?.message).toContain('接管');
+  await act(async () => session.reset()); fake.start.mockClear();
+  await act(async () => session.begin({ modeId: 'score', bpm: 60, profile: 'standard', countInBeats: 0, ticksPerQuarter: 960, atoms: [] }));
+  expect(fake.start).not.toHaveBeenCalled();
+  await expect(session.startFollow({ groups: [], bpm: 60, plannerAuthority: 'rust' })).rejects.toThrow('接管');
+});
 it('waits for the server clock and ignores a stale capture epoch', async () => {
   expect(session.waitingForFirstInput).toBe(true); expect(started).not.toHaveBeenCalled();
   await act(async () => fake.handlers.onClockStarted?.({ type: 'clock-started', captureEpoch: 6, originClientPerfMs: 1000, firstTargetAtMs: 4000 }));

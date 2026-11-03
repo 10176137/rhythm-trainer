@@ -27,7 +27,7 @@ import { beginNativeTake, assertTakeCommand, finalizeAndRelease } from './practi
 import { closeTakeEvidence } from './practice/take-cleanup.mjs';
 import { allocateTakeResources } from './practice/take-resources.mjs';
 import { classifyTakeEnd } from './practice/take-end.mjs';
-import { SessionOwnership } from './practice/session-ownership.mjs';
+import { SessionOwnership, SessionBusyError } from './practice/session-ownership.mjs';
 import { observeConnectionStatus } from './midi/connection-status.mjs';
 import { MidiAdmissionLedger } from './midi/admission-ledger.mjs';
 import { TakeResourceBudget } from './practice/resource-budget.mjs';
@@ -1271,6 +1271,8 @@ wss.on('error', (error) => {
 });
 
 wss.on('connection', (socket) => {
+  let controlRevoked = false;
+  const controlReplies = new Map();
   socket.on('error', (error) => {
     console.error('[engine] WebSocket 连接错误:', String((error && error.message) || error));
     try { socket.close(1009, 'invalid websocket message'); } catch { /* best effort */ }
@@ -1664,6 +1666,23 @@ wss.on('connection', (socket) => {
     ownership.releaseFollow(socket);
   }
 
+  function interruptForTakeover(sameConnection) {
+    // Block this connection before reporting completion: an old page's
+    // automatic repeat must not reclaim the slot in between devices.
+    controlRevoked = true;
+    if (!sameConnection) send({ type: 'session-revoked', message: '练习已被其他页面接管，本页面已停止自动开始。' });
+    try {
+      if (followRuntime && followContext) {
+        const result = finalizeFollowTake({ interrupted: true });
+        if (result) send({ type: 'follow-report', ...result });
+      }
+      if (native && activeTake) finishSession({ trigger: 'connection_closed' });
+    } finally {
+      releaseFollowResources();
+      releaseTimelineResources('session_taken_over');
+    }
+  }
+
   function finalizeFollowTake(options = {}) {
     if (!followRuntime || !followContext) return followFinalized;
     return finalizeAndRelease(() => buildFollowTake(options), releaseFollowResources);
@@ -1976,7 +1995,8 @@ wss.on('connection', (socket) => {
     try {
       handle(msg);
     } catch (err) {
-      send({ type: 'error', message: String((err && err.message) || err) });
+      send({ type: 'error', message: String((err && err.message) || err),
+        ...(err instanceof SessionBusyError ? { code: err.code, conflict: err.conflict } : {}) });
     }
   });
 
@@ -2013,6 +2033,10 @@ wss.on('connection', (socket) => {
       send({ type: 'error', message: '不支持的 WebSocket protocolVersion' });
       return;
     }
+    if (controlRevoked && ['start', 'follow-start'].includes(msg.type)) {
+      send({ type: 'error', code: 'SESSION_REVOKED', conflict: ownership.conflictFor(socket), message: '此页面的练习已被接管，请点击接管练习后再开始。' });
+      return;
+    }
     if (['tick', 'pause', 'resume', 'finish'].includes(msg.type)) assertTakeCommand(msg, activeTake);
     if (['follow-note', 'follow-pause', 'follow-resume', 'follow-finish', 'follow-abandon'].includes(msg.type)) {
       // Only idle finish/abandon may refer to the last frozen result. A live
@@ -2021,6 +2045,25 @@ wss.on('connection', (socket) => {
       assertTakeCommand(msg, owner ? { businessTakeId: owner.takeId } : null);
     }
     switch (msg.type) {
+      case 'session-control': {
+        if (typeof msg.requestId !== 'string' || !msg.requestId || !['status', 'takeover'].includes(msg.action)) throw new Error('无效的会话控制请求');
+        const previous = controlReplies.get(msg.requestId);
+        if (previous) { send(previous); break; }
+        let reply;
+        try {
+          if (msg.action === 'takeover') {
+            ownership.takeOver(socket, msg.expectedLeaseId);
+            controlRevoked = false;
+          }
+          reply = { type: 'session-control-result', requestId: msg.requestId, ok: true, conflict: ownership.conflictFor(socket) };
+        } catch (error) {
+          reply = { type: 'session-control-result', requestId: msg.requestId, ok: false, message: String(error?.message ?? error), conflict: ownership.conflictFor(socket) };
+        }
+        controlReplies.set(msg.requestId, reply);
+        if (controlReplies.size > 32) controlReplies.delete(controlReplies.keys().next().value);
+        send(reply);
+        break;
+      }
       case 'planner-status': {
         // The browser asks which planner authority is actually active; the
         // answer comes from this one server-side resolution.
@@ -2310,7 +2353,7 @@ wss.on('connection', (socket) => {
             inputs: [],
           };
           followFinalized = null;
-          ownership.claimFollow({ socket, takeId });
+          ownership.claimFollow({ socket, takeId, interrupt: interruptForTakeover });
           ownership.attachSink(handleNodeMidiEvent);
           // Hardware note times are mapped from the Node monotonic clock onto
           // this session origin. Simulated/browser notes carry atMs explicitly.
@@ -2829,6 +2872,7 @@ wss.on('connection', (socket) => {
             socket,
             takeId: take.takeId,
             practiceSessionId: take.practiceSessionId,
+            interrupt: interruptForTakeover,
           });
           const traceId = `trace-${take.practiceSessionId}-${take.takeId}`;
           const resources = allocateTakeResources([

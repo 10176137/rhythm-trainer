@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EngineBridge } from '../../services/engineBridge';
+import { useSessionControl } from './useSessionControl';
 import type { PlanRequestInput, PlannerStatus } from '../../services/engineBridge';
 import type { RustPlanResponse } from '../../score-engine/plan/rust-plan';
 import type { EngineNoteFeedback, DurationEvaluationPolicy, EngineAtom, EngineCaptureDiagnostics, EngineDurationReport, EngineIngestMidiPacket, EngineProfile, EngineJudgment, EngineReport, EngineScoringConfig, EngineScoreEvent, EngineSessionScoreReport, EngineScoreStatus, EngineTarget, EngineTimingAnalysis, FollowEventMessage, FollowReportMessage, FollowStartRequest, FollowStartedMessage, PersistRetryResultMessage } from '../../types/engine';
@@ -74,6 +75,7 @@ export interface BeginRequest {
 export interface UsePracticeSessionOptions {
   onJudgment?: (judgment: EngineJudgment) => void;
   onError?: (message: string) => void;
+  onControlLost?: () => void;
   onInfo?: (message: string) => void;
   /** Fired when the engine has fixed the session origin and target list. */
   onStarted?: (info: {
@@ -136,6 +138,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   const [error, setError] = useState<string | null>(null);
 
   const bridgeRef = useRef<EngineBridge | null>(null);
+  const control = useSessionControl(bridgeRef);
   const launchEpochRef = useRef(0);
   const launchPendingRef = useRef(false);
   const metronomeRef = useRef<Metronome | null>(null);
@@ -411,6 +414,17 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         followActiveRef.current = false;
         optionsRef.current.onFollowReport?.(message);
       },
+      onSessionConflict: control.block,
+      onSessionRevoked: (message) => {
+        control.block(null, message);
+        launchEpochRef.current++; launchPendingRef.current = false;
+        stopTickTimer(); metronomeRef.current?.stopAll();
+        if (followActiveRef.current) optionsRef.current.onFollowAborted?.(message);
+        followActiveRef.current = false;
+        originRef.current = null; armedRef.current = false; engineActiveRef.current = false;
+        captureEpochRef.current = null; setWaitingForFirstInput(false); setStatus('idle');
+        optionsRef.current.onControlLost?.();
+      },
       onError: (message) => {
         launchPendingRef.current = false;
         stopTickTimer();
@@ -443,6 +457,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   }, [acceptArmedClock, rescheduleMetronome, scheduleArmedCue, startTickTimer]);
 
   const begin = useCallback(async (request: BeginRequest) => {
+    if (control.blocked.current) { optionsRef.current.onError?.('请先接管练习。'); return; }
     if (active || engineActiveRef.current || followActiveRef.current || launchPendingRef.current) return;
     const launchEpoch = ++launchEpochRef.current;
     launchPendingRef.current = true;
@@ -601,6 +616,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
    * only renders the returned events and report.
    */
   const startFollow = useCallback(async (request: Omit<FollowStartRequest, 'type'>): Promise<FollowStartedMessage> => {
+    if (control.blocked.current) throw new Error('请先接管练习。');
     if (active || engineActiveRef.current || followActiveRef.current || launchPendingRef.current) throw new Error('已有进行中或正在启动的练习');
     const launchEpoch = ++launchEpochRef.current;
     launchPendingRef.current = true;
@@ -790,6 +806,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   const getCaptureEpoch = useCallback(() => captureEpochRef.current, []);
 
   return {
+    control,
     status, active, waitingForFirstInput, setMetronomeEnabled, targets, firstTargetAtMs, countInMs, judgments, noteFeedback, report, analysis, sessionId, takeId, traceId, scoringConfig, durations, captureDiagnostics, reportPersisted, reportPersistenceError,
     scoreV1, scoreStatus, scoreConfigVersion, scoreAlgorithmVersion, scoreInputNoteCount, scoreUnmappedNoteCount, pauseAdjusted,
     scoreFingerprint, hand, scoreBarCount, sourceReportId, sourceTakeId, prescriptionId, prescription,

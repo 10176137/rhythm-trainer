@@ -583,7 +583,22 @@ export interface FollowStartRequest {
   chordSpreadToleranceMs?: number;
 }
 
+export interface SessionConflict {
+  leaseId: string;
+  kind: 'timeline' | 'follow';
+  self: boolean;
+}
+export interface SessionControlResult {
+  type: 'session-control-result';
+  requestId: string;
+  ok: boolean;
+  conflict: SessionConflict | null;
+  message?: string;
+}
+
 export type EngineServerMessage =
+  | SessionControlResult
+  | { type: 'session-revoked'; message: string }
   | { type: 'clock-started'; captureEpoch: number; originClientPerfMs: number; firstTargetAtMs: number }
   | {
       type: 'started'; bpm: number; profile: EngineProfile; countInBeats: number;
@@ -633,7 +648,7 @@ export type EngineServerMessage =
   | FollowEventMessage
   | FollowReportMessage
   | PersistRetryResultMessage
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string; code?: string; conflict?: SessionConflict | null };
 
 export interface EngineStartRequest {
   type: 'start';
@@ -667,6 +682,7 @@ export interface EngineStartRequest {
 
 /** Messages accepted by the engine service. */
 export type EngineClientMessage =
+  | { type: 'session-control'; protocolVersion?: number; requestId: string; action: 'status' | 'takeover'; expectedLeaseId?: string | null }
   | EngineStartRequest
   | { type: 'hit'; seq: number; atMs: number; notes: number[] }
   | { type: 'note-on'; seq: number; atMs: number; pitch: number; velocity?: number }
