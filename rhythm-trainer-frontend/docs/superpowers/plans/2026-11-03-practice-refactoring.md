@@ -378,7 +378,7 @@ Follow 的 note、pause、resume、finish、abandon 消息新增可选业务 `ta
 
 ## 18. 实施记录：P1 行为基线、后端检查与暂停账本收敛（2026-11-03）
 
-本批按任务 A→B→C→D 执行，提交拆为三次：`test(pause)` 行为基线、`build(server)` 后端检查、`refactor(pause)` 账本收敛。未改前端交互、协议字段、Rust 评分与保存格式。
+本批按任务 A→B→C→D 执行，提交拆为四次：`test(pause)` 行为基线、`build(server)` 后端检查、`refactor(pause)` 账本收敛、`docs(practice)` 实施记录。未改前端交互、协议字段、Rust 评分与保存格式。
 
 ### 行为基线（任务 A）
 
