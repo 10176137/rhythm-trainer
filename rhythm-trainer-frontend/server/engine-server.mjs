@@ -25,6 +25,7 @@ import { buildNoteReview } from './note-review.mjs';
 import { reachedSongEnd, songCompletionAtMs } from './song-completion.mjs';
 import { beginNativeTake, assertTakeCommand, finalizeAndRelease } from './practice/take-lifecycle.mjs';
 import { closeTakeEvidence } from './practice/take-cleanup.mjs';
+import { allocateTakeResources } from './practice/take-resources.mjs';
 import { SessionOwnership } from './practice/session-ownership.mjs';
 import { observeConnectionStatus } from './midi/connection-status.mjs';
 import { MidiAdmissionLedger } from './midi/admission-ledger.mjs';
@@ -2795,6 +2796,15 @@ wss.on('connection', (socket) => {
         }
         const { take, native: nextNative } = beginNativeTake(coordinator,
           () => new addon.NativeSession(targets, QUEUE_CAPACITY, FINALIZATION_GRACE_MS));
+        // One allocation step for the Take's resources. The existing failure
+        // path seals evidence, releases the lease and detaches the sink, so
+        // rollback is not re-implemented here.
+        let startFailureHandled = false;
+        const rollbackStart = () => {
+          if (startFailureHandled) return;
+          startFailureHandled = true;
+          failActiveTake('start_failed');
+        };
         try {
           native = nextNative;
           resourceBudget.reset();
@@ -2820,47 +2830,64 @@ wss.on('connection', (socket) => {
             practiceSessionId: take.practiceSessionId,
           });
           const traceId = `trace-${take.practiceSessionId}-${take.takeId}`;
-          traceRecorder = new TakeTraceRecorder({
-            traceId,
-            practiceSessionId: take.practiceSessionId,
-            takeId: take.takeId,
-            captureEpoch: take.captureEpoch,
-            dir: TRACES_DIR,
-          });
-          takeJournal = new TakeJournal({
-            journalId: `journal-${take.practiceSessionId}-${take.takeId}`,
-            practiceSessionId: take.practiceSessionId,
-            takeId: take.takeId,
-            captureEpoch: take.captureEpoch,
-            dir: JOURNALS_DIR,
-          });
-          takeJournal.append('take_started', {
-            modeId: msg.modeId,
-            bpm,
-            profile,
-            countInBeats,
-            targetCount: targets.length,
-            captureEpoch: take.captureEpoch,
-            scoringConfig,
-            scoreFingerprint,
-            playbackPlanId,
-            plannerAuthority,
-            plannerVersion,
-            planFingerprint,
-            scoreImportStatus,
-            hand,
-            scoreBarCount,
-            sourceReportId,
-            sourceTakeId,
-            prescriptionId,
-            takeTemplateId,
-            takeTemplateName: takeTemplate?.name ?? null,
-          });
+          const resources = allocateTakeResources([
+            { key: 'trace', acquire: () => new TakeTraceRecorder({
+              traceId,
+              practiceSessionId: take.practiceSessionId,
+              takeId: take.takeId,
+              captureEpoch: take.captureEpoch,
+              dir: TRACES_DIR,
+            }) },
+            { key: 'journal', acquire: () => new TakeJournal({
+              journalId: `journal-${take.practiceSessionId}-${take.takeId}`,
+              practiceSessionId: take.practiceSessionId,
+              takeId: take.takeId,
+              captureEpoch: take.captureEpoch,
+              dir: JOURNALS_DIR,
+            }) },
+            { key: 'started', acquire: ({ journal }) => journal.append('take_started', {
+              modeId: msg.modeId,
+              bpm,
+              profile,
+              countInBeats,
+              targetCount: targets.length,
+              captureEpoch: take.captureEpoch,
+              scoringConfig,
+              scoreFingerprint,
+              playbackPlanId,
+              plannerAuthority,
+              plannerVersion,
+              planFingerprint,
+              scoreImportStatus,
+              hand,
+              scoreBarCount,
+              sourceReportId,
+              sourceTakeId,
+              prescriptionId,
+              takeTemplateId,
+              takeTemplateName: takeTemplate?.name ?? null,
+            }) },
+            { key: 'feedback', acquire: () => scoringConfig.feedback === 'live' && ['fixed-line', 'reading-rhythm'].includes(msg.modeId) && scoreEvents?.length
+              ? new LiveNoteFeedback(scoreEvents, targets, addon.scorePerformance)
+              : null },
+            { key: 'sink', acquire: () => {
+              ownership.attachSink(handleNodeMidiEvent);
+              return handleNodeMidiEvent;
+            } },
+          ], { onFailure: (partial) => {
+            traceRecorder = partial.trace ?? null;
+            takeJournal = partial.journal ?? null;
+            liveNoteFeedback = partial.feedback ?? null;
+            rollbackStart();
+          } });
+          traceRecorder = resources.trace;
+          takeJournal = resources.journal;
+          liveNoteFeedback = resources.feedback;
+          liveFeedbackErrorLogged = false;
           sessionOriginClientPerfMs = null;
           nodeEventsMapped = 0;
           nodeEventsUnmapped = 0;
           nodeEventsStale = 0;
-          ownership.attachSink(handleNodeMidiEvent);
           // Armed start: hold the scoring clock until the first key press.
           const firstScoreOnset = scoreEvents?.length ? Math.min(...scoreEvents.map(e => e.targetOnsetMs)) : null;
           const firstPitches = scoreEvents?.filter(e => e.targetOnsetMs === firstScoreOnset).map(e => e.pitch) ?? [];
@@ -2903,10 +2930,6 @@ wss.on('connection', (socket) => {
           };
           meta.assisted = scoringConfig.feedback === 'live';
           meta.autoFinishAtMs = songCompletionAtMs(meta);
-          liveNoteFeedback = scoringConfig.feedback === 'live' && ['fixed-line', 'reading-rhythm'].includes(msg.modeId) && scoreEvents?.length
-            ? new LiveNoteFeedback(scoreEvents, targets, addon.scorePerformance)
-            : null;
-          liveFeedbackErrorLogged = false;
           send({
             type: 'started', bpm, profile, countInBeats, countInUs, targets,
             armed: armOnFirstInput,
@@ -2930,7 +2953,7 @@ wss.on('connection', (socket) => {
             scoringConfig,
           });
         } catch (error) {
-          failActiveTake('start_failed');
+          rollbackStart();
           throw error;
         }
         break;

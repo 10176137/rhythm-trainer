@@ -87,8 +87,19 @@ git diff --check
 
 退出标准：单元测试覆盖冲突、断连接管、按身份释放；`selftest` 的双连接与断连场景通过；无协议或评分差异。
 
-后续（仍未开始）：
+后续：
 
-- P2.2 把 `start` 的资源分配段（native／trace／journal／sink／live feedback）收拢为一个带失败回滚的分配步骤，并用工厂注入测试失败路径。
-- P2.3 统一用户结束、自然完成、资源上限、断连的重叠边界，明确结束原因分类，不改变已持久化的历史字段。
-- Follow 的模式适配与资源编排共用本模块，不强迫 Follow 复用 timeline 评分模型。
+- P2.3 统一用户结束、自然完成、资源上限、断连的重叠边界，明确结束原因分类，不改变已持久化的历史字段（仍未开始）。
+- Follow 的模式适配与资源编排共用本模块，不强迫 Follow 复用 timeline 评分模型（仍未开始）。
+
+## 7. 实施记录：P2.2 启动资源分配收拢（2026-11-03）
+
+新增 `server/practice/take-resources.mjs` 的 `allocateTakeResources(steps, { onFailure })`：
+
+- 按声明顺序执行工厂，后一步通过上下文读取前一步的产物（`journal` 记录 `take_started`）。
+- 任一步抛错时，`onFailure` 只收到已创建的资源；原始错误始终向上抛出，回滚自身抛错不会覆盖它。
+- 模块不自行释放资源。timeline 的释放仍由既有 `failActiveTake` 完成（封存 journal/trace、摘 sink、释放租约），避免出现第二套清理路径。
+- `engine-server.mjs` 的 `start` 分支把 trace、journal、`take_started`、live feedback、sink 五项收进一次 `allocateTakeResources` 调用；失败时先回填部分资源再调用既有失败路径，外层 catch 用一次性守卫避免重复清理。
+- 行为不变：分配顺序、`started` 消息字段、`take_started` 内容、失败错误文案与清理证据均保持原样。
+
+验证：`server/practice/take-resources.test.mjs` 4 项通过（顺序、部分资源回滚、回滚失败不掩盖原始错误、无回调仅重抛）；`take-resources` + `armed-start.api` + `follow-protocol` + `take-persistence` 共 41 项通过；`npm run typecheck:server` 通过；`npm run selftest` 251 项通过；全量 1161 项中 1155 通过、5 skip、1 失败仍是既有 E5 缺真实谱环境阻塞。

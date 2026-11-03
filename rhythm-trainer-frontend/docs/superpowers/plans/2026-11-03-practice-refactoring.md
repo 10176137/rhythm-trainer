@@ -448,3 +448,9 @@ Follow 的 note、pause、resume、finish、abandon 消息新增可选业务 `ta
 - 真实 Node＋Rust 超预算用例：第 101 个包触发 `resource_limit`，记录 `events=100`、`rejectedSourceSeq=101`、`rejectedKind='raw-midi'`、`scoreStatus=DEGRADED`；随后新轮次 `reached=false`、`events=0`，可正常保存。
 - `server/practice`、`armed-start.api`、`follow-protocol`、`take-persistence` 共 66 项通过；`npm run selftest` 251 项通过；`npm run typecheck:server` 通过。
 - 仍未做：长期运行的真实内存测量、100k 事件上限下的完整评分耗时、把上限按设备/曲目调优。当前只能声明“单轮输入有界且溢出可审计”，不能声明内存占用已优化。
+
+## 20. 实施记录：P2.2 启动资源分配收拢（2026-11-03）
+
+按 `2026-11-03-p2-session-ownership.md` 的 P2.2 执行：新增 `allocateTakeResources`，把 timeline `start` 的 trace、journal、`take_started`、live feedback、sink 五项收拢为一次带失败回滚的分配；释放仍走既有 `failActiveTake`，没有新增第二套清理路径。行为、协议字段与失败文案不变。
+
+验证：新增 4 项单元测试（含工厂注入失败），相关 41 项、`selftest` 251 项、`typecheck:server`、`build` 通过；全量 1161 项中 1 项失败仍是 E5 缺 `RHYTHM_REAL_SCORE_PATH`。P2.3（结束原因边界）与 Follow 适配仍未开始。
