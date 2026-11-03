@@ -1213,7 +1213,11 @@ async function scenarioScoreChain() {
     degradedPacket(target.atMs + 8, [0x90, 60, 90]);
     degradedPacket(target.atMs + 8 + 240, [0x80, 60, 40]);
   });
-  degraded.send({ type: 'tick', nowMs: degradedStarted.targets[7].atMs + 500 });
+  // Song-end auto-finish commits the Take at the first tick past the piece
+  // boundary, so the disconnect must be observed BEFORE that tick: the whole
+  // point of this scenario is that losing the device degrades the evidence of
+  // an otherwise still-active take.
+  degraded.send({ type: 'tick', nowMs: degradedStarted.targets[3].atMs + 500 });
   degraded.send({ type: 'midi-disconnect' });
   await degraded.next('midi-status', (m) => m.connected === false);
   degraded.send({ type: 'tick', nowMs: degradedStarted.targets[7].atMs + 900 });
