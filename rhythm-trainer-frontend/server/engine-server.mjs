@@ -3172,8 +3172,9 @@ wss.on('connection', (socket) => {
           toleranceMs: DURATION_TOLERANCE_MS,
           toleranceRatio: DURATION_TOLERANCE_RATIO,
         };
-        if (pauseLedger.pauseIntervalsSourceMs.length > 0) {
-          durationOptions.pauseIntervalsSourceMs = pauseLedger.pauseIntervalsSourceMs;
+        const sourcePauses = pauseLedger.snapshot().sourceIntervals;
+        if (sourcePauses.length > 0) {
+          durationOptions.pauseIntervalsSourceMs = sourcePauses;
         }
         durations = attachDurationMeasures(
           addon.assessKeyPresses(meta.targets, keyLifecycles.observations, durationJudgments, durationOptions),
@@ -3232,7 +3233,7 @@ wss.on('connection', (socket) => {
         // Policy B: final scoring consumes the ingress admission decision. It
         // never re-derives "was this paused?" from the onset time, so a note the
         // realtime path suppressed can never reappear here.
-        const closedPauseSegments = pauseLedger.pauseSegments.filter((segment) => segment.endSession !== null);
+        const closedPauseSegments = pauseLedger.snapshot().segments.filter((segment) => segment.endSession !== null);
         const performedNotes = [];
         // One Note On may produce at most one performed-note lifecycle, even if
         // a duplicate packet slipped past the ingress guard.
@@ -3365,7 +3366,7 @@ wss.on('connection', (socket) => {
         },
         captureQuarantinedPackets: admissionCounters.captureQuarantinedPackets,
         duplicateEventIds: admissionCounters.duplicateEventIds,
-        pauseSegments: pauseLedger.pauseSegments.map((segment) => ({ ...segment })),
+        pauseSegments: pauseLedger.snapshot().segments,
       },
       connectionClosed: interrupted && endReason !== 'resource_limit',
       node: {
@@ -3480,7 +3481,7 @@ wss.on('connection', (socket) => {
       evidence: {
         traceRef: record.traceId ?? null,
         journalRef: record.journal?.journalId ?? null,
-        pauseIntervals: pauseLedger.pauseSegments.map((segment) => ({
+        pauseIntervals: pauseLedger.snapshot().segments.map((segment) => ({
           startMs: segment.startSession,
           endMs: segment.endSession ?? null,
         })),

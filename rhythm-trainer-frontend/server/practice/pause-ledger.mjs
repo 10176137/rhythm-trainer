@@ -19,6 +19,18 @@ export class PauseLedger {
   get pauseSegments() { return this.#segments.map(segment => ({ ...segment })); }
   get activePauseSegmentId() { return this.#active; }
   get lastNowMs() { return this.#now; }
+  /** One read-only snapshot for downstream evidence/report consumers. */
+  /** @returns {{ pausedAtMs: number | null, pausedSourceMs: number | null, segments: PauseSegment[], sourceIntervals: number[], activeSegmentId: string, lastNowMs: number }} */
+  snapshot() {
+    return {
+      pausedAtMs: this.#paused,
+      pausedSourceMs: this.#source,
+      segments: this.#segments.map(segment => ({ ...segment })),
+      sourceIntervals: [...this.#sourceIntervals],
+      activeSegmentId: this.#active,
+      lastNowMs: this.#now,
+    };
+  }
   reset() {
     this.#paused = null; this.#source = null; this.#sourceIntervals = [];
     this.#segments = []; this.#sequence = 0; this.#active = 'active-0'; this.#now = 0;
