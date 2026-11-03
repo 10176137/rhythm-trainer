@@ -68,8 +68,23 @@ beforeAll(async () => {
 afterAll(() => { socket?.close(); child?.kill(); });
 
 describe('armed practice through real Node MIDI admission and Rust scoring', () => {
+  /** Plays one note (on + off) through raw-midi admission and finishes the take. */
+  const playAndFinish = async (started, pitch, onsetMs, plan, holdMs = 240) => {
+    for (const [index, bytes] of [[0x90, pitch, 90], [0x80, pitch, 0]].entries()) {
+      socket.send(JSON.stringify({ type: 'raw-midi', ingest: {
+        packet: { sourceId: `boundary-${started.takeId}`, sourceSeq: index + 1, clockDomainId: 'mock-clock',
+          capturedAtMs: onsetMs + index * holdMs, rawBytes: bytes, transport: 'mock', captureEpoch: started.captureEpoch },
+        sessionTimeMs: onsetMs + index * holdMs, clockMappingId: 'boundary-test', clockUncertaintyMs: 0, clockQuality: 'good',
+      } }));
+    }
+    return request({ type: 'finish' }, 'report');
+  };
+  const eventResult = (report, plan, index) =>
+    report.scoreV1.eventResults.find(item => item.scoreEventId === plan.plan.scoreEvents[index].runtimeOccurrenceId);
+
   it('keeps final pitch/onset scoring aligned after two pauses', async () => {
     const { started, pitch, plan } = await start(3000000, undefined, { modeId: 'fixed-line', armed: false });
+    const mark = received.length;
     try {
       await request({ type: 'pause', nowMs: 100, atSourceMs: 100 }, 'paused');
       await request({ type: 'resume', nowMs: 4100, atSourceMs: 4100 }, 'resumed');
@@ -86,6 +101,87 @@ describe('armed practice through real Node MIDI admission and Rust scoring', () 
       const report = await request({ type: 'finish' }, 'report');
       const result = report.scoreV1.eventResults.find(item => item.scoreEventId === plan.plan.scoreEvents[0].runtimeOccurrenceId);
       expect(result).toMatchObject({ result: 'MATCH', onsetErrorMs: 0 });
+      // P1-A: live feedback, the final Rust report and the saved record must
+      // agree that the shift basis is the Rust cursor over not-yet-processed
+      // targets: the played note is judged live against the shifted target,
+      // the report keeps the ORIGINAL onset error (0 here), and the saved
+      // evidence carries exactly the two pause intervals that define it.
+      const liveJudgments = received.slice(mark).flatMap(m => m.type === 'judgments' ? m.items : []);
+      expect(liveJudgments.some(item => item.targetIndex === 0 && ['perfect', 'good'].includes(item.grade))).toBe(true);
+      const saved = JSON.parse(readFileSync(join(dataDir, 'takes', `${report.takeId}.json`), 'utf8'));
+      expect(saved.evidence.pauseIntervals).toEqual([
+        { startMs: 100, endMs: 4100 },
+        { startMs: 4200, endMs: 5200 },
+      ]);
+    } finally { socket.send(JSON.stringify({ type: 'finish' })); }
+  });
+  it('judges a target normally when the pause lands before its onset', async () => {
+    const { started, pitch, plan } = await start(3000000, undefined, { armed: false });
+    try {
+      await request({ type: 'pause', nowMs: 100, atSourceMs: 100 }, 'paused');
+      await request({ type: 'resume', nowMs: 1100, atSourceMs: 1100 }, 'resumed');
+      const report = await playAndFinish(started, pitch, started.targets[0].atMs + 1000, plan);
+      expect(eventResult(report, plan, 0)).toMatchObject({ result: 'MATCH', onsetErrorMs: 0 });
+    } finally { socket.send(JSON.stringify({ type: 'finish' })); }
+  });
+  it('does not lose a target when the pause lands exactly at its onset', async () => {
+    const { started, pitch, plan } = await start(3000000, undefined, { armed: false });
+    try {
+      const atMs = started.targets[0].atMs;
+      await request({ type: 'pause', nowMs: atMs, atSourceMs: atMs }, 'paused');
+      await request({ type: 'resume', nowMs: atMs + 1000, atSourceMs: atMs + 1000 }, 'resumed');
+      const report = await playAndFinish(started, pitch, atMs + 1000, plan);
+      expect(eventResult(report, plan, 0)).toMatchObject({ result: 'MATCH', onsetErrorMs: 0 });
+    } finally { socket.send(JSON.stringify({ type: 'finish' })); }
+  });
+  it('keeps an already-judged target unshifted when the pause lands inside its tolerance window', async () => {
+    const { started, pitch, plan } = await start(3000000, undefined, { armed: false });
+    try {
+      // Target 0 is played 40 ms late (inside the standard tolerance). The
+      // pause opens after its onset but before the tolerance window closes:
+      // the judged target keeps its original error while the NEXT target
+      // shifts by the pause.
+      const t0 = started.targets[0].atMs;
+      for (const [index, bytes] of [[0x90, pitch, 90], [0x80, pitch, 0]].entries()) {
+        socket.send(JSON.stringify({ type: 'raw-midi', ingest: {
+          packet: { sourceId: `tolerance-${started.takeId}`, sourceSeq: index + 1, clockDomainId: 'mock-clock',
+            capturedAtMs: t0 + 40 + index * 10, rawBytes: bytes, transport: 'mock', captureEpoch: started.captureEpoch },
+          sessionTimeMs: t0 + 40 + index * 10, clockMappingId: 'boundary-test', clockUncertaintyMs: 0, clockQuality: 'good',
+        } }));
+      }
+      await request({ type: 'pause', nowMs: t0 + 55, atSourceMs: t0 + 55 }, 'paused');
+      await request({ type: 'resume', nowMs: t0 + 1055, atSourceMs: t0 + 1055 }, 'resumed');
+      const pitch1 = plan.plan.scoreEvents[1].pitch;
+      const report = await playAndFinish(started, pitch1, started.targets[1].atMs + 1000, plan);
+      expect(eventResult(report, plan, 0)).toMatchObject({ result: 'MATCH', onsetErrorMs: 40 });
+      expect(eventResult(report, plan, 1)).toMatchObject({ result: 'MATCH', onsetErrorMs: 0 });
+    } finally { socket.send(JSON.stringify({ type: 'finish' })); }
+  });
+  it('excludes a pause span from key-down time when a held note crosses the boundary', async () => {
+    const { started, pitch, plan } = await start(3000000, undefined, { armed: false });
+    try {
+      const t0 = started.targets[0].atMs;
+      socket.send(JSON.stringify({ type: 'raw-midi', ingest: {
+        packet: { sourceId: `held-${started.takeId}`, sourceSeq: 1, clockDomainId: 'mock-clock',
+          capturedAtMs: t0, rawBytes: [0x90, pitch, 90], transport: 'mock', captureEpoch: started.captureEpoch },
+        sessionTimeMs: t0, clockMappingId: 'boundary-test', clockUncertaintyMs: 0, clockQuality: 'good',
+      } }));
+      await request({ type: 'pause', nowMs: t0 + 400, atSourceMs: t0 + 400 }, 'paused');
+      await request({ type: 'resume', nowMs: t0 + 1400, atSourceMs: t0 + 1400 }, 'resumed');
+      socket.send(JSON.stringify({ type: 'raw-midi', ingest: {
+        packet: { sourceId: `held-${started.takeId}`, sourceSeq: 2, clockDomainId: 'mock-clock',
+          capturedAtMs: t0 + 1700, rawBytes: [0x80, pitch, 40], transport: 'mock', captureEpoch: started.captureEpoch },
+        sessionTimeMs: t0 + 1700, clockMappingId: 'boundary-test', clockUncertaintyMs: 0, clockQuality: 'good',
+      } }));
+      const report = await request({ type: 'finish' }, 'report');
+      // The hold spans non-performance time (400 ms before the pause + 300 ms
+      // after resume, against a 750 ms quarter), so Rust must not grade the
+      // key-down strictly: it reports `crossed_pause_boundary` / `unknown`
+      // rather than guessing from a pause-inflated 1700 ms hold.
+      const assessment = report.durations.assessments.find(item => item.pitch === pitch);
+      expect(assessment).toMatchObject({ result: 'unknown', quality: 'crossed_pause_boundary' });
+      // The onset itself is still judged normally against the shifted target.
+      expect(eventResult(report, plan, 0)).toMatchObject({ result: 'MATCH' });
     } finally { socket.send(JSON.stringify({ type: 'finish' })); }
   });
   it('acknowledges duplicate pause/resume without shifting the take twice', async () => {
