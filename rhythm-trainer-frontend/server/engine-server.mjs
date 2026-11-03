@@ -25,6 +25,7 @@ import { buildNoteReview } from './note-review.mjs';
 import { reachedSongEnd, songCompletionAtMs } from './song-completion.mjs';
 import { beginNativeTake, assertTakeCommand, finalizeAndRelease } from './practice/take-lifecycle.mjs';
 import { closeTakeEvidence } from './practice/take-cleanup.mjs';
+import { SessionOwnership } from './practice/session-ownership.mjs';
 import { observeConnectionStatus } from './midi/connection-status.mjs';
 import { MidiAdmissionLedger } from './midi/admission-ledger.mjs';
 import { TakeResourceBudget } from './practice/resource-budget.mjs';
@@ -1214,20 +1215,18 @@ function broadcast(payload) {
   }
 }
 
-// The active Take that should receive Node MIDI input. Set by the connection
-// that owns the current session; events from a stale adapter generation are
-// filtered inside the sink as well as by the Rust CaptureEpoch router.
-let activeNodeSink = null;
 // A device/browser can view shared history and Take templates at any time, but
 // only one connection may own the live Take. Without this lease two browsers
 // could each create a NativeSession while the global Node MIDI sink silently
-// follows whichever started last.
-let activeTakeLease = null;
-let activeFollowLease = null;
+// follows whichever started last. SessionOwnership is the only writer of the
+// lease and sink fields; connection-local runtime stays in the handler below.
+const ownership = new SessionOwnership();
 
 midiAdapter.onEvent((event) => {
   broadcast({ type: 'midi-event', event });
-  if (activeNodeSink) activeNodeSink(event);
+  // Events from a stale adapter generation are filtered inside the sink as
+  // well as by the Rust CaptureEpoch router.
+  ownership.dispatch(event);
 });
 midiAdapter.onStatus((status) => {
   broadcast({ type: 'midi-status', ...status });
@@ -1398,7 +1397,7 @@ wss.on('connection', (socket) => {
   // Detach resources before touching the filesystem. A failing writer cannot
   // keep the MIDI lease occupied or be overwritten by the next practice.
   function releaseTimelineResources(reason) {
-    if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
+    ownership.detachSink(handleNodeMidiEvent);
     const writers = { journal: takeJournal, trace: traceRecorder };
     takeJournal = null;
     traceRecorder = null;
@@ -1411,7 +1410,7 @@ wss.on('connection', (socket) => {
     rawNotes = [];
     admissionLedger.reset();
     scoringSeqToSourceSeq.clear();
-    if (activeTakeLease?.socket === socket) activeTakeLease = null;
+    ownership.releaseTimeline(socket);
     for (const { stage, error } of closeTakeEvidence(writers, reason, pauseLedger.lastNowMs)) {
       console.error(`[engine] ${stage} 清理失败:`, String(error?.message ?? error));
     }
@@ -1421,7 +1420,7 @@ wss.on('connection', (socket) => {
   // coordinator keeps the trace and reason; the connection can start a new
   // Take instead of silently replacing a live one.
   const failActiveTake = (reason) => {
-    if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
+    ownership.detachSink(handleNodeMidiEvent);
     if (coordinator && activeTake) {
       try {
         coordinator.fail(activeTake.takeId, pauseLedger.lastNowMs, reason);
@@ -1644,8 +1643,8 @@ wss.on('connection', (socket) => {
   function releaseFollowResources() {
     followRuntime = null;
     followContext = null;
-    if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
-    if (activeFollowLease?.socket === socket) activeFollowLease = null;
+    ownership.detachSink(handleNodeMidiEvent);
+    ownership.releaseFollow(socket);
   }
 
   function finalizeFollowTake(options = {}) {
@@ -1965,7 +1964,7 @@ wss.on('connection', (socket) => {
   });
 
   socket.on('close', () => {
-    if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
+    ownership.detachSink(handleNodeMidiEvent);
     if (followRuntime && followContext) {
       try {
         finalizeFollowTake({ interrupted: true });
@@ -2178,11 +2177,12 @@ wss.on('connection', (socket) => {
         break;
       }
       case 'follow-start': {
-        if (activeFollowLease && activeFollowLease.socket !== socket) {
-          throw new Error('另一个设备有进行中的跟手练习，请先结束那一轮或等待其断连保存');
-        }
-        if (activeTakeLease || native || activeTake) throw new Error('已有进行中的练习轮次，请先结束当前轮次');
-        if (followRuntime) throw new Error('已有进行中的跟手练习');
+        ownership.assertFollowStartAllowed({
+          socket,
+          hasNative: !!native,
+          hasActiveTake: !!activeTake,
+          hasFollowRuntime: !!followRuntime,
+        });
         const planRequestId = typeof msg.planRequestId === 'string' && msg.planRequestId.trim() !== ''
           ? msg.planRequestId
           : null;
@@ -2293,8 +2293,8 @@ wss.on('connection', (socket) => {
             inputs: [],
           };
           followFinalized = null;
-          activeFollowLease = { socket, takeId };
-          activeNodeSink = handleNodeMidiEvent;
+          ownership.claimFollow({ socket, takeId });
+          ownership.attachSink(handleNodeMidiEvent);
           // Hardware note times are mapped from the Node monotonic clock onto
           // this session origin. Simulated/browser notes carry atMs explicitly.
           sessionOriginClientPerfMs = Number.isFinite(Number(msg.basePerfMs))
@@ -2433,19 +2433,11 @@ wss.on('connection', (socket) => {
         // One active Take at a time across all browsers. Replacing a live Take
         // silently would discard its trace/report and make MIDI ownership
         // ambiguous; reject instead of repairing.
-        if (activeTakeLease && activeTakeLease.socket !== socket) {
-          if (activeTakeLease.socket.readyState === 1) {
-            throw new Error('另一个设备有进行中的练习，请先结束那一轮或等待其断连保存');
-          }
-          activeTakeLease = null;
-        }
-        if (followRuntime || (activeFollowLease && activeFollowLease.socket === socket)) {
-          throw new Error('已有进行中的跟手练习，请先结束当前轮次');
-        }
-        if (activeFollowLease && activeFollowLease.socket !== socket) {
-          throw new Error('另一个设备有进行中的跟手练习，请先结束那一轮或等待其断连保存');
-        }
-        if (native) throw new Error('已有进行中的练习轮次，请先结束当前轮次');
+        ownership.assertTimelineStartAllowed({
+          socket,
+          hasNative: !!native,
+          hasFollowRuntime: !!followRuntime,
+        });
         rawNotes = [];
         ingests = [];
         scoringSeq = 0;
@@ -2806,11 +2798,11 @@ wss.on('connection', (socket) => {
             planFingerprint,
             planRequestId,
           };
-          activeTakeLease = {
+          ownership.claimTimeline({
             socket,
             takeId: take.takeId,
             practiceSessionId: take.practiceSessionId,
-          };
+          });
           const traceId = `trace-${take.practiceSessionId}-${take.takeId}`;
           traceRecorder = new TakeTraceRecorder({
             traceId,
@@ -2852,7 +2844,7 @@ wss.on('connection', (socket) => {
           nodeEventsMapped = 0;
           nodeEventsUnmapped = 0;
           nodeEventsStale = 0;
-          activeNodeSink = handleNodeMidiEvent;
+          ownership.attachSink(handleNodeMidiEvent);
           // Armed start: hold the scoring clock until the first key press.
           const firstScoreOnset = scoreEvents?.length ? Math.min(...scoreEvents.map(e => e.targetOnsetMs)) : null;
           const firstPitches = scoreEvents?.filter(e => e.targetOnsetMs === firstScoreOnset).map(e => e.pitch) ?? [];
@@ -3052,7 +3044,7 @@ wss.on('connection', (socket) => {
     try { if (!resourceLimitReached) midiAdapter.flush(); } catch { /* adapter diagnostics already emitted */ }
     // A flush can itself reach the budget and finish this Take.
     if (!native) return;
-    if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
+    ownership.detachSink(handleNodeMidiEvent);
     sendJudgments([], Infinity);
     const finishedTake = activeTake;
     if (interrupted) {
@@ -3579,7 +3571,7 @@ wss.on('connection', (socket) => {
       retryComparison: record.retryComparison,
       coreAlgorithmVersion: addon.scoringAlgorithmVersion(),
     });
-    if (activeTakeLease?.socket === socket) activeTakeLease = null;
+    ownership.releaseTimeline(socket);
   }
 });
 
