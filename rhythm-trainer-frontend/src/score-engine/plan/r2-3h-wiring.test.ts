@@ -37,7 +37,7 @@ describe('R2-3h: single plan authority in the rust branch', () => {
     expect(gatedCalls.length).toBe(2); // follow + timeline
     expect(appSource).toContain("authorityRoute.route === 'rust' && launchScope");
     expect(appSource).toContain("timelineAuthorityRoute.route === 'rust' && scoreDoc.engine && launchScope");
-    expect(appSource).toContain('session.getPlannerStatus()');
+    expect(appSource).toContain('probePlannerAuthority(session.getPlannerStatus)');
     // No client-side env/switch reading — the browser never owns a second switch.
     expect(appSource.includes('RHYTHM_PLANNER')).toBe(false);
   });

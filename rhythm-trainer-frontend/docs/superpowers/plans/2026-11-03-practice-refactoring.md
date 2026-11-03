@@ -458,3 +458,15 @@ Follow 的 note、pause、resume、finish、abandon 消息新增可选业务 `ta
 ## 21. 实施记录：P2.3 结束原因分类（2026-11-03）
 
 新增 `classifyTakeEnd` 统一用户结束、自然曲终、资源上限、断连四类触发器，`engine-server` 四条路径只传 trigger；历史落盘值保持不变（`completed` / `resource_limit` / `interrupted`）。未知 trigger 抛错，不猜默认。验证：3 项分类单测、相关 40 项、`selftest` 252 项、`typecheck:server`、`build` 通过；全量 1164 项中 1 项失败仍是 E5 缺真实谱。Follow 的模式适配仍未开始。
+
+## 22. 实施记录：P5.1 前端规划器权威缓存（2026-11-03）
+
+本批继续前端职责拆分，不代表 P5 全部完成。新增 `usePlannerAuthority`，唯一持有规划器权威缓存、探测代次、响应排序和订阅版本。App 只注入 `session.getPlannerStatus` 并连接断线通知；调用方只读缓存，不能直接改写其值。失败或未知值保持 null，不默认为浏览器规划器；断线、卸载和后续探测使旧响应失效。失败和失效也发布版本更新，避免依赖只读 ref 的界面保留过期就绪状态。
+
+测试覆盖 StrictMode、并发探测乱序、断线后的过期结果、非法权威、请求失败、卸载后响应和卸载后请求。既有 Rust 启动结构约束继续验证服务端权威入口，未更改计时、评分、固定线手动起奏或读谱待弹策略。
+
+同时修正 `AppShell.chrome.test.tsx` 的依赖冷加载问题：将 ScoreViewer 与固定谱例导入移到收集阶段，不在受 5 秒测试超时约束的测试体内首次加载 UI 依赖，不增加全局超时。
+
+仍待后续拆分：App 的计划启动编排、Follow 事件投影与结束处理；后端 Follow 模式资源适配器。按现有模块边界逐批处理，不将本批缓存拆分称为完整会话控制器。
+
+本批验证：`npm test` 1161 项通过、4 项按既有配置跳过；`npm run test:teaching` 32 项通过；`npm run typecheck:server` 与 `npm run build` 通过。使用独立 mock 数据目录、真实 Node/Rust 服务和生产构建页面验证待弹、正确首音起奏、暂停、继续、结束保存。未向真实用户记录写入测试 Take，未重启生产后端。

@@ -2,6 +2,7 @@ import { AppButton } from './components/ui/controls';
 import { waitsForFirstInput, automaticallyStartsPerformance } from './features/practice/sessionStartPolicy';
 import { scoreSelection, scoreSelectionBars } from './features/practice/scoreSelection';
 import { useRoundReturn } from './features/practice/useRoundReturn';
+import { usePlannerAuthority } from './features/practice/usePlannerAuthority';
 import { useElapsedClock } from './features/practice/useElapsedClock';
 import { useScoreAudition } from './features/playback/useScoreAudition';
 import { useScorePick } from './features/practice/useScorePick';
@@ -267,11 +268,8 @@ export default function App() {
   /** R2-3h: the server's planner authority, fetched once (null = unknown).
    * The browser keeps NO second switch; rust is only used when the server
    * says so, and an unknown state never silently plans with TS. */
-  const plannerAuthorityRef = useRef<'rts' | 'rust' | null>(null);
-  const [plannerAuthorityVersion, setPlannerAuthorityVersion] = useState(0);
-  /** R2-3h-R1: monotonic probe generation — a slower/older status answer can
-   * never overwrite a newer one, and a disconnect invalidates the cache. */
-  const plannerAuthoritySeqRef = useRef(0);
+  const { authorityRef: plannerAuthorityRef, version: plannerAuthorityVersion,
+    refresh: probePlannerAuthority, invalidate: invalidatePlannerAuthority } = usePlannerAuthority();
   /** R2-3h-R1: launch generation — a newer launch supersedes any in-flight
    * plan request from an older one. */
   const launchSeqRef = useRef(0);
@@ -607,10 +605,7 @@ export default function App() {
       clearFollowSession();
     },
     // R2-3h-R1: the authority cache belonged to the connection that closed.
-    onEngineDisconnected: () => {
-      plannerAuthoritySeqRef.current += 1; // invalidate in-flight probes
-      plannerAuthorityRef.current = null;
-    },
+    onEngineDisconnected: invalidatePlannerAuthority,
   });
 
   useEffect(() => {
@@ -982,35 +977,9 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, [session.status]);
 
-  // R2-3h: resolve the server-side planner authority once per connection. A
-  // failure leaves it unknown (never assumed 'rts' — an unknown state at
-  // launch time re-probes and refuses to plan with TS if it cannot confirm).
-  // R2-3h-R1: answers carry a generation so an older (slower) probe can never
-  // overwrite a newer result, and a socket disconnect invalidates the cache.
-  const refreshPlannerAuthority = async (): Promise<'rts' | 'rust' | null> => {
-    const seq = ++plannerAuthoritySeqRef.current;
-    try {
-      const status = await session.getPlannerStatus();
-      if (seq !== plannerAuthoritySeqRef.current) return plannerAuthorityRef.current;
-      const authority = status.authority;
-      if (authority !== 'rts' && authority !== 'rust') {
-        plannerAuthorityRef.current = null;
-        return null;
-      }
-      plannerAuthorityRef.current = authority;
-      setPlannerAuthorityVersion(n => n + 1);
-      return authority;
-    } catch {
-      if (seq !== plannerAuthoritySeqRef.current) return plannerAuthorityRef.current;
-      plannerAuthorityRef.current = null;
-      return null;
-    }
-  };
-
-  useEffect(() => {
-    void refreshPlannerAuthority();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.getPlannerStatus]);
+  const refreshPlannerAuthority = useCallback(() => probePlannerAuthority(session.getPlannerStatus),
+    [probePlannerAuthority, session.getPlannerStatus]);
+  useEffect(() => { void refreshPlannerAuthority(); }, [refreshPlannerAuthority]);
 
   // A finished report is persisted by the engine service — refresh history/profile data.
   useEffect(() => {

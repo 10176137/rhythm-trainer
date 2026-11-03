@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import AppShell from './AppShell';
+import ScoreViewer from './ScoreViewer';
+import { practiceScoreDocument as doc } from '../features/score/practiceScore';
 vi.mock('./OsmdScoreView', () => ({ default: () => null, ENGRAVED_SCORE_WIDTH: 1000 }));
 let host: HTMLDivElement; let root: ReturnType<typeof createRoot>;
 beforeEach(() => { vi.useFakeTimers(); vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true); host = document.createElement('div'); document.body.append(host); root = createRoot(host); });
@@ -37,8 +39,6 @@ it('shows controls on pause, permits hiding again and reveals for keyboard navig
 });
 
 it('does not suspend score following when tapping blank space to reveal controls', async () => {
-  const { default: ScoreViewer } = await import('./ScoreViewer');
-  const { practiceScoreDocument: doc } = await import('../features/score/practiceScore');
   await act(async () => root.render(<AppShell immersive sidebar={null} topbar={null}><ScoreViewer score={doc.notes} meta={doc.meta}
     sourceXml={doc.sourceXml} engine={doc.engine} activeNoteIds={[]} hand="both" tempo={72} strictAssessment={false}
     showNoteNames={false} showPositionHints={false} lastInputMidi={null} /></AppShell>));
