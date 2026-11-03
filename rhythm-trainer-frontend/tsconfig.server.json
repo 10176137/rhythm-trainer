@@ -1,0 +1,26 @@
+{
+  // Backend structural check for the modules this refactor owns. It is not a
+  // full server typecheck: legacy .mjs files stay unchecked until they are
+  // migrated. TS modules added under server/ are checked in full.
+  // @types/node resolves transitively through the direct @types/ws devDependency.
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": [
+    "server/practice/**/*.mjs",
+    "server/midi/admission-ledger.mjs",
+    "server/midi/connection-status.mjs",
+    "server/song-completion.mjs"
+  ]
+}

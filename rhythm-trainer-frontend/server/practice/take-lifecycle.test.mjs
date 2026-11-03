@@ -1,8 +1,11 @@
 import { expect, it } from 'vitest';
 import { beginNativeTake, assertTakeCommand, finalizeAndRelease } from './take-lifecycle.mjs';
 it('aborts a begun coordinator take if native session startup fails', () => {
+  /** @type {any[][]} */
   const aborted = [];
-  const coordinator = { beginTake: () => ({ takeId: 7 }), abort: (...args) => aborted.push(args) };
+  /** @param {...any} args */
+  const abort = (...args) => aborted.push(args);
+  const coordinator = { beginTake: () => ({ takeId: 7 }), abort };
   expect(() => beginNativeTake(coordinator, () => ({ start() { throw Error('native start'); } }))).toThrow('native start');
   expect(aborted).toEqual([[7, 0, 'start_failed']]);
 });

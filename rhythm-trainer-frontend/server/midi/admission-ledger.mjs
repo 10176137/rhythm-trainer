@@ -1,9 +1,16 @@
 /** One ingress decision per MIDI event. Rust still owns decoding and scoring.
  * Replay reads the first frozen decision; it never reclassifies old input. */
+
+/** @typedef {{ kind?: string, eventId?: string | null, noteNumber?: number | null, complete?: boolean }} DecodedEvent */
+/** @typedef {{ sourceId: string | number, sourceSeq: number | string, capturedAtMs: number, clockDomainId?: string | null, handlerAtMs?: number | null }} RawPacket */
+/** @typedef {{ startSession: number, endSession: number | null }} AdmissionPauseSegment */
+/** @typedef {{ paused: boolean, pauseSegments: AdmissionPauseSegment[], scoringStartMs: number, segmentId: string }} AdmissionContext */
+/** @typedef {'count-in' | 'paused' | 'clock' | 'duplicate' | 'out-of-order'} SuppressionReason */
+
 export class MidiAdmissionLedger {
-  #byEventId = new Map();
-  #sequence = 0;
-  #lastOnset = null;
+  /** @type {Map<string, any>} */ #byEventId = new Map();
+  /** @type {number} */ #sequence = 0;
+  /** @type {number | null} */ #lastOnset = null;
   counters = {
     packets: 0,
     noteOns: 0,
@@ -17,7 +24,9 @@ export class MidiAdmissionLedger {
     captureQuarantinedPackets: 0,
     duplicateEventIds: 0,
   };
+  /** @param {string} eventId */
   get(eventId) { return this.#byEventId.get(eventId); }
+  /** @param {number} atMs */
   commitOnset(atMs) { this.#lastOnset = atMs; }
   reset() {
     this.#byEventId.clear();
@@ -39,6 +48,12 @@ export class MidiAdmissionLedger {
     this.counters.suppressedNoteOns['out-of-order'] = 0;
     this.#lastOnset = null;
   }
+  /**
+   * @param {DecodedEvent | null | undefined} decoded
+   * @param {RawPacket} packet
+   * @param {number | null} atMs
+   * @param {AdmissionContext} context
+   */
   record(decoded, packet, atMs, context) {
     const isNoteOn = decoded?.kind === 'note-on';
     const eventId = decoded?.eventId ?? null;
@@ -46,6 +61,7 @@ export class MidiAdmissionLedger {
     // duplicate and can never produce a second hit or a second lifecycle.
     const existing = eventId ? this.#byEventId.get(eventId) : undefined;
     const complete = decoded?.complete !== false;
+    /** @type {SuppressionReason | null} */
     let reason = null;
     if (existing) {
       reason = 'duplicate';
