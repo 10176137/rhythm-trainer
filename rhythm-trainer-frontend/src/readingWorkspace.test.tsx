@@ -17,14 +17,16 @@ describe('reading and performance workspace isolation', () => {
     selection.mode = mode;
     const html = renderToStaticMarkup(<App />);
     expect(html).toContain('识谱练习');
-    expect(html).not.toContain('class="workspace-grid"');
+    expect(html).not.toContain('class="performance-toolbar"');
+    expect(html).not.toContain('class="performance-main"');
     expect(html).not.toContain('class="session-strip"');
   });
 
-  it('keeps the performance controls for score practice', () => {
+  it('keeps the performance toolbar and full-width score for score practice', () => {
     selection.mode = 'score';
     const html = renderToStaticMarkup(<App />);
-    expect(html).toContain('class="workspace-grid"');
-    expect(html).toContain('class="session-strip"');
+    expect(html).toContain('class="performance-toolbar"');
+    expect(html).toContain('class="performance-main"');
+    expect(html).not.toContain('class="session-strip"');
   });
 });

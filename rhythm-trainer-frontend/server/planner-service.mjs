@@ -14,6 +14,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { applyPlanNoteRange } from './plan-note-range.mjs';
 
 const require = createRequire(import.meta.url);
 // Native-ESM-safe module directory resolution (review finding 1):
@@ -333,7 +334,7 @@ export function createPlannerService({ authority = resolvePlannerAuthority(), na
      * verifier runs; it is never guessed or defaulted (review F1).
      * Throws coded PlannerGateError rejections — there is deliberately NO
      * TS fallback here. */
-    buildRustPlan({ document, report, config, mode }) {
+    buildRustPlan({ document, report, config, mode, noteRange }) {
       if (authority !== 'rust') {
         throw new PlannerGateError('PLANNER_PATH_DISABLED',
           `planner authority is '${authority}'; the rust planning path is not enabled`);
@@ -361,7 +362,7 @@ export function createPlannerService({ authority = resolvePlannerAuthority(), na
       }
       const trustedConfig = { ...config, plannerVersion: RUST_PLANNER_VERSION };
 
-      const documentJson = JSON.stringify(document);
+      const documentJson = JSON.stringify(applyPlanNoteRange(document, noteRange, trustedConfig));
       const reportJson = JSON.stringify(report);
       const configJson = JSON.stringify(trustedConfig);
 

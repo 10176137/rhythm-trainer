@@ -18,7 +18,8 @@ describe('training architecture boundary', () => {
     }
   });
   it('keeps authoritative generators on Node and independent of React/display modules', () => {
-    const serverFiles = [path.join(ROOT, 'server', 'training-service.mjs'), ...files(path.join(ROOT, 'server', 'training')).filter((file) => file.endsWith('.mjs'))];
+    const serverFiles = ['training-service.mjs', 'session-clock.mjs', 'plan-note-range.mjs'].map((file) => path.join(ROOT, 'server', file));
+    serverFiles.push(...files(path.join(ROOT, 'server', 'training')).filter((file) => file.endsWith('.mjs')));
     for (const file of serverFiles) for (const specifier of imports(file)) {
       expect(specifier === 'react' || specifier === 'opensheetmusicdisplay').toBe(false);
       if (specifier.startsWith('.')) expect(path.resolve(path.dirname(file), specifier).startsWith(path.join(ROOT, 'src') + path.sep)).toBe(false);

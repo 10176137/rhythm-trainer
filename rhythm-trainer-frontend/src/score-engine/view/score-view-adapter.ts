@@ -6,7 +6,7 @@ import type {
 import type { ScoreDocument, ScoreEvent } from '../domain/types';
 import { beatToString, subtractBeat } from '../domain/rational';
 
-export type HighlightState = 'current' | 'hit' | 'system' | 'user' | 'error' | 'muted' | 'default';
+export type HighlightState = 'current' | 'hit' | 'system' | 'user' | 'error' | 'muted' | 'marker' | 'default';
 
 /**
  * Mapping version. Bump this whenever the anchor key or conflict policy changes;
@@ -74,6 +74,7 @@ const COLORS: Record<HighlightState, string> = {
   user: '#1d9b72',
   error: '#c34b58',
   muted: '#b9bdc5',
+  marker: '#d97706',
   default: '#20252d',
 };
 
@@ -163,13 +164,104 @@ interface OsmdCandidate {
 export class OsmdScoreViewAdapter implements ScoreViewAdapter {
   private osmd: OpenSheetMusicDisplay;
   private mapping: MappingResult | null = null;
+  /** Lazily built reverse index: rendered SVG group → score event id. Dies
+   * with the SVG (a new engraving gets a new adapter), so it can never go
+   * stale against the live DOM. */
+  private tapIndex: Map<Element, string> | null = null;
 
   constructor(osmd: OpenSheetMusicDisplay) {
     this.osmd = osmd;
   }
 
+  private ensureTapIndex(): Map<Element, string> {
+    if (this.tapIndex) return this.tapIndex;
+    const index = new Map<Element, string>();
+    if (this.mapping) {
+      for (const [eventId, ref] of this.mapping.byEventId) {
+        const graphical = ref.graphicalNotes[0] as unknown as { getSVGGElement?: () => SVGGElement } | undefined;
+        const element = graphical?.getSVGGElement?.();
+        if (element && !index.has(element)) index.set(element, eventId);
+      }
+    }
+    this.tapIndex = index;
+    return index;
+  }
+
+  /** Mapped tappable groups (diagnostics + hit testing). */
+  getTapTargetCount(): number {
+    return this.ensureTapIndex().size;
+  }
+
+  /** Viewport rect of a mapped note's SVG group; null when unmapped/detached. */
+  getNoteRect(eventId: string | null | undefined): DOMRect | null {
+    if (!eventId || !this.mapping) return null;
+    const ref = this.mapping.byEventId.get(eventId);
+    if (!ref) return null;
+    const graphical = ref.graphicalNotes[0] as unknown as { getSVGGElement?: () => SVGGElement } | undefined;
+    const element = graphical?.getSVGGElement?.();
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return null;
+    return rect;
+  }
+
+  /** Walks up from the tapped node to the nearest mapped note group. */
+  resolveTapEventId(target: EventTarget | null): string | null {
+    const index = this.ensureTapIndex();
+    let current = target instanceof Element ? target : null;
+    while (current) {
+      const hit = index.get(current);
+      if (hit) return hit;
+      current = current.parentElement;
+    }
+    return null;
+  }
+
+  /** Diagnostics for a failed tap resolve: why did the walk miss? */
+  debugTapMiss(target: EventTarget | null): Record<string, unknown> {
+    const index = this.ensureTapIndex();
+    const targetIsElement = target instanceof Element;
+    let walkLevels = 0;
+    let current = target instanceof Element ? target : null;
+    let sampleKeyTag: string | null = null;
+    let sampleKeyConnected: boolean | null = null;
+    for (const [element] of index) {
+      sampleKeyTag = element.tagName;
+      sampleKeyConnected = element.isConnected;
+      break;
+    }
+    while (current) { walkLevels += 1; current = current.parentElement; }
+    return { indexSize: index.size, targetIsElement, walkLevels, sampleKeyTag, sampleKeyConnected,
+      targetTag: target instanceof Element ? target.tagName : typeof target };
+  }
+
+  /** Nearest mapped note group by rect distance for loose taps (fingers). */
+  nearestTapEventId(clientX: number, clientY: number, tolerancePx: number): { eventId: string; distance: number } | null {
+    const index = this.ensureTapIndex();
+    let best: { eventId: string; distance: number } | null = null;
+    let zeroRects = 0;
+    for (const [element, eventId] of index) {
+      const rect = element.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) { zeroRects += 1; continue; }
+      const dx = Math.max(rect.left - clientX, 0, clientX - rect.right);
+      const dy = Math.max(rect.top - clientY, 0, clientY - rect.bottom);
+      const distance = Math.hypot(dx, dy);
+      if (distance <= tolerancePx && (best === null || distance < best.distance)) {
+        best = { eventId, distance };
+      }
+    }
+    if (typeof window !== 'undefined') {
+      (window as unknown as { __tapNearest?: unknown }).__tapNearest = {
+        indexSize: index.size, zeroRects, tolerancePx, clientX, clientY,
+        best: best ? { distance: Math.round(best.distance) } : null,
+      };
+    }
+    return best;
+  }
+
   buildMapping(score: ScoreDocument, renderer: OpenSheetMusicDisplay = this.osmd): MappingResult {
     this.osmd = renderer;
+    this.tapIndex = null;
     const warnings: string[] = [];
     const sourceMeasures = renderer.Sheet?.SourceMeasures ?? [];
     if (!sourceMeasures.length) warnings.push('OSMD 尚未生成 SourceMeasures；请先 load/render');

@@ -41,7 +41,7 @@ export interface FollowReport {
 }
 
 export interface FollowNoteResult {
-  kind: 'correct' | 'partial' | 'wrong' | 'duplicate' | 'complete' | 'extra';
+  kind: 'correct' | 'partial' | 'wrong' | 'duplicate' | 'complete' | 'extra' | 'waiting';
   targetId: string | null;
   advanced: boolean;
   expectedPitches: readonly string[];

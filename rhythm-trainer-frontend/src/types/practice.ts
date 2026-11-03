@@ -9,6 +9,16 @@ export type DurationEvaluationPolicy = 'strict-keydown' | 'disabled';
 /** Fixed-clock test vs self-paced score-following (cursor waits for input). */
 export type ScoreAdvanceMode = 'timeline' | 'follow';
 
+/** Anchor for a note-level loop boundary: the exact score event the user
+ * picked on the rendered score, with its measure and onset for consumers that
+ * never see the engine document (persistence, display). */
+export interface LoopBoundaryNote {
+  eventId: string;
+  measureOrdinal: number;
+  /** Rational beat serialized as "n/d" (absolute quarter beats). */
+  onsetBeat: string;
+}
+
 export interface PracticeConfig {
   modeId: PracticeModeId;
   tempo: number;
@@ -17,8 +27,16 @@ export interface PracticeConfig {
   feedback: FeedbackMode;
   /** When true, the selected bar range is the practice range. */
   loopEnabled: boolean;
+  /** User enabled a fresh loop and must pick a new range before starting. */
+  loopSelectionPending?: boolean;
   loopStartBar: number;
   loopEndBar: number;
+  /** Note-level loop boundaries (tapped on the score). Always kept in sync
+   * with loopStartBar/loopEndBar (which hold the boundary notes' measures);
+   * null/absent = bar-level range only. */
+  loopStartNote?: LoopBoundaryNote | null;
+  loopEndNote?: LoopBoundaryNote | null;
+  playbackStartNote?: LoopBoundaryNote | null;
   profile: JudgmentProfile;
   durationPolicy: DurationEvaluationPolicy;
   advanceMode: ScoreAdvanceMode;

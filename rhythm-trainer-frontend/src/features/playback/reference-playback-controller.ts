@@ -168,6 +168,7 @@ export class ReferencePlaybackController {
     try {
       await this.audio.prepare();
     } catch (error) {
+      if (this.runId !== runId || this.status !== 'PREPARING') return;
       this.fail(
         'reference_playback.instrument_load_failed',
         `音频引擎/音色准备失败：${error instanceof Error ? error.message : String(error)}`,

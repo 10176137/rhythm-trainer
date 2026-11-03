@@ -20,6 +20,10 @@ import { applyLanCors } from './lan-origin.mjs';
 // synchronization is a separate subsystem and is intentionally not faked here.
 
 import { LiveNoteFeedback } from './live-note-feedback.mjs';
+import { loadPerformanceReplay } from './performance-replay.mjs';
+import { buildNoteReview } from './note-review.mjs';
+import { reachedSongEnd, songCompletionAtMs } from './song-completion.mjs';
+import { ArmedTakeClock } from './session-clock.mjs';
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -460,7 +464,7 @@ function takeSummary(take) {
 function listAllTakes() {
   const takes = listTakeFiles()
     .map((file) => readTakeRecord(file.slice(0, -5)))
-    .filter(Boolean);
+    .filter(take => take && take.lifecycle?.standbyOnly !== true);
   const legacy = listSessionFiles()
     .map((file) => readSessionRecord(file.slice(0, -5)))
     .filter(Boolean)
@@ -999,6 +1003,31 @@ async function handleApi(req, res, urlPath, query) {
     sendJson(res, 200, { schemaVersion: SCHEMA_VERSION, items });
     return;
   }
+  const listeningMatch = urlPath.match(/^\/api\/takes\/([A-Za-z0-9_-]+)\/performance-replay$/);
+  if (listeningMatch) {
+    const take = readTakeById(listeningMatch[1]);
+    if (!take) { sendJson(res, 404, { error: 'take not found' }); return; }
+    const result = loadPerformanceReplay(path.join(DATA_DIR, 'performance-replays'), take, () => {
+      if (take.evidence?.performedMidi?.length) return { events: take.evidence.performedMidi, manifest: { complete: !take.evidence.performedMidiTruncated } };
+      const id = take.evidence?.traceRef ?? take.assessment?.timelineReport?.traceId;
+      return id ? readTrace(TRACES_DIR, id) : null;
+    });
+    sendJson(res, 200, result); return;
+  }
+  const reviewMatch = urlPath.match(/^\/api\/takes\/([A-Za-z0-9_-]+)\/note-review$/);
+  if (reviewMatch) {
+    const take = readTakeById(reviewMatch[1]);
+    if (!take) { sendJson(res, 404, { error: 'take not found' }); return; }
+    const fingerprint = take.score?.scoreFingerprint;
+    let xml = null;
+    if (typeof fingerprint === 'string' && /^[a-f0-9]{64}$/.test(fingerprint)) {
+      // Read the immutable snapshot, never today's replacement in the library.
+      const file = path.join(SCORE_SNAPSHOTS_DIR, `${fingerprint}.musicxml`);
+      if (fs.existsSync(file)) xml = fs.readFileSync(file, 'utf8');
+    }
+    sendJson(res, 200, buildNoteReview(take, xml));
+    return;
+  }
   const takeMatch = urlPath.match(/^\/api\/takes\/([A-Za-z0-9_-]+)$/);
   if (takeMatch) {
     const take = readTakeById(takeMatch[1]);
@@ -1135,26 +1164,33 @@ const server = http.createServer((req, res) => {
     res.writeHead(403).end('forbidden');
     return;
   }
-  fs.readFile(candidate, (err, buf) => {
-    if (err) {
-      // SPA fallback: unknown non-asset paths go to index.html when it exists.
-      if (!relative.startsWith('/assets/')) {
-        fs.readFile(path.join(distDir, 'index.html'), (err2, index) => {
-          if (err2) {
-            res.writeHead(503, { 'content-type': 'text/plain; charset=utf-8' });
-            res.end('前端构建产物不存在。开发模式请运行:npm run dev(另开终端 npm run server)。');
-            return;
-          }
-          res.writeHead(200, { 'content-type': MIME['.html'] }).end(index);
-        });
+    fs.readFile(candidate, (err, buf) => {
+      if (err) {
+        // SPA fallback: unknown non-asset paths go to index.html when it exists.
+        if (!relative.startsWith('/assets/')) {
+          fs.readFile(path.join(distDir, 'index.html'), (err2, index) => {
+            if (err2) {
+              res.writeHead(503, { 'content-type': 'text/plain; charset=utf-8' });
+              res.end('前端构建产物不存在。开发模式请运行:npm run dev(另开终端 npm run server)。');
+              return;
+            }
+            // index.html must always revalidate: Safari heuristically caches it
+            // otherwise and keeps serving a stale bundle after every rebuild.
+            res.writeHead(200, { 'content-type': MIME['.html'], 'cache-control': 'no-cache' }).end(index);
+          });
+          return;
+        }
+        res.writeHead(404).end('not found');
         return;
       }
-      res.writeHead(404).end('not found');
-      return;
-    }
-    res.writeHead(200, { 'content-type': MIME[path.extname(candidate)] || 'application/octet-stream' });
-    res.end(buf);
-  });
+      // Hashed asset filenames are immutable; everything else (index.html)
+      // must revalidate so a rebuild reaches clients on a plain reload.
+      const cacheControl = relative.startsWith('/assets/')
+        ? 'public, max-age=31536000, immutable'
+        : 'no-cache';
+      res.writeHead(200, { 'content-type': MIME[path.extname(candidate)] || 'application/octet-stream', 'cache-control': cacheControl });
+      res.end(buf);
+    });
 });
 
 // A full score's start message carries one scoreEvent per note. A 1,600-note
@@ -1321,6 +1357,16 @@ wss.on('connection', (socket) => {
   // original transport seq. A future Take-model contract should carry both.
   const scoringSeqToSourceSeq = new Map();
   let liveNoteFeedback = null;
+  // Armed start: the take exists but its clock starts on the FIRST key press.
+  // until then ticks are ignored and node events are not scored.
+  let armedClock = null;
+  let armedOriginSent = false;
+  function publishArmedClock() {
+    const origin = armedClock?.clientOrigin(clockOffsetServerMinusClientMs);
+    if (armedOriginSent || !activeTake || !Number.isFinite(origin)) return;
+    armedOriginSent = true;
+    send({ type: 'clock-started', captureEpoch: activeTake.captureEpoch, originClientPerfMs: origin, firstTargetAtMs: armedClock.firstTargetAtMs });
+  }
   let liveFeedbackErrorLogged = false;
 
   const send = (payload) => {
@@ -1377,7 +1423,7 @@ wss.on('connection', (socket) => {
     if (!native || !meta) return;
     if (!ingest || !ingest.packet) throw new Error('raw-midi 缺少 ingest.packet');
     const packet = ingest.packet;
-    const atMs = ingest.sessionTimeMs == null ? null : Number(ingest.sessionTimeMs);
+    let atMs = ingest.sessionTimeMs == null ? null : Number(ingest.sessionTimeMs);
     if (atMs !== null && !Number.isFinite(atMs)) throw new Error('raw-midi 时间非法');
     const packetEpoch = packet.captureEpoch;
     if (packetEpoch != null) {
@@ -1393,6 +1439,17 @@ wss.on('connection', (socket) => {
       if (!routed.accepted || routed.takeId !== activeTake.takeId) {
         admissionCounters.captureQuarantinedPackets += 1;
         return;
+      }
+    }
+    if (armedClock) {
+      const mapped = armedClock.map(packet, { offsetServerMinusClientMs: clockOffsetServerMinusClientMs, paused: pausedAtMs !== null });
+      if (!mapped) return;
+      atMs = mapped.atMs;
+      ingest = { ...ingest, sessionTimeMs: atMs, clockMappingId: 'armed-capture-clock', clockUncertaintyMs: packet.transport === 'node-midi' ? 0 : clockUncertaintyMs,
+        clockQuality: packet.transport === 'node-midi' ? 'good' : clockQuality };
+      if (mapped.started) {
+        publishArmedClock();
+        takeJournal?.append('first_input_clock_started', { atSessionMs: atMs, capturedAtMs: packet.capturedAtMs });
       }
     }
     const decodedList = addon.decodeMidiPackets([ingest]);
@@ -1687,6 +1744,7 @@ wss.on('connection', (socket) => {
         finishedAtIso: new Date().toISOString(),
         endReason,
         modeId: context.modeId,
+        standbyOnly: context.waitingForFirstCorrect === true,
       },
       context: {
         practiceConfigSnapshot: context.configSnapshot,
@@ -1703,6 +1761,9 @@ wss.on('connection', (socket) => {
         // The normalized target schedule used for grading. The plan itself is
         // not persisted, so this is the authoritative basis for replay.
         followGroups: context.plan.groups,
+        performedMidi: context.performedMidi ?? [],
+        performedMidiTruncated: context.performedMidiTruncated === true,
+        followSourceNotes: context.plan.sourceNotes ?? [],
         followBpm: context.plan.bpm,
         followTimingToleranceMs: context.timingToleranceMs,
         followChordSpreadToleranceMs: context.chordSpreadToleranceMs,
@@ -1747,6 +1808,10 @@ wss.on('connection', (socket) => {
         takeSnapshot: null,
       },
     };
+    if (!takeRecord.lifecycle.standbyOnly && context.performedMidi?.length) {
+      try { loadPerformanceReplay(path.join(DATA_DIR, 'performance-replays'), takeRecord, () => ({ events: context.performedMidi, manifest: { complete: !context.performedMidiTruncated } })); }
+      catch (error) { console.warn('[replay] 本地重放保存失败:', error.message); }
+    }
     const finalized = takeFinalization.finalize(takeRecord);
     followFinalized = {
       takeId: context.takeId,
@@ -1768,6 +1833,16 @@ wss.on('connection', (socket) => {
     if (!followRuntime || !followContext) {
       send({ type: 'error', message: '没有进行中的跟手练习' });
       return null;
+    }
+    if (followContext.waitingForFirstCorrect) {
+      const first = followContext.plan.groups[0];
+      if (!first?.pitches.some(p => p.midiNote === midiNote)) {
+        const result = { kind: 'waiting', targetId: first?.groupId ?? null, advanced: false,
+          expectedPitches: first?.pitches.map(p => p.spelling) ?? [], remainingPitches: first?.pitches.map(p => p.spelling) ?? [] };
+        send({ type: 'follow-event', takeId: followContext.takeId, note: midiNote, atMs, result, progress: followRuntime.progress() });
+        return result;
+      }
+      followContext.waitingForFirstCorrect = false;
     }
     let result;
     try {
@@ -1813,7 +1888,6 @@ wss.on('connection', (socket) => {
       const command = status & 0xf0;
       const midiNote = bytes[1] ?? 0;
       const velocity = bytes[2] ?? 0;
-      if (command !== 0x90 || velocity === 0) return; // Follow advances on Note On only
       const mapped = mapNodeEventToSession({
         capturedAtMonotonicMs: event.capturedAtMonotonicMs,
         offsetServerMinusClientMs: clockOffsetServerMinusClientMs,
@@ -1823,13 +1897,41 @@ wss.on('connection', (socket) => {
         send({ type: 'error', message: 'MIDI 时钟尚未就绪，跟手输入未处理' });
         return;
       }
-      handleFollowNote(midiNote, mapped.atSessionMs);
+      if (followContext.waitingForFirstCorrect && !(command === 0x90 && velocity > 0 && followContext.plan.groups[0]?.pitches.some(p => p.midiNote === midiNote))) return;
+      followContext.performedMidi ??= [];
+      if (followContext.performedMidi.length < 100000) followContext.performedMidi.push({ sessionTimeMs: mapped.atSessionMs, rawBytes: bytes, sourceId: event.sourceId ?? 'node-midi' });
+      else followContext.performedMidiTruncated = true;
+      if (command === 0x90 && velocity > 0) handleFollowNote(midiNote, mapped.atSessionMs);
       return;
     }
     if (!native || !meta || !activeTake) return;
     const adapterStatus = midiAdapter.getStatus();
     if (event.connectionGeneration !== adapterStatus.generation) {
       nodeEventsStale += 1;
+      return;
+    }
+    // Armed mapping shares the same admission/decoder/lifecycle path as raw
+    // browser input. Once started, releases and pedal messages are retained.
+    if (armedClock) {
+      nodeEventsMapped += 1;
+      try {
+        ingestRawPacket({
+          packet: {
+            sourceId: event.sourceId,
+            sourceSeq: event.sourceSeq,
+            clockDomainId: "node-midi-monotonic",
+            capturedAtMs: event.capturedAtMonotonicMs,
+            handlerAtMs: event.capturedAtMonotonicMs,
+            rawBytes: event.rawData,
+            transport: "node-midi",
+            captureEpoch: activeTake.captureEpoch,
+          },
+          clockQuality: "good",
+        });
+      } catch (error) {
+        console.error("[engine] armed ingest failed:", String((error && error.message) || error));
+        send({ type: "error", message: String((error && error.message) || error) });
+      }
       return;
     }
     const mapped = mapNodeEventToSession({
@@ -1985,6 +2087,7 @@ wss.on('connection', (socket) => {
             report: msg.report,
             config: msg.config,
             mode: msg.mode,
+            noteRange: msg.noteRange,
           });
           const occurrenceById = new Map(
             response.plan.occurrences.map((occurrence) => [occurrence.occurrenceId, occurrence]),
@@ -2009,6 +2112,11 @@ wss.on('connection', (socket) => {
             ? Number(msg.config.bpm.numerator) / Number(msg.config.bpm.denominator)
             : null;
           issuedPlans.set(requestId, {
+            sourceNotes: response.plan.groups.flatMap((group, index) => group.occurrenceIds.map(id => {
+              const note = occurrenceById.get(id);
+              return { targetId: response.plan.runtimeIds.groupIds[index], eventId: note?.scoreEventId ?? null,
+                pitch: note?.pitch?.midiNote ?? null, spelling: note?.pitch?.spelling ?? null };
+            })),
             mode: msg.mode,
             authority: response.plannerAuthority,
             plannerVersion: response.plannerVersion,
@@ -2067,12 +2175,13 @@ wss.on('connection', (socket) => {
           clockUncertaintyMs = selected.uncertaintyMs;
           clockQuality = selected.quality;
           send({ type: 'clock-status', ...selected });
+          if (armedClock && !armedClock.waiting) publishArmedClock();
         }
         break;
       }
       case 'session-origin': {
         const origin = Number(msg.clientPerfMs);
-        if (Number.isFinite(origin)) sessionOriginClientPerfMs = origin;
+        if (!armedClock && Number.isFinite(origin)) sessionOriginClientPerfMs = origin;
         break;
       }
       case 'midi-refresh': {
@@ -2141,6 +2250,7 @@ wss.on('connection', (socket) => {
           const groups = normalized.groups;
           plan = {
             groups,
+            sourceNotes: issued.sourceNotes,
             groupNormalization: followGroupNormalizationEvidence(normalized),
             bpm: issued.bpm,
             scoreFingerprint: issued.scoreFingerprint,
@@ -2213,6 +2323,7 @@ wss.on('connection', (socket) => {
         const runtimeId = `follow-${randomUUID()}`;
         followRuntime = runtime;
         followContext = {
+          waitingForFirstCorrect: configSnapshot?.modeId === 'score',
           takeId,
           runtimeId,
           plan,
@@ -2388,6 +2499,7 @@ wss.on('connection', (socket) => {
         if (!Number.isFinite(bpm) || bpm < 20 || bpm > 300) throw new Error('BPM 需在 20–300 之间');
         const countInBeats = msg.countInBeats == null ? 4 : Number(msg.countInBeats);
         if (!Number.isFinite(countInBeats) || countInBeats < 0) throw new Error('countInBeats 必须是非负有限数');
+        const armOnFirstInput = msg.armOnFirstInput === true;
         let countInUs = null;
         if (msg.countInUs !== undefined && msg.countInUs !== null) {
           const value = Number(msg.countInUs);
@@ -2782,6 +2894,11 @@ wss.on('connection', (socket) => {
         nodeEventsUnmapped = 0;
         nodeEventsStale = 0;
         activeNodeSink = handleNodeMidiEvent;
+        // Armed start: hold the scoring clock until the first key press.
+        const firstScoreOnset = scoreEvents?.length ? Math.min(...scoreEvents.map(e => e.targetOnsetMs)) : null;
+        const firstPitches = scoreEvents?.filter(e => e.targetOnsetMs === firstScoreOnset).map(e => e.pitch) ?? [];
+        armedClock = armOnFirstInput ? new ArmedTakeClock(targets[0]?.atMs ?? 0, firstPitches) : null;
+        armedOriginSent = false;
         takeHealth.value = midiAdapter.getStatus().inputHealth === 'healthy' ? 'healthy' : 'unknown';
         serverTakeHealth.value = takeHealth.value;
         try { coordinator.setInputHealth(take.takeId, takeHealth.value); } catch { /* keep adapter health in report */ }
@@ -2818,12 +2935,14 @@ wss.on('connection', (socket) => {
           takeTemplateUpdatedAtIso: takeTemplate?.updatedAtIso ?? null,
         };
         meta.assisted = scoringConfig.feedback === 'live';
+        meta.autoFinishAtMs = songCompletionAtMs(meta);
         liveNoteFeedback = scoringConfig.feedback === 'live' && ['fixed-line', 'reading-rhythm'].includes(msg.modeId) && scoreEvents?.length
           ? new LiveNoteFeedback(scoreEvents, targets, addon.scorePerformance)
           : null;
         liveFeedbackErrorLogged = false;
         send({
           type: 'started', bpm, profile, countInBeats, countInUs, targets,
+          armed: armOnFirstInput,
           countInMs,
           firstTargetAtMs: targets.length > 0 ? targets[0].atMs : null,
           scoreFingerprint,
@@ -2893,15 +3012,21 @@ wss.on('connection', (socket) => {
         // stops its tick timer on pause, but a late/queued tick must also be
         // harmless instead of closing the report with an engine error.
         if (pausedAtMs !== null) return;
-        const nowMs = Number(msg.nowMs);
+        // Armed: the clock only starts once the player presses the first key.
+        if (armedClock?.waiting) return;
+        const nowMs = armedClock ? armedClock.now(performance.now()) : Number(msg.nowMs);
         if (!Number.isFinite(nowMs)) return;
         lastNowMs = nowMs;
         sendJudgments(native.advance(nowMs), nowMs);
+        if (reachedSongEnd(meta?.autoFinishAtMs, nowMs, pauseSegments)) {
+          takeJournal?.append('song_end_reached', { atSessionMs: nowMs, plannedEndMs: meta.autoFinishAtMs });
+          finishSession();
+        }
         break;
       }
       case 'pause': {
         if (!native) return;
-        const nowMs = Number(msg.nowMs);
+        const nowMs = armedClock ? armedClock.now(performance.now()) : Number(msg.nowMs);
         if (!Number.isFinite(nowMs)) throw new Error('pause 时间非法');
         if (coordinator && activeTake) coordinator.pause(activeTake.takeId, nowMs);
         const judgments = native.pause(nowMs);
@@ -2910,7 +3035,7 @@ wss.on('connection', (socket) => {
         const pauseSegment = { segmentId: `pause-${pauseSegmentSeq}`, startSession: nowMs, endSession: null };
         pauseSegments.push(pauseSegment);
         activePauseSegmentId = pauseSegment.segmentId;
-        const pauseSourceMs = Number(msg.atSourceMs);
+        const pauseSourceMs = armedClock?.transport === 'node-midi' ? performance.now() : Number(msg.atSourceMs);
         pausedSourceMs = Number.isFinite(pauseSourceMs) ? pauseSourceMs : null;
         lastNowMs = nowMs;
         takeJournal?.append('pause_boundary', {
@@ -2924,7 +3049,7 @@ wss.on('connection', (socket) => {
       }
       case 'resume': {
         if (!native) return;
-        const nowMs = Number(msg.nowMs);
+        const nowMs = armedClock ? armedClock.now(performance.now()) : Number(msg.nowMs);
         if (!Number.isFinite(nowMs)) throw new Error('resume 时间非法');
         if (coordinator && activeTake) coordinator.resume(activeTake.takeId, nowMs);
         native.resume(nowMs);
@@ -2934,7 +3059,7 @@ wss.on('connection', (socket) => {
         if (openSegment) openSegment.endSession = nowMs;
         pauseSegmentSeq += 1;
         activePauseSegmentId = `active-${pauseSegmentSeq}`;
-        const resumeSourceMs = Number(msg.atSourceMs);
+        const resumeSourceMs = armedClock?.transport === 'node-midi' ? performance.now() : Number(msg.atSourceMs);
         if (pausedSourceMs !== null && Number.isFinite(resumeSourceMs) && resumeSourceMs >= pausedSourceMs) {
           pauseIntervalsSourceMs.push(pausedSourceMs, resumeSourceMs);
         }
@@ -3381,6 +3506,7 @@ wss.on('connection', (socket) => {
         finishedAtIso: record.finishedAtIso,
         endReason: record.endReason,
         modeId: record.modeId,
+        standbyOnly: armedClock?.waiting === true,
       },
       context: {
         practiceConfigSnapshot: meta?.configSnapshot ?? null,
@@ -3427,7 +3553,11 @@ wss.on('connection', (socket) => {
       trustworthy: !!report.trustworthy && healthClean,
       targetCount: report.targetCount, assisted: record.assisted, transferTest: false, delayedRetest: false,
     } };
-    const applyMasteryEvidence = () => profileCache.recover([takeRecord]);
+    const applyMasteryEvidence = () => { if (!takeRecord.lifecycle.standbyOnly) profileCache.recover([takeRecord]); };
+    if (!takeRecord.lifecycle.standbyOnly && record.traceId) {
+      try { loadPerformanceReplay(path.join(DATA_DIR, 'performance-replays'), takeRecord, () => readTrace(TRACES_DIR, record.traceId)); }
+      catch (error) { console.warn('[replay] 本地重放保存失败:', error.message); }
+    }
     const finalized = takeFinalization.finalize(takeRecord, { onPersisted: applyMasteryEvidence });
     const recordPersisted = finalized.persisted;
     const persistenceStatus = finalized.persistenceStatus;

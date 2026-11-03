@@ -3,7 +3,9 @@
 // report; Follow Takes render the server's Follow report and are never
 // dressed up as fixed-clock strict scores.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import NoteReviewPanel from './NoteReviewPanel';
+import PerformanceReplayPanel from './PerformanceReplayPanel';
 import ReportPanel from './ReportPanel';
 import HistoryFilters from './HistoryFilters';
 import { EMPTY_HISTORY_FILTER, HISTORY_SEARCH_LIMIT, filterPracticeHistory } from '../features/practice/historyFilter';
@@ -44,6 +46,8 @@ export default function HistoryView({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TakeRecordDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const detailRequest = useRef(0);
+  useEffect(() => () => { detailRequest.current += 1; }, []);
 
   const load = useCallback(() => {
     setError(null);
@@ -55,6 +59,7 @@ export default function HistoryView({
   useEffect(() => { load(); }, [load, refreshKey]);
 
   const toggle = async (takeId: string) => {
+    const request = ++detailRequest.current;
     if (expandedId === takeId) {
       setExpandedId(null);
       setDetail(null);
@@ -64,11 +69,12 @@ export default function HistoryView({
     setDetail(null);
     setDetailLoading(true);
     try {
-      setDetail(await practiceRepository.getTake(takeId));
+      const loaded = await practiceRepository.getTake(takeId);
+      if (request === detailRequest.current) setDetail(loaded);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (request === detailRequest.current) setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setDetailLoading(false);
+      if (request === detailRequest.current) setDetailLoading(false);
     }
   };
 
@@ -142,6 +148,9 @@ export default function HistoryView({
                   {detailLoading && <p className="history-empty">载入报告中…</p>}
                   {!detailLoading && detail && (
                     <>
+                      <NoteReviewPanel key={detail.takeId} takeId={detail.takeId} />
+                      <PerformanceReplayPanel key={`replay-${detail.takeId}`} takeId={detail.takeId} />
+                      <details><summary>查看汇总与原始报告</summary>
                       <p className="history-take-link">
                         Take {detail.takeId} · {detail.lifecycle.modeId} · {detail.lifecycle.endReason === 'interrupted' ? '中断' : '完成'}
                         {detail.legacy?.sessionId ? ` · 旧记录 ${detail.legacy.sessionId}` : ''}
@@ -194,6 +203,7 @@ export default function HistoryView({
                       {!followReport && !timeline?.report && (
                         <p className="history-empty">该 Take 没有可展示的报告。</p>
                       )}
+                      </details>
                     </>
                   )}
                 </div>

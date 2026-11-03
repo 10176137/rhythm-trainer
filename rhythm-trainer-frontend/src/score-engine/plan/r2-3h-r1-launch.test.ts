@@ -376,4 +376,23 @@ describe('R2-3h-R1 F2: a stale plan never starts', () => {
     expect(planContextKey({ ...base, countInUs: 2_000_000 })).not.toBe(key);
     expect(planContextKey({ ...base, ticksPerQuarter: 480 })).not.toBe(key);
   });
+
+  it('note-level loop boundaries are part of the currency key', () => {
+    const base = {
+      hand: 'both',
+      tempo: 80,
+      modeId: 'score',
+      loopActive: true,
+      loopStartBar: 2,
+      loopEndBar: 5,
+      range: { startMeasureOrdinal: 2, endMeasureOrdinal: 5 },
+      handMapping: MAPPING,
+    };
+    const key = planContextKey(base);
+    expect(planContextKey({ ...base, loopStartNote: { eventId: 'a' }, loopEndNote: { eventId: 'b' } })).not.toBe(key);
+    expect(planContextKey({ ...base, loopStartNote: { eventId: 'a' }, loopEndNote: { eventId: 'c' } }))
+      .not.toBe(planContextKey({ ...base, loopStartNote: { eventId: 'a' }, loopEndNote: { eventId: 'b' } }));
+    // Bar-level configs without note refs stay one stable key.
+    expect(planContextKey(base)).toBe(key);
+  });
 });

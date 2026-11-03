@@ -111,3 +111,29 @@ export function buildBeatClicks(
   }
   return clicks;
 }
+
+/**
+ * Lead-in grid for an ARMED take. Armed practice has no performance clock
+ * until the first key, so there is no plan beat grid to place clicks on; the
+ * player still needs the tempo from the moment they press 开始. This runs a
+ * steady bar at the practice tempo and is stopped/replaced by the plan grid on
+ * the server's first-key clock notification (acceptArmedClock).
+ */
+export function buildArmedCueClicks(
+  quarterMs: number,
+  beatsPerBar = 4,
+  beats = 64,
+): MetronomeClick[] {
+  const clicks: MetronomeClick[] = [];
+  if (!(quarterMs > 0)) return clicks;
+  const barBeats = Math.max(1, Math.round(beatsPerBar));
+  for (let beat = 0; beat < Math.max(1, Math.floor(beats)); beat += 1) {
+    const isBarHead = beat % barBeats === 0;
+    clicks.push({
+      atMs: beat * quarterMs,
+      frequency: isBarHead ? 880 : 550,
+      gain: isBarHead ? 0.2 : 0.12,
+    });
+  }
+  return clicks;
+}

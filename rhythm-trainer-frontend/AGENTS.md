@@ -11,3 +11,16 @@
 # 验证
 
 涉及业务规则或接口时增加后端及接口测试，保持前端/后端边界测试通过。运行相关测试，再运行 `npm test`、`npm run test:teaching` 和 `npm run build`；谱面改动另检查 `/osmd-measure-grid-contract.html`。
+
+# 模块设计与增量重构
+
+- 开发前先说明功能所属模块、唯一状态所有者、接口输入输出和依赖方向；遇到现有模块先扩展，不在页面中复制一份逻辑。
+- `App.tsx` 是现有功能的过渡组装层。新增界面放到 `components/`，新增会话生命周期放到 `features/practice/`；不再向 App 追加出题、计划裁剪、评分、诊断或独立计时规则。
+- 演奏、专项训练、节奏识谱必须复用 `PracticeSessionControls`；页面选择是否显示配置，不能漏掉暂停、继续、结束、重试等生命周期入口。
+- 演奏配置工具栏由 `PerformanceToolbar` 展示；专项结果由 `TrainingRoundPanel` 展示。组件通过 props 接收状态和命令，不再缓存同一配置或复制评分数据。
+- 首键计时由 `server/session-clock.mjs` 决定。React 只接受后端的 `clock-started` 通知；踏板、松键或消息到达时间不能启动评分时钟。
+- 音符选段由 `server/plan-note-range.mjs` 校验和处理。前端只发送原始语义文档及 A/B 音符 ID；选段后的延音关系、指纹及计划都由后端与 Rust 校验。
+- 文件变长时按职责拆分，不按任意行数切文件。避免一个组件同时负责渲染、网络、状态机和业务计算；保留现有行为，分步迁移并为跨模式场景补测试。
+- 新功能验收要覆盖实际成功、失败、取消、断连、重复请求及相关练习模式。单元测试通过不能代替真实协议链和页面操作验证。
+
+设计示例与可直接交给 AI 的任务模板见 `docs/development-architecture.md`。

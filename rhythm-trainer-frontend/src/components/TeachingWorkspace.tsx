@@ -480,8 +480,6 @@ function TeachingScorePane({ score, range, heading }: { score: ScoreContext; ran
             followSignal={0}
             systemNoteIds={[]}
             userNoteIds={[]}
-            loopCoveredMeasures={Array.from({ length: score.barCount }, (_, index) => index + 1)
-              .filter((measure) => measure < range.startMeasure || measure > range.endMeasure)}
             colorSystemNotes={false}
             scrollRef={scrollRef}
             onSelectEvent={() => {}}

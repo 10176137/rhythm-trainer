@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import KeyboardReference from './KeyboardReference';
 import OsmdScoreView, { ENGRAVED_SCORE_WIDTH } from './OsmdScoreView';
 import type { ScoreMeta, ScoreNote } from '../core/sampleScore';
-import { getStaffPlacement, midiToPitchName } from '../features/score/staffMapping';
-import { beatPositionLabel, durationLabel } from '../features/score/scoreLayout';
-import { playPreviewTone } from '../features/score/previewTone';
 import { countdownWholeSeconds } from '../features/practice/countdown';
-import type { HandSelection, PracticeModeId } from '../types/practice';
+import type { HandSelection } from '../types/practice';
 import type { ScoreDocument as EngineScoreDocument } from '../score-engine/domain/types';
 
 interface Props {
   focus?: boolean;
+  /** Fit every engraved system to the pane width (no horizontal scrolling). */
+  fitToWidth?: boolean;
   score: ScoreNote[];
   meta: ScoreMeta;
   warnings?: string[];
@@ -19,12 +17,18 @@ interface Props {
   /** Note ids in the engine's current target group (chords share one target). */
   activeNoteIds: string[];
   hand: HandSelection;
-  modeId: PracticeModeId;
   /** Notes currently in scope (hand/loop filtered by the workspace). */
   notes?: ScoreNote[];
-  /** Loop range; measures outside it get a translucent green cover. */
-  loopStartBar?: number;
-  loopEndBar?: number;
+  /** The committed boundary notes; band edges clip to their exact positions. */
+  loopRangeNotes?: { start: { eventId: string }; end: { eventId: string } } | null;
+  loopEnabled?: boolean;
+  /** Commits a dragged loop boundary (A=start, B=end) snapped to a note. */
+  onLoopDragCommit?: (which: 'start' | 'end', eventId: string) => void;
+  /** Taps on the score adjust the loop range (no on-screen instruction). */
+  loopPickArmed?: boolean;
+  onLoopPick?: (eventId: string) => void;
+  onSelectNote?: (eventId: string) => void;
+  onInteractionStart?: () => void;
   showNoteNames: boolean;
   showPositionHints: boolean;
   /** Last MIDI note-on/off received from the device or virtual keyboard. */
@@ -50,31 +54,23 @@ interface Props {
   firstNoteCountdownMs?: number | null;
 }
 
-function SpeakerIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z" fill="currentColor" />
-      <path d="M15.2 8.2c1.3 1.5 1.3 6.1 0 7.6M17.8 5.6c2.7 2.9 2.7 9.9 0 12.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
+
 
 export default function ScoreViewer({
   focus = false,
+  fitToWidth = false,
   score,
   meta,
   warnings = [],
-  tempo,
-  strictAssessment,
   activeNoteIds,
   hand,
-  modeId,
-  notes,
-  loopStartBar,
-  loopEndBar,
-  showNoteNames,
-  showPositionHints,
-  lastInputMidi,
+  loopRangeNotes = null,
+  loopEnabled = false,
+  onLoopDragCommit,
+  loopPickArmed = false,
+  onLoopPick,
+  onSelectNote,
+  onInteractionStart,
   sourceXml,
   engine,
   followPulse = 0,
@@ -88,19 +84,10 @@ export default function ScoreViewer({
   firstNoteCountdownMs = null,
 }: Props) {
   const firstNoteCountdownSeconds = countdownWholeSeconds(firstNoteCountdownMs);
-  const scopedNotes = notes ?? score.filter((note) => hand === 'both' || note.hand === hand);
-  const scopedIds = useMemo(() => new Set(scopedNotes.map((note) => note.id)), [scopedNotes]);
   const mutedNoteIds = useMemo(
-    () => score.filter((note) => !scopedIds.has(note.id)).map((note) => note.id),
-    [score, scopedIds],
+    () => loopEnabled || loopRangeNotes || loopPickArmed ? [] : score.filter((note) => hand !== 'both' && note.hand !== hand).map((note) => note.id),
+    [score, hand, loopEnabled, loopRangeNotes, loopPickArmed],
   );
-  const loopCoveredMeasures = useMemo(() => {
-    if (modeId !== 'loop' || !Number.isInteger(loopStartBar) || !Number.isInteger(loopEndBar)) return [];
-    const maxMeasure = Math.max(meta.barCount, ...score.map((note) => note.bar));
-    return Array.from({ length: maxMeasure }, (_, index) => index + 1)
-      .filter((measure) => measure < loopStartBar! || measure > loopEndBar!);
-  }, [modeId, loopStartBar, loopEndBar, meta.barCount, score]);
-  const [pickedId, setPickedId] = useState<string | null>(null);
   const [manualAtPulse, setManualAtPulse] = useState<number | null>(null);
   const browsing = manualAtPulse !== null && manualAtPulse === followPulse;
   const [followRequest, setFollowRequest] = useState(0);
@@ -108,27 +95,14 @@ export default function ScoreViewer({
   const [horizontalScroll, setHorizontalScroll] = useState({ max: 0, value: 0 });
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const canEngrave = Boolean(sourceXml && engine);
-  const selectedNote = pickedId ? score.find((note) => note.id === pickedId) ?? null : null;
-  const selectedPlacement = selectedNote
-    ? getStaffPlacement(selectedNote.staff, selectedNote.step, selectedNote.alter, selectedNote.octave)
-    : null;
-  const selectedInScope = selectedNote ? scopedIds.has(selectedNote.id) : false;
-  const midiMatched = selectedNote !== null && lastInputMidi !== null && selectedNote.midiNote === lastInputMidi;
-  const lastInputName = lastInputMidi !== null ? midiToPitchName(lastInputMidi) : null;
-  const previewNote = score.find((note) => activeNoteIds.includes(note.id)) ?? selectedNote ?? score[0];
-  const previewMidi = previewNote?.midiNote ?? null;
   const activeBar = useMemo(() => {
     const bars = activeNoteIds
       .map((id) => score.find((note) => note.id === id)?.bar)
       .filter((bar): bar is number => typeof bar === 'number');
     return bars.length ? Math.min(...bars) : null;
   }, [activeNoteIds, score]);
-  const handLabel = hand === 'both' ? '双手钢琴' : hand === 'right' ? '右手' : '左手';
-  const rightCount = score.filter((note) => note.hand === 'right').length;
-  const leftCount = score.filter((note) => note.hand === 'left').length;
 
   useEffect(() => {
-    setPickedId(null);
     setManualAtPulse(null);
     setFollowRequest((value) => value + 1);
     if (scrollRef.current) {
@@ -162,34 +136,6 @@ export default function ScoreViewer({
 
   return (
     <div className="score-wrap">
-      <header className="score-header">
-        <div className="score-heading">
-          <div className="score-kicker">
-            {meta.integration === 'fixture' ? '原创示例 · 大谱表' : '导入乐谱 · MusicXML'}
-          </div>
-          <h2>{meta.title}{modeId === 'loop' ? '（循环段落）' : ''}</h2>
-          <p className="score-subtitle">{meta.composer} · {meta.staves === 1 ? '单谱表' : '双谱表'} · {meta.barCount} 小节</p>
-          <div className="score-bpm"><span>♩</span> = {tempo} BPM</div>
-        </div>
-        <div className="score-header-side">
-          <div className="score-tags">
-            <span>{meta.timeSignature[0]}/{meta.timeSignature[1]} 拍</span>
-            <span>{meta.keySignature}</span>
-            <span>{handLabel}</span>
-          </div>
-          <button
-            type="button"
-            className="score-preview"
-            onClick={() => previewMidi !== null && playPreviewTone(previewMidi)}
-            disabled={previewMidi === null}
-            title="试听当前音"
-            aria-label="试听当前音"
-          >
-            <SpeakerIcon />
-          </button>
-        </div>
-      </header>
-
       {warnings.length > 0 && (
         <div className="score-warning score-warning-info" role="status">
           <strong>导入提示</strong>
@@ -201,9 +147,9 @@ export default function ScoreViewer({
 
       {canEngrave ? (
         <>
-          <div className="score-system-toolbar">
+          <div className="score-system-toolbar"><div className="score-system-toolbar-pill">
             <span className="score-system-count">专业谱面 · OSMD / Bravura</span>
-            <span className="score-system-current">当前第 {activeBar ?? 1} 小节</span>
+            <span className="score-system-current">第 {activeBar ?? 1} 小节</span>
             <button
               type="button"
               className={`score-window-follow${browsing ? '' : ' on'}`}
@@ -229,8 +175,9 @@ export default function ScoreViewer({
               onClick={() => onToggleSystemAudio?.()}
               title="开/关系统演奏的声音；关闭后红色系统声部仍按时间推进"
             >
-              <i />系统音乐 {systemAudio ? '开' : '关'}
+              <i />{systemAudio ? '有声' : '静音'}
             </button>
+            </div>
           </div>
 
           {horizontalScroll.max > 1 && (
@@ -289,7 +236,7 @@ export default function ScoreViewer({
             )}
             <OsmdScoreView
               width={ENGRAVED_SCORE_WIDTH}
-              fitWidth={focus}
+              fitWidth={focus || fitToWidth}
               xml={sourceXml!}
               engine={engine!}
               activeNoteIds={activeNoteIds}
@@ -298,10 +245,12 @@ export default function ScoreViewer({
               systemNoteIds={systemNoteIds}
               userNoteIds={userNoteIds}
               mutedNoteIds={mutedNoteIds}
-              loopCoveredMeasures={loopCoveredMeasures}
+              loopRangeNotes={loopRangeNotes}
+              onLoopDragCommit={onLoopDragCommit}
+              onInteractionStart={onInteractionStart}
               colorSystemNotes={systemDuet}
               scrollRef={scrollRef}
-              onSelectEvent={(eventId) => setPickedId(eventId)}
+              onSelectEvent={(eventId) => { if (onSelectNote) onSelectNote(eventId); else if (loopPickArmed && onLoopPick) onLoopPick(eventId); }}
               onRendered={() => setOsmdRevision((value) => value + 1)}
             />
           </div>
@@ -312,77 +261,6 @@ export default function ScoreViewer({
           <p>当前谱面没有原始 MusicXML；请从乐谱库重新载入或导入 MusicXML。</p>
         </section>
       )}
-
-      {selectedNote && selectedPlacement && (!strictAssessment || showNoteNames) && (
-        <section className={`note-inspector${midiMatched ? ' is-midi-matched' : ''}`} aria-live="polite">
-          <div className="note-inspector-main">
-            <div className="note-inspector-head">
-              <span className={`note-token${showPositionHints ? (selectedPlacement.line ? ' token-line' : ' token-space') : ''}`}>
-                {selectedNote.noteName}
-              </span>
-              <div>
-                <strong>{selectedNote.noteName} · 第 {selectedNote.octave} 八度</strong>
-                <p>{selectedPlacement.staffLabel} · {selectedNote.hand === 'right' ? '右手' : '左手'} · {beatPositionLabel(selectedNote, meta.beatsPerBar, meta.measures)}</p>
-              </div>
-              {midiMatched ? (
-                <span className="midi-match-badge">MIDI 匹配</span>
-              ) : lastInputName ? (
-                <span className="note-input-status">最近输入 {lastInputName}</span>
-              ) : (
-                <span className="note-input-status">点击音符查看</span>
-              )}
-              {!selectedInScope && <span className="note-scope-status">当前未纳入练习</span>}
-            </div>
-            <dl className="note-facts">
-              <div><dt>音名</dt><dd>{selectedNote.noteName}</dd></div>
-              <div><dt>音区</dt><dd>第 {selectedNote.octave} 八度</dd></div>
-              <div><dt>谱表</dt><dd>{selectedPlacement.staffLabel}</dd></div>
-              <div><dt>线/间</dt><dd>{selectedPlacement.positionLabel} · {selectedPlacement.positionDetail}</dd></div>
-              <div><dt>虚拟键盘键位</dt><dd>{selectedNote.noteName} · MIDI {selectedNote.midiNote}</dd></div>
-              <div><dt>时值</dt><dd>{durationLabel(selectedNote)} · {selectedNote.durationBeats} 拍</dd></div>
-            </dl>
-          </div>
-          <KeyboardReference midiNote={selectedNote.midiNote} />
-        </section>
-      )}
-
-      {selectedNote && selectedPlacement && strictAssessment && !showNoteNames && (
-        <section className="note-inspector note-inspector-locked" aria-live="polite">
-          <div className="note-inspector-head">
-            <span className="note-token note-token-locked" aria-hidden="true">?</span>
-            <div>
-              <strong>音名提示已关闭</strong>
-              <p>严格测验中不显示音名、音区、谱表与键位详情，避免泄露答案。可在线/间提示中查看位置。</p>
-            </div>
-            <span className="note-input-status">
-              已选音符{showPositionHints ? ` · ${selectedPlacement.positionLabel}` : ''}
-            </span>
-          </div>
-        </section>
-      )}
-
-      <details className="score-tips">
-        <summary>阅读提示</summary>
-        {hand !== 'both' && (
-          <p>当前只练{handLabel}：另一只手的音符已淡化，仅作为谱面上下文，不是本轮目标。</p>
-        )}
-        {meta.staves === 1 ? (
-          <p>单谱表：按谱面音高逐音识别；五线之外的音符使用加线表示，注意加线数量与线/间位置。</p>
-        ) : (
-          <>
-            <p>上方谱表通常对应右手；下方谱表通常对应左手，实际以你确认的「谱表→手别映射」为准。本谱共 {score.length} 个音符，右手 {rightCount} 个、左手 {leftCount} 个。</p>
-            <p>练习结构：每小节按 MusicXML 拍号显示；左右手同时出现的音对齐在同一拍。谱面由 OSMD / Bravura 专业制谱引擎渲染。</p>
-          </>
-        )}
-      </details>
-
-      <div className="score-display-note">
-        <i />
-        <span>蓝色是当前目标，绿色是你弹对的音，红色是系统伴弹；只有弹对当前目标后才会自动跟随滚动，手动往下查看不会被拉回。</span>
-      </div>
-      <p className="score-source-line">
-        {meta.integration === 'fixture' ? meta.integrationNote : `导入：${meta.sourceFile.split(/[\\/]/).pop()}。${meta.integrationNote}`}
-      </p>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBeatClicks, metronomeClickAudioTime } from './metronome';
+import { buildArmedCueClicks, buildBeatClicks, metronomeClickAudioTime } from './metronome';
 
 describe('metronome timeline', () => {
   it('adds the session origin before converting to AudioContext time', () => {
@@ -21,5 +21,28 @@ describe('metronome timeline', () => {
     expect(clicks[3].frequency).toBe(880);
     expect(clicks[4].frequency).toBe(550);
     expect(clicks[6].frequency).toBe(880);
+  });
+
+  it('spaces clicks by the practice tempo (60_000 / bpm)', () => {
+    for (const bpm of [52, 86, 120]) {
+      const quarterMs = 60_000 / bpm;
+      const clicks = buildBeatClicks(4 * quarterMs, 8 * quarterMs, quarterMs, 4, 4);
+      expect(clicks).toHaveLength(9);
+      for (let index = 1; index < clicks.length; index += 1) {
+        expect(clicks[index].atMs - clicks[index - 1].atMs).toBeCloseTo(quarterMs, 6);
+      }
+    }
+  });
+
+  it('gives an armed take a lead-in cue at the practice tempo from t=0', () => {
+    const quarterMs = 60_000 / 52;
+    const clicks = buildArmedCueClicks(quarterMs, 4, 16);
+    expect(clicks).toHaveLength(16);
+    expect(clicks[0]).toMatchObject({ atMs: 0, frequency: 880 });
+    expect(clicks[4].frequency).toBe(880);
+    expect(clicks[1].frequency).toBe(550);
+    for (let index = 1; index < clicks.length; index += 1) {
+      expect(clicks[index].atMs - clicks[index - 1].atMs).toBeCloseTo(quarterMs, 6);
+    }
   });
 });

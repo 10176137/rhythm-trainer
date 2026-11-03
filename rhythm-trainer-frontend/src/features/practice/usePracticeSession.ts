@@ -35,6 +35,8 @@ export interface BeginRequest {
   bpm: number;
   profile: EngineProfile;
   countInBeats: number;
+  /** Loop takes are armed: the clock starts on the first key press. */
+  armOnFirstInput?: boolean;
   /** The single authoritative count-in value in microseconds (defaults to 3s). */
   countInUs?: number;
   ticksPerQuarter: number;
@@ -76,6 +78,7 @@ export interface UsePracticeSessionOptions {
   /** Fired when the engine has fixed the session origin and target list. */
   onStarted?: (info: {
     originPerfMs: number;
+    elapsedOffsetMs?: number;
     targets: PracticeTarget[];
     bpm: number;
     countInBeats: number;
@@ -135,6 +138,9 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   const bridgeRef = useRef<EngineBridge | null>(null);
   const metronomeRef = useRef<Metronome | null>(null);
   const originRef = useRef<number | null>(null);
+  /** Armed take: the clock starts on the first key, not on "started". */
+  const armedRef = useRef(false);
+  const [waitingForFirstInput, setWaitingForFirstInput] = useState(false);
   const captureEpochRef = useRef<number | null>(null);
   /** A server-side Follow Take is live (start accepted, report not yet seen). */
   const followActiveRef = useRef(false);
@@ -176,12 +182,14 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         statusRef.current = 'running';
         setStatus('running');
       }
-      // Do not auto-finalize after the last target. A player may start late,
-      // pause, or need time to finish; only the explicit finish button (or a
-      // disconnect finalization) closes the Take.
+      // The service owns song completion (including note durations and pauses).
+      // Its normal report path stops this timer; the browser never guesses an end.
     }, TICK_INTERVAL_MS);
   }, []);
 
+  /** (Re)builds the click grid from the CURRENT targets and tempo. The origin
+   * is the session clock, so clicks land on the same beats as judgments; an
+   * armed take has no origin yet and schedules on the first key instead. */
   const rescheduleMetronome = useCallback(() => {
     metronomeRef.current?.stopAll();
     const list = targetsRef.current;
@@ -200,13 +208,66 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     metronomeRef.current.schedule(clicks, origin);
   }, []);
 
+  /** Armed takes remain silent until the first correct key anchors the plan. */
+  const scheduleArmedCue = useCallback(() => {
+    // Standby is silent. The first correct captured note starts the real grid.
+    metronomeRef.current?.stopAll();
+  }, []);
+
+  /** The server maps the first captured Note On onto the Rust first target.
+   * Its mapped origin drives presentation; MIDI monitor messages never start it. */
+  const acceptArmedClock = useCallback((origin: number, epoch: number) => {
+    if (!armedRef.current || !engineActiveRef.current || captureEpochRef.current !== epoch || !Number.isFinite(origin)) return;
+    armedRef.current = false;
+    setWaitingForFirstInput(false);
+    originRef.current = origin;
+    setStatus('running');
+    if (bridgeRef.current) startTickTimer(bridgeRef.current);
+    // Armed takes had no origin when the engine's started message arrived, so
+    // the first key is the first moment clicks can be placed on the clock; it
+    // also clears the free-running lead-in cue.
+    rescheduleMetronome();
+    optionsRef.current.onStarted?.({
+      originPerfMs: originRef.current,
+      elapsedOffsetMs: targetsRef.current[0]?.displayAtMs ?? 0,
+      targets: targetsRef.current,
+      bpm: bpmRef.current,
+      countInBeats: countInBeatsRef.current,
+    });
+  }, [rescheduleMetronome, startTickTimer]);
+
+  /** Live metronome switch: audio only, so it may change mid-take. */
+  const setMetronomeEnabled = useCallback((enabled: boolean) => {
+    metronomeEnabledRef.current = enabled;
+    if (!enabled) {
+      metronomeRef.current?.stopAll();
+      return;
+    }
+    metronomeRef.current = metronomeRef.current ?? new Metronome();
+    try {
+      metronomeRef.current.ensure();
+    } catch {
+      return; // no Web Audio: keep the flag, stay silent
+    }
+    if (statusRef.current === 'paused' || statusRef.current === 'idle' || statusRef.current === 'completed') return;
+    if (originRef.current === null) {
+      if (armedRef.current) scheduleArmedCue();
+      return;
+    }
+    rescheduleMetronome();
+  }, [rescheduleMetronome, scheduleArmedCue]);
+
   const ensureBridge = useCallback(() => {
     if (bridgeRef.current) return bridgeRef.current;
     const bridge = new EngineBridge({
+      onClockStarted: (message) => acceptArmedClock(message.originClientPerfMs, message.captureEpoch),
       onStarted: (engineTargets, _bpm, _profile, captureEpoch, resolvedConfig, timing) => {
-        originRef.current = performance.now();
+        const armed = timing?.armed === true;
+        armedRef.current = armed;
+        setWaitingForFirstInput(armed);
+        originRef.current = armed ? null : performance.now();
         setScoringConfig(resolvedConfig ?? null);
-        bridge.sessionOrigin(originRef.current);
+        if (originRef.current !== null) bridge.sessionOrigin(originRef.current);
         captureEpochRef.current = typeof captureEpoch === 'number' && Number.isFinite(captureEpoch)
           ? captureEpoch
           : null;
@@ -247,9 +308,11 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         setAnalysis(null);
         setDurations(null);
         setError(null);
-        setStatus('countdown');
+        setStatus(armed ? 'running' : 'countdown');
         metronomeRef.current?.stopAll();
         rescheduleMetronome();
+        // No clock or count-in sounds before the first correct input.
+        if (armed) scheduleArmedCue();
         const startedOrigin = originRef.current;
         if (startedOrigin !== null) {
           optionsRef.current.onStarted?.({
@@ -259,7 +322,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
             countInBeats: countInBeatsRef.current,
           });
         }
-        startTickTimer(bridge);
+        if (!armed) startTickTimer(bridge);
       },
       onNoteFeedback: (items) => {
         setNoteFeedback((previous) => {
@@ -287,9 +350,12 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         setStatus(targetsRef.current[0] && performance.now() - (originRef.current ?? 0) < targetsRef.current[0].displayAtMs
           ? 'countdown' : 'running');
         rescheduleMetronome();
+        if (originRef.current === null && armedRef.current) scheduleArmedCue();
         if (bridgeRef.current) startTickTimer(bridgeRef.current);
       },
       onReport: (message) => {
+        armedRef.current = false;
+        setWaitingForFirstInput(false);
         stopTickTimer();
         metronomeRef.current?.stopAll();
         engineActiveRef.current = false;
@@ -345,12 +411,15 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
           followActiveRef.current = false;
           optionsRef.current.onFollowAborted?.('与引擎服务的连接已断开，跟手练习已终止。');
         }
-        if (originRef.current !== null && statusRef.current !== 'completed') {
+        if ((originRef.current !== null || engineActiveRef.current) && statusRef.current !== 'completed') {
           setStatus('idle');
           stopTickTimer();
           optionsRef.current.onError?.('与引擎服务的连接已断开,本次会话终止。');
         }
         originRef.current = null;
+        armedRef.current = false;
+        engineActiveRef.current = false;
+        setWaitingForFirstInput(false);
         captureEpochRef.current = null;
         // R2-3h-R1: the cached planner authority belonged to that connection.
         optionsRef.current.onEngineDisconnected?.();
@@ -358,7 +427,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     });
     bridgeRef.current = bridge;
     return bridge;
-  }, [rescheduleMetronome, startTickTimer]);
+  }, [acceptArmedClock, rescheduleMetronome, scheduleArmedCue, startTickTimer]);
 
   const begin = useCallback(async (request: BeginRequest) => {
     if (active || followActiveRef.current) return;
@@ -375,6 +444,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
       const bridge = ensureBridge();
       await bridge.connect();
       bridge.start({
+        armOnFirstInput: request.armOnFirstInput === true,
         modeId: request.modeId,
         bpm: request.bpm,
         profile: request.profile,
@@ -411,19 +481,19 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
 
   const pause = useCallback(() => {
     if (status !== 'countdown' && status !== 'running') return;
-    if (originRef.current === null) return;
+    if (originRef.current === null && !armedRef.current) return;
     stopTickTimer();
     metronomeRef.current?.stopAll();
     const sourceNow = performance.now();
-    bridgeRef.current?.pause(sourceNow - originRef.current, sourceNow);
+    bridgeRef.current?.pause(originRef.current === null ? 0 : sourceNow - originRef.current, sourceNow);
     setStatus('paused');
   }, [status]);
 
   const resume = useCallback(() => {
     if (status !== 'paused') return;
-    if (originRef.current === null) return;
+    if (originRef.current === null && !armedRef.current) return;
     const sourceNow = performance.now();
-    bridgeRef.current?.resume(sourceNow - originRef.current, sourceNow);
+    bridgeRef.current?.resume(originRef.current === null ? 0 : sourceNow - originRef.current, sourceNow);
     // status/positions update in onResumed
   }, [status]);
 
@@ -442,10 +512,12 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
       followActiveRef.current = false;
       bridgeRef.current?.followAbandon();
     }
-    if (originRef.current !== null) {
+    if (originRef.current !== null || engineActiveRef.current) {
       bridgeRef.current?.finish(); // archive whatever the session collected
     }
     originRef.current = null;
+    armedRef.current = false;
+    setWaitingForFirstInput(false);
     captureEpochRef.current = null;
     engineActiveRef.current = false;
     targetsRef.current = [];
@@ -626,7 +698,10 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
    */
   const ingestPacket = useCallback((packet: EngineIngestMidiPacket['packet']): number | null => {
     if (status !== 'countdown' && status !== 'running') return null;
-    if (originRef.current === null) return null;
+    if (originRef.current === null) {
+      if (armedRef.current && engineActiveRef.current) bridgeRef.current?.sendRawMidi({ packet, sessionTimeMs: null, clockMappingId: null, clockUncertaintyMs: null, clockQuality: 'unknown' });
+      return null;
+    }
     if (!engineActiveRef.current) return packet.capturedAtMs - originRef.current; // free play: local only
     const sessionTimeMs = toSessionMs(packet.capturedAtMs, originRef.current, packet.clockDomainId);
     if (sessionTimeMs === null) return null;
@@ -681,7 +756,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   const getCaptureEpoch = useCallback(() => captureEpochRef.current, []);
 
   return {
-    status, active, targets, firstTargetAtMs, countInMs, judgments, noteFeedback, report, analysis, sessionId, takeId, traceId, scoringConfig, durations, captureDiagnostics, reportPersisted, reportPersistenceError,
+    status, active, waitingForFirstInput, setMetronomeEnabled, targets, firstTargetAtMs, countInMs, judgments, noteFeedback, report, analysis, sessionId, takeId, traceId, scoringConfig, durations, captureDiagnostics, reportPersisted, reportPersistenceError,
     scoreV1, scoreStatus, scoreConfigVersion, scoreAlgorithmVersion, scoreInputNoteCount, scoreUnmappedNoteCount, pauseAdjusted,
     scoreFingerprint, hand, scoreBarCount, sourceReportId, sourceTakeId, prescriptionId, prescription,
     takeTemplateId, takeTemplateName, retryComparison,

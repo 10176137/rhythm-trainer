@@ -41,6 +41,7 @@ export interface PlanRequestInput {
   /** Fingerprint this request is bound to (the score it was planned for). */
   scoreFingerprint: string;
   timeoutMs?: number;
+  noteRange?: { startEventId: string; endEventId: string };
 }
 
 const DEFAULT_PLAN_TIMEOUT_MS = 15000;
@@ -49,9 +50,12 @@ export interface EngineStartTiming {
   /** First note onset from the backend schedule, relative to the session origin. */
   firstTargetAtMs: number | null;
   countInMs: number;
+  /** True while the engine holds the clock until the first key. */
+  armed?: boolean;
 }
 
 export interface EngineHandlers {
+  onClockStarted?: (message: Extract<EngineServerMessage, { type: 'clock-started' }>) => void;
   onStarted: (targets: EngineTarget[], bpm: number, profile: EngineProfile, captureEpoch?: number, scoringConfig?: EngineScoringConfig, timing?: EngineStartTiming) => void;
   onJudgments: (items: EngineJudgment[]) => void;
   onNoteFeedback?: (items: EngineNoteFeedback[]) => void;
@@ -155,6 +159,9 @@ export class EngineBridge {
           return;
         }
         switch (message.type) {
+          case 'clock-started':
+            this.handlers.onClockStarted?.(message);
+            break;
           case 'started':
             this.handlers.onStarted(
               message.targets,
@@ -167,6 +174,7 @@ export class EngineBridge {
                   ? message.firstTargetAtMs
                   : null,
                 countInMs: Number.isFinite(message.countInMs) ? message.countInMs : 0,
+                armed: message.armed === true,
               },
             );
             break;
@@ -345,6 +353,7 @@ export class EngineBridge {
         document: input.document,
         report: input.report,
         config: input.config,
+        ...(input.noteRange ? { noteRange: input.noteRange } : {}),
       } as never);
     });
   }
@@ -474,6 +483,8 @@ export class EngineBridge {
     prescriptionId?: string;
     prescription?: TeachingPrescription;
     takeTemplateId?: string;
+    /** Armed start: wait for the first key before starting the clock. */
+    armOnFirstInput?: boolean;
   }) {
     // Preserve the selected feedback mode from the same frozen launch config.
     // Without this field the server defaults to live, even for a baseline test.

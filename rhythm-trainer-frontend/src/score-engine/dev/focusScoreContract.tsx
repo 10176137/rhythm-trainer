@@ -88,7 +88,7 @@ function FocusScoreContract() {
           <ScoreViewer focus={focus} score={doc.notes} meta={doc.meta} warnings={[]} tempo={60}
             strictAssessment={false} activeNoteIds={choice === 3 ? doc.notes.filter((note) => note.bar === activeBar).slice(0, 1).map((note) => note.id) : doc.notes.slice(1, 2).map((note) => note.id)}
             followPulse={pulse}
-            userNoteIds={doc.notes.slice(0, 1).map((note) => note.id)} hand="both" modeId="score"
+            userNoteIds={doc.notes.slice(0, 1).map((note) => note.id)} hand="both"
             showNoteNames={false} showPositionHints={false} lastInputMidi={null}
             sourceXml={doc.sourceXml} engine={doc.engine} />
         </section>

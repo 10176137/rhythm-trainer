@@ -329,4 +329,14 @@ describe('reference playback controller', () => {
     expect(snapshot.health).toBe('DEGRADED');
     controller.dispose();
   });
+  it('does not let a rejected stale instrument load stop a newer playback', async () => {
+    vi.useFakeTimers(); const audio = new FakeAudio(); let reject!: (error: Error) => void;
+    const original = audio.prepare.bind(audio); let first = true;
+    audio.prepare = () => { if (first) { first = false; return new Promise<void>((_r, fail) => { reject = fail; }); } return original(); };
+    const plan = testPlan([note('n1', 1000, [voice('v1', 60, 1000, 500)])]);
+    const controller = new ReferencePlaybackController({ audio });
+    const stale = controller.start(plan); await controller.start(plan);
+    reject(new Error('old request cancelled')); await stale;
+    expect(controller.getSnapshot().status).toBe('COUNT_IN'); controller.dispose();
+  });
 });

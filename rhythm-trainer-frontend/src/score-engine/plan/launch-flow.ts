@@ -59,6 +59,11 @@ export function planContextKey(input: {
   loopActive: boolean;
   loopStartBar: number;
   loopEndBar: number;
+  /** Note-level loop boundaries; they refine the measure range and MUST be
+   * part of the key so re-picking invalidates an in-flight plan. */
+  loopStartNote?: { eventId: string } | null;
+  loopEndNote?: { eventId: string } | null;
+  playbackStartNote?: { eventId: string } | null;
   range: { startMeasureOrdinal: number; endMeasureOrdinal: number };
   handMapping: unknown;
   /** Stage 2: repeat policy and the canonical count-in also define the plan. */
@@ -73,6 +78,9 @@ export function planContextKey(input: {
     loopActive: input.loopActive,
     loopStartBar: input.loopStartBar,
     loopEndBar: input.loopEndBar,
+    loopStartNote: input.loopStartNote?.eventId ?? null,
+    loopEndNote: input.loopEndNote?.eventId ?? null,
+    playbackStartNote: input.playbackStartNote?.eventId ?? null,
     range: [input.range.startMeasureOrdinal, input.range.endMeasureOrdinal],
     handMapping: input.handMapping,
     repeatSelection: input.repeatSelection ?? { kind: 'none' },

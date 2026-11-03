@@ -53,6 +53,7 @@ class SynthPianoVoice implements PianoVoiceHandle {
       oscillator.frequency.setValueAtTime(frequency * partial.ratio, when);
       partialGain.gain.setValueAtTime(partial.amplitude, when);
       oscillator.connect(partialGain).connect(this.gain);
+      oscillator.onended = () => { oscillator.disconnect(); partialGain.disconnect(); };
       oscillator.start(when);
       this.oscillators.push(oscillator);
     }

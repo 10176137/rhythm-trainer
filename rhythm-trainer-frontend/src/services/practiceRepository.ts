@@ -1,4 +1,5 @@
 import { backendUrl } from './backendEndpoint';
+import type { NoteReview } from '../../shared/note-review';
 // REST client for the engine service's persistence API.
 // Same-origin paths (/api/...) — in dev, Vite proxies them to the engine.
 
@@ -165,6 +166,9 @@ async function getJson<T>(url: string): Promise<T> {
 }
 
 export const practiceRepository = {
+  getNoteReview(takeId: string): Promise<NoteReview> {
+    return getJson(`/api/takes/${encodeURIComponent(takeId)}/note-review`);
+  },
   listSessions(limit = 50): Promise<{ items: SessionSummary[] }> {
     return getJson(`/api/sessions?limit=${limit}`);
   },

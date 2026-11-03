@@ -1,5 +1,6 @@
 import { ensureSharedAudioContext } from './sharedAudioContext';
-import { startPianoVoice, type PianoVoiceHandle } from './synthPiano';
+import type { PianoVoiceHandle } from './synthPiano';
+import { getInstrument, instrumentVoice, prepareInstrument, type InstrumentId } from './instruments';
 
 export interface PlaybackVoiceSpec {
   /** Unique per occurrence; repeated pitches must use different IDs. */
@@ -31,9 +32,17 @@ export class WebAudioEngineAdapter implements PlaybackAudioEngine {
   private compressor: DynamicsCompressorNode | null = null;
   private readonly voices = new Map<string, PianoVoiceHandle>();
   private gain = 0.85;
+  private instrument: InstrumentId = 'grand';
+  private buffers: AudioBuffer[] = [];
+  private preparation = 0;
+  private readonly retired = new Map<string, number>();
 
   async prepare(): Promise<void> {
+    const token = ++this.preparation;
     const ctx = await ensureSharedAudioContext();
+    this.instrument = getInstrument();
+    this.buffers = await prepareInstrument(ctx, this.instrument);
+    if (token !== this.preparation) throw new Error('音频准备已取消');
     if (!this.ctx || this.ctx !== ctx) {
       this.ctx = ctx;
       this.compressor = ctx.createDynamicsCompressor();
@@ -55,10 +64,11 @@ export class WebAudioEngineAdapter implements PlaybackAudioEngine {
     if (!ctx || !this.master) throw new Error('音频引擎尚未准备。');
     if (ctx.state !== 'running') throw new Error('音频上下文已挂起，无法调度音符。');
     const existing = this.voices.get(voice.voiceId);
+    for (const [id, end] of this.retired) if (end < ctx.currentTime) { this.voices.delete(id); this.retired.delete(id); }
     if (existing) existing.forceStop(ctx.currentTime);
     this.voices.set(
       voice.voiceId,
-      startPianoVoice(ctx, this.master, voice.midiNote, Math.max(atAudioTime, ctx.currentTime), voice.velocity),
+      instrumentVoice(ctx, this.master, voice.midiNote, Math.max(atAudioTime, ctx.currentTime), voice.velocity, this.instrument, this.buffers),
     );
   }
 
@@ -66,12 +76,15 @@ export class WebAudioEngineAdapter implements PlaybackAudioEngine {
     const voice = this.voices.get(voiceId);
     if (!voice) return;
     voice.release(atAudioTime);
+    this.retired.set(voiceId, atAudioTime + 2);
   }
 
   allNotesOff(_reason: string, atAudioTime?: number): void {
+    this.preparation++;
     const now = atAudioTime ?? this.ctx?.currentTime ?? 0;
     for (const voice of this.voices.values()) voice.forceStop(now);
     this.voices.clear();
+    this.retired.clear();
   }
 
   setGain(value: number): void {

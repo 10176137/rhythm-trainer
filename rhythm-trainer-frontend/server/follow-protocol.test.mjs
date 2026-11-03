@@ -210,7 +210,7 @@ describe('Follow Take closed loop (default rts launch)', () => {
     expect(started.total).toBe(3);
 
     const wrong = await note(62, 100);
-    expect(wrong.result).toMatchObject({ kind: 'wrong', advanced: false });
+    expect(wrong.result).toMatchObject({ kind: 'waiting', advanced: false });
     expect(wrong.result.remainingPitches).toEqual(['C4']);
 
     const first = await note(60, 200);
@@ -235,8 +235,8 @@ describe('Follow Take closed loop (default rts launch)', () => {
       strictTiming: false,
       totalTargets: 3,
       completedTargets: 3,
-      standardTargets: 0,
-      wrongNoteCount: 1,
+      standardTargets: 1,
+      wrongNoteCount: 0,
       duplicateNoteCount: 1,
       extraNoteCount: 0,
     });
@@ -303,7 +303,7 @@ describe('Follow Take closed loop (default rts launch)', () => {
       }],
     });
     expect(record.evidence.followBpm).toBe(60);
-    expect(record.evidence.followInputs).toHaveLength(6);
+    expect(record.evidence.followInputs).toHaveLength(5); // pre-start wrong key is not admitted
     expect(record.evidence.followInputsTruncated).toBe(false);
 
     // Replay the recorded normalized schedule + input stream deterministically.
@@ -364,8 +364,8 @@ describe('Follow Take closed loop (default rts launch)', () => {
       bpm: 60,
       targetCount: 3,
       followCompletedTargets: 3,
-      followStandardTargets: 0,
-      followWrongNoteCount: 1,
+      followStandardTargets: 1,
+      followWrongNoteCount: 0,
       followDuplicateNoteCount: 1,
       followTimingSamples: 2,
     });

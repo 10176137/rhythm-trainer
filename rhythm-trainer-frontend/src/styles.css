@@ -387,12 +387,45 @@
 }
 
 /* Whole-score layout: stacked PDF-like systems with vertical follow. */
-.score-system-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;border-top:1px solid #eceef4;border-bottom:1px solid #eceef4;background:#fbfbfe}
+.score-system-toolbar{position:sticky;top:8px;z-index:9;height:0;display:flex;justify-content:flex-end;pointer-events:none}
+.score-system-toolbar-pill{pointer-events:auto;display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,.94);border:1px solid #eceef4;border-radius:999px;padding:7px 12px;box-shadow:0 3px 14px #35405a16}
 .score-system-count{font-size:10px;color:#8992a3;font-weight:600}
-.score-system-current{font-size:10px;color:#9ba2b1;margin-right:auto;font-variant-numeric:tabular-nums}
+.score-system-current{font-size:10px;color:#9ba2b1;font-variant-numeric:tabular-nums}
 .score-systems{position:relative;max-height:560px;overflow:auto;padding:8px 7px 6px;scroll-behavior:smooth;overscroll-behavior:contain}
 .score-follow-return{position:sticky;top:8px;z-index:8;height:0;display:flex;justify-content:flex-end;pointer-events:none}
 .score-follow-return button{pointer-events:auto;background:#fff;box-shadow:0 3px 14px #35304c16}
+.performance-main{display:block}
+.performance-main .score-card{margin-top:14px}
+.performance-toolbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border-bottom:1px solid #eceef4;padding:10px 18px;margin:0 -26px 6px;box-shadow:0 2px 10px #35405a08}
+.pt-group{display:flex;align-items:center;gap:6px}
+.pt-toolbar-spacer{flex:1}
+.pt-divider{width:1px;height:22px;background:#e9ebf2}
+.pt-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:10px;border:1px solid #e4e7ef;background:#fff;color:#424b5e;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s,background .15s}
+.pt-btn .pt-glyph{font-size:13px;line-height:1;color:#7b8497}
+.pt-btn:hover:not(:disabled){border-color:#c9c4fc;color:#5046c5;background:#fafaff}
+.pt-btn:hover:not(:disabled) .pt-glyph{color:#5046c5}
+.pt-btn.on{background:#efedff;border-color:#d8d2ff;color:#5046c5}
+.pt-btn.on .pt-glyph{color:#5046c5}
+.pt-btn.armed{background:#fff7ed;border-color:#fdba74;color:#9a3412}
+.pt-btn.armed .pt-glyph{color:#c2410c}
+.pt-btn.primary{background:#6456d9;border-color:#6456d9;color:#fff;padding:0 18px}
+.pt-btn.primary:hover:not(:disabled){background:#574bc4;border-color:#574bc4;color:#fff}
+.pt-btn.ghost{border-color:transparent;background:transparent;color:#7b8497}
+.pt-btn.ghost:hover:not(:disabled){border-color:#e4e7ef;background:#fff;color:#424b5e}
+.pt-btn:disabled{opacity:.45;cursor:not-allowed}
+.pt-midi{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#98a0b0;padding:0 4px}
+.pt-midi i{width:7px;height:7px;border-radius:50%;background:#c3c8d2}
+.pt-midi.on{color:#158363}
+.pt-midi.on i{background:#28a77e;box-shadow:0 0 0 3px #def5ec}
+.pt-stepper{display:inline-flex;align-items:center;height:34px;border:1px solid #e4e7ef;border-radius:10px;background:#fff;overflow:hidden}
+.pt-stepper button{width:28px;height:100%;border:0;background:#fff;color:#5c6577;cursor:pointer;font-size:14px;line-height:1}
+.pt-stepper button:hover:not(:disabled){background:#fafaff;color:#5046c5}
+.pt-stepper button:disabled{opacity:.4;cursor:not-allowed}
+.pt-stepper b{min-width:34px;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;color:#3e475a;border-left:1px solid #eef0f4;border-right:1px solid #eef0f4;line-height:32px}
+.pt-select{height:34px;border:1px solid #e4e7ef;border-radius:10px;padding:0 8px;color:#424b5e;font-size:12px;font-weight:600;background:#fff;cursor:pointer}
+.pt-select:hover:not(:disabled){border-color:#c9c4fc}
+.pt-select:disabled{opacity:.45;cursor:not-allowed}
+.pt-elapsed{font-size:11px;color:#8a93a3;font-variant-numeric:tabular-nums}
 .score-system{padding:4px 0}
 .score-system + .score-system{border-top:1px dashed #eef0f5;margin-top:6px;padding-top:10px}
 .score-system{width:960px;margin-left:auto;margin-right:auto}.score-system svg{display:block;width:960px;min-width:960px;max-width:none;height:auto}
@@ -461,7 +494,11 @@
 @media (pointer:coarse), (max-width:1100px){
   .score-correct-toggle{min-height:44px;padding:0 14px;font-size:11px}
 }
-.prep-overlay{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#fffffff0;pointer-events:none;text-align:center}
+/* Countdown/準備 overlay is calibrated to the SCREEN: fixed to the viewport
+   and centred there. It used to be absolute inside the scroll container, so
+   with a long score it centred on the whole document height and sat far
+   outside the visible area. */
+.prep-overlay{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#ffffffec;pointer-events:none;text-align:center}
 .prep-overlay strong{font-size:72px;line-height:1;font-weight:650;color:#5d50d2;font-variant-numeric:tabular-nums;letter-spacing:-3px}
 .prep-overlay span{font-size:14px;font-weight:600;color:#3e4759}
 .prep-overlay small{font-size:11px;color:#8b93a3}
@@ -718,8 +755,20 @@
 .retry-comparison-limits{margin:9px 0 0;padding-left:16px;font-size:9px;line-height:1.7;color:#8b93a5}
 @media(max-width:640px){.targeted-practice-head{flex-direction:column}.targeted-card-head{flex-direction:column}.targeted-config{gap:8px}.targeted-config label{flex:1 1 42%}.targeted-config input,.targeted-config select{width:100%}.targeted-mode{flex-basis:100%;padding-bottom:0}.targeted-card>.button{width:100%}}
 .targeted-practice-toggle{flex-shrink:0}
-.osmd-loop-cover-layer{position:absolute;inset:0;pointer-events:none;z-index:3}
-.osmd-loop-cover{position:absolute;background:rgba(34,163,120,.17);border:1px solid rgba(34,163,120,.10);border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+.osmd-loop-highlight-layer{position:absolute;inset:0;pointer-events:none;z-index:3}
+.osmd-loop-highlight{position:absolute;background:rgba(14,165,233,.13);border:0;pointer-events:auto;cursor:ew-resize}
+.osmd-loop-handle{position:absolute;width:9px;transform:translateX(-50%);background:#0ea5e9;border-radius:4px;cursor:ew-resize;pointer-events:auto;touch-action:none;box-shadow:0 1px 6px #0c4a6e40;user-select:none}
+.osmd-loop-handle.dragging{background:#0284c7;box-shadow:0 2px 10px #0c4a6e70}
+.osmd-loop-flag{position:absolute;transform:translateX(-50%);min-width:18px;height:18px;border-radius:4px;background:#0ea5e9;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;pointer-events:none;box-shadow:0 1px 5px #0c4a6e33;z-index:2}
+.osmd-loop-dragline{position:absolute;width:2px;background:#0ea5e9;opacity:.65;pointer-events:none}
+/* Performance route fills the viewport: the page itself never scrolls, so only
+   ONE scrollbar (the engraved score pane) is ever visible. */
+.performance-page{height:calc(100dvh - 72px);overflow:hidden;display:flex;flex-direction:column;padding-bottom:0}
+.performance-page .performance-main{flex:1;min-height:0;display:flex}
+.performance-page .performance-main .score-card{flex:1;min-height:0;display:flex;flex-direction:column}
+.performance-page .score-wrap{flex:1;min-height:0;display:flex;flex-direction:column;margin-top:10px}
+.performance-page .score-systems{flex:1;min-height:0;max-height:none}
+.performance-page .score-bottom{padding:8px 2px 10px}
 .history-take-badge{background:#eef4fc;color:#3d6fa8}
 .history-take-link{margin:0 0 10px;font-size:10px;color:#6d60d9;background:#f7f5ff;border:1px solid #e9e4ff;border-radius:8px;padding:7px 9px}
 .take-template-field .score-library-row{flex-wrap:wrap}
@@ -1299,3 +1348,10 @@
 .native-app .session-title-row h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .native-app .settings-dialog .skill-drill-detail{grid-template-columns:minmax(0,1.1fr) minmax(240px,1fr);gap:24px;padding:24px}
 @media(max-width:680px){.native-app .settings-dialog .skill-drill-detail{display:flex;flex-direction:column}.native-app .settings-dialog .skill-drill-controls{order:-1;width:100%}}
+/* Immersive practice: the score owns the screen (no sidebar, no topbar). */
+.app-shell.immersive .sidebar{display:none}
+.app-shell.immersive .main-area{height:100dvh}
+.app-shell.immersive .page-content{height:100dvh;max-width:none;padding:0 18px 10px}
+.app-shell.immersive .performance-toolbar{margin:0 -18px 6px;padding:8px 18px}
+/* Exact note-level loop boundaries inside the measure-wide band. */
+.osmd-loop-edge{position:absolute;width:2px;background:#0284c7;opacity:.85;pointer-events:none;z-index:2}

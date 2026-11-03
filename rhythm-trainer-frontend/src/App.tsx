@@ -1,8 +1,14 @@
-import PracticeExtras from './components/PracticeExtras';
+import { scoreSelection, scoreSelectionBars } from './features/practice/scoreSelection';
+import { useRoundReturn } from './features/practice/useRoundReturn';
+import { useElapsedClock } from './features/practice/useElapsedClock';
+import { useScoreAudition } from './features/playback/useScoreAudition';
+import { useScorePick } from './features/practice/useScorePick';
+import ScorePlaybackControls from './components/ScorePlaybackControls';
 import { backendUrl } from './services/backendEndpoint';
-import ReportPanel from './components/ReportPanel';
+import PerformanceToolbar from './components/PerformanceToolbar';
+import TrainingRoundPanel from './components/TrainingRoundPanel';
+import PracticeSessionControls from './components/PracticeSessionControls';
 import type { GeneratedSkillDrill, TrainingProgramReview } from '../shared/training-contract';
-import { ProgramReview } from './components/TrainingProgramPanel';
 import { runTrainingProgramFlow, shouldFinishTrainingSegment } from './features/practice/trainingProgramFlow';
 import SkillTrainingPage from './components/SkillTrainingPage';
 import { trainingRepository } from './services/trainingRepository';
@@ -58,6 +64,7 @@ import {
 import { FollowSession, type FollowNoteResult, type FollowReport } from './score-engine/practice/follow-session';
 import type { PlaybackGroup } from './score-engine/domain/types';
 import { toNumber } from './score-engine/domain/rational';
+import { boundaryFromEvent, clampDraggedBoundary, loopBoundaryForTap, loopRangeMutedEventIds, resolveBoundaryEvent, resolveEventById, canonicalLoopPickEventId } from './score-engine/plan/note-range';
 import TeachingWorkspace, { type TeachingTakeNotice } from './components/TeachingWorkspace';
 import FixedLineScoreView from './components/FixedLineScoreView';
 import NoteReadingSetup, { type ReadingSetupValue } from './components/NoteReadingSetup';
@@ -109,9 +116,8 @@ import {
   type PersistedPracticeSettings,
 } from './features/practice/practiceSettings';
 import type { EngineRawMidiPacket, FollowEventMessage, FollowGroupRequest, FollowReportMessage } from './types/engine';
-import type { DurationEvaluationPolicy, FeedbackMessage, FeedbackMode, HandSelection, JudgmentProfile, MidiPerformanceEvent, PracticeConfig, PracticeModeId, SessionStatus } from './types/practice';
+import type { DurationEvaluationPolicy, FeedbackMessage, FeedbackMode, HandSelection, JudgmentProfile, LoopBoundaryNote, MidiPerformanceEvent, PracticeConfig, PracticeModeId, SessionStatus } from './types/practice';
 
-const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`;
 const noteForMidi = (midi: number) => {
   const names = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
   return `${names[midi % 12]}${Math.floor(midi / 12) - 1}`;
@@ -218,10 +224,10 @@ export default function App() {
   const [prepRemain, setPrepRemain] = useState<number | null>(null);
   const prepTimerRef = useRef<number | null>(null);
   const [systemDuet, setSystemDuet] = useState(() => {
-    try { return window.localStorage.getItem('rhythm-trainer.system-duet.v1') !== '0'; } catch { return true; }
+    try { return window.localStorage.getItem('rhythm-trainer.system-duet.v1') === '1'; } catch { return false; }
   });
   const [systemAudio, setSystemAudio] = useState(() => {
-    try { return window.localStorage.getItem('rhythm-trainer.system-audio.v1') !== '0'; } catch { return true; }
+    try { return window.localStorage.getItem('rhythm-trainer.system-audio.v1') === '1'; } catch { return false; }
   });
   const [systemNoteIds, setSystemNoteIds] = useState<string[]>([]);
   const [userNoteIds, setUserNoteIds] = useState<string[]>([]);
@@ -260,12 +266,17 @@ export default function App() {
    * The browser keeps NO second switch; rust is only used when the server
    * says so, and an unknown state never silently plans with TS. */
   const plannerAuthorityRef = useRef<'rts' | 'rust' | null>(null);
+  const [plannerAuthorityVersion, setPlannerAuthorityVersion] = useState(0);
   /** R2-3h-R1: monotonic probe generation — a slower/older status answer can
    * never overwrite a newer one, and a disconnect invalidates the cache. */
   const plannerAuthoritySeqRef = useRef(0);
   /** R2-3h-R1: launch generation — a newer launch supersedes any in-flight
    * plan request from an older one. */
   const launchSeqRef = useRef(0);
+  const stopRoundRepeatRef = useRef(false);
+  const followWaitingRef = useRef(false);
+  const [followWaiting, setFollowWaiting] = useState(false);
+  const cancelledPlanGenerationsRef = useRef(new Set<number>());
   /** R2-3h-R1: the CURRENT score selection, read after a plan response
    * arrives (a closure-captured fingerprint cannot prove that). */
   const scoreDocRef = useRef(scoreDoc);
@@ -294,8 +305,8 @@ export default function App() {
   const [deviceError, setDeviceError] = useState<string | null>(null);
   const [nodeEvents, setNodeEvents] = useState<MidiInputEvent[]>([]);
   const [heldDeviceNotes, setHeldDeviceNotes] = useState<HeldDeviceNote[]>([]);
-  const [elapsed, setElapsed] = useState(0);
-  const [showSettings, setShowSettings] = useState(false);
+  const elapsedClock = useElapsedClock();
+  const elapsed = elapsedClock.elapsed;
   const [trainingRoomOpen, setTrainingRoomOpen] = useState(false);
   const [trainingDrill, setTrainingDrill] = useState<GeneratedSkillDrill | null>(null);
   const [programReview, setProgramReview] = useState<TrainingProgramReview | null>(null);
@@ -314,6 +325,10 @@ export default function App() {
   const [pitchMismatch, setPitchMismatch] = useState(false);
   const [inputNote, setInputNote] = useState('—');
   const [metronomeOn, setMetronomeOn] = useState(initialSettings.metronomeOn);
+  // Launch requests resolve after await, so a toggle clicked while a plan is in
+  // flight must be read at begin() time, not from the click-time closure.
+  const metronomeOnRef = useRef(metronomeOn);
+  metronomeOnRef.current = metronomeOn;
   const [isConnecting, setIsConnecting] = useState(false);
   const [starting, setStarting] = useState(false);
   const [leaveRequest, setLeaveRequest] = useState<{ targetPath: string } | null>(null);
@@ -459,6 +474,9 @@ export default function App() {
     if (configRef.current.advanceMode !== 'follow') return;
     if (followStatusRef.current !== 'running') return;
     const result = message.result;
+    if (followWaitingRef.current && ['correct', 'partial', 'complete'].includes(result.kind)) {
+      followWaitingRef.current = false; setFollowWaiting(false); elapsedClock.start(performance.now());
+    }
     const currentIndex = Number.isInteger(message.progress?.index)
       ? message.progress.index
       : result.progressIndex ?? 0;
@@ -517,6 +535,7 @@ export default function App() {
       currentGroup: followGroupsRef.current[report.completedTargets] ?? null,
     } : prev);
     const interrupted = message.endReason === 'interrupted';
+    if (interrupted) stopRoundRepeatRef.current = true;
     const saved = message.persisted;
     const summary = `标准 ${report.standardTargets} / 完成 ${report.completedTargets} / 目标 ${report.totalTargets}；错误音 ${report.wrongNoteCount}，额外音 ${report.extraNoteCount}。`;
     const persistenceNote = saved
@@ -560,6 +579,8 @@ export default function App() {
       addFeedback('引擎提示', message, 'warning');
     },
     onStarted: (info) => {
+      displayStartRef.current = info.originPerfMs;
+      elapsedClock.start(info.originPerfMs, info.elapsedOffsetMs ?? 0);
       const plan = pendingReferencePlanRef.current;
       const controller = referencePlaybackRef.current;
       if (!plan || !controller || !systemDuetRef.current) return;
@@ -661,10 +682,14 @@ export default function App() {
     || starting
     || session.active
     || followStatus === 'running'
-    || followStatus === 'paused';
+    || followStatus === 'paused'
+    || followStatus === 'processing';
 
   const requestNavigation = (targetPath: string) => {
     if (targetPath === routePath) return;
+    if (route?.id === 'performance' && (session.waitingForFirstInput || (followWaitingRef.current && followStatus === 'running'))) {
+      scorePick.requestCommand({ kind: 'navigate', path: targetPath }); return;
+    }
     if (readingFreeActiveRef.current) {
       addFeedback('请先结束识谱练习', '结束并查看结果后，即可切换到演奏。', 'warning');
       return;
@@ -750,6 +775,7 @@ export default function App() {
     statusLabel: string;
   }) => {
     const seq = ++followStartSeqRef.current;
+    followWaitingRef.current = configRef.current.modeId === 'score'; setFollowWaiting(followWaitingRef.current);
     const origin = performance.now();
     displayStartRef.current = origin;
     elapsedBeforePauseRef.current = 0;
@@ -768,7 +794,7 @@ export default function App() {
     });
     setFollowReport(null);
     setFollowPersistence(null);
-    setEvents([]); setInputNote('—'); setPitchMismatch(false); setElapsed(0);
+    setEvents([]); setInputNote('—'); setPitchMismatch(false); elapsedClock.reset();
     followStatusRef.current = 'idle';
     setFollowStatus('idle');
     void session.startFollow({
@@ -797,6 +823,7 @@ export default function App() {
         return;
       }
       const index = Number.isInteger(started.progress?.index) ? started.progress.index : 0;
+      if (!followWaitingRef.current) elapsedClock.start(origin);
       followStatusRef.current = 'running';
       setFollowStatus('running');
       setFollowView((prev) => prev ? {
@@ -969,6 +996,7 @@ export default function App() {
         return null;
       }
       plannerAuthorityRef.current = authority;
+      setPlannerAuthorityVersion(n => n + 1);
       return authority;
     } catch {
       if (seq !== plannerAuthoritySeqRef.current) return plannerAuthorityRef.current;
@@ -1016,6 +1044,17 @@ export default function App() {
   const readingSetupActive = (config.modeId === 'reading-free' || config.modeId === 'reading-rhythm')
     && readingFreeSession === null
     && !(config.modeId === 'reading-rhythm' && generatedReadingScore);
+  // A finished free-reading result is workbench-scoped. Leaving the page
+  // (sidebar or browser history) discards the result VIEW so it can never
+  // cover another practice route; the attempt itself was already persisted
+  // (its save may still be in flight from readingPayloadRef). Running/paused
+  // sessions never get here: navigation is blocked while they are active.
+  useEffect(() => {
+    if (route?.id === 'workbench') return;
+    if (readingFreeSession === null || readingFreeSession.status === 'running' || readingFreeSession.status === 'paused') return;
+    setReadingFreeSession(null);
+    setReadingInput(null);
+  }, [route?.id, readingFreeSession]);
   useEffect(() => {
     const title = (route?.id === 'workbench' || route?.id === 'performance') ? currentMode.title : route?.title ?? '页面不存在';
     document.title = `${title} · Rhythm Trainer`;
@@ -1029,11 +1068,21 @@ export default function App() {
   const visibleTargetNotes = useMemo(() => {
     if (config.modeId === 'free') return [];
     let notes = scoreDoc.notes.filter(note => config.hand === 'both' || note.hand === config.hand);
-    if (config.modeId === 'score' && config.loopEnabled) {
-      notes = notes.filter(note => note.bar >= config.loopStartBar && note.bar <= config.loopEndBar);
+    if (config.modeId === 'score' && (config.loopEnabled || config.playbackStartNote)) {
+      // The bar range is only the outer envelope; the loop itself is the note
+      // segment between A and B. The idle preview (first target highlight) and
+      // the muted styling must follow the NOTE range too, otherwise the first
+      // note of A's measure shows up as a target outside the loop.
+      if (config.loopEnabled) notes = notes.filter(note => note.bar >= config.loopStartBar && note.bar <= config.loopEndBar);
+      const engineDoc = scoreDoc.engine;
+      const range = engineDoc ? scoreSelection(engineDoc, config) : null;
+      if (engineDoc && range) {
+        const outOfRange = loopRangeMutedEventIds(engineDoc, range);
+        notes = notes.filter(note => !outOfRange.has(note.id));
+      }
     }
     return notes;
-  }, [config.hand, config.modeId, config.loopEnabled, config.loopStartBar, config.loopEndBar, scoreDoc.notes]);
+  }, [config.hand, config.modeId, config.loopEnabled, config.loopStartBar, config.loopEndBar, config.loopStartNote, config.loopEndNote, config.playbackStartNote, scoreDoc.notes, scoreDoc.engine]);
   const scopedTargetCount = useMemo(
     () => new Set(visibleTargetNotes.map((note) => note.beat)).size,
     [visibleTargetNotes],
@@ -1054,7 +1103,8 @@ export default function App() {
         })();
   // With the system duet, the blue cursor is user-paced (FollowSession guide)
   // and does not advance when the fixed clock advances or a miss occurs.
-  const activeNoteIds = guideGroup ? [...guideGroup.scoreEventIds] : engineActiveNoteIds;
+  const scoreReturned = config.modeId === 'score' && (config.advanceMode === 'follow' ? followStatus === 'completed' : session.status === 'completed');
+  const activeNoteIds = scoreReturned ? (planGroupsRef.current[0] ?? engineActiveNoteIds) : guideGroup ? [...guideGroup.scoreEventIds] : engineActiveNoteIds;
   const activeNoteKey = activeNoteIds.join('|');
   const noteMidiById = useMemo(
     () => new Map(scoreDoc.notes.map((note) => [note.id, note.midiNote])),
@@ -1336,6 +1386,9 @@ export default function App() {
       loopActive: launchConfig.modeId === 'score' && launchConfig.loopEnabled,
       loopStartBar: launchConfig.loopStartBar,
       loopEndBar: launchConfig.loopEndBar,
+      loopStartNote: launchConfig.loopStartNote,
+      loopEndNote: launchConfig.loopEndNote,
+      playbackStartNote: launchConfig.playbackStartNote,
       range: context.range,
       handMapping: context.handMapping,
       repeatSelection: { kind: 'none' },
@@ -1357,6 +1410,9 @@ export default function App() {
       request: async () => {
         // Inputs come from the existing import/projection flow — never from a
         // reconstructed TS PlaybackPlan.
+        // Send the complete semantic source plus endpoint IDs. The backend
+        // owns selection validation, tie clipping and Rust planning.
+        const loopNoteRange = scoreSelection(engineDoc, launchConfig);
         const projected = projectScoreDocumentV1(engineDoc, report);
         if (projected.issues.length > 0) {
           throw new Error(`DOCUMENT_VALIDATION_FAILED: ${projected.issues.map((issue) => issue.code).join(', ')}`);
@@ -1378,6 +1434,7 @@ export default function App() {
           report,
           config: planConfig,
           mode,
+          ...(loopNoteRange ? { noteRange: { startEventId: loopNoteRange.start.eventId, endEventId: loopNoteRange.end.eventId } } : {}),
           scoreFingerprint: boundFingerprint,
           timeoutMs: 15000,
         });
@@ -1388,10 +1445,7 @@ export default function App() {
         const currentConfig = configRef.current;
         const currentDoc = scoreDocRef.current;
         const currentLoop = currentConfig.modeId === 'score' && currentConfig.loopEnabled;
-        const currentRange = {
-          startMeasureOrdinal: currentLoop ? currentConfig.loopStartBar : 1,
-          endMeasureOrdinal: currentLoop ? currentConfig.loopEndBar : currentDoc.meta.barCount,
-        };
+        const currentRange = currentDoc.engine ? scoreSelectionBars(currentDoc.engine, currentConfig, currentDoc.meta.barCount) : { startMeasureOrdinal: 1, endMeasureOrdinal: currentDoc.meta.barCount };
         const currentFingerprint = currentDoc.engine?.fingerprint ?? null;
         const currentPartId = currentDoc.engine?.parts[0]?.id ?? 'P1';
         return {
@@ -1403,6 +1457,9 @@ export default function App() {
             loopActive: currentLoop,
             loopStartBar: currentConfig.loopStartBar,
             loopEndBar: currentConfig.loopEndBar,
+            loopStartNote: currentConfig.loopStartNote,
+            loopEndNote: currentConfig.loopEndNote,
+            playbackStartNote: currentConfig.playbackStartNote,
             range: currentRange,
             handMapping: currentFingerprint
               ? userHandMappingFor(currentFingerprint, currentPartId) ?? (currentDoc.engine ? buildDefaultPianoHandMapping(currentDoc.engine, pianoHands) : null)
@@ -1512,8 +1569,10 @@ export default function App() {
           profile: launchConfig.profile,
           countInBeats: context.countInBeats,
           countInUs,
+          // Loop practice: the engine holds the clock until the first key.
+          ...(launchConfig.modeId === 'score' || route?.id === 'performance' ? { armOnFirstInput: true } : {}),
           ticksPerQuarter: 960,
-          metronomeEnabled: metronomeOn,
+          metronomeEnabled: metronomeOnRef.current,
           beatsPerBar: (launchConfig.timeSignature[0] * 4) / launchConfig.timeSignature[1],
           atoms,
           scoreEvents,
@@ -1548,6 +1607,7 @@ export default function App() {
     });
 
     if (outcome.status === 'started') return;
+    if (cancelledPlanGenerationsRef.current.delete(generation)) { setStarting(false); return; }
     // A superseded launch leaves the UI to the newer one; any other
     // cancellation on the CURRENT generation must visibly fail the launch.
     const stillLatest = generation === launchSeqRef.current;
@@ -1580,6 +1640,10 @@ export default function App() {
       return false;
     }
     const loopActive = config.modeId === 'score' && config.loopEnabled;
+    if (loopActive && config.loopSelectionPending) {
+      addFeedback('请选择循环范围', '旧选区已清除，请点击谱面选择新的 A/B 音符，再开始练习。', 'neutral');
+      return false;
+    }
     const engineMode = engineModeFor(config);
     // Three seconds of preparation, expressed in this tempo's beats so the
     // engine, score events, reference playback and metronome share one clock.
@@ -1588,7 +1652,6 @@ export default function App() {
     if (overrideConfig) {
       setConfig(overrideConfig);
       setSettingsDraft(null);
-      setShowSettings(false);
     }
     let handByScoreEventId: Map<string, 'left' | 'right'> = new Map();
     /** R2-3h: the explicit scope the planner request is built from. */
@@ -1634,10 +1697,7 @@ export default function App() {
         openSettingsAtHandMapping();
         return false;
       }
-      const scopeRange = {
-        startMeasureOrdinal: loopActive ? config.loopStartBar : 1,
-        endMeasureOrdinal: loopActive ? config.loopEndBar : scoreDoc.meta.barCount,
-      };
+      const scopeRange = scoreSelectionBars(scoreDoc.engine!, config, scoreDoc.meta.barCount);
       const scopeForLaunch = {
         schemaVersion: 1 as const,
         partId,
@@ -1646,6 +1706,9 @@ export default function App() {
         handMapping: storedMapping,
       };
       const engineDoc = scoreDoc.engine!; // narrowed above via engineFingerprint
+      // This is a display/availability check. The backend refines the exact
+      // note window and returns the authoritative, hand-filtered Rust plan.
+      const loopNoteRange = scoreSelection(engineDoc, config);
       const scopeAssessment = assessPracticeScope(engineDoc, scopeForLaunch);
       if (!scopeAssessment.ok) {
         setStarting(false);
@@ -1663,10 +1726,13 @@ export default function App() {
       }
       handByScoreEventId = handByScoreEventIdFromMapping(engineDoc, scopeForLaunch);
       launchScope = { partId, range: scopeRange, handMapping: storedMapping };
+      const loopMutedEventIds = loopNoteRange ? loopRangeMutedEventIds(engineDoc, loopNoteRange) : null;
       const launchNotes = scoreDoc.notes.filter((note) => (
         config.hand === 'both' || note.hand === config.hand
       )).filter((note) => (
         !loopActive || (note.bar >= config.loopStartBar && note.bar <= config.loopEndBar)
+      )).filter((note) => (
+        !loopMutedEventIds || !loopMutedEventIds.has(note.id)
       ));
       // The professional score reads 8va/8vb from source MusicXML. Its
       // sounding pitches must not be checked against the simple SVG range.
@@ -1690,7 +1756,8 @@ export default function App() {
     }
     setStarting(true);
     elapsedBeforePauseRef.current = 0;
-    displayStartRef.current = performance.now();
+    // Loop takes are armed: the display clock also waits for the first key.
+    displayStartRef.current = config.modeId === 'score' || route?.id === 'performance' ? null : performance.now();
     setPitchMismatch(false);
     if (config.modeId === 'free') {
       session.beginFreePlay();
@@ -1953,9 +2020,11 @@ export default function App() {
       bpm: config.tempo,
       profile: config.profile,
       countInBeats,
+      // Loop practice: the engine holds the clock until the first key.
+      ...(config.modeId === 'score' || route?.id === 'performance' ? { armOnFirstInput: true } : {}),
       countInUs,
       ticksPerQuarter: 960,
-      metronomeEnabled: metronomeOn,
+      metronomeEnabled: metronomeOnRef.current,
       beatsPerBar: (config.timeSignature[0] * 4) / config.timeSignature[1],
       atoms: plan.atoms,
       ...(scoreEvents ? { scoreEvents } : {}),
@@ -2018,10 +2087,12 @@ export default function App() {
       loopEnabled: true,
       loopStartBar,
       loopEndBar,
+      loopSelectionPending: false,
+      loopStartNote: null,
+      loopEndNote: null,
     };
     setConfig(nextConfig);
     setSettingsDraft(null);
-    setShowSettings(false);
     if (route?.id !== 'workbench') navigate('/workbench');
     addFeedback(
       '教学步骤已就绪',
@@ -2031,7 +2102,7 @@ export default function App() {
     return true;
   };
 
-  const startPractice = () => {
+  const startPractice = (options?: { skipPreparation?: boolean; waitForFirstKey?: boolean }) => {
     if (configRef.current.modeId === 'reading-free' || readingFreeActiveRef.current) return;
     if (prepRemain !== null) return;
     const pendingDraft = settingsDraft;
@@ -2046,6 +2117,10 @@ export default function App() {
     void ensureSharedAudioContext().catch((error) => {
       addFeedback('音频引擎不可用', error instanceof Error ? error.message : String(error), 'warning');
     });
+    audition.stop();
+    stopRoundRepeatRef.current = false;
+    cancelledPlanGenerationsRef.current.clear();
+    elapsedClock.reset();
     clearReferencePlayback('restart');
     setSystemNoteIds([]);
     setUserNoteIds([]);
@@ -2060,7 +2135,7 @@ export default function App() {
     // Timeline practice starts the engine immediately and counts down to the
     // backend's first-note time. A fixed client-side delay only added dead
     // time before the engine count-in and made the actual start ambiguous.
-    if (configRef.current.advanceMode === 'timeline' && configRef.current.modeId !== 'free') {
+    if (options?.skipPreparation || route?.id === 'performance' || configRef.current.modeId === 'score' || (configRef.current.advanceMode === 'timeline' && configRef.current.modeId !== 'free')) {
       launchPractice();
       return;
     }
@@ -2082,6 +2157,7 @@ export default function App() {
   };
 
   const pausePractice = () => {
+    elapsedClock.pause();
     if (config.advanceMode === 'follow') {
       if (followStatusRef.current !== 'running') return;
       elapsedBeforePauseRef.current = elapsed;
@@ -2103,6 +2179,8 @@ export default function App() {
   pauseSessionForAudioRef.current = pausePractice;
 
   const resumePractice = () => {
+    // An armed loop has no origin until the backend accepts its first key.
+    if (displayStartRef.current !== null && !(config.advanceMode === 'follow' && followWaitingRef.current)) elapsedClock.resume();
     if (config.advanceMode === 'follow') {
       if (followStatusRef.current !== 'paused') return;
       const resumedAtMs = displayStartRef.current !== null
@@ -2115,7 +2193,6 @@ export default function App() {
       return;
     }
     if (session.status !== 'paused') return;
-    displayStartRef.current = performance.now() - elapsedBeforePauseRef.current * 1000;
     guideSessionRef.current?.invalidateNextInterval();
     session.resume();
     void referencePlaybackRef.current?.resume();
@@ -2123,6 +2200,8 @@ export default function App() {
   };
 
   const finishPractice = () => {
+    stopRoundRepeatRef.current = true;
+    elapsedClock.pause();
     programStopRef.current = true;
     if (config.advanceMode === 'follow') {
       if (followStatusRef.current === 'idle'
@@ -2249,6 +2328,7 @@ export default function App() {
   }, [practiceInProgress, reportUnsaved, readingFreeSession?.status]);
 
   const resetPractice = () => {
+    stopRoundRepeatRef.current = true;
     if (practiceInProgress || reportUnsaved || readingFreeActiveRef.current) {
       addFeedback('暂不能重置', '请先结束本轮并保存结果。', 'warning');
       return;
@@ -2267,13 +2347,66 @@ export default function App() {
     setUserNoteIds([]);
     clearFollowSession();
     session.reset();
-    setElapsed(0); setEvents([]); setInputNote('—'); setPitchMismatch(false);
+    elapsedClock.reset(); setEvents([]); setInputNote('—'); setPitchMismatch(false);
     setLastInputMidi(null);
     expectedNotesRef.current = []; planGroupsRef.current = [];
     setFeedbackItems([]); elapsedBeforePauseRef.current = 0; displayStartRef.current = null; setStarting(false);
   };
 
-  const applyScoreDocument = (doc: ScoreDocument, feedbackTitle: string): boolean => {
+  const audition = useScoreAudition({ enabled: route?.id === 'performance' && config.modeId === 'score', score: scoreDoc.engine, report: scoreDoc.importReport, config,
+    mapping: () => scoreDoc.engine ? userHandMappingFor(scoreDoc.engine.fingerprint, scoreDoc.engine.parts[0].id) ?? buildDefaultPianoHandMapping(scoreDoc.engine, pianoHands) : null,
+    requestPlan: session.requestPlannerPlan });
+  const scorePick = useScorePick({ blocked: practiceInProgress || reportUnsaved, phase: `${starting}|${session.status}|${followStatus}`, identity: `${route?.id}|${scoreDoc.engine?.fingerprint}`,
+    interrupt: () => {
+      audition.stop(); elapsedClock.reset();
+      if (starting) cancelledPlanGenerationsRef.current.add(launchSeqRef.current);
+      launchSeqRef.current += 1;
+      cancelPrep();
+      if (session.active || followStatusRef.current === 'running' || followStatusRef.current === 'paused') finishPractice();
+    },
+    commitCommand: (command) => {
+      resetPractice();
+      if (command.kind === 'navigate') navigate(command.path);
+      else if (command.kind === 'mode') chooseMode(command.mode);
+      else if (command.kind === 'config') { applyConfigPatch(command.patch); if (route?.id === 'performance') setAutoStartRequested(true); }
+      else void audition.play();
+    },
+    commit: (id, edge) => {
+      resetPractice();
+      if (route?.id === 'performance') setAutoStartRequested(true);
+      if (!id) {
+        applyConfigPatch({ playbackStartNote: null, loopEnabled: false, loopSelectionPending: false, loopStartNote: null, loopEndNote: null, loopStartBar: 1, loopEndBar: maxBar });
+        return;
+      }
+      const doc = scoreDocRef.current.engine;
+      const event = doc ? resolveEventById(doc, id) : null;
+      if (!event || event.kind !== 'note') return;
+      if (configRef.current.loopEnabled) {
+        if (edge) handleLoopDragCommit(edge, id); else handleLoopPickTap(id);
+      } else applyConfigPatch({ playbackStartNote: boundaryFromEvent(event) });
+      setFollowPulse((value) => value + 1);
+    } });
+
+  useRoundReturn({ enabled: route?.id === 'performance' || (config.modeId === 'score' && route?.id === 'workbench'),
+    completed: config.advanceMode === 'follow' ? followStatus === 'completed' : session.status === 'completed',
+    takeId: config.advanceMode === 'follow' ? followPersistence?.takeId ?? null : session.takeId,
+    persisted: config.advanceMode === 'follow' ? followPersistence?.persisted === true : session.reportPersisted === true,
+    repeat: (route?.id === 'performance' || !stopRoundRepeatRef.current) && !scorePick.pending
+      && (config.advanceMode === 'follow' ? (followReport?.completedTargets ?? 0) === (followReport?.totalTargets ?? -1) : session.report?.trustworthy === true),
+    onReturn: () => {
+      elapsedClock.reset(); displayStartRef.current = null;
+      clearReferencePlayback('round-ended'); systemPlayerRef.current?.stopAll(); clearDuetTimers();
+      setSystemNoteIds([]); setUserNoteIds([]); guideSessionRef.current = null; setGuideView(null);
+      setFollowPulse(n => n + 1);
+    },
+    onRepeat: () => startPractice({ skipPreparation: true, waitForFirstKey: true }),
+  });
+
+  const applyScoreDocument = (
+    doc: ScoreDocument,
+    feedbackTitle: string,
+    options: { preserveLoop?: boolean } = {},
+  ): boolean => {
     const followActive = followStatusRef.current === 'running' || followStatusRef.current === 'paused' || followStatusRef.current === 'processing';
     if (practiceInProgress || followActive || reportUnsaved || readingFreeActiveRef.current) {
       addFeedback('暂不能换曲', '请先结束本轮并保存结果。', 'warning');
@@ -2296,13 +2429,16 @@ export default function App() {
       setGeneratedReadingScore(null);
       setReadingFreeSession(null);
     }
+    // Restoring the previously selected score on reload must NOT wipe the
+    // loop range the user picked (the old unconditional reset sent them back
+    // to the initial position on every load). Switching scores still resets.
+    const preserveLoop = options.preserveLoop === true;
     setConfig(prev => ({
       ...prev,
       modeId: leaveGeneratedReading ? 'score' : prev.modeId,
       timeSignature: [doc.meta.timeSignature[0], doc.meta.timeSignature[1]] as [number, number],
       hand: 'both',
-      loopStartBar: 1,
-      loopEndBar: doc.meta.barCount,
+      ...(preserveLoop ? {} : { playbackStartNote: null, loopSelectionPending: false, loopStartBar: 1, loopEndBar: doc.meta.barCount, loopStartNote: null, loopEndNote: null }),
     }));
     setSettingsDraft(prev => prev ? {
       ...prev,
@@ -2311,11 +2447,10 @@ export default function App() {
         modeId: leaveGeneratedReading ? 'score' : prev.config.modeId,
         timeSignature: [doc.meta.timeSignature[0], doc.meta.timeSignature[1]] as [number, number],
         hand: 'both',
-        loopStartBar: 1,
-        loopEndBar: doc.meta.barCount,
+        ...(preserveLoop ? {} : { playbackStartNote: null, loopSelectionPending: false, loopStartBar: 1, loopEndBar: doc.meta.barCount, loopStartNote: null, loopEndNote: null }),
       },
     } : prev);
-    setElapsed(0); setEvents([]); setFeedbackItems([]); setInputNote('—'); setPitchMismatch(false);
+    elapsedClock.reset(); setEvents([]); setFeedbackItems([]); setInputNote('—'); setPitchMismatch(false);
     setLastInputMidi(null);
     expectedNotesRef.current = []; planGroupsRef.current = [];
     elapsedBeforePauseRef.current = 0; displayStartRef.current = null; setStarting(false);
@@ -2351,7 +2486,7 @@ export default function App() {
         if (cancelled || scoreSelectionVersionRef.current !== restoreVersion) return;
         const doc = parseMusicXml(entry.xml, entry.fileName);
         if (scoreSelectionVersionRef.current !== restoreVersion) return;
-        if (applyScoreDocument(doc, `已恢复上次乐谱《${entry.name}》`)) {
+        if (applyScoreDocument(doc, `已恢复上次乐谱《${entry.name}》`, { preserveLoop: true })) {
           setActiveLibraryId(entry.id);
           setSelectedLibraryId(entry.id);
         }
@@ -2469,6 +2604,8 @@ export default function App() {
           loopEnabled: false,
           loopStartBar: 1,
           loopEndBar: value.measures,
+          loopStartNote: null,
+          loopEndNote: null,
           advanceMode: 'timeline',
         };
         setConfig(nextConfig);
@@ -2594,6 +2731,9 @@ export default function App() {
       ...template.config,
       loopStartBar,
       loopEndBar,
+      loopSelectionPending: false,
+      loopStartNote: null,
+      loopEndNote: null,
     };
     setConfig(nextConfig);
     setSettingsDraft(route?.id === 'settings' ? { config: nextConfig, metronomeOn } : null);
@@ -2916,7 +3056,7 @@ export default function App() {
     setConfig(prev => ({ ...prev, modeId, hand: nextHand, advanceMode: nextAdvanceMode }));
     setSettingsDraft(prev => prev ? { ...prev, config: { ...prev.config, modeId, hand: nextHand, advanceMode: nextAdvanceMode } } : prev);
     setSettingsSaved(false);
-    setElapsed(0); setEvents([]); setFeedbackItems([]); setInputNote('—'); setPitchMismatch(false);
+    elapsedClock.reset(); setEvents([]); setFeedbackItems([]); setInputNote('—'); setPitchMismatch(false);
     setLastInputMidi(null);
     setGeneratedReadingScore(null);
     setReadingError(null);
@@ -2994,31 +3134,9 @@ export default function App() {
     || JSON.stringify(settingsDraft.config) !== JSON.stringify(config)
   );
 
-  const closeSettingsPanel = () => {
-    setShowSettings(false);
-    setSettingsDraft(null);
-    setSettingsSaved(false);
-    setSettingsFocusMapping(false);
-  };
-
-  const toggleSettingsPanel = () => {
-    if (showSettings) {
-      closeSettingsPanel();
-      return;
-    }
-    // The settings panel lives in the workbench; make the global gear
-    // actionable from history/profile instead of opening an invisible panel.
-    if (route?.id !== 'workbench' && route?.id !== 'performance') requestNavigation('/performance');
-    setSettingsDraft({ config, metronomeOn });
-    setSettingsSaved(false);
-    setSettingsFocusMapping(false);
-    setShowSettings(true);
-  };
-
   const lastSettingsRouteRef = useRef(route?.id);
   useEffect(() => {
     if (route?.id === 'settings') {
-      setShowSettings(false);
       setSettingsDraft({ config: {
         ...configRef.current,
         advanceMode: systemDuetRef.current || configRef.current.modeId === 'fixed-line' || configRef.current.modeId === 'reading-rhythm' ? 'timeline' : configRef.current.advanceMode,
@@ -3044,15 +3162,6 @@ export default function App() {
     setSettingsSaved(false);
     setAppliedTakeTemplateId(null);
     setSettingsDraft(prev => prev ? { ...prev, config: { ...prev.config, [key]: value } } : prev);
-  };
-
-  const toggleMetronomeDraft = () => {
-    if (settingsLocked) {
-      warnSettingsLocked();
-      return;
-    }
-    setSettingsSaved(false);
-    setSettingsDraft(prev => prev ? { ...prev, metronomeOn: !prev.metronomeOn } : prev);
   };
 
   /** Draft edits only take effect here: apply, persist on this device, keep the panel open. */
@@ -3084,6 +3193,102 @@ export default function App() {
     addFeedback('设置已保存', '练习参数已应用，并会在这台设备上保留，下次打开页面自动恢复。', 'success');
   };
 
+  /** Toolbar config edits apply immediately (no draft/dialog on this page):
+   * write config + persist on this device + keep any open draft consistent. */
+  const applyConfigPatch = (patch: Partial<PracticeConfig>) => {
+    if (settingsLocked) {
+      warnSettingsLocked();
+      return;
+    }
+    if (patch.loopEnabled !== undefined) { elapsedClock.reset(); displayStartRef.current = null; }
+    const next: PracticeConfig = { ...configRef.current, ...patch };
+    setAppliedTakeTemplateId(null);
+    setConfig(next);
+    setSettingsDraft((prev) => prev ? { ...prev, config: { ...prev.config, ...patch } } : prev);
+    setSettingsSaved(true);
+    savePracticeSettings({ config: next, metronomeOn });
+  };
+
+  /**
+   * One writer for a committed loop range: boundaries + their measures go into
+   * config, the open settings draft and device storage together, so the score,
+   * the saved settings and the next plan can never disagree.
+   */
+  const commitLoopRange = (range: { start: LoopBoundaryNote; end: LoopBoundaryNote }, announce: boolean) => {
+    const barLimit = Math.max(1, maxBar);
+    const loopStartBar = Math.min(Math.max(1, range.start.measureOrdinal), barLimit);
+    const loopEndBar = Math.max(loopStartBar, Math.min(Math.max(1, range.end.measureOrdinal), barLimit));
+    const nextConfig: PracticeConfig = {
+      ...configRef.current,
+      loopEnabled: true,
+      loopStartNote: range.start,
+      loopSelectionPending: false,
+      loopEndNote: range.end,
+      loopStartBar,
+      loopEndBar,
+    };
+    setConfig(nextConfig);
+    setSettingsDraft((prev) => prev ? {
+      ...prev,
+      config: { ...prev.config, loopSelectionPending: false, loopStartNote: range.start, loopEndNote: range.end, loopStartBar, loopEndBar },
+    } : prev);
+    savePracticeSettings({ config: nextConfig, metronomeOn });
+    setSettingsSaved(true);
+    if (!announce) return;
+    addFeedback(
+      '循环范围已更新',
+      range.start.eventId === range.end.eventId
+        ? `单音循环：第 ${range.start.measureOrdinal} 小节的这个音。`
+        : `第 ${range.start.measureOrdinal} 小节 → 第 ${range.end.measureOrdinal} 小节（音符级精确范围）。`,
+      'success',
+    );
+  };
+
+  /**
+   * Tapping a note adjusts the loop range silently:
+   *   no range yet      → this note becomes a one-note range (A/B visible)
+   *   range exists      → the endpoint NEAREST this note moves here; outside
+   *                       the range the side decides, so a one-note range can
+   *                       grow in either direction instead of clamping.
+   * No hint text: the band and A/B handles are the feedback.
+   */
+  const handleLoopPickTap = (eventId: string) => {
+    if (practiceInProgress) return;
+    if (configRef.current.modeId !== 'score' || !configRef.current.loopEnabled) return;
+    const engineDoc = scoreDocRef.current.engine;
+    if (!engineDoc) return;
+    const canonicalId = canonicalLoopPickEventId(engineDoc, eventId);
+    if (!canonicalId) return;
+    const tappedEvent = resolveEventById(engineDoc, canonicalId);
+    if (!tappedEvent) return;
+    const tapped = boundaryFromEvent(tappedEvent);
+    const startEvent = resolveBoundaryEvent(engineDoc, configRef.current.loopStartNote);
+    const endEvent = resolveBoundaryEvent(engineDoc, configRef.current.loopEndNote);
+    if (!startEvent || !endEvent) {
+      commitLoopRange({ start: tapped, end: tapped }, false);
+      return;
+    }
+    const start = boundaryFromEvent(startEvent);
+    const end = boundaryFromEvent(endEvent);
+    const which = loopBoundaryForTap(startEvent.onsetBeat, endEvent.onsetBeat, tappedEvent.onsetBeat);
+    commitLoopRange(which === 'start' ? { start: tapped, end } : { start, end: tapped }, false);
+  };
+
+  const handleLoopDragCommit = (which: 'start' | 'end', eventId: string) => {
+    if (practiceInProgress) return;
+    const engineDoc = scoreDocRef.current.engine;
+    if (!engineDoc) return;
+    const draggedEvent = resolveEventById(engineDoc, eventId);
+    if (!draggedEvent) return;
+    const dragged = boundaryFromEvent(draggedEvent);
+    const fixedBoundary = which === 'start' ? configRef.current.loopEndNote : configRef.current.loopStartNote;
+    const fixedEvent = resolveBoundaryEvent(engineDoc, fixedBoundary);
+    // A drag must not move the other end: clamp instead of swapping. A tap
+    // never needs this — it picks the end on the tapped note's side.
+    const range = fixedEvent ? clampDraggedBoundary(which, dragged, boundaryFromEvent(fixedEvent)) : { start: dragged, end: dragged };
+    commitLoopRange(range, true);
+  };
+
   const simulateNote = (note?: number) => {
     const expectedGroup = expectedNotesRef.current[Math.min(session.nextUnmatchedIndex, Math.max(expectedNotesRef.current.length - 1, 0))];
     const followFallback = config.advanceMode === 'follow' ? followView?.currentGroup?.pitches[0]?.midiNote : undefined;
@@ -3098,21 +3303,25 @@ export default function App() {
     }, Math.max(120, Math.round(nominal * 0.9)));
   };
 
-  /** Virtual key press & hold: Note On on pointer-down, Note Off on release. */
-  const virtualKeyDown = (note: number) => {
-    handleRawPacket(buildMockPacket(true, note));
-  };
-  const virtualKeyUp = (note: number) => {
-    handleRawPacket(buildMockPacket(false, note));
-  };
 
   useEffect(() => {
     if (session.status !== 'idle' || session.error) setStarting(false);
   }, [session.status, session.error]);
 
   // Start only after the new score/config and its display mapping have committed.
+  const performanceStandbyKey = route?.id === 'performance' && (config.modeId === 'score' || config.modeId === 'fixed-line')
+    ? `${scoreDoc.engine?.fingerprint}|${JSON.stringify(config)}` : null;
+  useEffect(() => { if (performanceStandbyKey) setAutoStartRequested(true); }, [performanceStandbyKey]);
+  const auditionWasActive = useRef(false);
+  useEffect(() => {
+    if (auditionWasActive.current && !audition.active && performanceStandbyKey) setAutoStartRequested(true);
+    auditionWasActive.current = audition.active;
+  }, [audition.active, performanceStandbyKey]);
   useEffect(() => {
     if (!autoStartRequested || readingBusy || starting) return;
+    if (practiceInProgress || reportUnsaved || scorePick.pending || audition.active || settingsDirty) return;
+    if (performanceStandbyKey && !plannerAuthorityRef.current) return;
+    if (config.modeId === 'score' && config.loopEnabled && config.loopSelectionPending) return;
     if (route?.id !== 'workbench' && route?.id !== 'performance' && route?.id !== 'training') { setAutoStartRequested(false); return; }
     if (scoreDoc.engine) {
       const partId = scoreDoc.engine.parts[0]?.id ?? 'P1';
@@ -3121,9 +3330,11 @@ export default function App() {
     }
     setAutoStartRequested(false);
     startPractice();
-  }, [autoStartRequested, readingBusy, starting, scoreDoc, config.modeId, route?.id]);
+  }, [autoStartRequested, readingBusy, starting, scoreDoc, config, route?.id, practiceInProgress, reportUnsaved, scorePick.pending, audition.active, settingsDirty, plannerAuthorityVersion]);
 
   const uiStatus: SessionStatus = config.advanceMode === 'follow' ? followStatus : session.status;
+
+  useEffect(() => { if (uiStatus === 'idle' || uiStatus === 'paused' || uiStatus === 'completed') elapsedClock.pause(); }, [uiStatus, elapsedClock.pause]);
 
   // Why a teaching practice step cannot start right now (shown inline on
   // /teaching instead of failing after navigating to the workbench).
@@ -3141,13 +3352,6 @@ export default function App() {
     return null;
   })();
 
-  useEffect(() => {
-    if (uiStatus !== 'running' && session.status !== 'countdown') return;
-    const timer = window.setInterval(() => {
-      if (displayStartRef.current !== null) setElapsed(Math.max(0, (performance.now() - displayStartRef.current) / 1000));
-    }, 100);
-    return () => window.clearInterval(timer);
-  }, [uiStatus, session.status]);
 
   const launchSkillTraining = (drill: GeneratedSkillDrill): boolean => {
     if (window.location.pathname !== '/training') return false;
@@ -3162,9 +3366,12 @@ export default function App() {
         const { profile, feedback, durationPolicy } = configRef.current;
         programSettingsRef.current = { profile, feedback, durationPolicy };
       }
-      setConfig((previous) => ({ ...previous, profile: drill.program ? 'standard' : previous.profile, feedback: drill.program ? (drill.program.config.mode === 'assessment' ? 'after' : 'live') : previous.feedback, durationPolicy: drill.program ? 'strict-keydown' : previous.durationPolicy, modeId: 'fixed-line', tempo: drill.bpm, hand: drill.hand, loopEnabled: false, loopStartBar: 1, loopEndBar: drill.bars, timeSignature: [4, 4], advanceMode: 'timeline' }));
+      setConfig((previous) => ({ ...previous, profile: drill.program ? 'standard' : previous.profile, feedback: drill.program ? (drill.program.config.mode === 'assessment' ? 'after' : 'live') : previous.feedback, durationPolicy: drill.program ? 'strict-keydown' : previous.durationPolicy, modeId: 'fixed-line', tempo: drill.bpm, hand: drill.hand, loopEnabled: false, loopStartBar: 1, loopEndBar: drill.bars, loopStartNote: null, loopEndNote: null, timeSignature: [4, 4], advanceMode: 'timeline' }));
       setSettingsDraft(null);
       setGeneratedReadingScore(null);
+      // A stale finished reading result view would hide the drill workspace.
+      setReadingFreeSession(null);
+      setReadingInput(null);
       setActiveLibraryId(null);
       setTrainingDrill(drill);
       programStopRef.current = false; setProgramBusy(false); setProgramReview(null); setProgramError(''); setProgramCompleted(false);
@@ -3244,25 +3451,6 @@ export default function App() {
     : status === 'paused' ? '已暂停'
     : status === 'processing' ? '生成报告中'
     : status === 'completed' ? '已结束' : '准备中';
-  const statusClass = prepRemain !== null ? 'is-countdown' : status === 'running' ? 'is-running'
-    : status === 'paused' ? 'is-paused'
-    : status === 'countdown' ? 'is-countdown'
-    : status === 'processing' ? 'is-processing'
-    : status === 'completed' ? 'is-complete' : 'is-idle';
-  const referenceStatusLabel = !systemDuet
-    ? '关闭'
-    : !referenceSnapshot
-      ? '待机'
-      : `${referenceSnapshot.status === 'COUNT_IN' ? '预备拍'
-        : referenceSnapshot.status === 'PLAYING' ? '播放中'
-        : referenceSnapshot.status === 'PAUSED' ? '已暂停'
-        : referenceSnapshot.status === 'COMPLETED' ? '已完成'
-        : referenceSnapshot.status === 'FAILED' ? '失败'
-        : referenceSnapshot.status === 'STOPPED' ? '已停止'
-        : '准备中'}${referenceSnapshot.health === 'DEGRADED' ? ' · 降级' : ''}`;
-  const referencePositionLabel = referenceSnapshot && referenceSnapshot.measureIndex > 0
-    ? `第 ${referenceSnapshot.measureIndex} 小节`
-    : '';
 
   const lastJudgment = session.judgments.length ? session.judgments[session.judgments.length - 1] : null;
   const followLast = config.advanceMode === 'follow' ? followView?.last ?? null : null;
@@ -3309,14 +3497,23 @@ export default function App() {
     </header>
   );
 
+  const selectedScoreRange = scoreDoc.engine ? scoreSelection(scoreDoc.engine, config) : null;
+  const performanceWaiting = route?.id === 'performance' && (config.advanceMode === 'follow' ? followWaiting && followStatus === 'running' : session.waitingForFirstInput);
+  const sessionControls = <PracticeSessionControls status={status} statusLabel={statusLabel} elapsed={elapsed}
+    automaticStart={route?.id === 'performance'}
+    starting={starting} preparing={prepRemain} active={session.active} waitingForFirstInput={session.waitingForFirstInput || performanceWaiting}
+    locked={practiceInProgress || reportUnsaved} startDisabled={reportUnsaved || settingsDirty || (config.modeId === 'score' && config.loopEnabled && config.loopSelectionPending === true)} onStart={startPractice} onPause={pausePractice} onResume={resumePractice}
+    onFinish={finishPractice} onCancelPreparation={cancelPrep} onReset={resetPractice} />;
+
   return (
     <AppShell
+      immersive={route?.id === 'performance' && !readingSetupActive && !readingFreeSession && config.modeId !== 'reading-free'}
       focus={practiceFocus}
       sidebar={sidebar}
       topbar={topbar}
       notice={config.modeId !== 'reading-free' && session.error ? <section className="card error-strip" role="alert"><strong>引擎服务异常</strong><p>{session.error}</p></section> : null}
     >
-      <div className={`page-content${fixedLineMode ? ' fixed-line-page' : ''}${appWorkspace ? ' app-workspace' : ''}${status === 'completed' ? ' page-done' : ''}${readingSetupActive ? ' reading-setup-page' : ''}${readingFreeSession ? ' reading-free-page' : ''}${config.modeId === 'reading-rhythm' ? ' reading-rhythm-page' : ''}`} style={{ display: practiceWorkspaceVisible ? undefined : 'none' }}>
+      <div className={`page-content${fixedLineMode ? ' fixed-line-page' : ''}${appWorkspace ? ' app-workspace' : ''}${status === 'completed' ? ' page-done' : ''}${readingSetupActive ? ' reading-setup-page' : ''}${readingFreeSession ? ' reading-free-page' : ''}${config.modeId === 'reading-rhythm' ? ' reading-rhythm-page' : ''}${route?.id === 'performance' && !fixedLineMode ? ' performance-page' : ''}`} style={{ display: practiceWorkspaceVisible ? undefined : 'none' }}>
           <input
             ref={scoreFileInputRef}
             type="file"
@@ -3341,71 +3538,35 @@ export default function App() {
               if (file) void handleLibraryReplaceFile(file);
             }}
           />
+          {route?.id !== 'training' && !readingSetupActive && !readingFreeSession && config.modeId !== 'reading-free' && config.modeId !== 'reading-rhythm' ? (
+            <PerformanceToolbar config={config} barCount={maxBar} locked={settingsLocked && !performanceWaiting} busy={starting || readingBusy}
+              supportsHandSelection={currentMode.supportsHandSelection} systemDuet={systemDuet} metronomeOn={metronomeOn}
+              midiConnected={deviceStatus === 'connected'} deviceLabel={deviceStatus === 'connected' ? deviceName : '连接 MIDI 设备'}
+              playbackControls={config.modeId === 'score' ? <ScorePlaybackControls startLabel={selectedScoreRange ? `起点：第 ${selectedScoreRange.start.measureOrdinal} 小节` : '起点：从头'}
+                active={audition.active} pending={scorePick.pending} disabled={(practiceInProgress && !performanceWaiting) || starting || reportUnsaved} error={audition.error}
+                onPlay={() => performanceWaiting ? scorePick.requestCommand({ kind: 'audition' }) : void audition.play()} onStop={audition.stop} onFromStart={() => scorePick.request(null)} /> : undefined}
+              onReturn={() => requestNavigation('/workbench')} onChooseScore={() => requestNavigation('/scores')} onDevices={() => requestNavigation('/device')}
+              onToggleMode={() => performanceWaiting ? scorePick.requestCommand({ kind: 'mode', mode: config.modeId === 'fixed-line' ? 'score' : 'fixed-line' }) : chooseMode(config.modeId === 'fixed-line' ? 'score' : 'fixed-line')}
+              onPatch={patch => performanceWaiting ? scorePick.requestCommand({ kind: 'config', patch }) : applyConfigPatch(patch)}
+              onToggleMetronome={() => {
+                const next = !metronomeOn; setMetronomeOn(next); session.setMetronomeEnabled(next);
+                setSettingsDraft((prev) => prev ? { ...prev, metronomeOn: next } : prev);
+                savePracticeSettings({ config: configRef.current, metronomeOn: next });
+              }}>{sessionControls}</PerformanceToolbar>
+          ) : (
           <div className="reading-workspace-toolbar">
             <strong>{route?.id === 'training' ? '专项训练' : route?.id === 'performance' ? '演奏' : '识谱'}</strong>
             {route?.id === 'training' && status !== 'completed' && <button type="button" className="button button-outline" disabled={practiceInProgress || reportUnsaved} onClick={() => { resetPractice(); setTrainingRoomOpen(false); }}>返回专项选择</button>}
-            <div className="performance-toolbar-actions" style={{ display: route?.id === 'training' ? 'none' : undefined }}>
+            {route?.id !== 'training' && <div className="performance-toolbar-actions">
             <button type="button" className="mode-switch" role="switch" aria-label={route?.id === 'performance' ? '固定线演奏' : '节奏识谱'} aria-checked={config.modeId === 'fixed-line' || config.modeId === 'reading-rhythm'} disabled={practiceInProgress || readingFreeSession?.status === 'running' || readingFreeSession?.status === 'paused' || readingBusy} onClick={() => chooseMode(route?.id === 'performance' ? (config.modeId === 'fixed-line' ? 'score' : 'fixed-line') : (config.modeId === 'reading-rhythm' ? 'reading-free' : 'reading-rhythm'))}>
               {route?.id === 'performance' ? (config.modeId === 'fixed-line' ? '固定线演奏' : '读谱演奏') : (config.modeId === 'reading-rhythm' ? '节奏识谱' : '自由识谱')} <span>切换 ⇄</span>
             </button>
-            {route?.id === 'performance' && <><button type="button" className="button button-outline" onClick={() => requestNavigation('/scores')}>选曲</button><button type="button" className="button button-outline" onClick={toggleSettingsPanel}>演奏设置</button></>}
-            </div>
+            </div>}
+            {!readingSetupActive && !readingFreeSession && sessionControls}
           </div>
-
-          {showSettings && (
-            <SettingsDialog onClose={closeSettingsPanel}><section className="settings-panel card" id="practice-settings-panel" aria-label="练习配置">
-              <div className="panel-heading">
-                <div><h3>练习配置</h3><p>调整速度、练习手和范围；其他偏好由总设置统一管理。</p></div>
-                <button type="button" className="icon-button settings-close" aria-label="关闭练习设置" onClick={closeSettingsPanel}>✕</button>
-              </div>
-              <div className="settings-summary" aria-label="本次练习配置摘要">
-                <span>模式 <b>{currentMode.title}</b></span>
-                <span><b>{settingsView.config.tempo}</b> BPM</span>
-                <span><b>{settingsView.config.hand === 'both' ? '双手' : settingsView.config.hand === 'right' ? '右手' : '左手'}</b></span>
-                {settingsView.config.modeId === 'score' && settingsView.config.loopEnabled && (
-                  <span>小节 <b>{settingsView.config.loopStartBar}–{settingsView.config.loopEndBar}</b></span>
-                )}
-                <span>{settingsView.config.advanceMode === 'follow' ? '跟手等待' : '固定时间'}</span>
-                <span>{settingsView.metronomeOn ? '节拍器开' : '节拍器关'}</span>
-              </div>
-              <div className="settings-grid">
-                {config.modeId !== 'reading-rhythm' && <>
-                <label className="field"><span>练习速度</span><div className="range-row"><input type="range" min="40" max="160" step="1" value={settingsView.config.tempo} disabled={settingsLocked} onChange={e => updateSettingsDraft('tempo', Number(e.target.value))} /><b>{settingsView.config.tempo} <small>BPM</small></b></div></label>
-                <label className="field"><span>练习手 / 分手练习</span><select value={settingsView.config.hand} disabled={settingsLocked || !currentMode.supportsHandSelection} onChange={e => updateSettingsDraft('hand', e.target.value as HandSelection)}><option value="both">双手</option><option value="right">右手</option><option value="left">左手</option></select></label>
-                {settingsView.config.modeId === 'score' && (
-                  <div className="field"><span>分段练习</span><button type="button" className={`toggle ${settingsView.config.loopEnabled ? 'on' : ''}`} aria-pressed={settingsView.config.loopEnabled} disabled={settingsLocked} onClick={() => updateSettingsDraft('loopEnabled', !settingsView.config.loopEnabled)}><i />{settingsView.config.loopEnabled ? '已开启' : '已关闭'}</button></div>
-                )}
-                {settingsView.config.modeId === 'score' && settingsView.config.loopEnabled && (
-                  <label className="field"><span>练习小节范围 (1–{maxBar})</span><div className="range-row">
-                    <input type="number" inputMode="numeric" aria-label="循环起始小节" min={1} max={maxBar} value={settingsView.config.loopStartBar} disabled={settingsLocked} onChange={e => updateSettingsDraft('loopStartBar', Math.min(Math.max(1, Number(e.target.value) || 1), settingsView.config.loopEndBar))} />
-                    <span aria-hidden="true">–</span>
-                    <input type="number" inputMode="numeric" aria-label="循环结束小节" min={1} max={maxBar} value={settingsView.config.loopEndBar} disabled={settingsLocked} onChange={e => updateSettingsDraft('loopEndBar', Math.max(Math.min(maxBar, Number(e.target.value) || maxBar), settingsView.config.loopStartBar))} />
-                  </div></label>
-                )}
-                </>}
-                <div className="field"><span>节拍器</span><button type="button" className={`toggle ${settingsView.metronomeOn ? 'on' : ''}`} aria-pressed={settingsView.metronomeOn} disabled={settingsLocked} onClick={toggleMetronomeDraft}><i />{settingsView.metronomeOn ? '已开启' : '已关闭'}</button></div>
-
-                <label className="field"><span>练习推进</span><select value={systemDuet ? 'timeline' : settingsView.config.advanceMode} disabled={settingsLocked || systemDuet || fixedLineMode} onChange={e => updateSettingsDraft('advanceMode', e.target.value as 'timeline' | 'follow')}><option value="follow">跟手等待（光标跟着你）</option><option value="timeline">固定时间（自动判定）</option></select></label>
-              </div>
-              <div className="round-preference-link"><span>判定、谱面辅助与手别规则已移到总设置。</span><button type="button" className="text-button" onClick={() => { closeSettingsPanel(); requestNavigation('/settings'); }}>前往总设置 ↗</button></div>
-              <div className="settings-actions">
-                <small className={`settings-save-state ${settingsSaved ? 'is-saved' : settingsDirty ? 'is-dirty' : ''}`} role="status" aria-live="polite">
-                  {settingsSaved ? '已保存，下次打开页面自动恢复。' : settingsDirty ? '有未保存的修改。' : '可以直接开始，只有修改参数才需要保存。'}
-                </small>
-                <div className="settings-action-buttons">
-                  <button type="button" className="button button-ghost settings-cancel" onClick={closeSettingsPanel}>取消</button>
-                  <button type="button" className="button button-primary settings-save" onClick={() => { if (settingsDirty) saveSettingsDraft(); closeSettingsPanel(); }} disabled={settingsLocked}>
-                    {settingsDirty ? '保存并完成' : '完成'}
-                  </button>
-                </div>
-              </div>
-            </section></SettingsDialog>
           )}
 
           {mappingRequired && <div className="practice-warning" role="alert">当前曲谱需要指定手别，普通钢琴默认规则无法覆盖它。<button type="button" className="button button-outline button-small" onClick={() => { setSettingsFocusMapping(true); requestNavigation('/settings'); }}>前往总设置</button></div>}
-          <p className="calibration-note" role="note">
-            音频输出延迟尚未校准（uncalibrated）。当前 onset 偏差适合练习反馈，不应视为采样级精确测量；输出延迟校准在 C2 接入。
-          </p>
 
           {readingSetupActive && (
             <section className="reading-setup-entry" aria-label="识谱练习">
@@ -3494,47 +3655,15 @@ export default function App() {
           {route?.id !== 'training' && (session.report || followReport) && status === 'completed' && <div className="session-complete-note" role="status"><span>本轮已结束，完整结果请在练习记录中查看。</span><button type="button" className="button button-outline button-small" onClick={() => requestNavigation('/history')}>查看练习记录</button></div>}
 
 
-          {route?.id === 'training' && trainingDrill && <section className="card training-round-context" aria-label="本轮专项">
-            <strong>{trainingDrill.title}</strong>
-            <p>{trainingDrill.lesson.pattern}</p>
-            {programReview && <ProgramReview review={programReview} />}
-            {programCompleted && <p role="status">本次定时训练计划已完成，结果已保存。</p>}
-            {trainingDrill.program?.remainingSeconds != null && !programCompleted && <p>本段约 {Math.round(trainingDrill.program.seconds)} 秒；完成后计划还剩约 {Math.ceil(trainingDrill.program.remainingSeconds / 60)} 分钟。</p>}
-            {programBusy && <p role="status">正在读取已保存的引擎结果{trainingDrill.program?.config.mode === 'continuous' ? '，合格证据确认后自动准备下一段' : ''}…</p>}
-            {programError && <div role="alert"><p>{programError}</p><button className="button button-outline" onClick={() => setProgramRetry((n) => n + 1)}>重试读取结果</button></div>}
-            {trainingDrill.program && trainingDrill.program.config.mode !== 'assessment' && programBusy && <button className="button button-outline" onClick={() => { programStopRef.current = true; programControllerRef.current?.abort(); setProgramBusy(false); }}>停止接续</button>}
-            {status === 'completed' && <>
-              <h2>本轮已结束</h2>
-              <p>本轮关注：{trainingDrill.lesson.review}</p>
-              {session.report && session.scoreInputNoteCount > 0 && <div className="training-result-stats" aria-label="本轮引擎统计">
-                <span>节奏命中率 <b>{Math.round(session.report.stats.targetHitRate * 100)}%</b></span>
-                <span>漏击 <b>{session.report.stats.missCount}</b></span>
-                <span>平均起音偏差 <b>{session.report.stats.meanAbsoluteMs == null ? '—' : `${session.report.stats.meanAbsoluteMs.toFixed(1)} ms`}</b></span>
-              </div>}
-              {session.report && session.scoreInputNoteCount === 0 && <p role="status">本轮未记录到演奏输入，尚不能评估练习效果。连接键盘后再试一次。</p>}
-              {session.report && !session.report.trustworthy && <p role="status">本轮测量可信度不足，请展开报告查看原因；这些数值不能用于判断是否掌握。</p>}
-              {session.report && <details className="training-round-report">
-                <summary>本轮结果 · {session.reportPersisted ? '已保存' : '等待保存'}</summary>
-                <ReportPanel report={session.report} analysis={session.analysis} durations={session.durations}
-                  scoreV1={session.scoreV1} scoreStatus={session.scoreStatus} scoringConfig={session.scoringConfig}
-                  practiceBpm={trainingDrill.bpm} practiceHand={trainingDrill.hand} />
-              </details>}
-              <p className="training-self-check">自查：{trainingDrill.lesson.selfCheck}</p>
-              <div className="training-result-actions">
-                <button type="button" className="button button-primary" disabled={reportUnsaved} onClick={startPractice}>再练同一专项</button>
-                <button type="button" className="button button-outline" disabled={reportUnsaved} onClick={() => { resetPractice(); setTrainingRoomOpen(false); }}>调整本专项</button>
-              </div>
-            </>}
-          </section>}
+          {route?.id === 'training' && trainingDrill && <TrainingRoundPanel trainingDrill={trainingDrill} session={session} status={status}
+            programReview={programReview} programCompleted={programCompleted} programBusy={programBusy} programError={programError} reportUnsaved={reportUnsaved}
+            onRetry={() => setProgramRetry((n) => n + 1)} onStop={() => { programStopRef.current = true; programControllerRef.current?.abort(); setProgramBusy(false); }}
+            onAdjust={() => { resetPractice(); setTrainingRoomOpen(false); }} />}
 
           {feedbackItems[0]?.tone === 'warning' && !practiceFocus && <div className="practice-warning" role="status">{feedbackItems[0].title}：{feedbackItems[0].detail}</div>}
           {/* Unmount performance controls here so focus styles cannot reveal a second toolbar. */}
-          {!readingFreeSession && !readingSetupActive && config.modeId !== 'reading-free' && <div className="workspace-grid" style={{ display: route?.id === 'training' && status === 'completed' ? 'none' : undefined }}>
+          {!readingFreeSession && !readingSetupActive && config.modeId !== 'reading-free' && <div className="performance-main" style={{ display: route?.id === 'training' && status === 'completed' ? 'none' : undefined }}>
             <section className="card score-card">
-          <section className="session-strip">
-            <div className="session-main"><div className="session-art">{currentMode.icon}</div><div className="session-copy"><div className="session-title-row"><h2>{route?.id === 'training' && trainingDrill ? trainingDrill.title : currentMode.title}</h2><span className={`status-pill ${statusClass}`}><i />{statusLabel}</span></div><p>{currentMode.description}</p><div className="session-tags"><span>♩ {config.tempo} BPM</span><span>♬ {config.hand === 'both' ? '双手' : config.hand === 'right' ? '右手' : '左手'}</span>{session.takeTemplateName && <span>Take {session.takeTemplateName}</span>}<span>◉ {config.feedback === 'live' ? '实时反馈' : '结束后分析'}</span><span>{config.advanceMode === 'follow' ? '◉ 光标跟随' : '⏱ 固定时间'}</span><span>♪ 参考 {referenceStatusLabel}{referencePositionLabel ? ` · ${referencePositionLabel}` : ''}</span><span>⌨ {deviceStatus === 'connected' ? `输入 ${deviceHealth}` : 'MIDI 未连接'}</span><span className="uncalibrated-tag">音频延迟未校准</span><span>⚖ {(session.scoringConfig?.judgmentProfile ?? config.profile) === 'strict' ? '严格' : (session.scoringConfig?.judgmentProfile ?? config.profile) === 'relaxed' ? '宽松' : '标准'}判定{session.scoringConfig?.judgmentProfileSource === 'mode-default' ? '（模式默认）' : ''}</span></div></div></div>
-            <div className="session-controls"><span className="focus-session-label" role="status">{statusLabel}</span><div className="elapsed"><small>本次练习</small><strong>{formatTime(elapsed)}</strong></div>{prepRemain !== null ? <button className="button button-primary" disabled>准备 {prepRemain}s…</button> : status === 'running' || status === 'countdown' ? <button className="button button-primary" onClick={pausePractice}>Ⅱ 暂停</button> : status === 'paused' ? <button className="button button-primary" onClick={resumePractice}>▶ 继续练习</button> : <button className="button button-primary" onClick={startPractice} disabled={status === 'processing' || starting || settingsDirty}>{status === 'completed' ? '↻ 再练一次' : '▶ 开始练习'}</button>}<button className="button button-ghost" onClick={prepRemain !== null && !session.active ? cancelPrep : finishPractice} disabled={(status === 'idle' && prepRemain === null) || status === 'completed' || status === 'processing'}>结束</button><button className="button button-ghost" onClick={resetPractice} disabled={practiceInProgress}>重置</button></div>
-          </section>
 
             {fixedLineMode ? (
               <FixedLineScoreView
@@ -3551,15 +3680,20 @@ export default function App() {
             ) : (
               <ScoreViewer
               focus={practiceFocus}
+              fitToWidth
               score={scoreDoc.notes}
               meta={scoreDoc.meta}
               warnings={scoreDoc.warnings}
-              activeNoteIds={activeNoteIds}
+              activeNoteIds={audition.active ? audition.activeNoteIds : !practiceInProgress && selectedScoreRange ? [selectedScoreRange.start.eventId] : activeNoteIds}
               hand={config.hand}
-              modeId={config.modeId === 'score' && config.loopEnabled ? 'loop' : config.modeId}
               notes={visibleTargetNotes}
-              loopStartBar={config.modeId === 'score' && config.loopEnabled ? config.loopStartBar : undefined}
-              loopEndBar={config.modeId === 'score' && config.loopEnabled ? config.loopEndBar : undefined}
+              loopRangeNotes={config.modeId === 'score' && config.loopEnabled && config.loopStartNote && config.loopEndNote ? { start: { eventId: config.loopStartNote.eventId }, end: { eventId: config.loopEndNote.eventId } } : undefined}
+              loopEnabled={config.modeId === 'score' && config.loopEnabled}
+              onLoopDragCommit={(edge, id) => scorePick.request(id, edge)}
+              onSelectNote={route?.id === 'performance' ? (id) => scorePick.request(id) : undefined}
+              onInteractionStart={route?.id === 'performance' ? scorePick.interrupt : undefined}
+              loopPickArmed={config.modeId === 'score' && config.loopEnabled && !practiceInProgress}
+              onLoopPick={handleLoopPickTap}
               showNoteNames={scoreHints.noteNames}
               showPositionHints={scoreHints.positionHints}
               lastInputMidi={lastInputMidi}
@@ -3577,35 +3711,8 @@ export default function App() {
               prepRemain={prepRemain}
               firstNoteCountdownMs={countdownRemain}
               />
-            )}<div className="score-status-bar score-bottom"><div><span className="small-label">当前目标音</span><strong>{currentTargetLabel}</strong></div><div><span className="small-label">当前输入</span><strong className={pitchMismatch ? 'text-bad' : ''}>{inputNote}</strong></div><div><span className="small-label">最近判定</span><strong>{hitLabel}{hitErrorMs !== null ? ` ${hitErrorMs > 0 ? '+' : ''}${Math.round(hitErrorMs)}ms` : ''}</strong></div>{countdownSeconds !== null && <div><span className="small-label">距离首音</span><strong>{countdownSeconds}</strong></div>}{config.modeId === 'reading-rhythm' && generatedReadingScore && status === 'idle' && <button className="button button-outline button-small" onClick={() => { setGeneratedReadingScore(null); setReadingError(null); setReadingSetupOpen(true); }}>识谱设置</button>}<button className="button button-outline button-small" onClick={() => simulateNote()} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}>模拟按键</button></div>
-
-            <PracticeExtras><section className="card feedback-card"><div className="card-heading"><div><div className="eyebrow">LIVE COACH</div><h3>实时反馈</h3></div><span className="live-indicator"><i />LIVE</span></div><div className="feedback-summary"><div className={`feedback-symbol ${lastHit === 'good' ? 'feedback-good' : lastHit !== 'waiting' ? 'feedback-warn' : ''}`}>{lastHit === 'good' ? '✓' : lastHit === 'miss' ? '○' : lastHit === 'extra' ? '−' : '⌁'}</div><div><strong>{lastHit === 'good' ? '这一拍很稳' : lastHit === 'miss' ? '漏掉了这一拍' : lastHit === 'extra' ? '多了一次击打' : '等待你的演奏'}</strong><p>{status === 'countdown' ? '倒数到第一个音,听到预备拍后准备;数字归零就是第一个音的起点。' : status !== 'running' ? '开始练习后,引擎会根据输入事件给出判定。' : lastHit === 'good' ? '时机落在引擎判定窗口内。继续保持。' : '弹奏当前高亮音符,判定会出现在这里。'}</p></div></div><div className="feedback-list">{feedbackItems.slice(0, 4).map(item => <div className="feedback-entry" key={item.id}><i className={`entry-dot tone-${item.tone}`} /><div><strong>{item.title}</strong><p>{item.detail}</p></div></div>)}</div><div className="feedback-footer"><span>节奏判定:Rust 引擎 · 音高:独立提示</span><button onClick={() => addFeedback('判定依据', '节奏评分来自本地引擎的确定性匹配(目标时间表 + 击打时间戳);音高提示只对比目标音集合,不影响节奏成绩。', 'neutral')}>反馈依据 ↗</button></div></section>
-
-              <section className="card quick-card"><div className="card-heading"><div><div className="eyebrow">QUICK INPUT</div><h3>输入与练习状态</h3></div><span className="shortcut-key">MIDI</span></div><div className="device-row"><div className={`device-icon ${deviceStatus === 'connected' ? 'connected' : ''}`}>⌨</div><div className="device-copy"><strong>{deviceName}</strong><small>{deviceStatus === 'connected' ? `正在监听音符按下/抬起 · 输入健康：${deviceHealth}` : deviceStatus === 'connecting' ? '正在打开 Node MIDI 端口…' : deviceStatus === 'error' ? `设备错误：${deviceError ?? '未知'}` : '连接实体键盘，或使用下方模拟按键'}</small></div><button className="text-button" onClick={deviceStatus === 'connected' ? disconnectDevice : () => connectDevice()} disabled={deviceStatus === 'connecting'}>{deviceStatus === 'connecting' ? '连接中…' : deviceStatus === 'connected' ? '断开' : '连接'}</button></div><div className="virtual-keys" aria-label="模拟 MIDI 键盘">{[{note:60,label:'C4',black:false},{note:61,label:'C♯',black:true},{note:62,label:'D4',black:false},{note:63,label:'D♯',black:true},{note:64,label:'E4',black:false},{note:65,label:'F4',black:false},{note:66,label:'F♯',black:true},{note:67,label:'G4',black:false}].map(key => <button key={key.note} className={`virtual-key ${key.black ? 'black-key' : ''}`} onPointerDown={(e) => { e.preventDefault(); if (status === 'running' || status === 'countdown') virtualKeyDown(key.note); }} onPointerUp={() => virtualKeyUp(key.note)} onPointerLeave={() => virtualKeyUp(key.note)} title={`按住 ${key.label}（按下=Note On，松开=Note Off）`} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}><span>{key.label}</span></button>)}</div><div className="quick-hint">按住琴键再松开（或按 MIDI 键盘）：按下与松开都会送入引擎，用于起音判定与按键时长评估。连接实体设备后模拟按键会禁用，避免同一会话混合输入源。</div>{nodeEvents.length > 0 && (
-              <div className="midi-monitor">
-                <div className="midi-monitor-title">最近输入（Node MIDI）</div>
-                {nodeEvents.map((event) => {
-                  const oldest = nodeEvents[nodeEvents.length - 1].capturedAtMonotonicMs;
-                  const label = event.noteNumber != null
-                    ? noteForMidi(event.noteNumber)
-                    : event.controllerNumber != null ? `CC${event.controllerNumber}` : '—';
-                  const value = event.velocity ?? event.controllerValue ?? '—';
-                  const kind = event.messageType === 'note-on' ? 'Note On'
-                    : event.messageType === 'note-off' ? 'Note Off'
-                    : event.messageType === 'control-change' ? 'CC' : 'Other';
-                  return (
-                    <div className="midi-monitor-row" key={`${event.sourceId}-${event.sourceSeq}`}>
-                      <span>{kind}</span>
-                      <span>{label}</span>
-                      <span>v{value}</span>
-                      <span>#{event.sourceSeq}</span>
-                      <span>{Math.max(0, event.capturedAtMonotonicMs - oldest).toFixed(0)}ms</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}</section>
-            </PracticeExtras></section>
+            )}<div className="score-status-bar score-bottom"><div><span className="small-label">当前目标音</span><strong>{currentTargetLabel}</strong></div><div><span className="small-label">当前输入</span><strong className={pitchMismatch ? 'text-bad' : ''}>{inputNote}</strong></div><div><span className="small-label">最近判定</span><strong>{hitLabel}{hitErrorMs !== null ? ` ${hitErrorMs > 0 ? '+' : ''}${Math.round(hitErrorMs)}ms` : ''}</strong></div><div><span className="small-label">最近提示</span><strong>{feedbackItems[0]?.title ?? '—'}</strong></div>{countdownSeconds !== null && <div><span className="small-label">距离首音</span><strong>{countdownSeconds}</strong></div>}{config.modeId === 'reading-rhythm' && generatedReadingScore && status === 'idle' && <button className="button button-outline button-small" onClick={() => { setGeneratedReadingScore(null); setReadingError(null); setReadingSetupOpen(true); }}>识谱设置</button>}<button className="button button-outline button-small" onClick={() => simulateNote()} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}>模拟按键</button></div>
+            </section>
           </div>}
 
           {route?.id !== 'training' && status === 'completed' && <details className="practice-stats"><summary>查看本轮统计</summary>

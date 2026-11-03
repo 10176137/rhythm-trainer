@@ -142,4 +142,30 @@ describe('practiceSettings', () => {
     savePracticeSettings({ ...defaultPracticeSettings, handMappings: {} }, storage);
     expect(loadPracticeSettings(storage).handMappings).toEqual({});
   });
+
+  it('persists note-level loop boundaries and drops malformed ones', () => {
+    const boundaries = {
+      loopStartNote: { eventId: 'fp:P1:m2:e3', measureOrdinal: 2, onsetBeat: '4/1' },
+      loopEndNote: { eventId: 'fp:P1:m5:e1', measureOrdinal: 5, onsetBeat: '16/1' },
+    };
+    const storage = memoryStorage();
+    savePracticeSettings({
+      config: { ...defaultPracticeSettings.config, loopEnabled: true, loopStartBar: 2, loopEndBar: 5, ...boundaries },
+      metronomeOn: true,
+    }, storage);
+    const restored = loadPracticeSettings(storage).config;
+    expect(restored.loopStartNote).toEqual(boundaries.loopStartNote);
+    expect(restored.loopEndNote).toEqual(boundaries.loopEndNote);
+
+    const malformed = parsePracticeSettings(JSON.stringify({
+      version: 1,
+      config: {
+        ...defaultPracticeSettings.config,
+        loopStartNote: { eventId: '', measureOrdinal: 2, onsetBeat: '4/1' },
+        loopEndNote: { eventId: 'fp:P1:m5:e1', measureOrdinal: 'five', onsetBeat: '16/1' },
+      },
+    })).config;
+    expect(malformed.loopStartNote).toBeUndefined();
+    expect(malformed.loopEndNote).toBeUndefined();
+  });
 });

@@ -1,4 +1,4 @@
-import type { DurationEvaluationPolicy, FeedbackMode, HandSelection, JudgmentProfile, PracticeConfig, ScoreAdvanceMode } from '../../types/practice';
+import type { DurationEvaluationPolicy, FeedbackMode, HandSelection, JudgmentProfile, LoopBoundaryNote, PracticeConfig, ScoreAdvanceMode } from '../../types/practice';
 import { DEFAULT_PIANO_HANDS, type PianoHandDefaults } from '../../score-engine/scope/practice-scope';
 
 /**
@@ -70,6 +70,18 @@ function parseTimeSignature(value: unknown, fallback: [number, number]): [number
   return [beats, unit];
 }
 
+/** A persisted loop boundary note is only kept when structurally sound; the
+ * eventId is validated against the CURRENT score at use time (a stored note
+ * from another score is meaningless and drops back to bar-level). */
+function parseBoundaryNote(value: unknown): LoopBoundaryNote | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  if (typeof candidate.eventId !== 'string' || candidate.eventId.length === 0
+    || !Number.isInteger(candidate.measureOrdinal) || (candidate.measureOrdinal as number) < 1
+    || typeof candidate.onsetBeat !== 'string' || !/^-?\d+\/-?\d+$/.test(candidate.onsetBeat)) return null;
+  return { eventId: candidate.eventId, measureOrdinal: candidate.measureOrdinal as number, onsetBeat: candidate.onsetBeat };
+}
+
 /** Validates untrusted localStorage content without throwing. */
 export function parsePracticeSettings(raw: string | null): PersistedPracticeSettings {
   const fallback = defaultPracticeSettings;
@@ -84,6 +96,8 @@ export function parsePracticeSettings(raw: string | null): PersistedPracticeSett
       : {};
     const loopStartBar = clampInteger(saved.loopStartBar, 1, 999, fallback.config.loopStartBar);
     const loopEndBar = Math.max(loopStartBar, clampInteger(saved.loopEndBar, 1, 999, fallback.config.loopEndBar));
+    const loopStartNote = parseBoundaryNote(saved.loopStartNote);
+    const loopEndNote = parseBoundaryNote(saved.loopEndNote);
     return {
       config: {
         ...fallback.config,
@@ -97,6 +111,10 @@ export function parsePracticeSettings(raw: string | null): PersistedPracticeSett
         advanceMode: pickEnum(saved.advanceMode, ADVANCE_MODES, fallback.config.advanceMode),
         loopStartBar,
         loopEndBar,
+        loopSelectionPending: saved.loopSelectionPending === true,
+        playbackStartNote: parseBoundaryNote(saved.playbackStartNote),
+        ...(loopStartNote ? { loopStartNote } : {}),
+        ...(loopEndNote ? { loopEndNote } : {}),
       },
       metronomeOn: typeof record.metronomeOn === 'boolean' ? record.metronomeOn : fallback.metronomeOn,
       pianoHands: Object.fromEntries(Object.entries(DEFAULT_PIANO_HANDS).map(([key, value]) => [

@@ -583,8 +583,11 @@ export interface FollowStartRequest {
 }
 
 export type EngineServerMessage =
+  | { type: 'clock-started'; captureEpoch: number; originClientPerfMs: number; firstTargetAtMs: number }
   | {
       type: 'started'; bpm: number; profile: EngineProfile; countInBeats: number;
+      /** Armed start: the take exists but the clock waits for the first key. */
+      armed?: boolean;
       /** Canonical count-in actually used; null for legacy clients. */
       countInUs?: number | null;
       /** Backend-authoritative first note onset, relative to the session origin. */
@@ -683,6 +686,7 @@ export type EngineClientMessage =
       document: unknown;
       report: unknown;
       config: unknown;
+      noteRange?: { startEventId: string; endEventId: string };
     }
   | (FollowStartRequest & { protocolVersion?: number })
   | { type: 'follow-note'; note: number; atMs: number }
