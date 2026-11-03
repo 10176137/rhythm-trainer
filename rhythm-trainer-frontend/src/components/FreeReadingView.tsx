@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 // Free note-reading practice + result view (task spec §5/§7.1). Presentation
 // over FreeReadingSession; all decisions come from the session module, never
 // from ad-hoc UI state. Real notation via OSMD; the keyboard is feedback and
@@ -173,12 +174,12 @@ export default function FreeReadingView({
           {saveStatus.status === 'error' && <button type="button" onClick={onRetrySave}>重试保存</button>}
         </p>
         <div className="reading-result-actions">
-          {onReviewWeak ? <button type="button" className="button button-primary" onClick={onReviewWeak}>复习这些错题</button>
-            : onStartTest ? <button type="button" className="button button-primary" onClick={onStartTest}>换一组题开始小测</button>
-            : onNextLevel ? <button type="button" className="button button-primary" onClick={onNextLevel}>尝试更多同时音符</button> : null}
+          {onReviewWeak ? <AppButton type="button" className="button button-primary" onClick={onReviewWeak}>复习这些错题</AppButton>
+            : onStartTest ? <AppButton type="button" className="button button-primary" onClick={onStartTest}>换一组题开始小测</AppButton>
+            : onNextLevel ? <AppButton type="button" className="button button-primary" onClick={onNextLevel}>尝试更多同时音符</AppButton> : null}
           <button type="button" className={`button ${onReviewWeak || onStartTest || onNextLevel ? 'button-outline' : 'button-primary'}`} onClick={onRetrySameConfig}>换题再练</button>
-          <button type="button" className="button button-outline" onClick={onChangeConfig}>修改配置</button>
-          <button type="button" className="text-button" onClick={onExit}>返回识谱</button>
+          <AppButton type="button" className="button button-outline" onClick={onChangeConfig}>修改配置</AppButton>
+          <AppButton type="button" className="text-button" onClick={onExit}>返回识谱</AppButton>
         </div>
         <details className="reading-evidence"><summary>查看详细结果</summary>
           {report ? <><p>{report.task === 'test' ? '小测 · 无提示' : '练习'} · 用过提示 {report.hintedQuestions} 题 · 错误输入 {report.totalWrongPresses} 次</p>
@@ -199,7 +200,7 @@ export default function FreeReadingView({
           <span className="reading-topbar-meta">不限时 · 弹对全部目标音进入下一题</span>
         </div>
         <div className="reading-topbar-actions">
-          <button
+          <AppButton
             type="button"
             className="button button-outline button-small"
             onClick={() => {
@@ -208,17 +209,17 @@ export default function FreeReadingView({
             }}
           >
             {paused ? '▶ 继续' : 'Ⅱ 暂停'}
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             type="button"
             className="button button-ghost button-small"
             onClick={() => { session.endEarly(); refresh(); }}
           >
             结束并查看结果
-          </button>
-          {onToggleFocus && <button type="button" className="button button-outline button-small" onClick={onToggleFocus}>
+          </AppButton>
+          {onToggleFocus && <AppButton type="button" className="button button-outline button-small" onClick={onToggleFocus}>
             {focus ? '退出专注' : '进入专注'}
-          </button>}
+          </AppButton>}
         </div>
       </header>
 
@@ -245,7 +246,7 @@ export default function FreeReadingView({
         </span>
       </div>
       {session.task === 'practice' && <div className="reading-hint-action">
-        <button type="button" className="text-button" disabled={paused || hintedIndex === snapshot.currentIndex} onClick={() => { if (session.hint()) { setHintedIndex(snapshot.currentIndex); refresh(); } }}>查看本题提示</button>
+        <AppButton type="button" className="text-button" disabled={paused || hintedIndex === snapshot.currentIndex} onClick={() => { if (session.hint()) { setHintedIndex(snapshot.currentIndex); refresh(); } }}>查看本题提示</AppButton>
         {hintedIndex === snapshot.currentIndex && <span>目标：{question.map(label).join('＋')}（本题记录为使用过提示）</span>}
       </div>}
 

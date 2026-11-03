@@ -1,0 +1,23 @@
+/* Performance layout. Control paint and interaction states come from Ant Design. */
+.performance-score-title{max-width:30%;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.performance-quick-settings{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.performance-quick-settings .pt-stepper{display:flex;align-items:center;height:44px;overflow:hidden;border:1px solid var(--gray-6);border-radius:var(--radius-3);background:var(--color-surface)}
+.performance-quick-settings .pt-stepper b{min-width:70px;border:0;text-align:center;line-height:42px;font-size:14px;font-variant-numeric:tabular-nums;color:var(--gray-12)}
+.performance-quick-settings .pt-stepper small{font-size:10px;font-weight:500;color:var(--gray-9)}
+.performance-quick-settings .pt-stepper .ui-button{width:38px;min-height:42px;padding:0;box-shadow:none;border-radius:0}
+.performance-quick-settings .score-playback-controls{margin:0 0 0 4px;padding-left:12px;border-left:1px solid var(--gray-6);gap:8px;flex-wrap:nowrap}
+.performance-quick-settings .score-playback-controls>span:not([role=alert]){display:none}
+.performance-quick-settings .score-playback-controls>[role=alert]{position:absolute;top:100%;left:16px;background:var(--color-panel-solid);padding:8px 12px;border-radius:8px;box-shadow:var(--shadow-3)}
+.performance-transport{display:flex;align-items:center;gap:18px}
+.performance-tempo{font-size:12px;color:var(--gray-10);white-space:nowrap;font-variant-numeric:tabular-nums}
+.performance-settings-heading{display:flex;align-items:center;justify-content:space-between;padding:24px;border-bottom:1px solid var(--gray-4)}
+.performance-settings-heading h2{margin:0;font-size:20px;color:var(--gray-12)}
+.performance-settings-heading p{margin:6px 0 0;font-size:13px;color:var(--gray-10)}
+.performance-settings-body{padding:24px;display:flex;flex-direction:column;gap:24px}
+.performance-settings-body .pt-group{flex-wrap:wrap;gap:12px}
+.performance-settings-body .pt-midi{align-self:flex-start}
+.performance-transport .practice-session-controls{flex-wrap:nowrap}
+.performance-transport .practice-session-state{max-width:230px;font-size:12px}
+@media(max-width:1200px){.app-shell.immersive .performance-toolbar:not(.is-performing){flex-wrap:wrap}.performance-score-title{max-width:60%}.performance-quick-settings{order:2;width:100%;justify-content:center}}
+@media(max-width:680px){.performance-quick-settings{justify-content:flex-start;flex-wrap:wrap;gap:8px}.performance-score-title{font-size:14px;max-width:50%}.performance-transport{gap:12px}.performance-transport .practice-session-state{max-width:150px;font-size:11px}.performance-quick-settings .score-playback-controls{margin-left:auto}}
+@media(max-width:520px){.performance-tempo{display:none}}

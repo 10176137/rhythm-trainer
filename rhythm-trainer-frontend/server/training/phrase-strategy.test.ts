@@ -111,9 +111,9 @@ describe('bounded, goal-specific practice phrases', () => {
     expect(new Set(sections.slice(0, 9).map((section) => `${section.id}:${section.key}`)).size).toBe(9);
     expect(sections.every((section, index) => index === 0 || `${section.id}:${section.key}` !== `${sections[index - 1].id}:${sections[index - 1].key}`)).toBe(true);
   });
-  it('passes generated variants through the real Rust plan and fingerprint gate', () => {
+  it.each(SKILL_DRILLS)('$id variants pass the real Rust plan and fingerprint gate', (definition) => {
     const native = createRequire(import.meta.url)('../../../rhythm-trainer-core-v0.2/bindings/node');
-    for (const definition of SKILL_DRILLS) for (const level of [1, 2, 3]) for (const seed of [0, 1, 2]) {
+    for (const level of [1, 2, 3]) for (const seed of [0, 1, 2]) {
       const { drill, imported } = inspect(definition.id, level, seed, 'F', 'both');
       const { dto } = projectScoreDocumentV1(imported.doc!.engine!, imported.report);
       const config = { partId: 'P1', range: { startMeasureOrdinal: 1, endMeasureOrdinal: drill.bars }, repeatSelection: { kind: 'none' }, hand: drill.hand,

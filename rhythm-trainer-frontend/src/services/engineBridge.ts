@@ -103,6 +103,8 @@ export class EngineBridge {
     timer: ReturnType<typeof setTimeout>;
   }>();
   private requestSeq = 0;
+  private timelineTakeId: string | undefined;
+  private followTakeId: string | undefined;
 
   constructor(handlers: EngineHandlers) {
     this.handlers = handlers;
@@ -141,6 +143,8 @@ export class EngineBridge {
         rejectConnection('引擎连接已断开。');
         if (this.socket !== socket) return;
         this.socket = null;
+        this.timelineTakeId = undefined;
+        this.followTakeId = undefined;
         this.rejectPendingPlans('PLANNER_UNAVAILABLE: 引擎服务已断开，计划请求失败');
         for (const [takeId, waiter] of this.pendingRetries) {
           clearTimeout(waiter.timer);
@@ -163,6 +167,7 @@ export class EngineBridge {
             this.handlers.onClockStarted?.(message);
             break;
           case 'started':
+            this.timelineTakeId = message.takeId;
             this.handlers.onStarted(
               message.targets,
               message.bpm,
@@ -195,6 +200,7 @@ export class EngineBridge {
             this.handlers.onReport(message);
             break;
           case 'follow-started': {
+            this.followTakeId = message.takeId;
             const waiter = this.pendingFollowStart;
             this.pendingFollowStart = null;
             if (waiter) {
@@ -389,23 +395,23 @@ export class EngineBridge {
   }
 
   followNote(note: number, atMs: number) {
-    this.send({ type: 'follow-note', note, atMs });
+    this.send({ type: 'follow-note', note, atMs, takeId: this.followTakeId });
   }
 
   followPause(atMs?: number) {
-    this.send({ type: 'follow-pause', ...(atMs != null ? { atMs } : {}) });
+    this.send({ type: 'follow-pause', takeId: this.followTakeId, ...(atMs != null ? { atMs } : {}) });
   }
 
   followResume(atMs?: number) {
-    this.send({ type: 'follow-resume', ...(atMs != null ? { atMs } : {}) });
+    this.send({ type: 'follow-resume', takeId: this.followTakeId, ...(atMs != null ? { atMs } : {}) });
   }
 
   followFinish() {
-    this.send({ type: 'follow-finish' });
+    this.send({ type: 'follow-finish', takeId: this.followTakeId });
   }
 
   followAbandon() {
-    this.send({ type: 'follow-abandon' });
+    this.send({ type: 'follow-abandon', takeId: this.followTakeId });
   }
 
   /**
@@ -512,22 +518,24 @@ export class EngineBridge {
   }
 
   tick(nowMs: number) {
-    this.send({ type: 'tick', nowMs });
+    this.send({ type: 'tick', nowMs, takeId: this.timelineTakeId });
   }
 
   pause(nowMs: number, atSourceMs?: number) {
-    this.send({ type: 'pause', nowMs, ...(atSourceMs != null ? { atSourceMs } : {}) });
+    this.send({ type: 'pause', nowMs, takeId: this.timelineTakeId, ...(atSourceMs != null ? { atSourceMs } : {}) });
   }
 
   resume(nowMs: number, atSourceMs?: number) {
-    this.send({ type: 'resume', nowMs, ...(atSourceMs != null ? { atSourceMs } : {}) });
+    this.send({ type: 'resume', nowMs, takeId: this.timelineTakeId, ...(atSourceMs != null ? { atSourceMs } : {}) });
   }
 
   finish() {
-    this.send({ type: 'finish' });
+    this.send({ type: 'finish', takeId: this.timelineTakeId });
   }
 
   close() {
+    this.timelineTakeId = undefined;
+    this.followTakeId = undefined;
     const socket = this.socket;
     this.cancelConnection?.();
     this.socket = null;

@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import type { SettingsPageProps } from './SettingsPage';
 
 export function JudgmentSettingsPanel(props: SettingsPageProps) { return (<section className="card preference-card" id="preferences-judgment" aria-label="判定与反馈偏好">
@@ -5,8 +6,8 @@ export function JudgmentSettingsPanel(props: SettingsPageProps) { return (<secti
           {props.judgment}
           <div className="preference-save-row">
             <span role="status">{props.saved ? '已保存' : props.dirty ? '有未保存的修改，离开此页将放弃。' : '当前偏好已生效。'}</span>
-            <div><button type="button" className="button button-ghost" disabled={!props.dirty} onClick={props.onResetDraft}>撤销修改</button>
-              <button type="button" className="button button-primary" disabled={props.locked || !props.dirty} onClick={props.onSave}>保存偏好</button></div>
+            <div><AppButton type="button" className="button button-ghost" disabled={!props.dirty} onClick={props.onResetDraft}>撤销修改</AppButton>
+              <AppButton type="button" className="button button-primary" disabled={props.locked || !props.dirty} onClick={props.onSave}>保存偏好</AppButton></div>
           </div>
         </section>); }
 

@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 // 81-key note-reading setup page (task spec §4). Owns ONLY configuration
 // state; generation and session state live in App / feature modules. Single
 // screen, fixed action area, no page-level scrolling on desktop.
@@ -114,7 +115,7 @@ export default function NoteReadingSetup({
           })}
         </div>
         <div className="reading-template-action"><span>{starter ? `已选：${starter.title}` : '当前为自定义配置；选择方案会替换当前参数。'}</span>
-          <button type="button" className="text-button" onClick={() => setEditor('custom')}>调整当前参数 →</button>
+          <AppButton type="button" className="text-button" onClick={() => setEditor('custom')}>调整当前参数 →</AppButton>
         </div>
       </section> : <section className="reading-customize reading-custom-editor" aria-labelledby={`${editorId}-custom`}>
       <div className="reading-custom-heading"><h3 id={`${editorId}-custom`}>自定义配置</h3><p className="reading-config-help">修改直接更新本轮参数，开始时以下方摘要为准。</p></div>
@@ -281,13 +282,13 @@ export default function NoteReadingSetup({
               onChange={(event) => patch({ seed: Number(event.target.value) })}
             />
           </label>
-          <button
+          <AppButton
             type="button"
             className="text-button"
             onClick={() => patch({ seed: Math.floor(Math.random() * 1_000_000) })}
           >
             换一个
-          </button>
+          </AppButton>
         </div>
       </details>
 
@@ -319,14 +320,14 @@ export default function NoteReadingSetup({
       {error && <p className="report-warning" role="alert">{error}</p>}
 
       <div className="reading-setup-actions">
-        <button
+        <AppButton
           type="button"
           className="button button-primary"
           disabled={!ready}
           onClick={() => onStart(value)}
         >
           {busy ? '正在生成…' : value.mode === 'free' ? '开始自由识谱' : '开始节奏识谱'}
-        </button>
+        </AppButton>
         <span className="reading-setup-note">
           {deviceConnected ? `输入设备：${deviceLabel}` : '未连接 MIDI；练习中可用底部 81 键虚拟键盘输入。'}
         </span>

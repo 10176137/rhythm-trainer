@@ -23,6 +23,12 @@ import { LiveNoteFeedback } from './live-note-feedback.mjs';
 import { loadPerformanceReplay } from './performance-replay.mjs';
 import { buildNoteReview } from './note-review.mjs';
 import { reachedSongEnd, songCompletionAtMs } from './song-completion.mjs';
+import { beginNativeTake, assertTakeCommand, finalizeAndRelease } from './practice/take-lifecycle.mjs';
+import { closeTakeEvidence } from './practice/take-cleanup.mjs';
+import { observeConnectionStatus } from './midi/connection-status.mjs';
+import { MidiAdmissionLedger } from './midi/admission-ledger.mjs';
+import { TakeResourceBudget } from './practice/resource-budget.mjs';
+import { PauseLedger } from './practice/pause-ledger.mjs';
 import { ArmedTakeClock } from './session-clock.mjs';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -68,7 +74,7 @@ const SCHEMA_VERSION = 1;
 // Bounded record of the authoritative Follow input stream so a Take can be
 // replayed deterministically. A normal exercise is far below this; a stuck
 // key producing endless wrong notes is truncated and marked as such.
-const FOLLOW_INPUT_LIMIT = 20000;
+const FOLLOW_INPUT_LIMIT = Math.max(1, Math.min(20000, Number(process.env.RHYTHM_FOLLOW_INPUT_LIMIT) || 20000));
 // Pass rule (product heuristic, same threshold as the core's prescription):
 // clean input, no miss/extra, mean absolute error within 30 ms.
 const PASS_MAE_MS = 30.0;
@@ -184,7 +190,8 @@ const scoreLibrary = new ScoreLibrary({ dir: SCORES_DIR });
 const takeTemplateStore = new TakeTemplateStore({ dir: TAKE_TEMPLATES_DIR });
 // One finalizer for Timeline and Follow: frozen draft, atomic write, and
 // idempotent retry are shared; the report builders stay mode-specific.
-const takeFinalization = new TakeFinalizationService({ takesDir: TAKES_DIR });
+const takeFinalization = new TakeFinalizationService({ takesDir: TAKES_DIR, pendingDir: path.join(DATA_DIR, 'pending-takes') });
+takeFinalization.recover();
 const readingAttempts = new ReadingAttemptStore({ dir: path.join(DATA_DIR, 'reading-attempts') });
 // Application-layer lesson workflow. It only reads already-persisted Takes;
 // it never accepts a report object from the browser.
@@ -229,7 +236,7 @@ function normalizeTakeRecord(take) {
   const capture = take.evidence?.captureDiagnostics ?? null;
   const legacy = !!take.legacy;
   const defaults = deriveTakeStatus({
-    attemptStatus: take.lifecycle?.endReason === 'interrupted' ? 'interrupted' : 'completed',
+    attemptStatus: (take.lifecycle?.endReason === 'interrupted' || take.lifecycle?.endReason === 'resource_limit') ? 'interrupted' : 'completed',
     inputHealth: capture?.inputHealth ?? 'unknown',
     clockMappingStatus: capture?.clockMapping?.status ?? 'unknown',
     plannerAuthority: legacy ? 'legacy' : (take.context?.plannerAuthority ?? null),
@@ -410,7 +417,7 @@ function takeSummary(take) {
     bpm: take.context?.practiceConfigSnapshot?.tempo ?? null,
     profile: take.context?.practiceConfigSnapshot?.profile ?? null,
     trustworthy: !!take.assessment?.trustworthy,
-    interrupted: take.lifecycle?.endReason === 'interrupted',
+    interrupted: (take.lifecycle?.endReason === 'interrupted' || take.lifecycle?.endReason === 'resource_limit'),
     scoreFingerprint: take.score?.scoreFingerprint ?? null,
     playbackPlanId: take.context?.planRunId ?? null,
     plannerAuthority: take.context?.plannerAuthority ?? null,
@@ -1269,37 +1276,12 @@ wss.on('connection', (socket) => {
   });
   let native = null;   // addon.NativeSession
   let meta = null;     // { modeId, bpm, profile, assisted, durationPolicy, targets, countInMs }
-  let pausedAtMs = null;
-  let pausedSourceMs = null;      // performance-timeline timestamp at Pause
-  let pauseIntervalsSourceMs = []; // flat [start, end, ...] pairs for duration policy
-  // Pause segments in session time. Every admission decision references the
-  // segment that was active when it was made; a Take that ends while paused
-  // keeps an open segment instead of pretending the pause was active practice.
-  let pauseSegments = [];          // [{ segmentId, startSession, endSession|null }]
-  let pauseSegmentSeq = 0;
-  let activePauseSegmentId = 'active-0';
+  const pauseLedger = new PauseLedger();
   // Admission ledger: exactly one immutable decision per packet. Policy B: the
   // decision made at ingress is the only authority for whether an onset may be
   // scored. Final scoring consumes it and never re-derives it from onset time.
-  const admissionByEventId = new Map();
-  let admissionSeq = 0;
-  // Session time of the last Note On that was successfully handed to pushHit.
-  // The Rust matcher requires non-decreasing input times; comparing against this
-  // (instead of wall/now time) isolates only genuine timestamp regressions.
-  let lastAdmittedRealtimeOnsetMs = null;
-  const admissionCounters = {
-    packets: 0,
-    noteOns: 0,
-    nonOnsets: 0,
-    admittedNoteOns: 0,
-    pushHitCount: 0,
-    finalPerformedNotes: 0,
-    finalSkippedByAdmission: 0,
-    finalDuplicateLifecycles: 0,
-    suppressedNoteOns: { 'count-in': 0, paused: 0, clock: 0, duplicate: 0, 'out-of-order': 0 },
-    captureQuarantinedPackets: 0,
-    duplicateEventIds: 0,
-  };
+  const admissionLedger = new MidiAdmissionLedger();
+  const admissionCounters = admissionLedger.counters;
   let pauseSuppressed = 0;        // compat: packets suppressed by the pause policy (packet unit)
   let pauseExcludedFromScore = 0; // compat: observations skipped because the onset was suppressed
   let rawNotes = [];   // v0.3 legacy path
@@ -1310,6 +1292,19 @@ wss.on('connection', (socket) => {
   // gaps on real hardware. Hits get their own dense sequence; sourceSeq remains
   // in the raw trace for transport diagnostics.
   let scoringSeq = 0;
+  // Admission + raw evidence measured ~37 MiB / 100k short packets, before
+  // native scoring and finalization copies. Bound a Take rather than truncate.
+  const eventLimit = Math.max(1, Math.min(100000, Number(process.env.RHYTHM_TAKE_EVENT_LIMIT) || 100000));
+  const resourceBudget = new TakeResourceBudget({ maxEvents: eventLimit });
+  let resourceLimitReached = false;
+  function admitResourceEvent(payload) {
+    if (resourceLimitReached) return false;
+    if (resourceBudget.accept(payload)) return true;
+    resourceLimitReached = true;
+    takeJournal?.append('resource_limit', { eventLimit, atSessionMs: pauseLedger.lastNowMs });
+    finishSession({ interrupted: true, endReason: 'resource_limit' });
+    return false;
+  }
   let countdownSuppressed = 0;
   // Rust-authoritative PracticeSession / PerformanceTake coordinator. It owns
   // take lifecycle, capture generations and quarantine counters; the scoring
@@ -1329,10 +1324,13 @@ wss.on('connection', (socket) => {
   // Worst adapter health observed while this take is active. Installed as the
   // status hook target so health tracking survives only for the live take.
   const takeHealth = { value: 'unknown' };
-  midiAdapter.onStatus(takeHealthHandler);
+  observeConnectionStatus(midiAdapter, socket, takeHealthHandler);
   function takeHealthHandler(status) {
-    if (!activeTake) return;
     const order = ['unknown', 'healthy', 'degraded', 'disconnected'];
+    if (followContext && order.indexOf(status.inputHealth) > order.indexOf(followContext.inputHealth)) {
+      followContext.inputHealth = status.inputHealth;
+    }
+    if (!activeTake) return;
     if (order.indexOf(status.inputHealth) > order.indexOf(takeHealth.value)) {
       takeHealth.value = status.inputHealth;
       serverTakeHealth.value = status.inputHealth;
@@ -1340,7 +1338,6 @@ wss.on('connection', (socket) => {
     try { coordinator?.setInputHealth(activeTake.takeId, takeHealth.value); } catch { /* report keeps adapter health */ }
   }
   let practiceKey = null;   // mode/bpm/profile/score signature of the coordinator's session
-  let lastNowMs = 0;
   // Node MIDI -> browser clock mapping for this connection.
   const clockPending = new Map();
   const clockSamples = [];
@@ -1398,6 +1395,28 @@ wss.on('connection', (socket) => {
     });
   }
 
+  // Detach resources before touching the filesystem. A failing writer cannot
+  // keep the MIDI lease occupied or be overwritten by the next practice.
+  function releaseTimelineResources(reason) {
+    if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
+    const writers = { journal: takeJournal, trace: traceRecorder };
+    takeJournal = null;
+    traceRecorder = null;
+    native = null;
+    meta = null;
+    activeTake = null;
+    liveNoteFeedback = null;
+    armedClock = null;
+    ingests = [];
+    rawNotes = [];
+    admissionLedger.reset();
+    scoringSeqToSourceSeq.clear();
+    if (activeTakeLease?.socket === socket) activeTakeLease = null;
+    for (const { stage, error } of closeTakeEvidence(writers, reason, pauseLedger.lastNowMs)) {
+      console.error(`[engine] ${stage} 清理失败:`, String(error?.message ?? error));
+    }
+  }
+
   // An unrecoverable scoring/clock error closes the Take as Failed. The
   // coordinator keeps the trace and reason; the connection can start a new
   // Take instead of silently replacing a live one.
@@ -1405,15 +1424,12 @@ wss.on('connection', (socket) => {
     if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
     if (coordinator && activeTake) {
       try {
-        coordinator.fail(activeTake.takeId, lastNowMs, reason);
+        coordinator.fail(activeTake.takeId, pauseLedger.lastNowMs, reason);
       } catch {
-        try { coordinator.abort(activeTake.takeId, lastNowMs, reason); } catch { /* best effort */ }
+        try { coordinator.abort(activeTake.takeId, pauseLedger.lastNowMs, reason); } catch { /* best effort */ }
       }
     }
-    native = null;
-    meta = null;
-    activeTake = null;
-    if (activeTakeLease?.socket === socket) activeTakeLease = null;
+    releaseTimelineResources(reason);
   };
 
   // Shared by browser/mock raw-midi messages and Node MIDI adapter events.
@@ -1442,7 +1458,7 @@ wss.on('connection', (socket) => {
       }
     }
     if (armedClock) {
-      const mapped = armedClock.map(packet, { offsetServerMinusClientMs: clockOffsetServerMinusClientMs, paused: pausedAtMs !== null });
+      const mapped = armedClock.map(packet, { offsetServerMinusClientMs: clockOffsetServerMinusClientMs, paused: pauseLedger.pausedAtMs !== null });
       if (!mapped) return;
       atMs = mapped.atMs;
       ingest = { ...ingest, sessionTimeMs: atMs, clockMappingId: 'armed-capture-clock', clockUncertaintyMs: packet.transport === 'node-midi' ? 0 : clockUncertaintyMs,
@@ -1452,9 +1468,15 @@ wss.on('connection', (socket) => {
         takeJournal?.append('first_input_clock_started', { atSessionMs: atMs, capturedAtMs: packet.capturedAtMs });
       }
     }
+    if (!admitResourceEvent(ingest)) return;
     const decodedList = addon.decodeMidiPackets([ingest]);
     const decoded = decodedList[0];
-    const admission = recordAdmission(decoded, packet, atMs);
+    const admission = admissionLedger.record(decoded, packet, atMs, {
+      paused: pauseLedger.pausedAtMs !== null,
+      pauseSegments: pauseLedger.pauseSegments,
+      scoringStartMs: meta.scoringStartMs,
+      segmentId: pauseLedger.activePauseSegmentId,
+    });
     // Raw evidence is retained for every packet, including suppressed ones.
     ingests.push(ingest);
     traceRecorder?.append({
@@ -1513,7 +1535,7 @@ wss.on('connection', (socket) => {
       try {
         native.pushHit({ seq: scoringSeq, atMs, source: 'keyboard', notes: [decoded.noteNumber] });
         // Only a successfully delivered onset becomes the monotonic baseline.
-        lastAdmittedRealtimeOnsetMs = atMs;
+        admissionLedger.commitOnset(atMs);
       } catch (err) {
         failActiveTake('invalid_input');
         throw err;
@@ -1523,98 +1545,10 @@ wss.on('connection', (socket) => {
     }
   }
 
-  /**
-   * Policy B: one immutable decision per packet, made at ingress.
-   * Priority: paused arrival -> clock availability -> closed pause segment ->
-   * count-in -> admitted. A note-on is only scoring evidence when admitted.
-   */
-  function recordAdmission(decoded, packet, atMs) {
-    const isNoteOn = decoded?.kind === 'note-on';
-    const eventId = decoded?.eventId ?? null;
-    // Identity first: a packet whose event id was already admitted/rejected is a
-    // duplicate and can never produce a second hit or a second lifecycle.
-    const existing = eventId ? admissionByEventId.get(eventId) : undefined;
-    const complete = decoded?.complete !== false;
-    let reason = null;
-    if (existing) {
-      reason = 'duplicate';
-    } else if (pausedAtMs !== null) {
-      reason = 'paused';
-    } else if (atMs === null || !Number.isFinite(atMs)) {
-      // Applies to note-offs too: an unmappable packet has no usable event time.
-      reason = 'clock';
-    } else if (isNoteOn && isInClosedPauseSegment(atMs)) {
-      reason = 'paused';
-    } else if (isNoteOn && atMs < meta.scoringStartMs) {
-      reason = 'count-in';
-    } else if (isNoteOn && complete && lastAdmittedRealtimeOnsetMs !== null
-      && atMs < lastAdmittedRealtimeOnsetMs) {
-      // The Rust matcher rejects non-monotonic onset times and invalidates the
-      // whole session. Isolate the regression here; equal timestamps still pass.
-      reason = 'out-of-order';
-    }
-    const admitted = isNoteOn && complete && reason === null && !existing;
-    const decision = {
-      decisionId: `adm-${++admissionSeq}`,
-      eventId,
-      sourceId: String(packet.sourceId),
-      sourceSeq: Number(packet.sourceSeq),
-      kind: decoded?.kind ?? 'unknown',
-      decisionSegmentId: activePauseSegmentId,
-      capturedAtMs: Number(packet.capturedAtMs),
-      handlerAtMs: Number.isFinite(Number(packet.handlerAtMs)) ? Number(packet.handlerAtMs) : null,
-      sessionTimeMs: atMs === null || !Number.isFinite(atMs) ? null : atMs,
-      clockDomainId: packet.clockDomainId ?? null,
-      suppressionReason: reason,
-      duplicateOf: existing?.decisionId ?? null,
-      eligibleForRealtime: admitted,
-      eligibleForFinalOnsetScore: admitted,
-    };
-    admissionCounters.packets += 1;
-    if (isNoteOn) {
-      admissionCounters.noteOns += 1;
-      if (admitted) admissionCounters.admittedNoteOns += 1;
-      else if (reason) admissionCounters.suppressedNoteOns[reason] += 1;
-    } else {
-      admissionCounters.nonOnsets += 1;
-    }
-    if (eventId && !existing) {
-      admissionByEventId.set(eventId, decision);
-    } else if (existing) {
-      admissionCounters.duplicateEventIds += 1;
-    }
-    return decision;
-  }
-
-  /** True for event times inside a pause segment that has already been closed. */
-  function isInClosedPauseSegment(atMs) {
-    return pauseSegments.some((segment) => segment.endSession !== null
-      && atMs >= segment.startSession && atMs < segment.endSession);
-  }
-
   /** Resets the admission ledger and pause segments for a new Take. */
   function resetAdmissionState() {
-    admissionByEventId.clear();
-    admissionSeq = 0;
-    admissionCounters.packets = 0;
-    admissionCounters.noteOns = 0;
-    admissionCounters.nonOnsets = 0;
-    admissionCounters.admittedNoteOns = 0;
-    admissionCounters.pushHitCount = 0;
-    admissionCounters.finalPerformedNotes = 0;
-    admissionCounters.finalSkippedByAdmission = 0;
-    admissionCounters.finalDuplicateLifecycles = 0;
-    admissionCounters.captureQuarantinedPackets = 0;
-    admissionCounters.duplicateEventIds = 0;
-    admissionCounters.suppressedNoteOns['count-in'] = 0;
-    admissionCounters.suppressedNoteOns.paused = 0;
-    admissionCounters.suppressedNoteOns.clock = 0;
-    admissionCounters.suppressedNoteOns.duplicate = 0;
-    admissionCounters.suppressedNoteOns['out-of-order'] = 0;
-    lastAdmittedRealtimeOnsetMs = null;
-    pauseSegments = [];
-    pauseSegmentSeq = 0;
-    activePauseSegmentId = 'active-0';
+    admissionLedger.reset();
+    pauseLedger.reset();
     pauseSuppressed = 0;
     pauseExcludedFromScore = 0;
   }
@@ -1707,19 +1641,31 @@ wss.on('connection', (socket) => {
     };
   }
 
+  function releaseFollowResources() {
+    followRuntime = null;
+    followContext = null;
+    if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
+    if (activeFollowLease?.socket === socket) activeFollowLease = null;
+  }
+
+  function finalizeFollowTake(options = {}) {
+    if (!followRuntime || !followContext) return followFinalized;
+    return finalizeAndRelease(() => buildFollowTake(options), releaseFollowResources);
+  }
+
   /**
    * Follow finalizer: one authoritative Take, never a fake Timeline report.
    * The Rust FollowRuntime owns target progression and the report; Node only
    * allocates the storage id, snapshots the score/config and writes the Take.
    */
-  function finalizeFollowTake({ interrupted = false, report: suppliedReport = null } = {}) {
+  function buildFollowTake({ interrupted = false, report: suppliedReport = null, resourceLimit = false } = {}) {
     if (!followRuntime || !followContext) {
       return followFinalized;
     }
     const context = followContext;
     const report = normalizeFollowReport(suppliedReport ?? followRuntime.finish());
     const scoreSnapshotRef = ensureScoreSnapshot(context.scoreId, context.scoreFingerprint);
-    const endReason = interrupted ? 'interrupted' : 'completed';
+    const endReason = resourceLimit ? 'resource_limit' : interrupted ? 'interrupted' : 'completed';
     const pauseIntervals = context.pauseIntervals.map((interval) => ({ ...interval }));
     if (context.pausedAtMs !== null) {
       // Finished while paused: keep the open interval instead of pretending
@@ -1730,7 +1676,7 @@ wss.on('connection', (socket) => {
     const followInputs = context.inputs
       .slice(0, FOLLOW_INPUT_LIMIT)
       .map((input) => ({ midiNote: input.midiNote, atMs: input.atMs }));
-    const followInputHealth = midiAdapter.getStatus().inputHealth ?? 'unknown';
+    const followInputHealth = context.inputHealth ?? 'unknown';
     const takeRecord = {
       schemaVersion: 1,
       takeId: context.takeId,
@@ -1784,7 +1730,7 @@ wss.on('connection', (socket) => {
         },
       },
       assessment: {
-        trustworthy: !interrupted,
+        trustworthy: !interrupted && !['degraded', 'disconnected'].includes(followInputHealth),
         ...deriveTakeStatus({
           attemptStatus: interrupted ? 'interrupted' : 'completed',
           // Follow is self-paced: the fixed-clock mapping does not gate note
@@ -1822,11 +1768,20 @@ wss.on('connection', (socket) => {
       endReason,
       created: finalized.created,
     };
-    followRuntime = null;
-    followContext = null;
-    if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
-    if (activeFollowLease?.socket === socket) activeFollowLease = null;
     return followFinalized;
+  }
+
+  function checkFollowResources() {
+    if (!followContext) return false;
+    if (followContext.inputs.length < FOLLOW_INPUT_LIMIT
+      && (followContext.performedMidi?.length ?? 0) < 100000
+      && followContext.pauseIntervals.length < FOLLOW_INPUT_LIMIT) return true;
+    const progress = followRuntime.progress();
+    const finalized = finalizeFollowTake({ interrupted: true, resourceLimit: true });
+    send({ type: 'follow-report', takeId: finalized.takeId, report: finalized.report,
+      persisted: finalized.persisted, persistenceStatus: finalized.persistenceStatus,
+      persistenceError: finalized.persistenceError, endReason: finalized.endReason, progress });
+    return false;
   }
 
   function handleFollowNote(midiNote, atMs) {
@@ -1844,6 +1799,7 @@ wss.on('connection', (socket) => {
       }
       followContext.waitingForFirstCorrect = false;
     }
+    if (!checkFollowResources()) return null;
     let result;
     try {
       result = normalizeFollowNoteResult(followRuntime.pushNote(midiNote, atMs));
@@ -1898,6 +1854,7 @@ wss.on('connection', (socket) => {
         return;
       }
       if (followContext.waitingForFirstCorrect && !(command === 0x90 && velocity > 0 && followContext.plan.groups[0]?.pitches.some(p => p.midiNote === midiNote))) return;
+      if (!checkFollowResources()) return;
       followContext.performedMidi ??= [];
       if (followContext.performedMidi.length < 100000) followContext.performedMidi.push({ sessionTimeMs: mapped.atSessionMs, rawBytes: bytes, sourceId: event.sourceId ?? 'node-midi' });
       else followContext.performedMidiTruncated = true;
@@ -2016,7 +1973,7 @@ wss.on('connection', (socket) => {
         console.error('[engine] 跟手断连结算失败:', String((err && err.message) || err));
       }
     }
-    if (activeFollowLease?.socket === socket) activeFollowLease = null;
+    releaseFollowResources();
     // Switching browser/device closes this socket. Finalize the captured Take
     // into an explicit untrusted history record instead of losing it. This is
     // persistence of the interrupted attempt, not cross-device Take resumption.
@@ -2026,32 +1983,26 @@ wss.on('connection', (socket) => {
       } catch (err) {
         console.error('[engine] 断连结算失败:', String((err && err.message) || err));
         if (coordinator && activeTake) {
-          try { coordinator.abort(activeTake.takeId, lastNowMs, 'connection_closed'); } catch { /* best effort */ }
+          try { coordinator.abort(activeTake.takeId, pauseLedger.lastNowMs, 'connection_closed'); } catch { /* best effort */ }
         }
       }
     } else if (coordinator && activeTake) {
-      try { coordinator.abort(activeTake.takeId, lastNowMs, 'connection_closed'); } catch { /* best effort */ }
+      try { coordinator.abort(activeTake.takeId, pauseLedger.lastNowMs, 'connection_closed'); } catch { /* best effort */ }
     }
-    // If finalization could not happen, keep at least the journal/trace.
-    if (takeJournal) {
-      takeJournal.append('take_aborted', { reason: 'connection_closed', atSessionMs: lastNowMs });
-      takeJournal.finalize({ aborted: true });
-      takeJournal = null;
-    }
-    if (traceRecorder) {
-      traceRecorder.finalize();
-      traceRecorder = null;
-    }
-    native = null;
-    meta = null;
-    activeTake = null;
-    if (activeTakeLease?.socket === socket) activeTakeLease = null;
+    releaseTimelineResources('connection_closed');
   });
 
   function handle(msg) {
     if (msg.protocolVersion != null && msg.protocolVersion !== 1) {
       send({ type: 'error', message: '不支持的 WebSocket protocolVersion' });
       return;
+    }
+    if (['tick', 'pause', 'resume', 'finish'].includes(msg.type)) assertTakeCommand(msg, activeTake);
+    if (['follow-note', 'follow-pause', 'follow-resume', 'follow-finish', 'follow-abandon'].includes(msg.type)) {
+      // Only idle finish/abandon may refer to the last frozen result. A live
+      // take always wins, so an old report cannot authorize a new-take command.
+      const owner = followContext ?? (['follow-finish', 'follow-abandon'].includes(msg.type) ? followFinalized : null);
+      assertTakeCommand(msg, owner ? { businessTakeId: owner.takeId } : null);
     }
     switch (msg.type) {
       case 'planner-status': {
@@ -2321,43 +2272,50 @@ wss.on('connection', (socket) => {
         );
         const takeId = `take-${randomUUID()}`;
         const runtimeId = `follow-${randomUUID()}`;
-        followRuntime = runtime;
-        followContext = {
-          waitingForFirstCorrect: configSnapshot?.modeId === 'score',
-          takeId,
-          runtimeId,
-          plan,
-          scoreId,
-          scoreFingerprint: plan.scoreFingerprint,
-          configSnapshot,
-          startedAtIso: parsedStartedAt,
-          modeId: typeof msg.modeId === 'string' && msg.modeId ? msg.modeId : 'score',
-          timingToleranceMs: resolvedTimingToleranceMs,
-          chordSpreadToleranceMs: resolvedChordSpreadToleranceMs,
-          pauseIntervals: [],
-          pausedAtMs: null,
-          inputs: [],
-        };
-        followFinalized = null;
-        activeFollowLease = { socket, takeId };
-        activeNodeSink = handleNodeMidiEvent;
-        // Hardware note times are mapped from the Node monotonic clock onto
-        // this session origin. Simulated/browser notes carry atMs explicitly.
-        sessionOriginClientPerfMs = Number.isFinite(Number(msg.basePerfMs))
-          ? Number(msg.basePerfMs)
-          : null;
-        send({
-          type: 'follow-started',
-          takeId,
-          runtimeId,
-          progress: runtime.progress(),
-          total: plan.groups.length,
-          scoreFingerprint: plan.scoreFingerprint,
-          plannerAuthority: plan.authority,
-          plannerVersion: plan.plannerVersion,
-          planFingerprint: plan.planFingerprint,
-          targetSource: plan.targetSource,
-        });
+        const progress = runtime.progress();
+        try {
+          followRuntime = runtime;
+          followContext = {
+            waitingForFirstCorrect: configSnapshot?.modeId === 'score',
+          inputHealth: midiAdapter.getStatus().inputHealth ?? 'unknown',
+            takeId,
+            runtimeId,
+            plan,
+            scoreId,
+            scoreFingerprint: plan.scoreFingerprint,
+            configSnapshot,
+            startedAtIso: parsedStartedAt,
+            modeId: typeof msg.modeId === 'string' && msg.modeId ? msg.modeId : 'score',
+            timingToleranceMs: resolvedTimingToleranceMs,
+            chordSpreadToleranceMs: resolvedChordSpreadToleranceMs,
+            pauseIntervals: [],
+            pausedAtMs: null,
+            inputs: [],
+          };
+          followFinalized = null;
+          activeFollowLease = { socket, takeId };
+          activeNodeSink = handleNodeMidiEvent;
+          // Hardware note times are mapped from the Node monotonic clock onto
+          // this session origin. Simulated/browser notes carry atMs explicitly.
+          sessionOriginClientPerfMs = Number.isFinite(Number(msg.basePerfMs))
+            ? Number(msg.basePerfMs)
+            : null;
+          send({
+            type: 'follow-started',
+            takeId,
+            runtimeId,
+            progress,
+            total: plan.groups.length,
+            scoreFingerprint: plan.scoreFingerprint,
+            plannerAuthority: plan.authority,
+            plannerVersion: plan.plannerVersion,
+            planFingerprint: plan.planFingerprint,
+            targetSource: plan.targetSource,
+          });
+        } catch (error) {
+          releaseFollowResources();
+          throw error;
+        }
         break;
       }
       case 'follow-note': {
@@ -2372,6 +2330,7 @@ wss.on('connection', (socket) => {
       }
       case 'follow-pause': {
         if (!followContext) throw new Error('没有进行中的跟手练习');
+        if (!checkFollowResources()) return;
         const atMs = Number(msg.atMs);
         if (!Number.isFinite(atMs) || atMs < 0) throw new Error('follow pause 时间非法');
         if (followContext.pausedAtMs === null) {
@@ -2389,9 +2348,9 @@ wss.on('connection', (socket) => {
         }
         if (followContext.pausedAtMs !== null) {
           followContext.pauseIntervals.push({ startMs: followContext.pausedAtMs, endMs: atMs });
+          followRuntime?.invalidateNextInterval();
           followContext.pausedAtMs = null;
         }
-        followRuntime?.invalidateNextInterval();
         send({ type: 'follow-resumed', takeId: followContext.takeId });
         break;
       }
@@ -2415,6 +2374,7 @@ wss.on('connection', (socket) => {
           takeId: finalized.takeId,
           report: finalized.report,
           persisted: finalized.persisted,
+          persistenceStatus: finalized.persistenceStatus,
           persistenceError: finalized.persistenceError,
           endReason: finalized.endReason,
           progress: (() => {
@@ -2435,6 +2395,7 @@ wss.on('connection', (socket) => {
           takeId: finalized.takeId,
           report: finalized.report,
           persisted: finalized.persisted,
+          persistenceStatus: finalized.persistenceStatus,
           persistenceError: finalized.persistenceError,
           endReason: finalized.endReason,
         });
@@ -2490,11 +2451,7 @@ wss.on('connection', (socket) => {
         scoringSeq = 0;
         countdownSuppressed = 0;
         scoringSeqToSourceSeq.clear();
-        pausedAtMs = null;
-        pausedSourceMs = null;
-        pauseIntervalsSourceMs = [];
         resetAdmissionState();
-        lastNowMs = 0;
         const bpm = Number(msg.bpm);
         if (!Number.isFinite(bpm) || bpm < 20 || bpm > 300) throw new Error('BPM 需在 20–300 之间');
         const countInBeats = msg.countInBeats == null ? 4 : Number(msg.countInBeats);
@@ -2829,143 +2786,149 @@ wss.on('connection', (socket) => {
           );
           activeTake = null;
         }
-        const take = coordinator.beginTake(0);
-        const nextNative = new addon.NativeSession(targets, QUEUE_CAPACITY, FINALIZATION_GRACE_MS);
-        nextNative.start();
-        native = nextNative;
-        activeTake = {
-          takeId: take.takeId,
-          businessTakeId: `take-${randomUUID()}`,
-          startedAtIso: new Date().toISOString(),
-          captureEpoch: take.captureEpoch,
-          practiceSessionId: take.practiceSessionId,
-          takeIndex: take.takeIndex,
-          scoreId,
-          configSnapshot,
-          plannerAuthority,
-          plannerVersion,
-          planFingerprint,
-          planRequestId,
-        };
-        activeTakeLease = {
-          socket,
-          takeId: take.takeId,
-          practiceSessionId: take.practiceSessionId,
-        };
-        const traceId = `trace-${take.practiceSessionId}-${take.takeId}`;
-        traceRecorder = new TakeTraceRecorder({
-          traceId,
-          practiceSessionId: take.practiceSessionId,
-          takeId: take.takeId,
-          captureEpoch: take.captureEpoch,
-          dir: TRACES_DIR,
-        });
-        takeJournal = new TakeJournal({
-          journalId: `journal-${take.practiceSessionId}-${take.takeId}`,
-          practiceSessionId: take.practiceSessionId,
-          takeId: take.takeId,
-          captureEpoch: take.captureEpoch,
-          dir: JOURNALS_DIR,
-        });
-        takeJournal.append('take_started', {
-          modeId: msg.modeId,
-          bpm,
-          profile,
-          countInBeats,
-          targetCount: targets.length,
-          captureEpoch: take.captureEpoch,
-          scoringConfig,
-          scoreFingerprint,
-          playbackPlanId,
-          plannerAuthority,
-          plannerVersion,
-          planFingerprint,
-          scoreImportStatus,
-          hand,
-          scoreBarCount,
-          sourceReportId,
-          sourceTakeId,
-          prescriptionId,
-          takeTemplateId,
-          takeTemplateName: takeTemplate?.name ?? null,
-        });
-        sessionOriginClientPerfMs = null;
-        nodeEventsMapped = 0;
-        nodeEventsUnmapped = 0;
-        nodeEventsStale = 0;
-        activeNodeSink = handleNodeMidiEvent;
-        // Armed start: hold the scoring clock until the first key press.
-        const firstScoreOnset = scoreEvents?.length ? Math.min(...scoreEvents.map(e => e.targetOnsetMs)) : null;
-        const firstPitches = scoreEvents?.filter(e => e.targetOnsetMs === firstScoreOnset).map(e => e.pitch) ?? [];
-        armedClock = armOnFirstInput ? new ArmedTakeClock(targets[0]?.atMs ?? 0, firstPitches) : null;
-        armedOriginSent = false;
-        takeHealth.value = midiAdapter.getStatus().inputHealth === 'healthy' ? 'healthy' : 'unknown';
-        serverTakeHealth.value = takeHealth.value;
-        try { coordinator.setInputHealth(take.takeId, takeHealth.value); } catch { /* keep adapter health in report */ }
-        // Notes before the first target's early tolerance are count-in input:
-        // keep them in the trace, but do not score them. Starting at the early
-        // window instead of exactly countInMs preserves legitimate early
-        // attacks on the first beat.
-        const scoringStartMs = targets.length
-          ? Math.max(0, targets[0].atMs - targets[0].goodWindowMs)
-          : countInMs;
-        meta = {
-          modeId: msg.modeId, bpm, profile, assisted: !!msg.assisted,
-          durationPolicy, targets, countInMs, scoringStartMs, ...activeTake,
-          atoms: pattern.atoms,
-          countInBeats,
-          countInUs,
-          ticksPerQuarter,
-          scoringConfig,
-          scoreFingerprint,
-          playbackPlanId,
-          plannerAuthority,
-          plannerVersion,
-          planFingerprint,
-          scoreImportStatus,
-          scoreEvents,
-          hand,
-          scoreBarCount,
-          sourceReportId,
-          sourceTakeId,
-          prescriptionId,
-          prescription,
-          takeTemplateId,
-          takeTemplateName: takeTemplate?.name ?? null,
-          takeTemplateUpdatedAtIso: takeTemplate?.updatedAtIso ?? null,
-        };
-        meta.assisted = scoringConfig.feedback === 'live';
-        meta.autoFinishAtMs = songCompletionAtMs(meta);
-        liveNoteFeedback = scoringConfig.feedback === 'live' && ['fixed-line', 'reading-rhythm'].includes(msg.modeId) && scoreEvents?.length
-          ? new LiveNoteFeedback(scoreEvents, targets, addon.scorePerformance)
-          : null;
-        liveFeedbackErrorLogged = false;
-        send({
-          type: 'started', bpm, profile, countInBeats, countInUs, targets,
-          armed: armOnFirstInput,
-          countInMs,
-          firstTargetAtMs: targets.length > 0 ? targets[0].atMs : null,
-          scoreFingerprint,
-          playbackPlanId,
-          scoreImportStatus,
-          hand,
-          scoreBarCount,
-          sourceReportId,
-          sourceTakeId,
-          prescriptionId,
-          takeTemplateId,
-          takeTemplateName: takeTemplate?.name ?? null,
-          captureEpoch: take.captureEpoch,
-          practiceSessionId: take.practiceSessionId,
-          takeId: activeTake.businessTakeId,
-          engineTakeId: take.takeId,
-          takeIndex: take.takeIndex,
-          scoringConfig,
-        });
+        const { take, native: nextNative } = beginNativeTake(coordinator,
+          () => new addon.NativeSession(targets, QUEUE_CAPACITY, FINALIZATION_GRACE_MS));
+        try {
+          native = nextNative;
+          resourceBudget.reset();
+          resourceLimitReached = false;
+          activeTake = {
+            takeId: take.takeId,
+            businessTakeId: `take-${randomUUID()}`,
+            startedAtIso: new Date().toISOString(),
+            captureEpoch: take.captureEpoch,
+            practiceSessionId: take.practiceSessionId,
+            takeIndex: take.takeIndex,
+            scoreId,
+            configSnapshot,
+            plannerAuthority,
+            plannerVersion,
+            planFingerprint,
+            planRequestId,
+          };
+          activeTakeLease = {
+            socket,
+            takeId: take.takeId,
+            practiceSessionId: take.practiceSessionId,
+          };
+          const traceId = `trace-${take.practiceSessionId}-${take.takeId}`;
+          traceRecorder = new TakeTraceRecorder({
+            traceId,
+            practiceSessionId: take.practiceSessionId,
+            takeId: take.takeId,
+            captureEpoch: take.captureEpoch,
+            dir: TRACES_DIR,
+          });
+          takeJournal = new TakeJournal({
+            journalId: `journal-${take.practiceSessionId}-${take.takeId}`,
+            practiceSessionId: take.practiceSessionId,
+            takeId: take.takeId,
+            captureEpoch: take.captureEpoch,
+            dir: JOURNALS_DIR,
+          });
+          takeJournal.append('take_started', {
+            modeId: msg.modeId,
+            bpm,
+            profile,
+            countInBeats,
+            targetCount: targets.length,
+            captureEpoch: take.captureEpoch,
+            scoringConfig,
+            scoreFingerprint,
+            playbackPlanId,
+            plannerAuthority,
+            plannerVersion,
+            planFingerprint,
+            scoreImportStatus,
+            hand,
+            scoreBarCount,
+            sourceReportId,
+            sourceTakeId,
+            prescriptionId,
+            takeTemplateId,
+            takeTemplateName: takeTemplate?.name ?? null,
+          });
+          sessionOriginClientPerfMs = null;
+          nodeEventsMapped = 0;
+          nodeEventsUnmapped = 0;
+          nodeEventsStale = 0;
+          activeNodeSink = handleNodeMidiEvent;
+          // Armed start: hold the scoring clock until the first key press.
+          const firstScoreOnset = scoreEvents?.length ? Math.min(...scoreEvents.map(e => e.targetOnsetMs)) : null;
+          const firstPitches = scoreEvents?.filter(e => e.targetOnsetMs === firstScoreOnset).map(e => e.pitch) ?? [];
+          armedClock = armOnFirstInput ? new ArmedTakeClock(targets[0]?.atMs ?? 0, firstPitches) : null;
+          armedOriginSent = false;
+          takeHealth.value = midiAdapter.getStatus().inputHealth === 'healthy' ? 'healthy' : 'unknown';
+          serverTakeHealth.value = takeHealth.value;
+          try { coordinator.setInputHealth(take.takeId, takeHealth.value); } catch { /* keep adapter health in report */ }
+          // Notes before the first target's early tolerance are count-in input:
+          // keep them in the trace, but do not score them. Starting at the early
+          // window instead of exactly countInMs preserves legitimate early
+          // attacks on the first beat.
+          const scoringStartMs = targets.length
+            ? Math.max(0, targets[0].atMs - targets[0].goodWindowMs)
+            : countInMs;
+          meta = {
+            modeId: msg.modeId, bpm, profile, assisted: !!msg.assisted,
+            durationPolicy, targets, countInMs, scoringStartMs, ...activeTake,
+            atoms: pattern.atoms,
+            countInBeats,
+            countInUs,
+            ticksPerQuarter,
+            scoringConfig,
+            scoreFingerprint,
+            playbackPlanId,
+            plannerAuthority,
+            plannerVersion,
+            planFingerprint,
+            scoreImportStatus,
+            scoreEvents,
+            hand,
+            scoreBarCount,
+            sourceReportId,
+            sourceTakeId,
+            prescriptionId,
+            prescription,
+            takeTemplateId,
+            takeTemplateName: takeTemplate?.name ?? null,
+            takeTemplateUpdatedAtIso: takeTemplate?.updatedAtIso ?? null,
+          };
+          meta.assisted = scoringConfig.feedback === 'live';
+          meta.autoFinishAtMs = songCompletionAtMs(meta);
+          liveNoteFeedback = scoringConfig.feedback === 'live' && ['fixed-line', 'reading-rhythm'].includes(msg.modeId) && scoreEvents?.length
+            ? new LiveNoteFeedback(scoreEvents, targets, addon.scorePerformance)
+            : null;
+          liveFeedbackErrorLogged = false;
+          send({
+            type: 'started', bpm, profile, countInBeats, countInUs, targets,
+            armed: armOnFirstInput,
+            countInMs,
+            firstTargetAtMs: targets.length > 0 ? targets[0].atMs : null,
+            scoreFingerprint,
+            playbackPlanId,
+            scoreImportStatus,
+            hand,
+            scoreBarCount,
+            sourceReportId,
+            sourceTakeId,
+            prescriptionId,
+            takeTemplateId,
+            takeTemplateName: takeTemplate?.name ?? null,
+            captureEpoch: take.captureEpoch,
+            practiceSessionId: take.practiceSessionId,
+            takeId: activeTake.businessTakeId,
+            engineTakeId: take.takeId,
+            takeIndex: take.takeIndex,
+            scoringConfig,
+          });
+        } catch (error) {
+          failActiveTake('start_failed');
+          throw error;
+        }
         break;
       }
       case 'hit': {
-        if (!native) return;
+        if (!native || !admitResourceEvent(msg)) return;
         const seq = Number(msg.seq);
         const atMs = Number(msg.atMs);
         if (!Number.isFinite(seq) || !Number.isFinite(atMs)) throw new Error('hit 字段非法');
@@ -2997,6 +2960,7 @@ wss.on('connection', (socket) => {
         };
         // napi-rs Option<u32> rejects null; omit the field instead.
         if (velocity != null && Number.isFinite(velocity)) event.velocity = velocity;
+        if (!admitResourceEvent(event)) return;
         rawNotes.push(event);
         break;
       }
@@ -3011,63 +2975,52 @@ wss.on('connection', (socket) => {
         // Advancing a paused NativeSession is invalid. The client already
         // stops its tick timer on pause, but a late/queued tick must also be
         // harmless instead of closing the report with an engine error.
-        if (pausedAtMs !== null) return;
+        if (pauseLedger.pausedAtMs !== null) return;
         // Armed: the clock only starts once the player presses the first key.
         if (armedClock?.waiting) return;
         const nowMs = armedClock ? armedClock.now(performance.now()) : Number(msg.nowMs);
-        if (!Number.isFinite(nowMs)) return;
-        lastNowMs = nowMs;
+        if (!pauseLedger.canAdvance(nowMs)) return;
         sendJudgments(native.advance(nowMs), nowMs);
-        if (reachedSongEnd(meta?.autoFinishAtMs, nowMs, pauseSegments)) {
+        pauseLedger.advance(nowMs);
+        if (reachedSongEnd(meta?.autoFinishAtMs, nowMs, pauseLedger.pauseSegments)) {
           takeJournal?.append('song_end_reached', { atSessionMs: nowMs, plannedEndMs: meta.autoFinishAtMs });
           finishSession();
         }
         break;
       }
       case 'pause': {
-        if (!native) return;
+        if (!native || !admitResourceEvent()) return;
         const nowMs = armedClock ? armedClock.now(performance.now()) : Number(msg.nowMs);
-        if (!Number.isFinite(nowMs)) throw new Error('pause 时间非法');
-        if (coordinator && activeTake) coordinator.pause(activeTake.takeId, nowMs);
-        const judgments = native.pause(nowMs);
-        pausedAtMs = nowMs;
-        pauseSegmentSeq += 1;
-        const pauseSegment = { segmentId: `pause-${pauseSegmentSeq}`, startSession: nowMs, endSession: null };
-        pauseSegments.push(pauseSegment);
-        activePauseSegmentId = pauseSegment.segmentId;
-        const pauseSourceMs = armedClock?.transport === 'node-midi' ? performance.now() : Number(msg.atSourceMs);
-        pausedSourceMs = Number.isFinite(pauseSourceMs) ? pauseSourceMs : null;
-        lastNowMs = nowMs;
-        takeJournal?.append('pause_boundary', {
-          atSessionMs: nowMs,
-          atSourceMs: pausedSourceMs,
-          segmentId: pauseSegment.segmentId,
+        const sourceMs = armedClock?.transport === 'node-midi' ? performance.now() : Number(msg.atSourceMs);
+        const result = pauseLedger.pause(nowMs, sourceMs, () => {
+          try {
+            if (coordinator && activeTake) coordinator.pause(activeTake.takeId, nowMs);
+            return native.pause(nowMs);
+          } catch (error) { failActiveTake('pause_transition_failed'); throw error; }
         });
-        sendJudgments(judgments, nowMs);
+        if (!result.duplicate) {
+          takeJournal?.append('pause_boundary', { atSessionMs: nowMs,
+            atSourceMs: pauseLedger.pausedSourceMs, segmentId: pauseLedger.activePauseSegmentId });
+          sendJudgments(result.judgments, nowMs);
+        }
         send({ type: 'paused' });
         break;
       }
       case 'resume': {
         if (!native) return;
         const nowMs = armedClock ? armedClock.now(performance.now()) : Number(msg.nowMs);
-        if (!Number.isFinite(nowMs)) throw new Error('resume 时间非法');
-        if (coordinator && activeTake) coordinator.resume(activeTake.takeId, nowMs);
-        native.resume(nowMs);
-        const deltaMs = pausedAtMs === null ? 0 : nowMs - pausedAtMs;
-        if (pausedAtMs !== null) liveNoteFeedback?.resume(pausedAtMs, deltaMs);
-        const openSegment = pauseSegments.find((segment) => segment.endSession === null);
-        if (openSegment) openSegment.endSession = nowMs;
-        pauseSegmentSeq += 1;
-        activePauseSegmentId = `active-${pauseSegmentSeq}`;
-        const resumeSourceMs = armedClock?.transport === 'node-midi' ? performance.now() : Number(msg.atSourceMs);
-        if (pausedSourceMs !== null && Number.isFinite(resumeSourceMs) && resumeSourceMs >= pausedSourceMs) {
-          pauseIntervalsSourceMs.push(pausedSourceMs, resumeSourceMs);
+        const sourceMs = armedClock?.transport === 'node-midi' ? performance.now() : Number(msg.atSourceMs);
+        const result = pauseLedger.resume(nowMs, sourceMs, () => {
+          try {
+            if (coordinator && activeTake) coordinator.resume(activeTake.takeId, nowMs);
+            native.resume(nowMs);
+          } catch (error) { failActiveTake('resume_transition_failed'); throw error; }
+        });
+        if (!result.duplicate) {
+          liveNoteFeedback?.resume(result.pausedAtMs, result.deltaMs);
+          takeJournal?.append('resume_boundary', { atSessionMs: nowMs, deltaMs: result.deltaMs });
         }
-        pausedSourceMs = null;
-        pausedAtMs = null;
-        lastNowMs = nowMs;
-        takeJournal?.append('resume_boundary', { atSessionMs: nowMs, deltaMs });
-        send({ type: 'resumed', deltaMs, resumedAtMs: nowMs });
+        send({ type: 'resumed', deltaMs: result.deltaMs, resumedAtMs: result.resumedAtMs });
         break;
       }
       case 'finish': {
@@ -3079,19 +3032,36 @@ wss.on('connection', (socket) => {
     }
   }
 
-  function finishSession({ interrupted = false } = {}) {
+  function finishSession(options = {}) {
+    if (!native) return;
+    try {
+      const result = finalizeTimelineSession(options);
+      releaseTimelineResources('completed');
+      return result;
+    }
+    catch (error) {
+      failActiveTake('finalization_failed');
+      throw error;
+    }
+  }
+
+  function finalizeTimelineSession({ interrupted = false, endReason = null } = {}) {
     if (!native) return;
     // Drain Node input that was captured before the stop boundary, then close
     // the sink so events arriving during finalization cannot enter the take.
-    try { midiAdapter.flush(); } catch { /* adapter diagnostics already emitted */ }
+    try { if (!resourceLimitReached) midiAdapter.flush(); } catch { /* adapter diagnostics already emitted */ }
+    // A flush can itself reach the budget and finish this Take.
+    if (!native) return;
     if (activeNodeSink === handleNodeMidiEvent) activeNodeSink = null;
     sendJudgments([], Infinity);
     const finishedTake = activeTake;
     if (interrupted) {
       // A browser/device switch closes this socket. Preserve the captured Take
       // as an explicitly untrusted, interrupted report instead of dropping it.
-      takeHealth.value = 'disconnected';
-      takeJournal?.append('connection_closed', { atSessionMs: lastNowMs });
+      if (endReason !== 'resource_limit' || takeHealth.value !== 'disconnected') {
+        takeHealth.value = endReason === 'resource_limit' ? 'degraded' : 'disconnected';
+      }
+      takeJournal?.append(endReason === 'resource_limit' ? 'resource_limit_closed' : 'connection_closed', { atSessionMs: pauseLedger.lastNowMs });
     }
     // Worst health OBSERVED during the take (never "upgraded" by the order list).
     const worstHealth = takeHealth.value;
@@ -3099,8 +3069,8 @@ wss.on('connection', (socket) => {
     // the Take in Finalizing until the report has been persisted.
     if (coordinator && finishedTake) {
       try {
-        coordinator.stop(finishedTake.takeId, lastNowMs);
-        takeJournal?.append('stop_boundary', { atSessionMs: lastNowMs });
+        coordinator.stop(finishedTake.takeId, pauseLedger.lastNowMs);
+        takeJournal?.append('stop_boundary', { atSessionMs: pauseLedger.lastNowMs });
       } catch (err) {
         console.error('[engine] Take stop 失败:', String((err && err.message) || err));
       }
@@ -3151,17 +3121,7 @@ wss.on('connection', (socket) => {
         })
       : null;
     takeJournal = null;
-    // A Take can end while still paused. Close the open interval so a key held
-    // across that pause is marked as crossed rather than graded normally.
-    if (pausedSourceMs !== null) {
-      pauseIntervalsSourceMs.push(pausedSourceMs, Number.MAX_SAFE_INTEGER);
-      pausedSourceMs = null;
-    }
-    if (pausedAtMs !== null) {
-      // The Take ended while paused. The segment stays open on purpose: it is
-      // evidence that this tail of the Take was not active practice.
-      pausedAtMs = null;
-    }
+    pauseLedger.finish();
 
     let analysis = null;
     try {
@@ -3212,8 +3172,8 @@ wss.on('connection', (socket) => {
           toleranceMs: DURATION_TOLERANCE_MS,
           toleranceRatio: DURATION_TOLERANCE_RATIO,
         };
-        if (pauseIntervalsSourceMs.length > 0) {
-          durationOptions.pauseIntervalsSourceMs = pauseIntervalsSourceMs;
+        if (pauseLedger.pauseIntervalsSourceMs.length > 0) {
+          durationOptions.pauseIntervalsSourceMs = pauseLedger.pauseIntervalsSourceMs;
         }
         durations = attachDurationMeasures(
           addon.assessKeyPresses(meta.targets, keyLifecycles.observations, durationJudgments, durationOptions),
@@ -3272,7 +3232,7 @@ wss.on('connection', (socket) => {
         // Policy B: final scoring consumes the ingress admission decision. It
         // never re-derives "was this paused?" from the onset time, so a note the
         // realtime path suppressed can never reappear here.
-        const closedPauseSegments = pauseSegments.filter((segment) => segment.endSession !== null);
+        const closedPauseSegments = pauseLedger.pauseSegments.filter((segment) => segment.endSession !== null);
         const performedNotes = [];
         // One Note On may produce at most one performed-note lifecycle, even if
         // a duplicate packet slipped past the ingress guard.
@@ -3283,7 +3243,7 @@ wss.on('connection', (socket) => {
             continue;
           }
           consumedOnsetEventIds.add(observation.noteOnEventId);
-          const admission = admissionByEventId.get(observation.noteOnEventId);
+          const admission = admissionLedger.get(observation.noteOnEventId);
           if (!admission) {
             // A lifecycle without an admission decision is a structural gap, not
             // a scoring opportunity; fail closed and count it.
@@ -3328,9 +3288,10 @@ wss.on('connection', (socket) => {
           let shift = 0;
           for (const pause of closedPauseSegments) {
             // The engine shifts unresolved targets at pause time. A target
-            // whose planned onset is at/after the pause boundary belongs to the
-            // shifted segment; already-played targets do not get double-shifted.
-            if (event.targetOnsetMs >= pause.startSession) {
+            // whose already-shifted onset is at/after this pause boundary
+            // belongs to the shifted segment. Later pauses use session time,
+            // so comparing against the original onset would lose their delay.
+            if (event.targetOnsetMs + shift >= pause.startSession) {
               shift += pause.endSession - pause.startSession;
             }
           }
@@ -3404,9 +3365,9 @@ wss.on('connection', (socket) => {
         },
         captureQuarantinedPackets: admissionCounters.captureQuarantinedPackets,
         duplicateEventIds: admissionCounters.duplicateEventIds,
-        pauseSegments: pauseSegments.map((segment) => ({ ...segment })),
+        pauseSegments: pauseLedger.pauseSegments.map((segment) => ({ ...segment })),
       },
-      connectionClosed: interrupted,
+      connectionClosed: interrupted && endReason !== 'resource_limit',
       node: {
         backend: adapterStatus.backend,
         adapterGeneration: adapterStatus.generation,
@@ -3430,7 +3391,7 @@ wss.on('connection', (socket) => {
       takeId: businessTakeId,
       engineTakeId: finishedTake ? finishedTake.takeId : null,
       interrupted,
-      endReason: interrupted ? 'interrupted' : (report.state === 'invalid' ? 'failed' : 'completed'),
+      endReason: endReason ?? (interrupted ? 'interrupted' : (report.state === 'invalid' ? 'failed' : 'completed')),
       startedAtIso,
       finishedAtIso: new Date().toISOString(),
       modeId: meta ? meta.modeId : 'unknown',
@@ -3519,7 +3480,7 @@ wss.on('connection', (socket) => {
       evidence: {
         traceRef: record.traceId ?? null,
         journalRef: record.journal?.journalId ?? null,
-        pauseIntervals: pauseSegments.map((segment) => ({
+        pauseIntervals: pauseLedger.pauseSegments.map((segment) => ({
           startMs: segment.startSession,
           endMs: segment.endSession ?? null,
         })),
@@ -3571,7 +3532,7 @@ wss.on('connection', (socket) => {
         try {
           coordinator.finalizeFailed(finishedTake.takeId, String((err && err.message) || err));
         } catch {
-          try { coordinator.abort(finishedTake.takeId, lastNowMs, 'finalize_failed'); } catch { /* best effort */ }
+          try { coordinator.abort(finishedTake.takeId, pauseLedger.lastNowMs, 'finalize_failed'); } catch { /* best effort */ }
         }
       }
       activeTake = null;

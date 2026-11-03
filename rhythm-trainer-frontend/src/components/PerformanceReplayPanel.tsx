@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import { useEffect, useRef, useState } from 'react';
 import type { PerformanceReplay } from '../../shared/performance-replay';
 import { backendUrl } from '../services/backendEndpoint';
@@ -37,11 +38,11 @@ export default function PerformanceReplayPanel({ takeId }: { takeId: string }) {
   const paused = snapshot?.status === 'PAUSED'; const position = (snapshot?.positionMs ?? 0) * speed;
   return <section className="performance-replay" aria-label="重放我的演奏"><div><div className="eyebrow">MY PERFORMANCE</div><h3>重放我的演奏</h3>
     <p>本地 MIDI 演奏重放 · 保留实际错音、节奏、力度和踏板延音；不是电钢琴原声录音。</p></div>
-    {message && <p role="status">{message}</p>}{!data && <button onClick={() => setRetry(n => n + 1)}>重新检查文件</button>}
+    {message && <p role="status">{message}</p>}{!data && <AppButton onClick={() => setRetry(n => n + 1)}>重新检查文件</AppButton>}
     {data && <><div className="replay-controls"><InstrumentSelect disabled={!!playing || paused} />
       <label className="field"><span>重放速度</span><select aria-label="重放速度" value={speed} disabled={!!playing || paused} onChange={e => { stop(); setSpeed(Number(e.target.value)); }}><option value="0.5">0.5 倍</option><option value="0.75">0.75 倍</option><option value="1">原速</option></select></label>
-      <button disabled={!!playing} onClick={() => paused ? void player.current?.resume() : void play()}>{paused ? '继续重放' : '重放我的演奏'}</button>
-      <button disabled={snapshot?.status !== 'PLAYING' && snapshot?.status !== 'COUNT_IN'} onClick={() => player.current?.pause()}>暂停重放</button><button onClick={stop}>停止重放</button>
+      <AppButton disabled={!!playing} onClick={() => paused ? void player.current?.resume() : void play()}>{paused ? '继续重放' : '重放我的演奏'}</AppButton>
+      <AppButton disabled={snapshot?.status !== 'PLAYING' && snapshot?.status !== 'COUNT_IN'} onClick={() => player.current?.pause()}>暂停重放</AppButton><AppButton onClick={stop}>停止重放</AppButton>
       <label>音量<input aria-label="重放音量" type="range" min="0" max="1" step="0.05" value={volume} onChange={e => { const value = Number(e.target.value); setVolume(value); player.current?.setGain(value); }} /></label>
     </div><label className="replay-position">{time(position)} / {time(data.durationMs)}<input aria-label="重放位置" type="range" min="0" max={data.durationMs} step="100" value={Math.min(position, data.durationMs)} disabled={snapshot?.status === 'PREPARING'} onChange={e => { stop(); void play(Number(e.target.value)); }} /></label>
       {data.warnings.map(w => <p className="report-warning" key={w}>{w}</p>)}

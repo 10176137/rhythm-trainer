@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { NoteReview, NoteReviewItem } from '../../shared/note-review';
 import { practiceRepository } from '../services/practiceRepository';
@@ -34,21 +35,21 @@ export default function NoteReviewPanel({ takeId }: { takeId: string }) {
   const activeId = selected ? locations.get(selected.id) : null;
   const choose = (item: NoteReviewItem) => { setSelectedId(item.id); const index = filtered.findIndex(n => n.id === item.id); if (index >= 0) setPage(Math.floor(index / 100)); };
   const step = (direction: number) => { if (!filtered.length) return; choose(filtered[(Math.max(position, 0) + direction + filtered.length) % filtered.length]); };
-  if (error) return <section className="note-review"><h3>逐音符复盘</h3><p role="alert">{error}</p><button onClick={() => setRetry(n => n + 1)}>重试载入</button></section>;
+  if (error) return <section className="note-review"><h3>逐音符复盘</h3><p role="alert">{error}</p><AppButton onClick={() => setRetry(n => n + 1)}>重试载入</AppButton></section>;
   if (!review) return <section className="note-review" aria-busy="true">正在载入逐音符反馈…</section>;
   return <section className="note-review" aria-label="逐音符复盘">
     <header><div><div className="eyebrow">NOTE REVIEW</div><h3>逐音符复盘</h3><p>{review.notice}</p></div></header>
     <div className="note-review-legend">{(Object.keys(labels) as Array<keyof typeof labels>).map(state => <span className={`nr-${state}`} key={state}><i />{labels[state]} {review.items.filter(n => n.state === state).length}</span>)}</div>
-    <div className="note-review-tools"><label><input type="checkbox" checked={issuesOnly} onChange={e => { setIssuesOnly(e.target.checked); setPage(0); }} />只看需关注音符</label><span>{filtered.length} 条 · 蓝色为当前查看位置</span><button disabled={!filtered.length} onClick={() => step(-1)}>上一个</button><button disabled={!filtered.length} onClick={() => step(1)}>下一个</button></div>
+    <div className="note-review-tools"><label><input type="checkbox" checked={issuesOnly} onChange={e => { setIssuesOnly(e.target.checked); setPage(0); }} />只看需关注音符</label><span>{filtered.length} 条 · 蓝色为当前查看位置</span><AppButton disabled={!filtered.length} onClick={() => step(-1)}>上一个</AppButton><AppButton disabled={!filtered.length} onClick={() => step(1)}>下一个</AppButton></div>
     {score && review.xml ? <div className="note-review-score" ref={scrollRef}><OsmdScoreView xml={review.xml} engine={score} fitWidth activeNoteIds={activeId ? [activeId] : EMPTY}
       follow followSignal={review.items.findIndex(n => n.id === selectedId)} systemNoteIds={EMPTY} userNoteIds={EMPTY} colorSystemNotes={false} reviewStates={highlights}
       scrollRef={scrollRef} onSelectEvent={id => { const item = review.items.find(n => locations.get(n.id) === id); if (item) choose(item); }} /></div>
       : <p className="note-review-notice">{review.xml ? '谱面指纹不匹配，已停止定位，避免标错音符。' : '这条记录没有保存原始谱面，下面仍可查看全部已记录的音符反馈。'}</p>}
     <div className="note-review-body"><div className="note-review-list" aria-label="音符反馈列表">
       {!filtered.length && <p>{review.items.length ? '没有需要关注的音符，可以取消筛选查看全部。' : '没有可用的逐音符证据。'}</p>}
-      {filtered.slice(page * 100, (page + 1) * 100).map(item => <button key={item.id} className={`note-review-row nr-${item.state}`} aria-pressed={item.id === selectedId} onClick={() => choose(item)}>
-        <strong>{item.measure ? `第 ${item.measure} 小节` : '未定位'} · {item.pitchLabel}</strong><span>{itemLabel(item)}</span></button>)}
-      {filtered.length > 100 && <nav aria-label="音符列表分页"><button disabled={page === 0} onClick={() => setPage(p => p - 1)}>上一页</button><span>{page + 1} / {Math.ceil(filtered.length / 100)}</span><button disabled={(page + 1) * 100 >= filtered.length} onClick={() => setPage(p => p + 1)}>下一页</button></nav>}
+      {filtered.slice(page * 100, (page + 1) * 100).map(item => <AppButton key={item.id} className={`note-review-row nr-${item.state}`} aria-pressed={item.id === selectedId} onClick={() => choose(item)}>
+        <strong>{item.measure ? `第 ${item.measure} 小节` : '未定位'} · {item.pitchLabel}</strong><span>{itemLabel(item)}</span></AppButton>)}
+      {filtered.length > 100 && <nav aria-label="音符列表分页"><AppButton disabled={page === 0} onClick={() => setPage(p => p - 1)}>上一页</AppButton><span>{page + 1} / {Math.ceil(filtered.length / 100)}</span><AppButton disabled={(page + 1) * 100 >= filtered.length} onClick={() => setPage(p => p + 1)}>下一页</AppButton></nav>}
     </div><div className="note-review-inspector" aria-live="polite">
       {selected ? <><span className={`note-review-tag nr-${selected.state}`}>{itemLabel(selected)}</span><h4>{selected.measure ? `第 ${selected.measure} 小节 · ` : ''}{selected.pitchLabel}</h4>
         <ul>{selected.messages.map((message, index) => <li key={index}>{message}</li>)}</ul>

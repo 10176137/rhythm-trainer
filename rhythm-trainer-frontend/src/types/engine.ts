@@ -417,6 +417,7 @@ export interface EngineCaptureDiagnostics {
 }
 
 export interface EngineReportMessage {
+  endReason?: 'completed' | 'interrupted' | 'failed' | 'resource_limit';
   type: 'report';
   /** Server-assigned session id; also the filename key for /api/sessions/:id. */
   sessionId?: string;
@@ -545,7 +546,7 @@ export interface FollowReportMessage {
   persisted: boolean;
   persistenceStatus?: 'persisted' | 'pending-retry' | 'unknown' | string | null;
   persistenceError: string | null;
-  endReason: 'completed' | 'interrupted';
+  endReason: 'completed' | 'interrupted' | 'resource_limit';
   progress?: FollowProgress;
 }
 
@@ -671,9 +672,9 @@ export type EngineClientMessage =
   | { type: 'note-on'; seq: number; atMs: number; pitch: number; velocity?: number }
   | { type: 'note-off'; seq: number; atMs: number; pitch: number }
   | { type: 'raw-midi'; ingest: EngineIngestMidiPacket }
-  | { type: 'tick'; nowMs: number }
-  | { type: 'pause'; nowMs: number; atSourceMs?: number }
-  | { type: 'resume'; nowMs: number; atSourceMs?: number }
+  | { type: 'tick'; nowMs: number; takeId?: string }
+  | { type: 'pause'; nowMs: number; takeId?: string; atSourceMs?: number }
+  | { type: 'resume'; nowMs: number; takeId?: string; atSourceMs?: number }
   | { type: 'clock-ping'; id: string; clientSendPerfMs: number; protocolVersion?: number }
   | { type: 'clock-sample'; id: string; clientReceivePerfMs: number; protocolVersion?: number }
   | { type: 'session-origin'; clientPerfMs: number; protocolVersion?: number }
@@ -689,10 +690,10 @@ export type EngineClientMessage =
       noteRange?: { startEventId: string; endEventId: string };
     }
   | (FollowStartRequest & { protocolVersion?: number })
-  | { type: 'follow-note'; note: number; atMs: number }
-  | { type: 'follow-pause'; atMs?: number }
-  | { type: 'follow-resume'; atMs?: number }
-  | { type: 'follow-finish' }
-  | { type: 'follow-abandon' }
+  | { type: 'follow-note'; takeId?: string; note: number; atMs: number }
+  | { type: 'follow-pause'; takeId?: string; atMs?: number }
+  | { type: 'follow-resume'; takeId?: string; atMs?: number }
+  | { type: 'follow-finish'; takeId?: string }
+  | { type: 'follow-abandon'; takeId?: string }
   | { type: 'persist-retry'; takeId: string }
-  | { type: 'finish' };
+  | { type: 'finish'; takeId?: string };

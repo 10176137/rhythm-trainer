@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import type { FollowReport, FollowTargetResult } from '../score-engine/practice/follow-session';
 
 interface Props {
@@ -42,14 +43,14 @@ export default function FollowReportPanel({ report, persistence = null, onRetryS
           <strong>结果已固定，但尚未保存</strong>
           <p>{persistence.error ?? '持久化失败'}。历史记录中还没有这次 Take；请修复本地存储后重试。</p>
           {onRetrySave && (
-            <button
+            <AppButton
               type="button"
               className="button button-outline button-small"
               onClick={onRetrySave}
               disabled={retrying}
             >
               {retrying ? '正在重试…' : '重试保存'}
-            </button>
+            </AppButton>
           )}
         </div>
       )}

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import WebSocket from 'ws';
+import { waitsForFirstInput } from '../src/features/practice/sessionStartPolicy';
 import { songCompletionAtMs } from './song-completion.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -51,7 +52,7 @@ async function start(countInUs = 3000000, selection, options = {}) {
 const inject = (bytes) => socket.send(JSON.stringify({ type: 'midi-test-note', bytes }));
 beforeAll(async () => {
   child = spawn(process.execPath, ['server/engine-server.mjs'], { cwd: root,
-    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', RHYTHM_PLANNER: 'rust', RHYTHM_MIDI_BACKEND: 'mock', RHYTHM_DATA_DIR: dataDir }, stdio: ['ignore', 'pipe', 'pipe'] });
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', RHYTHM_PLANNER: 'rust', RHYTHM_MIDI_BACKEND: 'mock', RHYTHM_DATA_DIR: dataDir, RHYTHM_TAKE_EVENT_LIMIT: '100' }, stdio: ['ignore', 'pipe', 'pipe'] });
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('server timeout')), 10000);
     child.stdout.on('data', (data) => { if (String(data).includes('引擎服务')) { clearTimeout(timer); resolve(); } });
@@ -67,6 +68,136 @@ beforeAll(async () => {
 afterAll(() => { socket?.close(); child?.kill(); });
 
 describe('armed practice through real Node MIDI admission and Rust scoring', () => {
+  it('keeps final pitch/onset scoring aligned after two pauses', async () => {
+    const { started, pitch, plan } = await start(3000000, undefined, { modeId: 'fixed-line', armed: false });
+    try {
+      await request({ type: 'pause', nowMs: 100, atSourceMs: 100 }, 'paused');
+      await request({ type: 'resume', nowMs: 4100, atSourceMs: 4100 }, 'resumed');
+      await request({ type: 'pause', nowMs: 4200, atSourceMs: 4200 }, 'paused');
+      await request({ type: 'resume', nowMs: 5200, atSourceMs: 5200 }, 'resumed');
+      const atMs = started.targets[0].atMs + 5000;
+      for (const [index, bytes] of [[0x90, pitch, 90], [0x80, pitch, 0]].entries()) {
+        socket.send(JSON.stringify({ type: 'raw-midi', ingest: {
+          packet: { sourceId: 'pause-test', sourceSeq: index + 1, clockDomainId: 'mock-clock',
+            capturedAtMs: atMs + index * 100, rawBytes: bytes, transport: 'mock', captureEpoch: started.captureEpoch },
+          sessionTimeMs: atMs + index * 100, clockMappingId: 'pause-test', clockUncertaintyMs: 0, clockQuality: 'good',
+        } }));
+      }
+      const report = await request({ type: 'finish' }, 'report');
+      const result = report.scoreV1.eventResults.find(item => item.scoreEventId === plan.plan.scoreEvents[0].runtimeOccurrenceId);
+      expect(result).toMatchObject({ result: 'MATCH', onsetErrorMs: 0 });
+    } finally { socket.send(JSON.stringify({ type: 'finish' })); }
+  });
+  it('acknowledges duplicate pause/resume without shifting the take twice', async () => {
+    await start(3000000, undefined, { armed: false });
+    try {
+      await request({ type: 'pause', nowMs: 100, atSourceMs: 100 }, 'paused');
+      await request({ type: 'pause', nowMs: 200, atSourceMs: 200 }, 'paused');
+      expect(await request({ type: 'resume', nowMs: 1100, atSourceMs: 1100 }, 'resumed')).toMatchObject({ deltaMs: 1000 });
+      expect(await request({ type: 'resume', nowMs: 1200, atSourceMs: 1200 }, 'resumed')).toMatchObject({ deltaMs: 0 });
+      const report = await request({ type: 'finish' }, 'report');
+      const saved = JSON.parse(readFileSync(join(dataDir, 'takes', `${report.takeId}.json`), 'utf8'));
+      expect(saved.evidence.pauseIntervals).toEqual([{ startMs: 100, endMs: 1100 }]);
+    } finally { socket.send(JSON.stringify({ type: 'finish' })); }
+  });
+  it('rejects a backward pause before changing coordinator state', async () => {
+    await start(3000000, undefined, { armed: false });
+    try {
+      await request({ type: 'tick', nowMs: 500 }, 'judgments');
+      // A queued stale tick must not move the validation baseline backwards.
+      socket.send(JSON.stringify({ type: 'tick', nowMs: 200 }));
+      await expect(request({ type: 'pause', nowMs: 100 }, 'paused')).rejects.toThrow();
+      await request({ type: 'pause', nowMs: 600, atSourceMs: 600 }, 'paused');
+      await expect(request({ type: 'resume', nowMs: 550 }, 'resumed')).rejects.toThrow();
+      expect(await request({ type: 'resume', nowMs: 700, atSourceMs: 700 }, 'resumed')).toMatchObject({ deltaMs: 100 });
+      expect((await request({ type: 'finish' }, 'report')).persisted).toBe(true);
+    } finally { socket.send(JSON.stringify({ type: 'finish' })); }
+  });
+  it('rejects commands for the preceding take without disturbing the new take', async () => {
+    const first = await start(0, undefined, { armed: false });
+    await request({ type: 'finish', takeId: first.started.takeId }, 'report');
+    const next = await start(0, undefined, { armed: false });
+    for (const type of ['tick', 'pause', 'resume', 'finish']) {
+      await expect(request({ type, takeId: first.started.takeId, nowMs: 100 }, 'paused')).rejects.toThrow('轮次已过期');
+    }
+    await request({ type: 'pause', takeId: next.started.takeId, nowMs: 100 }, 'paused');
+    await request({ type: 'resume', takeId: next.started.takeId, nowMs: 200 }, 'resumed');
+    const report = await request({ type: 'finish', takeId: next.started.takeId }, 'report');
+    expect(report.takeId).toBe(next.started.takeId);
+    expect(report.persisted).toBe(true);
+  });
+  it('seals failed take evidence before the next start replaces its resources', async () => {
+    const { started } = await start(3000000, undefined, { armed: false });
+    await expect(request({ type: 'hit', seq: 1, atMs: -1, notes: [60] }, 'judgments')).rejects.toThrow();
+    const suffix = `${started.practiceSessionId}-${started.engineTakeId}`;
+    const journal = readFileSync(join(dataDir, 'journals', `journal-${suffix}.jsonl`), 'utf8');
+    expect(journal).toContain('invalid_input');
+    expect(journal).toContain('take_aborted');
+    expect(readFileSync(join(dataDir, 'traces', `trace-${suffix}.manifest.json`), 'utf8')).toContain('traceId');
+    const next = await start(0, undefined, { armed: false });
+    const report = await request({ type: 'finish', takeId: next.started.takeId }, 'report');
+    expect(report.persisted).toBe(true);
+  });
+  it('releases Follow ownership before Timeline start and preserves duplicate Follow reports', async () => {
+    const follow = await request({ type: 'follow-start', plannerAuthority: 'rts', bpm: 60,
+      groups: [{ groupId: 'switch1', bar: 1, playbackBeat: 0, pitches: [{ midiNote: 60, spelling: 'C4' }] }],
+    }, 'follow-started');
+    const firstReport = await request({ type: 'follow-finish' }, 'follow-report');
+    expect(firstReport.takeId).toBe(follow.takeId);
+    expect(firstReport.persistenceStatus).toBe('persisted');
+    const next = await start(0, undefined, { modeId: 'fixed-line', armed: false });
+    const duplicate = await request({ type: 'follow-finish' }, 'follow-report');
+    expect(duplicate.takeId).toBe(follow.takeId);
+    await request({ type: 'pause', nowMs: 100, takeId: next.started.takeId }, 'paused');
+    await request({ type: 'resume', nowMs: 200, takeId: next.started.takeId }, 'resumed');
+    expect((await request({ type: 'finish', takeId: next.started.takeId }, 'report')).persisted).toBe(true);
+  });
+  it('keeps duplicate raw packets as evidence but admits only one scoring onset', async () => {
+    const { started, pitch } = await start(3000000, undefined, { modeId: 'fixed-line', armed: false });
+    const atMs = started.targets[0].atMs;
+    const ingest = { packet: { sourceId: 'duplicate-test', sourceSeq: 1, capturedAtMs: atMs,
+      clockDomainId: 'mock-clock', rawBytes: [0x90, pitch, 90], transport: 'mock' },
+      sessionTimeMs: atMs, clockMappingId: 'duplicate-test', clockUncertaintyMs: 0, clockQuality: 'good' };
+    socket.send(JSON.stringify({ type: 'raw-midi', ingest }));
+    socket.send(JSON.stringify({ type: 'raw-midi', ingest }));
+    socket.send(JSON.stringify({ type: 'raw-midi', ingest: { ...ingest,
+      packet: { ...ingest.packet, sourceSeq: 2, capturedAtMs: atMs + 100, rawBytes: [0x80, pitch, 0] }, sessionTimeMs: atMs + 100 } }));
+    const report = await request({ type: 'finish', takeId: started.takeId }, 'report');
+    expect(report.captureDiagnostics.admission).toMatchObject({ packets: 3, admittedNoteOns: 1, pushHitCount: 1, duplicateEventIds: 1 });
+    expect(report.scoreInputNoteCount).toBe(1);
+    expect(report.persisted).toBe(true);
+  });
+  it('resets admission and pause state across twelve successive takes on one connection', async () => {
+    const ids = new Set();
+    for (let index = 0; index < 12; index++) {
+      const { started, pitch } = await start(3000000, undefined, { modeId: 'fixed-line', armed: false });
+      expect(ids.has(started.takeId)).toBe(false); ids.add(started.takeId);
+      await request({ type: 'pause', takeId: started.takeId, nowMs: 100, atSourceMs: 100 }, 'paused');
+      await request({ type: 'resume', takeId: started.takeId, nowMs: 200, atSourceMs: 200 }, 'resumed');
+      const atMs = started.targets[0].atMs + 100;
+      for (const [offset, bytes] of [[0x90, pitch, 90], [0x80, pitch, 0]].entries()) {
+        socket.send(JSON.stringify({ type: 'raw-midi', ingest: {
+          packet: { sourceId: 'reused-source', sourceSeq: offset + 1, clockDomainId: 'mock',
+            capturedAtMs: atMs + offset * 100, rawBytes: bytes, transport: 'mock' },
+          sessionTimeMs: atMs + offset * 100, clockMappingId: 'repeat', clockUncertaintyMs: 0, clockQuality: 'good',
+        } }));
+      }
+      const report = await request({ type: 'finish', takeId: started.takeId }, 'report');
+      expect(report.persisted).toBe(true);
+      expect(report.captureDiagnostics.admission).toMatchObject({ packets: 2, admittedNoteOns: 1, duplicateEventIds: 0 });
+      expect(report.captureDiagnostics.admission.pauseSegments).toEqual([{ segmentId: 'pause-1', startSession: 100, endSession: 200 }]);
+      expect(report.scoreV1.eventResults.some(item => item.result === 'MATCH' && item.onsetErrorMs === 0)).toBe(true);
+    }
+  }, 20000);
+  it('advances fixed-line without MIDI input and marks every target as missed', async () => {
+    const { started, endAt } = await start(3000000, undefined, { modeId: 'fixed-line', armed: waitsForFirstInput('fixed-line') });
+    expect(started.armed).toBe(false);
+    socket.send(JSON.stringify({ type: 'tick', nowMs: endAt }));
+    const report = await request({ type: 'finish' }, 'report');
+    expect(report.persisted).toBe(true);
+    expect(report.scoreV1.eventResults.length).toBeGreaterThan(0);
+    expect(report.scoreV1.eventResults.every(event => event.result === 'MISSING')).toBe(true);
+  });
   it('auto-finalizes a song at its full musical end and persists exactly one Take', async () => {
     const { endAt } = await start(0, undefined, { armed: false }); const mark = received.length;
     socket.send(JSON.stringify({ type: 'tick', nowMs: endAt - 1 })); await wait(30);
@@ -135,4 +266,22 @@ describe('armed practice through real Node MIDI admission and Rust scoring', () 
       || events.some((member) => member.eventId === occurrence.scoreEventId && JSON.stringify(member.onsetBeat) === JSON.stringify(event.onsetBeat)))).toBe(true);
     await request({ type: 'finish' }, 'report');
   });
+});
+
+it('ends an over-budget take explicitly and accepts a fresh take afterwards', async () => {
+  await start(3000000, undefined, { modeId: 'fixed-line', armed: false });
+  for (let i = 0; i < 100; i++) socket.send(JSON.stringify({ type: 'raw-midi', ingest: {
+    packet: { sourceId: 'budget', clockDomainId: 'performance', sourceSeq: i + 1, capturedAtMs: i, rawBytes: [0xb0, 1, 0], transport: 'mock' }, sessionTimeMs: i,
+  } }));
+  const report = await request({ type: 'raw-midi', ingest: {
+    packet: { sourceId: 'budget', clockDomainId: 'performance', sourceSeq: 101, capturedAtMs: 100, rawBytes: [0xb0, 1, 0], transport: 'mock' }, sessionTimeMs: 100,
+  } }, 'report');
+  expect(report.persisted).toBe(true);
+  const record = JSON.parse(readFileSync(join(dataDir, 'takes', `${report.takeId}.json`), 'utf8'));
+  expect(record.lifecycle.endReason).toBe('resource_limit');
+  expect(record.assessment.trustworthy).toBe(false);
+  expect(record.assessment.timelineReport.captureDiagnostics.admission.packets).toBe(100);
+  await start(3000000, undefined, { modeId: 'fixed-line', armed: false });
+  const next = await request({ type: 'finish' }, 'report');
+  expect(next.persisted).toBe(true);
 });

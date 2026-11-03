@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import { MODE_CN, type SessionSummary } from '../services/practiceRepository';
 import { EMPTY_HISTORY_FILTER, type HistoryFilter } from '../features/practice/historyFilter';
 
@@ -23,6 +24,6 @@ export default function HistoryFilters({ value, items, count, onChange }: {
       </select></label>
     </div>
     <div className="history-filter-result"><span role="status" aria-live="polite">找到 <b>{count}</b> 条 · 当前检索最近 {items.length} 条演奏记录</span>
-      <button type="button" className="text-button" disabled={!active} onClick={() => onChange({ ...EMPTY_HISTORY_FILTER })}>清空筛选</button></div>
+      <AppButton type="button" className="text-button" disabled={!active} onClick={() => onChange({ ...EMPTY_HISTORY_FILTER })}>清空筛选</AppButton></div>
   </div>;
 }

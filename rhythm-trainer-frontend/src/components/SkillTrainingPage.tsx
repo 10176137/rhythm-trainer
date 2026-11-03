@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import { Capacitor } from '@capacitor/core';
 import SettingsDialog from './SettingsDialog';
 import { useMemo, useState } from 'react';
@@ -29,7 +30,7 @@ export default function SkillTrainingPage({ onStart }: { onStart: (drill: Genera
   const fingered = drill?.hasReferenceFingering ?? false;
   const choose = (id: DrillId) => { setSelected(id); setLevel(1); setSeed(0); setPreviewOpen(false); setError(''); };
 
-  if (!catalog || !drill) return <div className="page-content skill-training-page"><header className="page-heading"><h1>专项训练</h1></header><section className="card"><p role={catalogError ? 'alert' : 'status'}>{catalogError || '正在载入训练项目…'}</p>{catalogError && <button type="button" className="button button-outline" onClick={retryCatalog}>重新载入</button>}</section></div>;
+  if (!catalog || !drill) return <div className="page-content skill-training-page"><header className="page-heading"><h1>专项训练</h1></header><section className="card"><p role={catalogError ? 'alert' : 'status'}>{catalogError || '正在载入训练项目…'}</p>{catalogError && <AppButton type="button" className="button button-outline" onClick={retryCatalog}>重新载入</AppButton>}</section></div>;
 
   const details = <>
     <section className="card skill-drill-detail" aria-label="专项练习计划"><div>
@@ -47,9 +48,9 @@ export default function SkillTrainingPage({ onStart }: { onStart: (drill: Genera
           <label>调性<select value={key} onChange={(event) => setKey(event.target.value as DrillKey)}>{catalog.keys.map((value) => <option key={value.id} value={value.id}>{value.label}</option>)}</select></label></div>}
         <label>速度 <b>{bpm} BPM</b><input aria-label="专项训练速度" type="range" min={catalog.tempo.min} max={catalog.tempo.max} step={catalog.tempo.step} value={bpm} onChange={(event) => setBpm(Number(event.target.value))} /></label>
         <p role="status">{generated ? `${generated.bars} 小节 · ${generated.keyLabel} · ${generated.hand === 'both' && !basic ? '双手配合' : HAND_LABELS[generated.hand]} · ${generated.countInMs / 1000} 秒预备` : generationError ? '练习谱尚未就绪' : '正在生成练习谱…'}</p>
-        <button type="button" className="button button-primary" disabled={!generated} onClick={() => { if (!generated) return; if (onStart(generated)) setDetailOpen(false); else setError('暂时无法开始，请先结束当前练习或检查曲谱生成结果。'); }}>开始专项训练</button>
-        {selected !== 'pulse' && <button type="button" className="text-button" disabled={!generated} onClick={() => setSeed((value) => (value + 1) >>> 0)}>换一组乐句</button>}
-        {generationError && <div><p role="alert">{generationError}</p><button type="button" className="text-button" onClick={retryGeneration}>重新生成</button></div>}
+        <AppButton type="button" className="button button-primary" disabled={!generated} onClick={() => { if (!generated) return; if (onStart(generated)) setDetailOpen(false); else setError('暂时无法开始，请先结束当前练习或检查曲谱生成结果。'); }}>开始专项训练</AppButton>
+        {selected !== 'pulse' && <AppButton type="button" className="text-button" disabled={!generated} onClick={() => setSeed((value) => (value + 1) >>> 0)}>换一组乐句</AppButton>}
+        {generationError && <div><p role="alert">{generationError}</p><AppButton type="button" className="text-button" onClick={retryGeneration}>重新生成</AppButton></div>}
         {error && <p role="alert">{error}</p>}
         <small>先用 40–60 BPM 练稳，再单独增加速度或难度；级别由你选择，不自动判定已掌握。</small>
       </div>
@@ -70,7 +71,7 @@ export default function SkillTrainingPage({ onStart }: { onStart: (drill: Genera
     {basic && <p className="skill-starter-path">不知道先练什么？先从「五指练习」开始，再试一八度音阶和分解和弦。每次先练单手。</p>}
     <div className={`skill-drill-grid ${basic ? 'fundamentals-grid' : ''}`} role="group" aria-label="选择训练目标">{catalog.drills.filter((entry) => entry.category === category).map((entry, index) => <button type="button" key={entry.id} aria-pressed={selected === entry.id} onClick={() => { choose(entry.id); setDetailOpen(true); }}><span className="skill-drill-icon" aria-hidden="true">{entry.icon}</span><strong>{entry.title}</strong><small>{entry.subtitle}</small>{basic && <span className="skill-drill-number">{String(index + 1).padStart(2, '0')}</span>}</button>)}</div>
     {native ? detailOpen && <SettingsDialog label="专项练习配置" onClose={() => setDetailOpen(false)}>
-      <header className="tablet-sheet-header"><h2>专项练习配置</h2><button type="button" className="button button-outline" onClick={() => setDetailOpen(false)}>完成配置</button></header>
+      <header className="tablet-sheet-header"><h2>专项练习配置</h2><AppButton type="button" className="button button-outline" onClick={() => setDetailOpen(false)}>完成配置</AppButton></header>
       {details}
     </SettingsDialog> : details}
     </>}

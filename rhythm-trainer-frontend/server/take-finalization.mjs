@@ -33,6 +33,7 @@ function fingerprintOf(record) {
 
 export class TakeFinalizationService {
   #takesDir;
+  #pendingDir;
   #fs;
   #now;
   #logger;
@@ -41,6 +42,7 @@ export class TakeFinalizationService {
 
   constructor({
     takesDir,
+    pendingDir = null,
     fsImpl = fs,
     now = () => new Date().toISOString(),
     logger = console,
@@ -50,10 +52,27 @@ export class TakeFinalizationService {
       throw new Error('TakeFinalizationService: takesDir is required');
     }
     this.#takesDir = takesDir;
+    this.#pendingDir = pendingDir;
     this.#fs = fsImpl;
     this.#now = now;
     this.#logger = logger;
     this.#maxRetainedEntries = maxRetainedEntries;
+  }
+
+  /** Called before derived caches recover from authoritative Takes. Bad files
+   * remain available for diagnosis; one corrupt draft cannot block the others. */
+  recover() {
+    if (!this.#pendingDir || !this.#fs.existsSync(this.#pendingDir)) return;
+    for (const name of this.#fs.readdirSync(this.#pendingDir).sort()) {
+      if (!name.endsWith('.json') || !SAFE_TAKE_ID.test(name.slice(0, -5))) continue;
+      try {
+        const record = JSON.parse(this.#fs.readFileSync(path.join(this.#pendingDir, name), 'utf8'));
+        if (this.#validateTakeId(record) !== name.slice(0, -5)) throw new Error('draft identity mismatch');
+        this.finalize(record);
+      } catch (error) {
+        this.#logger.error?.(`[engine] 待保存记录恢复失败 (${name}):`, String(error.message ?? error));
+      }
+    }
   }
 
   /**
@@ -129,7 +148,14 @@ export class TakeFinalizationService {
   #attempt(entry) {
     entry.attempts += 1;
     try {
+      // Write-ahead draft survives process exit between a failed final write
+      // and a later retry. Never acknowledge persistence until the Take exists.
+      if (this.#pendingDir) this.#writeOnce(entry.record, this.#pendingDir);
       const written = this.#writeOnce(entry.record);
+      if (this.#pendingDir) {
+        try { this.#fs.unlinkSync(path.join(this.#pendingDir, `${entry.takeId}.json`)); }
+        catch { /* replay is idempotent if cleanup fails */ }
+      }
       entry.created = entry.created || written.created;
       entry.status = PERSISTENCE_STATUS.PERSISTED;
       entry.error = null;
@@ -145,11 +171,15 @@ export class TakeFinalizationService {
     }
   }
 
-  #writeOnce(record) {
-    const file = path.join(this.#takesDir, `${record.takeId}.json`);
+  #writeOnce(record, dir = this.#takesDir) {
+    const file = path.join(dir, `${record.takeId}.json`);
     // A repeated finalization must never replace the first authoritative Take.
-    if (this.#fs.existsSync(file)) return { created: false };
-    this.#fs.mkdirSync(this.#takesDir, { recursive: true });
+    if (this.#fs.existsSync(file)) {
+      const saved = JSON.parse(this.#fs.readFileSync(file, 'utf8'));
+      if (fingerprintOf(saved) !== fingerprintOf(record)) throw new Error('Take 内容冲突，保留原记录及待保存草稿');
+      return { created: false };
+    }
+    this.#fs.mkdirSync(dir, { recursive: true });
     const tmp = `${file}.tmp`;
     try {
       const fd = this.#fs.openSync(tmp, 'w');
@@ -167,7 +197,7 @@ export class TakeFinalizationService {
       throw error;
     }
     try {
-      const dirFd = this.#fs.openSync(this.#takesDir, 'r');
+      const dirFd = this.#fs.openSync(dir, 'r');
       try { this.#fs.fsyncSync(dirFd); } finally { this.#fs.closeSync(dirFd); }
     } catch { /* directory fsync is best effort; rename already succeeded */ }
     return { created: true };

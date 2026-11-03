@@ -268,7 +268,7 @@ function findRemediation(take, run) {
   // Confidence/evidence quality gates must run before interpreting a mistake as
   // a learner skill issue. Unknown/legacy provenance does not automatically
   // block the attempt; score/input evidence must still be trustworthy.
-  const endedInterrupted = take?.lifecycle?.endReason === 'interrupted';
+  const endedInterrupted = (take?.lifecycle?.endReason === 'interrupted' || take?.lifecycle?.endReason === 'resource_limit');
   if (endedInterrupted || assessment.attemptStatus === 'interrupted'
     || assessment.trustworthy !== true || assessment.inputQuality === 'unscorable'
     || assessment.inputQuality === 'degraded') {

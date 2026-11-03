@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import { useMemo, useState } from 'react';
 import type { ScoreDocument } from '../core/sampleScore';
 import { getUnsupportedNotes } from '../features/score/staffMapping';
@@ -65,7 +66,7 @@ export default function ReaderPage({
         <section className="card reader-empty">
           <strong>还没有打开曲谱</strong>
           <p>阅读页不会把默认示例冒充为已打开的曲谱。请回到曲谱库选择或导入。</p>
-          <button type="button" className="button button-primary" onClick={onBackToLibrary}>打开曲谱库</button>
+          <AppButton type="button" className="button button-primary" onClick={onBackToLibrary}>打开曲谱库</AppButton>
         </section>
       </div>
     );
@@ -78,7 +79,7 @@ export default function ReaderPage({
         <section className="card reader-empty">
           <strong>缺少原始 MusicXML</strong>
           <p>请从曲谱库重新导入或替换这份曲谱。</p>
-          <button type="button" className="button button-outline" onClick={onBackToLibrary}>返回曲谱库</button>
+          <AppButton type="button" className="button button-outline" onClick={onBackToLibrary}>返回曲谱库</AppButton>
         </section>
       </div>
     );
@@ -96,8 +97,8 @@ export default function ReaderPage({
           </p>
         </div>
         <div className="reader-heading-actions">
-          <button type="button" className="button button-ghost" onClick={onBackToLibrary}>返回曲谱库</button>
-          <button
+          <AppButton type="button" className="button button-ghost" onClick={onBackToLibrary}>返回曲谱库</AppButton>
+          <AppButton
             type="button"
             className="button button-primary"
             onClick={onStartPractice}
@@ -105,7 +106,7 @@ export default function ReaderPage({
             title={practiceAllowed ? '进入工作台练习设置' : blockReason}
           >
             开始练习
-          </button>
+          </AppButton>
         </div>
       </div>
 
@@ -135,10 +136,10 @@ export default function ReaderPage({
       <section className="card reader-card">
         <div className="reader-toolbar" aria-label="阅读缩放">
           <div className="reader-zoom-group">
-            <button type="button" className="button button-outline button-small" onClick={() => { setFitWidth(false); setZoom((value) => Math.max(0.6, Math.round((value - 0.1) * 10) / 10)); }} aria-label="缩小">−</button>
-            <button type="button" className="button button-outline button-small" onClick={() => { setFitWidth(true); setZoom(1); }} aria-label="适应宽度">适应宽度</button>
-            <button type="button" className="button button-outline button-small" onClick={() => { setFitWidth(false); setZoom((value) => Math.min(2, Math.round((value + 0.1) * 10) / 10)); }} aria-label="放大">＋</button>
-            <button type="button" className="button button-ghost button-small" onClick={() => { setFitWidth(true); setZoom(1); }}>重置</button>
+            <AppButton type="button" className="button button-outline button-small" onClick={() => { setFitWidth(false); setZoom((value) => Math.max(0.6, Math.round((value - 0.1) * 10) / 10)); }} aria-label="缩小">−</AppButton>
+            <AppButton type="button" className="button button-outline button-small" onClick={() => { setFitWidth(true); setZoom(1); }} aria-label="适应宽度">适应宽度</AppButton>
+            <AppButton type="button" className="button button-outline button-small" onClick={() => { setFitWidth(false); setZoom((value) => Math.min(2, Math.round((value + 0.1) * 10) / 10)); }} aria-label="放大">＋</AppButton>
+            <AppButton type="button" className="button button-ghost button-small" onClick={() => { setFitWidth(true); setZoom(1); }}>重置</AppButton>
             <span className="reader-zoom-value">{fitWidth ? '适应宽度' : `${Math.round(zoom * 100)}%`}</span>
           </div>
           <span className="reader-note">显示由 OSMD/Bravura 渲染；阅读成功不代表评分能力已接通。</span>

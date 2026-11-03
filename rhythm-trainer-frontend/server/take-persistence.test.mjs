@@ -287,3 +287,26 @@ describe('Follow Take persistence failure', () => {
     expect(error.message).toMatch(/countInBeats.*countInUs|countInUs.*countInBeats/);
   }, 20000);
 });
+
+it('recovers a failed Follow save after an actual engine process restart', async () => {
+  setTakesWritable(false);
+  const { report } = await startAndComplete();
+  expect(report.persisted).toBe(false);
+  const pendingFile = path.join(DATA_DIR, 'pending-takes', `${report.takeId}.json`);
+  expect(existsSync(pendingFile)).toBe(true);
+  client.ws.close();
+  await new Promise(resolve => { server.once('exit', resolve); server.kill(); });
+  setTakesWritable(true);
+  server = spawn(process.execPath, [path.join(ROOT, 'server', 'engine-server.mjs')], {
+    cwd: ROOT, env: { ...process.env, PORT: String(PORT), RHYTHM_PLANNER: 'rts', RHYTHM_MIDI_BACKEND: 'mock', RHYTHM_DATA_DIR: DATA_DIR },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  await waitForServer(server);
+  client = await connect();
+  const saved = JSON.parse(readFileSync(path.join(TAKES_DIR, `${report.takeId}.json`), 'utf8'));
+  expect(saved.takeId).toBe(report.takeId);
+  expect(existsSync(pendingFile)).toBe(false);
+  client.send({ type: 'persist-retry', takeId: report.takeId });
+  const retried = await client.waitFor('persist-retry-result');
+  expect(retried.persisted).toBe(true);
+}, 30000);

@@ -47,6 +47,7 @@ export class NodeMidiAdapter {
     // kept referenced: finalizing the native object would call closePort() on an
     // invalid WinMM handle and terminate the process.
     this.zombieHandles = [];
+    this.maxDetachedHandles = Math.max(1, Math.min(16, Number(options.maxDetachedHandles) || 16));
   }
 
   onEvent(handler) {
@@ -80,6 +81,8 @@ export class NodeMidiAdapter {
       staleGenerationDropped: this.staleGenerationDropped,
       traceDropped: this.traceDropped,
       lastError: this.lastError,
+      detachedHandleCount: this.zombieHandles.length,
+      restartRequired: this.zombieHandles.length >= this.maxDetachedHandles,
     };
   }
 
@@ -136,8 +139,15 @@ export class NodeMidiAdapter {
     let devices;
     try { devices = this.listInputs(); } catch (error) { throw error; }
     if (this.connection) {
-      const previousMissing = !devices.some((device) => device.id === this.connection.device.id);
+      const previousMissing = !devices.some((device) => device.id === this.connection.device.id && device.name === this.connection.device.name);
       this.close('switch', { silentDiagnostic: true, detachNative: previousMissing });
+    }
+    if (this.zombieHandles.length >= this.maxDetachedHandles) {
+      const error = adapterError('MIDI_RESTART_REQUIRED', '设备反复断连已达到保护上限，请结束练习后重启电脑端服务再连接。');
+      this.lastError = error.code;
+      this.emitDiagnostic(error.code, error.message);
+      this.emitStatus();
+      throw error;
     }
     const device = devices.find((item) => item.id === deviceId)
       ?? devices.find((item) => item.name === deviceId)
@@ -160,6 +170,12 @@ export class NodeMidiAdapter {
     let handle;
     try {
       handle = this.backend.openInput(device.id, (bytes, deltaTime) => {
+        // The callback belongs to this opened handle, not whichever handle
+        // happens to be current when a queued native callback finally arrives.
+        if (!this.connection || this.connection.generation !== generation) {
+          this.staleGenerationDropped += 1;
+          return;
+        }
         this.handleMessage(bytes, deltaTime);
       });
     } catch (error) {
@@ -212,7 +228,7 @@ export class NodeMidiAdapter {
 
   refreshDevices() {
     const devices = this.listInputs();
-    if (this.connection && !devices.some((device) => device.id === this.connection.device.id)) {
+    if (this.connection && !devices.some((device) => device.id === this.connection.device.id && device.name === this.connection.device.name)) {
       this.close('device_missing', { detachNative: true });
     }
     return devices;

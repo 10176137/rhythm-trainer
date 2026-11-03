@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import OsmdScoreView, { ENGRAVED_SCORE_WIDTH } from './OsmdScoreView';
 import type { ScoreMeta, ScoreNote } from '../core/sampleScore';
@@ -133,6 +134,7 @@ export default function ScoreViewer({
     setFollowRequest((value) => value + 1);
   };
   const browseScore = () => setManualAtPulse(followPulse);
+  const browsePointer = useRef<{ x: number; y: number } | null>(null);
 
   return (
     <div className="score-wrap">
@@ -208,8 +210,19 @@ export default function ScoreViewer({
             aria-label="可滚动乐谱"
             tabIndex={0}
             onWheel={browseScore}
-            onTouchStart={browseScore}
-            onPointerDown={browseScore}
+            onPointerDown={(event) => {
+              if (event.currentTarget.closest('.chrome-enabled')) browsePointer.current = { x: event.clientX, y: event.clientY };
+              else browseScore();
+            }}
+            onPointerMove={(event) => {
+              const start = browsePointer.current;
+              if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) {
+                browsePointer.current = null;
+                browseScore();
+              }
+            }}
+            onPointerUp={() => { browsePointer.current = null; }}
+            onPointerCancel={() => { browsePointer.current = null; }}
             onKeyDown={(event) => { if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) browseScore(); }}
             onScroll={(event) => {
               const container = event.currentTarget;
@@ -219,7 +232,7 @@ export default function ScoreViewer({
             }}
           >
             {browsing && <div className="score-follow-return">
-              <button type="button" className="button button-outline button-small" onPointerDown={(event) => event.stopPropagation()} onClick={resumeFollow}>回到当前</button>
+              <AppButton type="button" className="button button-outline button-small" onPointerDown={(event) => event.stopPropagation()} onClick={resumeFollow}>回到当前</AppButton>
             </div>}
             {prepRemain !== null ? (
               <div className="prep-overlay" role="status" aria-live="assertive">

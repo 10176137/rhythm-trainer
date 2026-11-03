@@ -17,7 +17,7 @@ export function filterPracticeHistory(items: readonly SessionSummary[], filter: 
   const terms = filter.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   return items.filter((item) => {
     if (filter.mode !== 'all' && item.modeId !== filter.mode) return false;
-    const interrupted = item.interrupted === true || item.endReason === 'interrupted';
+    const interrupted = item.interrupted === true || (item.endReason === 'interrupted' || item.endReason === 'resource_limit');
     if (filter.status === 'interrupted' && !interrupted) return false;
     if (filter.status === 'completed' && (interrupted || item.endReason !== 'completed')) return false;
     if (filter.status === 'trustworthy' && !item.trustworthy) return false;

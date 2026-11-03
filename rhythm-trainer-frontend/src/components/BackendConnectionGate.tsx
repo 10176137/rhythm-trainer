@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import { Capacitor } from '@capacitor/core';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { activateBackendOrigin, BACKEND_DISCONNECTED_EVENT, probeBackend } from '../services/backendEndpoint';
@@ -91,19 +92,19 @@ function NativeBackendGate({ children }: { children: ReactNode }) {
         }} aria-describedby="computer-connection-help" />
       <small id="computer-connection-help">填写电脑启动服务后显示的局域网地址。电脑需保持运行。</small>
       {error && <p className="computer-connection-error" role="alert">{error}</p>}
-      <button className="button button-primary" type="submit" disabled={busy}>{busy ? '正在连接…' : '连接并开始'}</button>
+      <AppButton className="button button-primary" type="submit" disabled={busy}>{busy ? '正在连接…' : '连接并开始'}</AppButton>
     </form>
   </main>;
 
   return <div className="native-app">
     <div className="native-app-content" inert={interrupted || changing}>{interrupted ? null : children}</div>
-    <button className="native-computer-button" type="button" disabled={interrupted || changing} onClick={() => setChanging(true)} aria-label="更换练习电脑">连接设置</button>
+    <AppButton className="native-computer-button" type="button" disabled={interrupted || changing} onClick={() => setChanging(true)} aria-label="更换练习电脑">连接设置</AppButton>
     {(interrupted || changing) && <div className="computer-connection-overlay">
       <section className="computer-connection-card" role="alertdialog" aria-modal="true" aria-labelledby="computer-reconnect-title">
         <h2 id="computer-reconnect-title">{interrupted ? '请重新确认连接' : '更换练习电脑？'}</h2>
         <p>{interrupted ? '连接曾中断或 App 已从后台返回。重新连接会退出当前练习，不会自动重放演奏操作。' : '返回连接页会退出当前练习。已在电脑保存的记录仍然保留。'}</p>
-        <button className="button button-primary" autoFocus onClick={returnToConnection}>返回连接页</button>
-        {!interrupted && <button className="button button-ghost" onClick={() => setChanging(false)}>继续练习</button>}
+        <AppButton className="button button-primary" autoFocus onClick={returnToConnection}>返回连接页</AppButton>
+        {!interrupted && <AppButton className="button button-ghost" onClick={() => setChanging(false)}>继续练习</AppButton>}
       </section>
     </div>}
   </div>;

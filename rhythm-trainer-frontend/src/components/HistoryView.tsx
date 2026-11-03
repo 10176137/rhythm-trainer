@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 // Practice history view: lists unified Takes from the engine service. The UI
 // only presents stored engine output. Timeline Takes render the existing
 // report; Follow Takes render the server's Follow report and are never
@@ -105,11 +106,11 @@ export default function HistoryView({
           <div className="eyebrow">PRACTICE HISTORY</div>
           <h3>练习记录({items.length})</h3>
         </div>
-        <button className="text-button" onClick={load}>重新整理</button>
+        <AppButton className="text-button" onClick={load}>重新整理</AppButton>
       </div>
       <HistoryFilters value={filter} items={items} count={filtered.length} onChange={setFilter} />
       {items.length === HISTORY_SEARCH_LIMIT && <p className="history-scope-note">当前仅检索最近 {HISTORY_SEARCH_LIMIT} 条记录。</p>}
-      {!filtered.length && <div className="history-no-results"><strong>没有符合条件的练习</strong><p>试试其他关键词，或放宽模式、时间和状态条件。</p><button type="button" className="button button-outline button-small" onClick={() => setFilter({ ...EMPTY_HISTORY_FILTER })}>显示全部已加载记录</button></div>}
+      {!filtered.length && <div className="history-no-results"><strong>没有符合条件的练习</strong><p>试试其他关键词，或放宽模式、时间和状态条件。</p><AppButton type="button" className="button button-outline button-small" onClick={() => setFilter({ ...EMPTY_HISTORY_FILTER })}>显示全部已加载记录</AppButton></div>}
       <div className="history-list">
         {filtered.map((item) => {
           const rowId = item.takeId ?? item.sessionId;
@@ -124,7 +125,7 @@ export default function HistoryView({
                 {item.plannerAuthority === 'rts' && <span className="badge">RTS 计划</span>}
                 {item.sourceReportId && <span className="badge badge-ok">复练</span>}
                 {item.takeTemplateName && <span className="badge history-take-badge" title={item.takeTemplateName}>Take</span>}
-                {item.endReason === 'interrupted' && <span className="badge badge-bad">中断</span>}
+                {(item.endReason === 'interrupted' || item.endReason === 'resource_limit') && <span className="badge badge-bad">中断</span>}
                 <span className="history-meta">{item.bpm ?? '—'} BPM</span>
                 {isFollow ? (
                   <>
@@ -152,7 +153,7 @@ export default function HistoryView({
                       <PerformanceReplayPanel key={`replay-${detail.takeId}`} takeId={detail.takeId} />
                       <details><summary>查看汇总与原始报告</summary>
                       <p className="history-take-link">
-                        Take {detail.takeId} · {detail.lifecycle.modeId} · {detail.lifecycle.endReason === 'interrupted' ? '中断' : '完成'}
+                        Take {detail.takeId} · {detail.lifecycle.modeId} · {(detail.lifecycle.endReason === 'interrupted' || detail.lifecycle.endReason === 'resource_limit') ? '中断' : '完成'}
                         {detail.legacy?.sessionId ? ` · 旧记录 ${detail.legacy.sessionId}` : ''}
                       </p>
                       {timeline?.takeTemplateName && (

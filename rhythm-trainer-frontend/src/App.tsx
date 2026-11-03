@@ -1,3 +1,5 @@
+import { AppButton } from './components/ui/controls';
+import { waitsForFirstInput, automaticallyStartsPerformance } from './features/practice/sessionStartPolicy';
 import { scoreSelection, scoreSelectionBars } from './features/practice/scoreSelection';
 import { useRoundReturn } from './features/practice/useRoundReturn';
 import { useElapsedClock } from './features/practice/useElapsedClock';
@@ -534,7 +536,7 @@ export default function App() {
       completed: report.completedTargets,
       currentGroup: followGroupsRef.current[report.completedTargets] ?? null,
     } : prev);
-    const interrupted = message.endReason === 'interrupted';
+    const interrupted = (message.endReason === 'interrupted' || message.endReason === 'resource_limit');
     if (interrupted) stopRoundRepeatRef.current = true;
     const saved = message.persisted;
     const summary = `标准 ${report.standardTargets} / 完成 ${report.completedTargets} / 目标 ${report.totalTargets}；错误音 ${report.wrongNoteCount}，额外音 ${report.extraNoteCount}。`;
@@ -1570,7 +1572,7 @@ export default function App() {
           countInBeats: context.countInBeats,
           countInUs,
           // Loop practice: the engine holds the clock until the first key.
-          ...(launchConfig.modeId === 'score' || route?.id === 'performance' ? { armOnFirstInput: true } : {}),
+          ...(waitsForFirstInput(launchConfig.modeId) ? { armOnFirstInput: true } : {}),
           ticksPerQuarter: 960,
           metronomeEnabled: metronomeOnRef.current,
           beatsPerBar: (launchConfig.timeSignature[0] * 4) / launchConfig.timeSignature[1],
@@ -1757,7 +1759,7 @@ export default function App() {
     setStarting(true);
     elapsedBeforePauseRef.current = 0;
     // Loop takes are armed: the display clock also waits for the first key.
-    displayStartRef.current = config.modeId === 'score' || route?.id === 'performance' ? null : performance.now();
+    displayStartRef.current = waitsForFirstInput(config.modeId) ? null : performance.now();
     setPitchMismatch(false);
     if (config.modeId === 'free') {
       session.beginFreePlay();
@@ -2021,7 +2023,7 @@ export default function App() {
       profile: config.profile,
       countInBeats,
       // Loop practice: the engine holds the clock until the first key.
-      ...(config.modeId === 'score' || route?.id === 'performance' ? { armOnFirstInput: true } : {}),
+      ...(waitsForFirstInput(config.modeId) ? { armOnFirstInput: true } : {}),
       countInUs,
       ticksPerQuarter: 960,
       metronomeEnabled: metronomeOnRef.current,
@@ -2392,6 +2394,7 @@ export default function App() {
     takeId: config.advanceMode === 'follow' ? followPersistence?.takeId ?? null : session.takeId,
     persisted: config.advanceMode === 'follow' ? followPersistence?.persisted === true : session.reportPersisted === true,
     repeat: (route?.id === 'performance' || !stopRoundRepeatRef.current) && !scorePick.pending
+      && (route?.id !== 'performance' || automaticallyStartsPerformance(config.modeId))
       && (config.advanceMode === 'follow' ? (followReport?.completedTargets ?? 0) === (followReport?.totalTargets ?? -1) : session.report?.trustworthy === true),
     onReturn: () => {
       elapsedClock.reset(); displayStartRef.current = null;
@@ -3309,7 +3312,7 @@ export default function App() {
   }, [session.status, session.error]);
 
   // Start only after the new score/config and its display mapping have committed.
-  const performanceStandbyKey = route?.id === 'performance' && (config.modeId === 'score' || config.modeId === 'fixed-line')
+  const performanceStandbyKey = route?.id === 'performance' && automaticallyStartsPerformance(config.modeId)
     ? `${scoreDoc.engine?.fingerprint}|${JSON.stringify(config)}` : null;
   useEffect(() => { if (performanceStandbyKey) setAutoStartRequested(true); }, [performanceStandbyKey]);
   const auditionWasActive = useRef(false);
@@ -3318,6 +3321,10 @@ export default function App() {
     auditionWasActive.current = audition.active;
   }, [audition.active, performanceStandbyKey]);
   useEffect(() => {
+    if (route?.id === 'performance' && !automaticallyStartsPerformance(config.modeId)) {
+      if (autoStartRequested) setAutoStartRequested(false);
+      return;
+    }
     if (!autoStartRequested || readingBusy || starting) return;
     if (practiceInProgress || reportUnsaved || scorePick.pending || audition.active || settingsDirty) return;
     if (performanceStandbyKey && !plannerAuthorityRef.current) return;
@@ -3493,14 +3500,14 @@ export default function App() {
       <div className="breadcrumb"><span>{navigationParent(route?.id)}</span><b>/</b><strong>{(route?.id === 'workbench' || route?.id === 'performance') ? currentMode.title : route?.title ?? '页面不存在'}</strong></div>
       <div className="top-actions"><div className={`device-chip ${deviceStatus === 'connected' ? 'device-ok' : ''}`}><span className="device-dot" /><span>{deviceStatus === 'connected' ? 'MIDI 已连接' : deviceStatus === 'connecting' ? 'MIDI 连接中' : deviceStatus === 'error' ? 'MIDI 错误' : 'MIDI 未连接'}</span></div>{portOptions.length > 0 && <select className="port-select" value={selectedPortId ?? ''} onChange={(e) => { setSelectedPortId(e.target.value); connectDevice(e.target.value); }} title="选择要监听的 MIDI 输入端口（只监听选中的一个）">
         {portOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-      </select>}<button className="button button-outline button-small" onClick={() => void exportMidiLog()} disabled={deviceStatus !== 'connected'}>导出日志</button><button className="button button-outline button-small" onClick={() => (deviceStatus === 'connected' ? refreshDevices() : connectDevice())} disabled={isConnecting}>{isConnecting ? '连接中…' : deviceStatus === 'connected' ? '刷新设备' : '连接键盘'}</button><button className="avatar mini-avatar">P</button></div>
+      </select>}<AppButton className="button button-outline button-small" onClick={() => void exportMidiLog()} disabled={deviceStatus !== 'connected'}>导出日志</AppButton><AppButton className="button button-outline button-small" onClick={() => (deviceStatus === 'connected' ? refreshDevices() : connectDevice())} disabled={isConnecting}>{isConnecting ? '连接中…' : deviceStatus === 'connected' ? '刷新设备' : '连接键盘'}</AppButton><button className="avatar mini-avatar">P</button></div>
     </header>
   );
 
   const selectedScoreRange = scoreDoc.engine ? scoreSelection(scoreDoc.engine, config) : null;
   const performanceWaiting = route?.id === 'performance' && (config.advanceMode === 'follow' ? followWaiting && followStatus === 'running' : session.waitingForFirstInput);
   const sessionControls = <PracticeSessionControls status={status} statusLabel={statusLabel} elapsed={elapsed}
-    automaticStart={route?.id === 'performance'}
+    automaticStart={route?.id === 'performance' && automaticallyStartsPerformance(config.modeId)}
     starting={starting} preparing={prepRemain} active={session.active} waitingForFirstInput={session.waitingForFirstInput || performanceWaiting}
     locked={practiceInProgress || reportUnsaved} startDisabled={reportUnsaved || settingsDirty || (config.modeId === 'score' && config.loopEnabled && config.loopSelectionPending === true)} onStart={startPractice} onPause={pausePractice} onResume={resumePractice}
     onFinish={finishPractice} onCancelPreparation={cancelPrep} onReset={resetPractice} />;
@@ -3508,6 +3515,8 @@ export default function App() {
   return (
     <AppShell
       immersive={route?.id === 'performance' && !readingSetupActive && !readingFreeSession && config.modeId !== 'reading-free'}
+      revealControls={status === 'paused' || status === 'completed' || Boolean(session.error)
+        || (config.modeId === 'fixed-line' && status === 'idle' && !starting)}
       focus={practiceFocus}
       sidebar={sidebar}
       topbar={topbar}
@@ -3539,7 +3548,7 @@ export default function App() {
             }}
           />
           {route?.id !== 'training' && !readingSetupActive && !readingFreeSession && config.modeId !== 'reading-free' && config.modeId !== 'reading-rhythm' ? (
-            <PerformanceToolbar config={config} barCount={maxBar} locked={settingsLocked && !performanceWaiting} busy={starting || readingBusy}
+            <PerformanceToolbar title={scoreDoc.meta.title} performing={!performanceWaiting && (status === 'running' || status === 'countdown')} config={config} barCount={maxBar} locked={settingsLocked && !performanceWaiting} busy={starting || readingBusy}
               supportsHandSelection={currentMode.supportsHandSelection} systemDuet={systemDuet} metronomeOn={metronomeOn}
               midiConnected={deviceStatus === 'connected'} deviceLabel={deviceStatus === 'connected' ? deviceName : '连接 MIDI 设备'}
               playbackControls={config.modeId === 'score' ? <ScorePlaybackControls startLabel={selectedScoreRange ? `起点：第 ${selectedScoreRange.start.measureOrdinal} 小节` : '起点：从头'}
@@ -3556,7 +3565,7 @@ export default function App() {
           ) : (
           <div className="reading-workspace-toolbar">
             <strong>{route?.id === 'training' ? '专项训练' : route?.id === 'performance' ? '演奏' : '识谱'}</strong>
-            {route?.id === 'training' && status !== 'completed' && <button type="button" className="button button-outline" disabled={practiceInProgress || reportUnsaved} onClick={() => { resetPractice(); setTrainingRoomOpen(false); }}>返回专项选择</button>}
+            {route?.id === 'training' && status !== 'completed' && <AppButton type="button" className="button button-outline" disabled={practiceInProgress || reportUnsaved} onClick={() => { resetPractice(); setTrainingRoomOpen(false); }}>返回专项选择</AppButton>}
             {route?.id !== 'training' && <div className="performance-toolbar-actions">
             <button type="button" className="mode-switch" role="switch" aria-label={route?.id === 'performance' ? '固定线演奏' : '节奏识谱'} aria-checked={config.modeId === 'fixed-line' || config.modeId === 'reading-rhythm'} disabled={practiceInProgress || readingFreeSession?.status === 'running' || readingFreeSession?.status === 'paused' || readingBusy} onClick={() => chooseMode(route?.id === 'performance' ? (config.modeId === 'fixed-line' ? 'score' : 'fixed-line') : (config.modeId === 'reading-rhythm' ? 'reading-free' : 'reading-rhythm'))}>
               {route?.id === 'performance' ? (config.modeId === 'fixed-line' ? '固定线演奏' : '读谱演奏') : (config.modeId === 'reading-rhythm' ? '节奏识谱' : '自由识谱')} <span>切换 ⇄</span>
@@ -3566,13 +3575,13 @@ export default function App() {
           </div>
           )}
 
-          {mappingRequired && <div className="practice-warning" role="alert">当前曲谱需要指定手别，普通钢琴默认规则无法覆盖它。<button type="button" className="button button-outline button-small" onClick={() => { setSettingsFocusMapping(true); requestNavigation('/settings'); }}>前往总设置</button></div>}
+          {mappingRequired && <div className="practice-warning" role="alert">当前曲谱需要指定手别，普通钢琴默认规则无法覆盖它。<AppButton type="button" className="button button-outline button-small" onClick={() => { setSettingsFocusMapping(true); requestNavigation('/settings'); }}>前往总设置</AppButton></div>}
 
           {readingSetupActive && (
             <section className="reading-setup-entry" aria-label="识谱练习">
               <div><h2>识谱练习</h2><p>{readingConfigLabel(activeReadingConfig)}</p></div>
-              <div className="reading-entry-actions"><button type="button" className="button button-primary" disabled={readingBusy} onClick={() => void handleStartReading({ ...activeReadingConfig, seed: Math.floor(Math.random() * 1_000_000) })}>{readingBusy ? '正在生成…' : '开始练习'}</button>
-              <button type="button" className="button button-outline" aria-haspopup="dialog" onClick={() => setReadingSetupOpen(true)}>重新配置</button></div>
+              <div className="reading-entry-actions"><AppButton type="button" className="button button-primary" disabled={readingBusy} onClick={() => void handleStartReading({ ...activeReadingConfig, seed: Math.floor(Math.random() * 1_000_000) })}>{readingBusy ? '正在生成…' : '开始练习'}</AppButton>
+              <AppButton type="button" className="button button-outline" aria-haspopup="dialog" onClick={() => setReadingSetupOpen(true)}>重新配置</AppButton></div>
             </section>
           )}
           {readingError && !readingSetupOpen && <p className="practice-warning" role="alert">{readingError} <button type="button" onClick={() => setReadingSetupOpen(true)}>调整配置</button></p>}
@@ -3637,13 +3646,13 @@ export default function App() {
             <section className="card error-strip" role="alert">
               <strong>报告已生成但未能保存</strong>
               <p>{session.reportPersistenceError ?? '会话记录持久化失败'}。本轮不会被当作已保存记录；请保留页面并检查本地数据目录后再重试。</p>
-              <button
+              <AppButton
                 type="button"
                 className="button button-outline button-small"
                 onClick={() => { void handleTimelineRetrySave(); }}
               >
                 重试保存
-              </button>
+              </AppButton>
             </section>
           )}
           {status === 'completed' && config.modeId !== 'free' && config.advanceMode !== 'follow' && !session.report && (
@@ -3652,7 +3661,7 @@ export default function App() {
               <p>引擎没有返回可用的最终报告；不会显示 0 分或猜测结果。请检查输入/时钟状态后新开一轮。</p>
             </section>
           )}
-          {route?.id !== 'training' && (session.report || followReport) && status === 'completed' && <div className="session-complete-note" role="status"><span>本轮已结束，完整结果请在练习记录中查看。</span><button type="button" className="button button-outline button-small" onClick={() => requestNavigation('/history')}>查看练习记录</button></div>}
+          {route?.id !== 'training' && (session.report || followReport) && status === 'completed' && <div className="session-complete-note" role="status"><span>本轮已结束，完整结果请在练习记录中查看。</span><AppButton type="button" className="button button-outline button-small" onClick={() => requestNavigation('/history')}>查看练习记录</AppButton></div>}
 
 
           {route?.id === 'training' && trainingDrill && <TrainingRoundPanel trainingDrill={trainingDrill} session={session} status={status}
@@ -3711,7 +3720,7 @@ export default function App() {
               prepRemain={prepRemain}
               firstNoteCountdownMs={countdownRemain}
               />
-            )}<div className="score-status-bar score-bottom"><div><span className="small-label">当前目标音</span><strong>{currentTargetLabel}</strong></div><div><span className="small-label">当前输入</span><strong className={pitchMismatch ? 'text-bad' : ''}>{inputNote}</strong></div><div><span className="small-label">最近判定</span><strong>{hitLabel}{hitErrorMs !== null ? ` ${hitErrorMs > 0 ? '+' : ''}${Math.round(hitErrorMs)}ms` : ''}</strong></div><div><span className="small-label">最近提示</span><strong>{feedbackItems[0]?.title ?? '—'}</strong></div>{countdownSeconds !== null && <div><span className="small-label">距离首音</span><strong>{countdownSeconds}</strong></div>}{config.modeId === 'reading-rhythm' && generatedReadingScore && status === 'idle' && <button className="button button-outline button-small" onClick={() => { setGeneratedReadingScore(null); setReadingError(null); setReadingSetupOpen(true); }}>识谱设置</button>}<button className="button button-outline button-small" onClick={() => simulateNote()} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}>模拟按键</button></div>
+            )}<div className="score-status-bar score-bottom"><div><span className="small-label">当前目标音</span><strong>{currentTargetLabel}</strong></div><div><span className="small-label">当前输入</span><strong className={pitchMismatch ? 'text-bad' : ''}>{inputNote}</strong></div><div><span className="small-label">最近判定</span><strong>{hitLabel}{hitErrorMs !== null ? ` ${hitErrorMs > 0 ? '+' : ''}${Math.round(hitErrorMs)}ms` : ''}</strong></div><div><span className="small-label">最近提示</span><strong>{feedbackItems[0]?.title ?? '—'}</strong></div>{countdownSeconds !== null && <div><span className="small-label">距离首音</span><strong>{countdownSeconds}</strong></div>}{config.modeId === 'reading-rhythm' && generatedReadingScore && status === 'idle' && <AppButton className="button button-outline button-small" onClick={() => { setGeneratedReadingScore(null); setReadingError(null); setReadingSetupOpen(true); }}>识谱设置</AppButton>}<AppButton className="button button-outline button-small" onClick={() => simulateNote()} disabled={(status !== 'running' && status !== 'countdown') || deviceStatus === 'connected'}>模拟按键</AppButton></div>
             </section>
           </div>}
 
@@ -3765,22 +3774,22 @@ export default function App() {
                         </select>
                       </label>
                     ))}
-                    <button
+                    <AppButton
                       type="button"
                       className="button button-outline button-small"
                       disabled={settingsLocked || staffMappingDraft.length === 0}
                       onClick={confirmStaffMapping}
-                    >保存当前曲谱手别</button>
-                    <button type="button" className="button button-ghost button-small" disabled={settingsLocked || (!customMappingForScore && !mappingHasDraft)} onClick={restoreScoreHandDefaults}>使用默认规则</button>
+                    >保存当前曲谱手别</AppButton>
+                    <AppButton type="button" className="button button-ghost button-small" disabled={settingsLocked || (!customMappingForScore && !mappingHasDraft)} onClick={restoreScoreHandDefaults}>使用默认规则</AppButton>
                   </div>
                   <small className="settings-note">这里的设置只覆盖当前曲谱，保存后自动记忆；其他曲谱继续使用默认规则。</small>
                   <small className="mapping-save-status" role="status">{mappingHasDraft ? '有未保存的手别修改。' : customMappingForScore ? '已保存当前曲谱的自定义手别。' : '当前使用总设置中的默认手别。'}</small>
                 </div>
                 </>}
           library={<details className="preferences-management"><summary>曲谱库与示例</summary><div className="settings-grid">{true && <div className="field field-wide"><span>乐谱来源</span><div className="hint-toggle-row">
-                  <button type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={requestScoreImport}>导入 MusicXML</button>
-                  <button type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={loadLedgerDemo}>谱表外示例</button>
-                  <button type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={restoreDefaultScore}>恢复默认乐谱</button>
+                  <AppButton type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={requestScoreImport}>导入 MusicXML</AppButton>
+                  <AppButton type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={loadLedgerDemo}>谱表外示例</AppButton>
+                  <AppButton type="button" className="button button-outline button-small" disabled={settingsLocked} onClick={restoreDefaultScore}>恢复默认乐谱</AppButton>
                 </div><small className="settings-note">当前：{scoreDoc.meta.title} · {scoreDoc.notes.length} 个音符 · {scoreDoc.meta.staves === 1 ? '单谱表' : '双谱表'}</small></div>
                 }
                 {true && <div className="field field-full score-library-field" aria-busy={scoreLibraryBusy}>
@@ -3795,10 +3804,10 @@ export default function App() {
                       {scoreLibrary.length === 0 && <option value="">乐谱库为空</option>}
                       {scoreLibrary.map(entry => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
                     </select>
-                    <button type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy || settingsLocked} onClick={() => void loadScoreFromLibrary(selectedLibraryId)}>载入</button>
-                    <button type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy} onClick={() => void renameScoreLibraryEntry()}>重命名</button>
-                    <button type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy || settingsLocked} onClick={requestLibraryReplace}>替换 XML</button>
-                    <button type="button" className="button button-ghost button-small score-library-delete" disabled={!selectedLibraryEntry || scoreLibraryBusy} onClick={() => void removeScoreLibraryEntry()}>删除</button>
+                    <AppButton type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy || settingsLocked} onClick={() => void loadScoreFromLibrary(selectedLibraryId)}>载入</AppButton>
+                    <AppButton type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy} onClick={() => void renameScoreLibraryEntry()}>重命名</AppButton>
+                    <AppButton type="button" className="button button-outline button-small" disabled={!selectedLibraryEntry || scoreLibraryBusy || settingsLocked} onClick={requestLibraryReplace}>替换 XML</AppButton>
+                    <AppButton type="button" className="button button-ghost button-small score-library-delete" disabled={!selectedLibraryEntry || scoreLibraryBusy} onClick={() => void removeScoreLibraryEntry()}>删除</AppButton>
                   </div>
                   <small className="settings-note">
                     {activeLibraryEntry ? `当前来自乐谱库：《${activeLibraryEntry.name}》。` : ''}
@@ -3830,10 +3839,10 @@ export default function App() {
                         </option>
                       ))}
                     </select>
-                    <button type="button" className="button button-outline button-small" disabled={!selectedTakeTemplateId || takeTemplateBusy || settingsLocked} onClick={applyTakeTemplate}>应用</button>
-                    <button type="button" className="button button-outline button-small" disabled={takeTemplateBusy || settingsLocked} onClick={() => void saveCurrentAsTakeTemplate()}>保存当前方案</button>
-                    <button type="button" className="button button-outline button-small" disabled={!selectedTakeTemplateId || takeTemplateBusy || settingsLocked} onClick={() => void renameTakeTemplate()}>重命名</button>
-                    <button type="button" className="button button-ghost button-small score-library-delete" disabled={!selectedTakeTemplateId || takeTemplateBusy} onClick={() => void deleteTakeTemplate()}>删除</button>
+                    <AppButton type="button" className="button button-outline button-small" disabled={!selectedTakeTemplateId || takeTemplateBusy || settingsLocked} onClick={applyTakeTemplate}>应用</AppButton>
+                    <AppButton type="button" className="button button-outline button-small" disabled={takeTemplateBusy || settingsLocked} onClick={() => void saveCurrentAsTakeTemplate()}>保存当前方案</AppButton>
+                    <AppButton type="button" className="button button-outline button-small" disabled={!selectedTakeTemplateId || takeTemplateBusy || settingsLocked} onClick={() => void renameTakeTemplate()}>重命名</AppButton>
+                    <AppButton type="button" className="button button-ghost button-small score-library-delete" disabled={!selectedTakeTemplateId || takeTemplateBusy} onClick={() => void deleteTakeTemplate()}>删除</AppButton>
                   </div>
                   <small className="settings-note">
                     {appliedTakeTemplateId
@@ -3920,8 +3929,8 @@ export default function App() {
                 <p>能力画像是基于规则的暂定学习判断，不是能力认证；下面是已保存的每一次 Take。</p>
               </div>
               <div className="heading-actions">
-                <button className="button button-primary" onClick={() => navigate('/teaching')}>继续学习</button>
-                <button className="button button-outline" onClick={() => navigate('/workbench')}>自由练习</button>
+                <AppButton className="button button-primary" onClick={() => navigate('/teaching')}>继续学习</AppButton>
+                <AppButton className="button button-outline" onClick={() => navigate('/workbench')}>自由练习</AppButton>
               </div>
             </div>
             <ProfileView refreshKey={historyRefresh} />

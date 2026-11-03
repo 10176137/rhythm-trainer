@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import type { GeneratedSkillDrill, TrainingProgramReview } from '../../shared/training-contract';
 import type { usePracticeSession } from '../features/practice/usePracticeSession';
 import type { SessionStatus } from '../types/practice';
@@ -18,8 +19,8 @@ export default function TrainingRoundPanel({ trainingDrill, session, status, pro
             {programCompleted && <p role="status">本次定时训练计划已完成，结果已保存。</p>}
             {trainingDrill.program?.remainingSeconds != null && !programCompleted && <p>本段约 {Math.round(trainingDrill.program.seconds)} 秒；完成后计划还剩约 {Math.ceil(trainingDrill.program.remainingSeconds / 60)} 分钟。</p>}
             {programBusy && <p role="status">正在读取已保存的引擎结果{trainingDrill.program?.config.mode === 'continuous' ? '，合格证据确认后自动准备下一段' : ''}…</p>}
-            {programError && <div role="alert"><p>{programError}</p><button className="button button-outline" onClick={onRetry}>重试读取结果</button></div>}
-            {trainingDrill.program && trainingDrill.program.config.mode !== 'assessment' && programBusy && <button className="button button-outline" onClick={onStop}>停止接续</button>}
+            {programError && <div role="alert"><p>{programError}</p><AppButton className="button button-outline" onClick={onRetry}>重试读取结果</AppButton></div>}
+            {trainingDrill.program && trainingDrill.program.config.mode !== 'assessment' && programBusy && <AppButton className="button button-outline" onClick={onStop}>停止接续</AppButton>}
             {status === 'completed' && <>
               <h2>本轮已结束</h2>
               <p>本轮关注：{trainingDrill.lesson.review}</p>
@@ -38,7 +39,7 @@ export default function TrainingRoundPanel({ trainingDrill, session, status, pro
               </details>}
               <p className="training-self-check">自查：{trainingDrill.lesson.selfCheck}</p>
               <div className="training-result-actions">
-                <button type="button" className="button button-outline" disabled={reportUnsaved} onClick={onAdjust}>调整本专项</button>
+                <AppButton type="button" className="button button-outline" disabled={reportUnsaved} onClick={onAdjust}>调整本专项</AppButton>
               </div>
             </>}
           </section>;

@@ -188,6 +188,7 @@ beforeAll(async () => {
       RHYTHM_PLANNER: 'rts',
       RHYTHM_MIDI_BACKEND: 'mock',
       RHYTHM_DATA_DIR: DATA_DIR,
+      RHYTHM_FOLLOW_INPUT_LIMIT: '100',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -511,6 +512,55 @@ describe('Follow Take closed loop (default rts launch)', () => {
     expect(record.assessment.followReport.completedTargets).toBe(0);
   }, 20000);
 
+  it('does not invalidate timing when resume arrives without a pause', async () => {
+    await startFollow([
+      { groupId: 'resume1', bar: 1, playbackBeat: 0, pitches: [{ midiNote: 60, spelling: 'C4' }] },
+      { groupId: 'resume2', bar: 1, playbackBeat: 1, pitches: [{ midiNote: 62, spelling: 'D4' }] },
+    ]);
+    await note(60, 100);
+    client.send({ type: 'follow-resume', atMs: 200 });
+    await client.waitFor('follow-resumed');
+    const second = await note(62, 1100);
+    expect(second.result.completedTarget.intervalJudged).toBe(true);
+    await client.waitFor('follow-report');
+  });
+  it('rejects old Follow commands while allowing duplicate final reports for the current take', async () => {
+    const groups = [{ groupId: 'owned1', bar: 1, playbackBeat: 0, pitches: [{ midiNote: 60, spelling: 'C4' }] }];
+    const old = await startFollow(groups);
+    client.send({ type: 'follow-finish', takeId: old.takeId });
+    await client.waitFor('follow-report', message => message.takeId === old.takeId);
+    const current = await startFollow(groups);
+    for (const type of ['follow-note', 'follow-pause', 'follow-resume', 'follow-finish', 'follow-abandon']) {
+      const rejected = client.waitFor('error');
+      client.send({ type, takeId: old.takeId, note: 60, atMs: 100 });
+      await expect(rejected).rejects.toThrow('轮次已过期');
+    }
+    client.send({ type: 'follow-note', takeId: current.takeId, note: 60, atMs: 200 });
+    await client.waitFor('follow-event', message => message.takeId === current.takeId);
+    const report = await client.waitFor('follow-report', message => message.takeId === current.takeId);
+    client.send({ type: 'follow-finish', takeId: current.takeId });
+    const duplicate = await client.waitFor('follow-report', message => message.takeId === current.takeId);
+    expect(duplicate.report).toEqual(report.report);
+    expect(duplicate.persisted).toBe(true);
+  });
+  it('keeps disconnect evidence after the MIDI device reconnects during Follow', async () => {
+    client.send({ type: 'midi-connect', deviceId: 'mock:0' });
+    await client.waitFor('midi-status', message => message.connected === true);
+    const started = await startFollow([
+      { groupId: 'health1', bar: 1, playbackBeat: 0, pitches: [{ midiNote: 60, spelling: 'C4' }] },
+      { groupId: 'health2', bar: 1, playbackBeat: 1, pitches: [{ midiNote: 62, spelling: 'D4' }] },
+    ]);
+    await note(60, 100);
+    client.send({ type: 'midi-disconnect' });
+    await client.waitFor('midi-status', message => message.connected === false);
+    client.send({ type: 'midi-connect', deviceId: 'mock:0' });
+    await client.waitFor('midi-status', message => message.connected === true);
+    await note(62, 1100);
+    await client.waitFor('follow-report', message => message.takeId === started.takeId);
+    const record = JSON.parse(readFileSync(path.join(TAKES_DIR, `${started.takeId}.json`), 'utf8'));
+    expect(record.evidence.captureDiagnostics.inputHealth).toBe('disconnected');
+    expect(record.assessment.trustworthy).toBe(false);
+  });
   it('commits an interrupted Follow Take when the connection drops (never a completed fake)', async () => {
     const started = await startFollow([
       { groupId: 'drop1', bar: 1, playbackBeat: 0, pitches: [{ midiNote: 60, spelling: 'C4' }] },
@@ -539,4 +589,19 @@ describe('Follow Take closed loop (default rts launch)', () => {
     });
     expect(record.assessment.followReport.completedTargets).toBe(1);
   }, 20000);
+});
+
+it('stops repeated wrong-note input before native evidence can grow without bound', async () => {
+  client = await connect();
+  const started = await startFollow();
+  await note(60, 100);
+  for (let i = 0; i < 100; i++) client.send({ type: 'follow-note', note: 61, atMs: 200 + i });
+  const report = await client.waitFor('follow-report');
+  expect(report).toMatchObject({ takeId: started.takeId, persisted: true, endReason: 'resource_limit' });
+  const saved = JSON.parse(readFileSync(path.join(TAKES_DIR, `${started.takeId}.json`), 'utf8'));
+  expect(saved.assessment.trustworthy).toBe(false);
+  expect(saved.evidence.followInputs).toHaveLength(100);
+  await startFollow();
+  client.send({ type: 'follow-abandon' });
+  await client.waitFor('follow-report');
 });

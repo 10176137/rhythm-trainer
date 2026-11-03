@@ -22,8 +22,8 @@ describe('practice history retrieval', () => {
   });
 
   it('combines mode and record status instead of counting unknown endings as completed', () => {
-    const items = [record('one'), record('two', { modeId: 'reading-rhythm', endReason: 'interrupted' }), record('old', { endReason: null })];
-    expect(filterPracticeHistory(items, { ...EMPTY_HISTORY_FILTER, mode: 'reading-rhythm', status: 'interrupted' }, now).map((item) => item.takeId)).toEqual(['two']);
+    const items = [record('one'), record('two', { modeId: 'reading-rhythm', endReason: 'interrupted' }), record('old', { endReason: null }), record('limited', { modeId: 'reading-rhythm', endReason: 'resource_limit' })];
+    expect(filterPracticeHistory(items, { ...EMPTY_HISTORY_FILTER, mode: 'reading-rhythm', status: 'interrupted' }, now).map((item) => item.takeId)).toEqual(['two', 'limited']);
     expect(filterPracticeHistory(items, { ...EMPTY_HISTORY_FILTER, status: 'completed' }, now).map((item) => item.takeId)).toEqual(['one']);
     expect(filterPracticeHistory([record('bad', { trustworthy: false })], { ...EMPTY_HISTORY_FILTER, status: 'trustworthy' }, now)).toEqual([]);
   });

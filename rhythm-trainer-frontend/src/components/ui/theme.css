@@ -1,0 +1,87 @@
+/* Ant Design owns component appearance; this layer supplies app layout and touch size. */
+.trainer-theme{--gray-2:#f7f8fb;--gray-3:#f0f2f7;--gray-4:#ebeef3;--gray-5:#e5e8ef;--gray-6:#dce0e9;--gray-9:#8d95a4;--gray-10:#737b8c;--gray-11:#505b6e;--gray-12:#252d3c;--iris-2:#faf9ff;--iris-3:#efedfc;--iris-7:#b6aff0;--iris-9:#6257d7;--iris-10:#5146c1;--iris-11:#554ab8;--radius-3:8px;--radius-4:12px;--radius-5:16px;--color-panel-solid:#fff;--color-surface:#fff;--shadow-6:0 24px 70px #1b203b30;--default-font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--cursor-button:pointer;--cursor-disabled:not-allowed;--ink:var(--gray-12);--muted:var(--gray-10);--line:var(--gray-5);--violet:var(--iris-9);--violet-dark:var(--iris-10);--surface:var(--color-panel-solid);min-height:100dvh;background:var(--gray-2);color:var(--gray-12)}
+.trainer-theme .ui-button{min-height:40px;flex-shrink:0;touch-action:manipulation;font-weight:500;letter-spacing:0;transition:background-color .15s,box-shadow .15s}
+.trainer-theme .ui-button svg{width:18px;height:18px;flex-shrink:0}
+.trainer-theme .ui-button:disabled{opacity:1}
+.trainer-theme .ui-button.ant-btn-text{margin:0;min-width:40px;padding:8px 12px}
+.trainer-theme .ui-select{min-height:40px;font-weight:500;touch-action:manipulation}
+.trainer-theme .ant-select-item-option{min-height:40px}
+.trainer-theme .performance-toolbar .performance-score-title{justify-content:flex-start;border-color:transparent;box-shadow:none;background:none;font-size:16px;font-weight:650;letter-spacing:-.3px}
+.trainer-theme .app-shell.immersive .performance-toolbar:not(.is-performing){gap:16px;padding:16px 24px;background:var(--color-panel-solid);border-bottom:1px solid var(--gray-5)}
+.trainer-theme .performance-quick-settings{padding:6px;background:var(--gray-3);border-radius:var(--radius-4)}
+.trainer-theme .app-shell.immersive .page-content.performance-page{background:var(--gray-2)}
+.trainer-theme .app-shell.immersive .performance-main .score-card{box-shadow:0 1px 3px #1c203006;border:1px solid var(--gray-5);border-radius:var(--radius-5)}
+.trainer-theme .performance-toolbar .performance-transport{border-top:1px solid var(--gray-5);background:var(--color-panel-solid)}
+.trainer-theme .practice-session-elapsed{font-size:14px;color:var(--gray-12)}
+.trainer-theme .practice-session-state{color:var(--gray-10)}
+.trainer-theme .settings-dialog{border-radius:var(--radius-5);border:1px solid var(--gray-5);box-shadow:var(--shadow-6)}
+.trainer-theme .settings-dialog:has(.performance-settings-body){width:min(520px,calc(100vw - 32px))}
+.trainer-theme .settings-dialog::backdrop{background:#10182855;backdrop-filter:blur(8px)}
+.trainer-theme .page-heading h1{font-size:26px;letter-spacing:-.8px;color:var(--gray-12)}
+.trainer-theme .page-heading p{color:var(--gray-10);line-height:1.7}
+.trainer-theme .card{border-color:var(--gray-5);box-shadow:none;border-radius:var(--radius-4)}
+.trainer-theme .sidebar{background:var(--gray-2);border-color:var(--gray-5)}
+.trainer-theme .nav-item{font-size:13px;color:var(--gray-11)}
+.trainer-theme .nav-item.active{background:var(--iris-3);color:var(--iris-11)}
+.trainer-theme .topbar{border-color:var(--gray-5)}
+.trainer-theme .reading-setup-entry{border-color:var(--gray-5);border-radius:var(--radius-4)}
+.trainer-theme .reading-starters button{border-color:var(--gray-5);border-radius:var(--radius-4);background:var(--color-panel-solid);box-shadow:none;transition:border-color .15s,background .15s}
+.trainer-theme .reading-starters button.selected{border-color:var(--iris-7);background:var(--iris-2);box-shadow:0 0 0 1px var(--iris-7)}
+.trainer-theme .reading-starters button strong{color:var(--gray-12)}
+.trainer-theme .reading-starters button span{color:var(--gray-10)}
+.trainer-theme .reading-starters button small{color:var(--iris-11)}
+.trainer-theme .reading-preset-row button,.trainer-theme .reading-count-row button{border-color:var(--gray-6);border-radius:var(--radius-3);color:var(--gray-11);box-shadow:none}
+.trainer-theme .reading-preset-row button.active,.trainer-theme .reading-count-row button.active{border-color:var(--iris-7);background:var(--iris-3);color:var(--iris-11)}
+.trainer-theme .preferences-nav button[aria-pressed=true]{background:var(--iris-3);color:var(--iris-11)}
+.trainer-theme .field select,.trainer-theme .settings-grid select,.trainer-theme .reading-rhythm-grid select{border-color:var(--gray-6);border-radius:var(--radius-3);min-height:40px;background:var(--color-surface);color:var(--gray-12)}
+@media(pointer:coarse){.trainer-theme .ui-button,.trainer-theme .ui-select,.trainer-theme .ant-select-item-option{min-height:44px}}
+@media(max-width:680px){.trainer-theme .app-shell.immersive .performance-toolbar:not(.is-performing){gap:12px;padding:12px}.trainer-theme .performance-quick-settings{gap:6px}.trainer-theme .ui-button{font-size:13px}}
+
+.trainer-theme .ui-select{min-width:100px}.trainer-theme .ui-select .ant-select-selector{border-radius:8px}.trainer-theme .ui-button.ant-btn-text{box-shadow:none}
+.trainer-select-popup .ant-select-item-option{min-height:44px;display:flex;align-items:center}
+/* Player-style chrome floats over the score; visibility never changes layout. */
+.trainer-theme .app-shell.immersive.chrome-enabled .performance-toolbar{display:contents}
+.trainer-theme .chrome-enabled .performance-toolbar-panel{position:fixed;z-index:45;top:0;left:0;right:0;display:flex;align-items:center;gap:16px;flex-wrap:nowrap;padding:calc(12px + env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) 12px max(24px,env(safe-area-inset-left));background:#fffffff2;border-bottom:1px solid var(--gray-5);box-shadow:0 4px 24px #252d3c08;backdrop-filter:blur(14px)}
+.trainer-theme .chrome-enabled [data-practice-chrome]{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s ease,transform .22s ease,visibility .22s}
+.trainer-theme .chrome-enabled .performance-toolbar-panel{transform:translateY(-12px)}
+.trainer-theme .chrome-enabled .performance-transport{transform:translateY(12px)}
+.trainer-theme .chrome-enabled.controls-visible [data-practice-chrome]{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0)}
+.trainer-theme .chrome-enabled .page-content.performance-page{padding:0!important}
+.trainer-theme .chrome-enabled .performance-main .score-card{margin:0!important;border:0!important;border-radius:0!important}
+.trainer-theme .chrome-enabled .score-systems{padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom))}
+.trainer-theme .chrome-enabled.fixed-line-page{padding:0}
+.trainer-theme .chrome-enabled:focus{outline:none}
+.trainer-theme .chrome-enabled:focus-visible{outline:2px solid var(--iris-7);outline-offset:-2px}
+@media(max-width:1200px){.trainer-theme .chrome-enabled .performance-toolbar-panel{flex-wrap:wrap}}
+@media(max-width:680px){.trainer-theme .chrome-enabled .performance-toolbar-panel{gap:10px;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}}
+@media(prefers-reduced-motion:reduce){.trainer-theme .chrome-enabled [data-practice-chrome]{transition:none}}
+.trainer-theme .chrome-enabled .fixed-line-page{padding:0!important;overflow:hidden;display:flex;flex-direction:column}
+.trainer-theme .chrome-enabled .fixed-line-page .workspace-grid{flex:1;min-height:0}
+.trainer-theme .chrome-enabled .fixed-line-page .score-card{flex:1;height:auto!important;min-height:0}
+
+/* Explicit slots keep the header and control rows aligned at every width. */
+.trainer-theme .chrome-enabled .performance-toolbar-panel{display:grid;grid-template-columns:auto minmax(120px,220px) minmax(0,1fr) auto;gap:12px;max-height:calc(100dvh - 80px);overflow-y:auto;overscroll-behavior:contain}
+.trainer-theme .performance-toolbar-panel>.pt-toolbar-spacer{display:none}
+.trainer-theme .performance-toolbar-panel>.toolbar-back{grid-column:1;grid-row:1}
+.trainer-theme .performance-toolbar-panel>.performance-score-title{grid-column:2;grid-row:1;min-width:0;max-width:none;width:100%;padding-left:4px;padding-right:4px}
+.performance-score-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.trainer-theme .performance-toolbar-panel>.toolbar-settings{grid-column:4;grid-row:1}
+.trainer-theme .performance-toolbar-panel>.performance-quick-settings{grid-column:3;grid-row:1;order:0;width:auto;min-width:0;justify-content:center}
+@media(max-width:1200px){
+ .trainer-theme .chrome-enabled .performance-toolbar-panel{grid-template-columns:auto minmax(0,1fr) auto}
+ .trainer-theme .performance-toolbar-panel>.toolbar-settings{grid-column:3}
+ .trainer-theme .performance-toolbar-panel>.performance-quick-settings{grid-column:1/-1;grid-row:2;width:100%}
+}
+@media(max-width:680px){
+ .trainer-theme .chrome-enabled .performance-toolbar-panel{gap:12px;padding-top:calc(8px + env(safe-area-inset-top));padding-bottom:12px}
+ .trainer-theme .performance-toolbar-panel>.performance-score-title{font-size:15px;justify-content:center}
+ .trainer-theme .toolbar-settings-label{display:none}
+ .trainer-theme .performance-toolbar-panel>.toolbar-settings{width:44px;padding:0}
+ .trainer-theme .performance-toolbar-panel>.performance-quick-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:8px;border-radius:12px}
+ .trainer-theme .performance-quick-settings>.ui-button,.trainer-theme .performance-quick-settings>.ui-select,.trainer-theme .performance-quick-settings>.pt-stepper{width:100%;min-width:0;height:44px;margin:0}
+ .trainer-theme .performance-quick-settings>.pt-stepper{justify-content:space-between}
+ .trainer-theme .performance-quick-settings .pt-stepper b{flex:1;min-width:0;font-size:14px}
+ .trainer-theme .performance-quick-settings .score-playback-controls{display:contents}
+ .trainer-theme .performance-quick-settings .score-playback-controls>.ui-button{width:100%;height:44px;min-width:0;margin:0;font-size:14px}
+ .trainer-theme .performance-quick-settings .score-playback-controls>[role=alert]{position:static;grid-column:1/-1}
+}

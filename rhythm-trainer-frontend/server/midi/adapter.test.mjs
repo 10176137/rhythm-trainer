@@ -139,3 +139,56 @@ describe('NodeMidiAdapter', () => {
     expect(adapter.getStatus().inputHealth).toBe('degraded');
   });
 });
+
+it('rejects a delayed native callback from a closed port after reconnect', () => {
+  const callbacks = [];
+  const device = { id: 'piano', name: 'Piano' };
+  const backend = { name: 'test', listInputs: () => [device], openInput: (_id, callback) => {
+    callbacks.push(callback); return { close() {} };
+  } };
+  const adapter = new NodeMidiAdapter({ backend });
+  const events = [];
+  adapter.onEvent(event => events.push(event));
+  adapter.openInput('piano'); adapter.close(); adapter.openInput('piano');
+  callbacks[0]([0x90, 60, 90]);
+  callbacks[1]([0x90, 64, 90]);
+  adapter.flush();
+  expect(events.map(event => event.noteNumber)).toEqual([64]);
+  expect(events[0].sourceSeq).toBe(1);
+  expect(adapter.getStatus().staleGenerationDropped).toBe(1);
+  adapter.close();
+});
+
+it('keeps queue and trace bounded during a sustained input stream', () => {
+  const { adapter, backend } = setup({ queueCapacity: 16 });
+  adapter.openInput('mock:0');
+  for (let batch = 0; batch < 1000; batch++) {
+    for (let i = 0; i < 16; i++) backend.emit([0x90, 60 + i, 90]);
+    adapter.flush();
+  }
+  expect(adapter.getStatus().queueDepth).toBe(0);
+  expect(adapter.getTrace().events).toHaveLength(16);
+  expect(adapter.getTrace().dropped).toBe(15984);
+  adapter.close();
+});
+
+it('bounds detached native handles and requires restart before opening more', () => {
+  const backend = { name: 'native-test', listInputs: () => [{ id: 'p', name: 'Piano' }],
+    openInput: () => ({ close() { throw new Error('unsafe vanished handle'); }, detach() {} }) };
+  const adapter = new NodeMidiAdapter({ backend, maxDetachedHandles: 2 });
+  for (let i = 0; i < 2; i++) { adapter.openInput('p'); adapter.close('missing', { detachNative: true }); }
+  expect(() => adapter.openInput('p')).toThrow(/重启/);
+  expect(adapter.getStatus()).toMatchObject({ detachedHandleCount: 2, restartRequired: true, connected: false });
+});
+
+it('detects a replaced device even when the OS reuses its port index', () => {
+  let name = 'Original piano';
+  let detached = 0;
+  const adapter = new NodeMidiAdapter({ backend: { name: 'indexed', listInputs: () => [{ id: 'node-midi:0', name }],
+    openInput: () => ({ detach() { detached++; }, close() { throw new Error('unsafe'); } }) } });
+  adapter.openInput('node-midi:0');
+  name = 'Different piano';
+  adapter.refreshDevices();
+  expect(adapter.getStatus().connected).toBe(false);
+  expect(detached).toBe(1);
+});

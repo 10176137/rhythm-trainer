@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 // Teaching workspace V1: one screen for the whole lesson — course picker or
 // live lesson, score on the left, teacher on the right, one primary action.
 //
@@ -290,7 +291,7 @@ export default function TeachingWorkspace({
             <i />{INPUT_CN[inputStatus]}
           </span>
           {run && <span className="teaching-topbar-progress">进度 {completedSteps}/{totalSteps}</span>}
-          <button type="button" className="text-button" onClick={onBackToWorkbench}>退出学习</button>
+          <AppButton type="button" className="text-button" onClick={onBackToWorkbench}>退出学习</AppButton>
         </div>
       </header>
 
@@ -312,7 +313,7 @@ export default function TeachingWorkspace({
               {lessonsError && (
                 <p className="report-warning" role="alert">
                   {lessonsError}{' '}
-                  <button type="button" className="text-button" onClick={loadLessons}>重试</button>
+                  <AppButton type="button" className="text-button" onClick={loadLessons}>重试</AppButton>
                 </p>
               )}
               {!lessonsError && !lessons && <p className="teaching-muted">载入课程目录…</p>}
@@ -389,21 +390,21 @@ export default function TeachingWorkspace({
             <div className="teaching-action-bar" aria-label="开始学习">
               {error && <p className="report-warning" role="alert">{error}</p>}
               <div className="teaching-action-row">
-                <button
+                <AppButton
                   type="button"
                   className="button button-primary teaching-primary-action"
                   disabled={setupInvalid || creating}
                   onClick={() => void createRun()}
                 >
                   {creating ? '正在创建…' : '开始学习'}
-                </button>
+                </AppButton>
                 <div className="teaching-action-links">
                   {recoverableRunId && (
-                    <button type="button" className="text-button" onClick={() => void refresh(recoverableRunId)}>
+                    <AppButton type="button" className="text-button" onClick={() => void refresh(recoverableRunId)}>
                       恢复上次课程（{recoverableRunId.slice(0, 13)}…）
-                    </button>
+                    </AppButton>
                   )}
-                  <button type="button" className="text-button" onClick={onBackToWorkbench}>返回自由练习</button>
+                  <AppButton type="button" className="text-button" onClick={onBackToWorkbench}>返回自由练习</AppButton>
                 </div>
               </div>
             </div>

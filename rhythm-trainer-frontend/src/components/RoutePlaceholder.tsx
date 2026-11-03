@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import type { AppRouteDefinition } from '../app/routes';
 
 interface Props {
@@ -35,9 +36,9 @@ export default function RoutePlaceholder({ route, path, onBack }: Props) {
           </p>
           <code>{path}</code>
         </div>
-        <button type="button" className="button button-primary" onClick={onBack}>
+        <AppButton type="button" className="button button-primary" onClick={onBack}>
           返回练习工作台
-        </button>
+        </AppButton>
       </section>
     </div>
   );

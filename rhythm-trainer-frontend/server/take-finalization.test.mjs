@@ -144,3 +144,38 @@ describe('TakeFinalizationService', () => {
     expect(fs.readdirSync(dir)).toEqual([]);
   });
 });
+
+it('recovers a frozen failed Take after service restart without replacing its contents', () => {
+  const root = tempDir();
+  const takesDir = path.join(root, 'takes');
+  const pendingDir = path.join(root, 'pending');
+  fs.writeFileSync(takesDir, 'blocked');
+  const first = new TakeFinalizationService({ takesDir, pendingDir, logger: { error() {} } });
+  expect(first.finalize(record('restart')).persisted).toBe(false);
+  fs.unlinkSync(takesDir);
+  const restarted = new TakeFinalizationService({ takesDir, pendingDir });
+  restarted.recover();
+  expect(readTake(takesDir, 'restart').assessment.note).toBe('first');
+  expect(restarted.finalize(record('restart', 'replacement')).conflict).toBe(true);
+  expect(fs.readdirSync(pendingDir)).toEqual([]);
+});
+
+it('keeps corrupt recovery evidence and recovers valid entries independently', () => {
+  const root = tempDir();
+  const pendingDir = path.join(root, 'pending');
+  fs.mkdirSync(pendingDir);
+  fs.writeFileSync(path.join(pendingDir, 'bad.json'), '{broken');
+  fs.writeFileSync(path.join(pendingDir, 'valid.json'), JSON.stringify(record('valid')));
+  const service = new TakeFinalizationService({ takesDir: path.join(root, 'takes'), pendingDir, logger: { error() {} } });
+  service.recover();
+  expect(service.get('valid').persisted).toBe(true);
+  expect(fs.existsSync(path.join(pendingDir, 'bad.json'))).toBe(true);
+});
+
+it('does not claim a conflicting existing disk record was saved', () => {
+  const dir = tempDir();
+  new TakeFinalizationService({ takesDir: dir }).finalize(record('collision', 'first'));
+  const second = new TakeFinalizationService({ takesDir: dir, logger: { error() {} } });
+  expect(second.finalize(record('collision', 'different')).persisted).toBe(false);
+  expect(readTake(dir, 'collision').assessment.note).toBe('first');
+});

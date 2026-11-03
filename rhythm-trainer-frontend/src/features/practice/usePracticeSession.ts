@@ -136,6 +136,8 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   const [error, setError] = useState<string | null>(null);
 
   const bridgeRef = useRef<EngineBridge | null>(null);
+  const launchEpochRef = useRef(0);
+  const launchPendingRef = useRef(false);
   const metronomeRef = useRef<Metronome | null>(null);
   const originRef = useRef<number | null>(null);
   /** Armed take: the clock starts on the first key, not on "started". */
@@ -262,6 +264,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
     const bridge = new EngineBridge({
       onClockStarted: (message) => acceptArmedClock(message.originClientPerfMs, message.captureEpoch),
       onStarted: (engineTargets, _bpm, _profile, captureEpoch, resolvedConfig, timing) => {
+        launchPendingRef.current = false;
         const armed = timing?.armed === true;
         armedRef.current = armed;
         setWaitingForFirstInput(armed);
@@ -354,6 +357,11 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         if (bridgeRef.current) startTickTimer(bridgeRef.current);
       },
       onReport: (message) => {
+        if (message.endReason === 'resource_limit') {
+          const message = '本轮输入已达到保护上限，练习已结束；本轮标为中断，不用于能力升级。保存状态请查看结果。';
+          setError(message);
+          optionsRef.current.onInfo?.(message);
+        }
         armedRef.current = false;
         setWaitingForFirstInput(false);
         stopTickTimer();
@@ -391,6 +399,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         setStatus('completed');
       },
       onFollowStarted: (message) => {
+        launchPendingRef.current = false;
         followActiveRef.current = true;
         optionsRef.current.onFollowStarted?.(message);
       },
@@ -398,15 +407,19 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         optionsRef.current.onFollowEvent?.(message);
       },
       onFollowReport: (message) => {
+        if (message.endReason === 'resource_limit') optionsRef.current.onInfo?.('本轮输入已达到保护上限，跟手练习已结束；本轮标为中断，保存状态请查看结果。');
         followActiveRef.current = false;
         optionsRef.current.onFollowReport?.(message);
       },
       onError: (message) => {
+        launchPendingRef.current = false;
         stopTickTimer();
         setError(message);
         optionsRef.current.onError?.(message);
       },
       onDisconnected: () => {
+        launchEpochRef.current += 1;
+        launchPendingRef.current = false;
         if (followActiveRef.current) {
           followActiveRef.current = false;
           optionsRef.current.onFollowAborted?.('与引擎服务的连接已断开，跟手练习已终止。');
@@ -430,7 +443,9 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   }, [acceptArmedClock, rescheduleMetronome, scheduleArmedCue, startTickTimer]);
 
   const begin = useCallback(async (request: BeginRequest) => {
-    if (active || followActiveRef.current) return;
+    if (active || engineActiveRef.current || followActiveRef.current || launchPendingRef.current) return;
+    const launchEpoch = ++launchEpochRef.current;
+    launchPendingRef.current = true;
     setError(null);
     bpmRef.current = request.bpm;
     metronomeEnabledRef.current = request.metronomeEnabled !== false;
@@ -443,6 +458,7 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
       if (metronomeEnabledRef.current) metronomeRef.current.ensure();
       const bridge = ensureBridge();
       await bridge.connect();
+      if (launchEpoch !== launchEpochRef.current) return;
       bridge.start({
         armOnFirstInput: request.armOnFirstInput === true,
         modeId: request.modeId,
@@ -473,6 +489,8 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
         takeTemplateId: request.takeTemplateId,
       });
     } catch (err) {
+      if (launchEpoch !== launchEpochRef.current) return;
+      launchPendingRef.current = false;
       const message = err instanceof Error ? err.message : '启动练习失败。';
       setError(message);
       optionsRef.current.onError?.(message);
@@ -506,6 +524,9 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   }, [status]);
 
   const reset = useCallback(() => {
+    launchEpochRef.current += 1;
+    if (launchPendingRef.current) bridgeRef.current?.close();
+    launchPendingRef.current = false;
     stopTickTimer();
     metronomeRef.current?.stopAll();
     if (followActiveRef.current) {
@@ -580,14 +601,22 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
    * only renders the returned events and report.
    */
   const startFollow = useCallback(async (request: Omit<FollowStartRequest, 'type'>): Promise<FollowStartedMessage> => {
-    if (active) throw new Error('已有进行中的时间线练习，无法开始跟手练习');
+    if (active || engineActiveRef.current || followActiveRef.current || launchPendingRef.current) throw new Error('已有进行中或正在启动的练习');
+    const launchEpoch = ++launchEpochRef.current;
+    launchPendingRef.current = true;
     const bridge = ensureBridge();
-    await bridge.connect();
-    followActiveRef.current = true;
     try {
-      return await bridge.startFollow(request);
+      await bridge.connect();
+      if (launchEpoch !== launchEpochRef.current) throw new Error('练习启动已取消');
+      followActiveRef.current = true;
+      const started = await bridge.startFollow(request);
+      if (launchEpoch !== launchEpochRef.current) throw new Error('练习启动已取消');
+      return started;
     } catch (error) {
-      followActiveRef.current = false;
+      if (launchEpoch === launchEpochRef.current) {
+        followActiveRef.current = false;
+        launchPendingRef.current = false;
+      }
       throw error;
     }
   }, [active, ensureBridge]);
@@ -616,6 +645,9 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   }, []);
 
   const abandonFollow = useCallback(() => {
+    launchEpochRef.current += 1;
+    if (launchPendingRef.current) bridgeRef.current?.close();
+    launchPendingRef.current = false;
     if (!followActiveRef.current) return;
     followActiveRef.current = false;
     bridgeRef.current?.followAbandon();
@@ -717,6 +749,8 @@ export function usePracticeSession(options: UsePracticeSessionOptions = {}) {
   }, [status]);
 
   useEffect(() => () => {
+    launchEpochRef.current += 1;
+    launchPendingRef.current = false;
     stopTickTimer();
     metronomeRef.current?.close();
     bridgeRef.current?.close();

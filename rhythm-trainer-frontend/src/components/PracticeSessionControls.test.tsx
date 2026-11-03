@@ -14,7 +14,11 @@ it('hides manual start for automatic performance and describes the correct-note 
     await act(async () => root.render(<PracticeSessionControls {...props} status="idle" automaticStart />));
     expect(host.textContent).not.toContain('开始练习');
     await act(async () => root.render(<PracticeSessionControls {...props} status="running" waitingForFirstInput automaticStart />));
-    expect(host.textContent).toContain('弹对起点音符即开始'); expect(host.textContent).toContain('00:00');
+    expect(host.textContent).toContain('等待起奏');
+    expect(host.textContent).not.toContain('暂停');
+    const cancel = [...host.querySelectorAll('button')].find(button => button.textContent === '取消')!;
+    await act(async () => cancel.click());
+    expect(props.onFinish).toHaveBeenCalledOnce(); expect(host.textContent).toContain('00:00');
   } finally { await act(async () => root.unmount()); }
 });
 it.each(['running', 'paused', 'processing', 'completed', 'unsaved'])('exposes legal session actions for %s', async (scenario) => {

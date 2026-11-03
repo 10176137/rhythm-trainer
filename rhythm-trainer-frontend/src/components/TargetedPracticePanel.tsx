@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 // Flow B: targeted follow-up started from an already-persisted Take.
 //
 // This component is interaction-only. It sends the Take id plus the user's
@@ -135,9 +136,9 @@ export default function TargetedPracticePanel({
                 <strong>从这份 Take 开始教学</strong>
                 <small>范围只是你的选择，不是系统诊断；教学决策由 Node 在收到已保存 Take 后生成。</small>
               </div>
-              <button type="button" className="text-button" onClick={() => (manualOpen ? setManualOpen(false) : openManualDefaults())}>
+              <AppButton type="button" className="text-button" onClick={() => (manualOpen ? setManualOpen(false) : openManualDefaults())}>
                 {manualOpen ? '收起' : '选择范围并开始'}
-              </button>
+              </AppButton>
             </div>
             {manualOpen && (
               <div className="targeted-config targeted-manual-config">
@@ -183,9 +184,9 @@ export default function TargetedPracticePanel({
                     <option value="left">左手</option>
                   </select>
                 </label>
-                <button type="button" className="button button-primary" disabled={cannotStart} onClick={startManual}>
+                <AppButton type="button" className="button button-primary" disabled={cannotStart} onClick={startManual}>
                   {creating ? '正在创建…' : '按所选范围创建教学课程'}
-                </button>
+                </AppButton>
               </div>
             )}
           </div>
@@ -193,7 +194,7 @@ export default function TargetedPracticePanel({
           {createdRun && (
             <p className="targeted-message" role="status">
               课程 {createdRun.runId.slice(0, 13)}… 已就绪 ·{' '}
-              <button type="button" className="text-button" onClick={onNavigateTeaching}>打开老师带练</button>
+              <AppButton type="button" className="text-button" onClick={onNavigateTeaching}>打开老师带练</AppButton>
             </p>
           )}
           {message && <p className="targeted-message" role="status">{message}</p>}

@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import { useEffect, useRef, useState } from 'react';
 import type { DrillId, GeneratedSkillDrill, TrainingProgramConfig, TrainingProgramReview } from '../../shared/training-contract';
 import { trainingRepository } from '../services/trainingRepository';
@@ -45,7 +46,7 @@ export default function TrainingProgramPanel({ onStart }: { onStart: (drill: Gen
       <div className="program-projects" role="group" aria-label="随机调性范围">{(['C', 'G', 'F'] as const).map((key) => <label key={key}><input type="checkbox" checked={config.keys.includes(key)} onChange={(e) => change('keys', e.target.checked ? [...config.keys, key] : config.keys.filter((x) => x !== key))}/>{key} 大调</label>)}</div>
       <small>按完整乐句编排，时长略有取整。每段约一分钟，保存后自动接续，段间保留预备拍；点「结束」即停止接续。节奏项目使用项目规定的手别。</small>
     </fieldset> : <p>固定 60 BPM，依次测试右手五指、左手五指、G 大调音阶、左手琶音、F 大调和弦、双手配合。关闭伴弹与即时答案，结果来自后端已保存的演奏记录。可重复测试作同条件比较，不能换算考级等级。</p>}
-    <button type="button" className="button button-primary" disabled={busy || (config.mode !== 'assessment' && (!config.ids.length || !config.keys.length))} onClick={() => void start()}>{busy ? '正在编排训练…' : config.mode === 'assessment' ? '开始基础能力测试' : '开始训练计划'}</button>
+    <AppButton type="button" className="button button-primary" disabled={busy || (config.mode !== 'assessment' && (!config.ids.length || !config.keys.length))} onClick={() => void start()}>{busy ? '正在编排训练…' : config.mode === 'assessment' ? '开始基础能力测试' : '开始训练计划'}</AppButton>
     {error && <p role="alert">{error}</p>}
     <details className="skill-research-notes"><summary>练习依据与测量范围</summary><p><a href="https://www.abrsm.org/en-gb/piano" target="_blank" rel="noreferrer">ABRSM</a>、<a href="https://www.rcmusic.com/learning/about-the-royal-conservatory-certificate-program/curriculum-and-disciplines" target="_blank" rel="noreferrer">RCM</a> 的钢琴技术训练包含音阶、和弦和琶音。这里用完整音型练准确和均匀，再通过不同调性检验迁移；不以练习时长代替掌握程度。</p><p>测试只评价 MIDI 能观察的音高、漏音和起音时间。参考指法、手腕动作、姿态、音色与放松程度需要自行检查或请老师观察，不生成这些项目的虚拟分数。</p></details>
   </section>;

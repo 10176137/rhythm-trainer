@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScoreDocument } from '../core/sampleScore';
 import type { ImportIssue } from '../score-engine/domain/types';
@@ -277,9 +278,9 @@ export default function ScoreLibraryPage({
           <p>导入、检查并使用真实解析结果；可阅读不等于可完整评分。</p>
         </div>
         <div className="library-heading-actions">
-          <button type="button" className="button button-ghost" onClick={onBackToWorkbench}>返回工作台</button>
-          <button type="button" className="button button-outline" onClick={() => void load()} disabled={loading || busyId !== null}>刷新</button>
-          <button type="button" className="button button-primary" onClick={() => fileInputRef.current?.click()} disabled={busyId !== null}>导入 .musicxml</button>
+          <AppButton type="button" className="button button-ghost" onClick={onBackToWorkbench}>返回工作台</AppButton>
+          <AppButton type="button" className="button button-outline" onClick={() => void load()} disabled={loading || busyId !== null}>刷新</AppButton>
+          <AppButton type="button" className="button button-primary" onClick={() => fileInputRef.current?.click()} disabled={busyId !== null}>导入 .musicxml</AppButton>
         </div>
       </div>
 
@@ -339,10 +340,10 @@ export default function ScoreLibraryPage({
             <div className="import-save-row">
               <label className="field"><span>保存名称</span><input value={preview.name} maxLength={80} onChange={(event) => setPreview({ ...preview, name: event.target.value, saveError: null })} /></label>
               <div className="import-save-actions">
-                <button type="button" className="button button-ghost" onClick={() => { setPreview(null); setImportError(null); }} disabled={busyId !== null}>取消</button>
-                <button type="button" className="button button-primary" onClick={() => void savePreview()} disabled={busyId !== null || !preview.name.trim()}>
+                <AppButton type="button" className="button button-ghost" onClick={() => { setPreview(null); setImportError(null); }} disabled={busyId !== null}>取消</AppButton>
+                <AppButton type="button" className="button button-primary" onClick={() => void savePreview()} disabled={busyId !== null || !preview.name.trim()}>
                   {busyId === 'import' ? '保存中…' : '保存到曲谱库'}
-                </button>
+                </AppButton>
               </div>
             </div>
           )}
@@ -373,7 +374,7 @@ export default function ScoreLibraryPage({
         <section className="card library-empty">
           <strong>曲谱库还是空的</strong>
           <p>导入一个 `.musicxml` 文件开始；A1 不支持 `.mxl`、PDF 或图片识谱。</p>
-          <button type="button" className="button button-primary" onClick={() => fileInputRef.current?.click()}>导入第一份曲谱</button>
+          <AppButton type="button" className="button button-primary" onClick={() => fileInputRef.current?.click()}>导入第一份曲谱</AppButton>
         </section>
       ) : filtered.length === 0 ? (
         <section className="card library-empty"><p>没有匹配“{search}”的曲谱。</p></section>
@@ -404,11 +405,11 @@ export default function ScoreLibraryPage({
                 {status === 'RESTRICTED' && <p className="score-card-hint">可以阅读，但当前引擎不能把它当作完整严格练习目标。</p>}
                 {status === 'WARNINGS' && <p className="score-card-hint">存在导入警告；严格练习可用性以打开后的计划校验为准。</p>}
                 <div className="score-card-actions">
-                  <button type="button" className="button button-primary button-small" onClick={() => void openEntry(entry)} disabled={busyId !== null || status === 'MISSING' || status === 'FAILED'}>
+                  <AppButton type="button" className="button button-primary button-small" onClick={() => void openEntry(entry)} disabled={busyId !== null || status === 'MISSING' || status === 'FAILED'}>
                     {busyId === entry.id ? '打开中…' : '打开阅读'}
-                  </button>
-                  <button type="button" className="button button-outline button-small" onClick={() => void renameEntry(entry)} disabled={busyId !== null}>重命名</button>
-                  <button type="button" className="button button-ghost button-small" onClick={() => void deleteEntry(entry)} disabled={busyId !== null}>删除</button>
+                  </AppButton>
+                  <AppButton type="button" className="button button-outline button-small" onClick={() => void renameEntry(entry)} disabled={busyId !== null}>重命名</AppButton>
+                  <AppButton type="button" className="button button-ghost button-small" onClick={() => void deleteEntry(entry)} disabled={busyId !== null}>删除</AppButton>
                 </div>
                 {!practice && status !== 'MISSING' && status !== 'FAILED' && (
                   <p className="score-card-hint">阅读可用；严格练习入口会在阅读页按真实能力禁用。</p>

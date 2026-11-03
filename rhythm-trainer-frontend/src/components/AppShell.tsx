@@ -1,9 +1,11 @@
+import { PracticeChromeContext, usePracticeChrome } from '../features/practice/usePracticeChrome';
 import type { ReactNode } from 'react';
 
 interface AppShellProps {
   focus?: boolean;
   /** Immersive practice: no sidebar/topbar, the score owns the screen. */
   immersive?: boolean;
+  revealControls?: boolean;
   sidebar: ReactNode;
   topbar: ReactNode;
   /** Page-independent status, e.g. an engine/MIDI error that must survive route changes. */
@@ -16,9 +18,11 @@ interface AppShellProps {
  * workbench/HistoryView/ProfileView components; this component only owns the
  * shared sidebar/main layout and the global notice slot.
  */
-export default function AppShell({ focus = false, immersive = false, sidebar, topbar, notice, children }: AppShellProps) {
+export default function AppShell({ focus = false, immersive = false, revealControls = false, sidebar, topbar, notice, children }: AppShellProps) {
+  const chrome = usePracticeChrome(immersive, revealControls);
   return (
-    <div className={`app-shell${focus ? ' practice-focus' : ''}${immersive ? ' immersive' : ''}`}>
+    <PracticeChromeContext.Provider value={chrome.visible}>
+    <div ref={chrome.stageRef} tabIndex={immersive ? 0 : undefined} aria-label={immersive ? '演奏谱面，轻点空白或按 Tab 显示控制' : undefined} className={`app-shell${focus ? ' practice-focus' : ''}${immersive ? ` immersive chrome-enabled${chrome.visible ? ' controls-visible' : ''}` : ''}`}>
       {immersive ? null : sidebar}
       <main className="main-area">
         {immersive ? null : topbar}
@@ -26,5 +30,6 @@ export default function AppShell({ focus = false, immersive = false, sidebar, to
         {children}
       </main>
     </div>
+    </PracticeChromeContext.Provider>
   );
 }

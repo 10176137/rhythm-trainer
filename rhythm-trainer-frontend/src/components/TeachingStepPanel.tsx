@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 // Teacher panel for the current LessonRun: explanation, evidence-backed
 // feedback, and the single primary action. Presentation only — actions,
 // practice config, ranges and diagnoses all come from the server run. No
@@ -295,11 +296,11 @@ export default function TeachingStepPanel({
         {error && <p className="report-warning" role="alert">{error}</p>}
         <div className="teaching-action-row">
           {terminal ? (
-            <button type="button" className="button button-primary teaching-primary-action" onClick={onRestart}>
+            <AppButton type="button" className="button button-primary teaching-primary-action" onClick={onRestart}>
               开始新课程
-            </button>
+            </AppButton>
           ) : primary ? (
-            <button
+            <AppButton
               type="button"
               className="button button-primary teaching-primary-action"
               disabled={primary.kind === 'server' ? primary.disabled : primary.disabled}
@@ -309,15 +310,15 @@ export default function TeachingStepPanel({
               }}
             >
               {busyAction ? '处理中…' : primary.label}
-            </button>
+            </AppButton>
           ) : (
-            <button type="button" className="button button-primary teaching-primary-action" onClick={onExit}>
+            <AppButton type="button" className="button button-primary teaching-primary-action" onClick={onExit}>
               返回自由练习
-            </button>
+            </AppButton>
           )}
           <div className="teaching-action-links">
             {secondary.map((item) => (
-              <button
+              <AppButton
                 key={item.action}
                 type="button"
                 className="text-button"
@@ -325,15 +326,15 @@ export default function TeachingStepPanel({
                 onClick={() => onAction(item.action)}
               >
                 {busyAction === item.action ? '处理中…' : item.label}
-              </button>
+              </AppButton>
             ))}
             {canAbandon && !terminal && (
-              <button type="button" className="text-button" disabled={isBusy} onClick={() => onAction('abandon')}>
+              <AppButton type="button" className="text-button" disabled={isBusy} onClick={() => onAction('abandon')}>
                 结束学习
-              </button>
+              </AppButton>
             )}
             {terminal && (
-              <button type="button" className="text-button" onClick={onExit}>返回自由练习</button>
+              <AppButton type="button" className="text-button" onClick={onExit}>返回自由练习</AppButton>
             )}
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import { useEffect, useMemo, useState } from 'react';
 import type { MidiDeviceInfo, MidiInputEvent } from '../services/deviceBridge';
 
@@ -87,9 +88,9 @@ export default function DevicePage({
           <h1>设备检查</h1>
           <p>连接电子琴并确认应用真的收到了 Note On / Note Off；这里不会创建练习或报告。</p>
         </div>
-        <button type="button" className="button button-ghost" onClick={onBackToWorkbench}>
+        <AppButton type="button" className="button button-ghost" onClick={onBackToWorkbench}>
           返回工作台
-        </button>
+        </AppButton>
       </div>
 
       <section className="card device-summary">
@@ -107,15 +108,15 @@ export default function DevicePage({
           </div>
         </div>
         <div className="device-summary-actions">
-          <button type="button" className="button button-outline" onClick={onRefresh} disabled={isConnecting}>
+          <AppButton type="button" className="button button-outline" onClick={onRefresh} disabled={isConnecting}>
             刷新设备
-          </button>
+          </AppButton>
           {deviceStatus === 'connected' ? (
-            <button type="button" className="button button-ghost" onClick={onDisconnect}>断开</button>
+            <AppButton type="button" className="button button-ghost" onClick={onDisconnect}>断开</AppButton>
           ) : (
-            <button type="button" className="button button-primary" onClick={onConnect} disabled={isConnecting || portOptions.length === 0}>
+            <AppButton type="button" className="button button-primary" onClick={onConnect} disabled={isConnecting || portOptions.length === 0}>
               {isConnecting ? '连接中…' : '连接设备'}
-            </button>
+            </AppButton>
           )}
         </div>
       </section>

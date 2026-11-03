@@ -1,3 +1,4 @@
+import { AppButton } from './ui/controls';
 import { useEffect, useRef } from 'react';
 
 interface Props {
@@ -43,12 +44,12 @@ export default function LeaveGuardDialog({
         {processing && <p className="leave-progress">正在生成报告，请稍候…</p>}
         {error && <p className="report-warning" role="alert">{error}</p>}
         <div className="leave-dialog-actions">
-          <button ref={stayRef} type="button" className="button button-outline" onClick={onStay} >
+          <AppButton ref={stayRef} type="button" className="button button-outline" onClick={onStay} >
             留在练习室
-          </button>
-          <button type="button" className="button button-primary" onClick={onFinishAndLeave} disabled={busy}>
+          </AppButton>
+          <AppButton type="button" className="button button-primary" onClick={onFinishAndLeave} disabled={busy}>
             {busy ? '正在结束…' : processing ? '等待报告并离开' : '结束本轮并离开'}
-          </button>
+          </AppButton>
         </div>
       </section>
     </div>
