@@ -1,13 +1,14 @@
 import { startPianoVoice, type PianoVoiceHandle } from './synthPiano';
-export type InstrumentId = 'grand' | 'electric';
+import { instrumentDefinition, type InstrumentId } from './instrumentCatalog';
+export type { InstrumentId } from './instrumentCatalog';
 const KEY = 'rhythm-trainer.instrument.v1';
-export function getInstrument(): InstrumentId { try { return localStorage.getItem(KEY) === 'electric' ? 'electric' : 'grand'; } catch { return 'grand'; } }
+export function getInstrument(): InstrumentId { try { return instrumentDefinition(localStorage.getItem(KEY)).id; } catch { return 'grand'; } }
 export function saveInstrument(id: InstrumentId) { try { localStorage.setItem(KEY, id); } catch { /* private browsing */ } }
 const names = ['A0', ...Array.from({ length: 7 }, (_, i) => [`C${i+1}`, `Ds${i+1}`, `Fs${i+1}`, `A${i+1}`]).flat(), 'C8'];
 const pitches = names.map((_, i) => 21 + i * 3);
 const banks = new WeakMap<BaseAudioContext, Promise<AudioBuffer[]>>();
 export function prepareInstrument(ctx: BaseAudioContext, id: InstrumentId) {
-  if (id === 'electric') return Promise.resolve([] as AudioBuffer[]);
+  if (instrumentDefinition(id).kind === 'synth') return Promise.resolve([] as AudioBuffer[]);
   let bank = banks.get(ctx);
   if (!bank) {
     bank = Promise.all(names.map(async name => {
@@ -21,13 +22,14 @@ export function prepareInstrument(ctx: BaseAudioContext, id: InstrumentId) {
 }
 export function instrumentVoice(ctx: AudioContext, destination: AudioNode, pitch: number, at: number, velocity: number,
   id: InstrumentId, buffers: AudioBuffer[]): PianoVoiceHandle {
-  if (id === 'electric') return startPianoVoice(ctx, destination, pitch, at, velocity);
+  const preset = instrumentDefinition(id);
+  if (preset.kind === 'synth') return startPianoVoice(ctx, destination, pitch, at, velocity, preset.id);
   if (!buffers.length) throw new Error('钢琴采样未准备完成');
   let index = 0; for (let i = 1; i < pitches.length; i++) if (Math.abs(pitches[i] - pitch) < Math.abs(pitches[index] - pitch)) index = i;
   const source = ctx.createBufferSource(); source.buffer = buffers[index]; source.playbackRate.value = 2 ** ((pitch - pitches[index]) / 12);
   const gain = ctx.createGain(); const filter = ctx.createBiquadFilter(); filter.type = 'lowpass';
-  filter.frequency.value = 2500 + Math.max(0, Math.min(1, velocity)) * 12500;
-  const level = Math.max(.001, Math.min(1, velocity)) ** 1.3 * .65;
+  filter.frequency.value = Math.min(ctx.sampleRate * .49, preset.cutoff + Math.max(0, Math.min(1, velocity)) * preset.brightness);
+  const level = Math.max(.001, Math.min(1, velocity)) ** 1.3 * preset.gain;
   gain.gain.setValueAtTime(level, at); source.connect(filter).connect(gain).connect(destination);
   let released = false;
   source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };

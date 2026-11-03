@@ -1,7 +1,7 @@
 import { AppButton } from './ui/controls';
 import { JudgmentSettingsPanel, DisplaySettingsPanel, HandSettingsPanel, LibrarySettingsPanel } from './SettingsPanels';
 import { useEffect, useState, type ReactNode } from 'react';
-import InstrumentSelect from './InstrumentSelect';
+import InstrumentSettingsPanel from './InstrumentSettingsPanel';
 
 export interface SettingsPageProps {
   judgment: ReactNode;
@@ -42,7 +42,7 @@ export default function SettingsPage(props: SettingsPageProps) {
       <div className="preferences-content">
         {category === 'judgment' && <JudgmentSettingsPanel {...props} />}
         {category === 'display' && <DisplaySettingsPanel {...props} />}
-        {category === 'audio' && <section className="card"><h3>音色与重放</h3><InstrumentSelect /><p>自动保存到当前设备，用于乐谱试听与演奏重放。演奏记录内可重放实际 MIDI 输入。</p><p>采样大钢琴：Alexander Holm / Salamander，CC BY 3.0。<a href="/audio/salamander/ATTRIBUTION.txt">查看署名与许可</a></p></section>}
+        {category === 'audio' && <InstrumentSettingsPanel />}
         {category === 'hands' && <HandSettingsPanel {...props} />}
         {category === 'library' && <LibrarySettingsPanel {...props} />}
         <AppButton type="button" className="text-button" onClick={() => setCategory(category === 'help' ? 'judgment' : 'help')}>练习与音频说明</AppButton>
