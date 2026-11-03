@@ -426,3 +426,25 @@ Follow 的 note、pause、resume、finish、abandon 消息新增可选业务 `ta
 ### 仍未验证
 
 真实电子琴与 iPad 实机、真实音频时钟长期漂移、浏览器逐页点击复测（本轮无 UI 改动）、活动练习证据资源预算、失联原生句柄，以及 TS 后端运行链。本记录只声明上述命令的真实结果，不把 mock 或单元测试当作硬件验收。
+
+## 19. 实施记录：资源测量与评分证据完整性边界（2026-11-03）
+
+§17 留下的优先项是“定义资源测量与评分证据完整性边界”，本批只补测量与边界证据，不改变上限数值、不缩短保留时间。
+
+### 现状核对
+
+- `TakeResourceBudget` 早已按事件数与序列化字节数约束单轮输入（默认 100000 事件 / 32 MiB，事件上限可用 `RHYTHM_TAKE_EVENT_LIMIT` 调整），溢出时不做静默截断：`admitResourceEvent` 拒绝当前包、写入 `resource_limit` 日志并调用 `finishSession({ interrupted: true, endReason: 'resource_limit' })`。
+- 溢出轮次已经标记为 `endReason=resource_limit`、`trustworthy=false`，健康状态降为 `degraded`，因此 `scoreStatus=DEGRADED`。问题是记录里没有测得的用量、实际上限和被拒绝的包，无法审计“证据在哪里停止”。
+
+### 本批改动
+
+- `TakeResourceBudget.snapshot()` 返回只读测量：`eventLimit`、`byteLimit`、`events`、`bytes`。
+- `admitResourceEvent(payload, kind)` 记录溢出证据：`rejectedKind`（raw-midi / hit / note / pause）、`rejectedSourceId`、`rejectedSourceSeq`、`rejectedAtSessionMs`；被拒绝的包不进入 `ingests`、不进入接纳账本，也不占用预算。
+- 保存记录与实时报告新增 `captureDiagnostics.resourceBudget`：上限、已用事件/字节、`reached` 和上述拒绝证据。新轮次开始时与计数器一起清零。
+- 未改变：上限数值、Follow 的独立输入上限、`resource_limit` 的结算路径与历史格式（新增字段为 additive）。
+
+### 验证
+
+- 真实 Node＋Rust 超预算用例：第 101 个包触发 `resource_limit`，记录 `events=100`、`rejectedSourceSeq=101`、`rejectedKind='raw-midi'`、`scoreStatus=DEGRADED`；随后新轮次 `reached=false`、`events=0`，可正常保存。
+- `server/practice`、`armed-start.api`、`follow-protocol`、`take-persistence` 共 66 项通过；`npm run selftest` 251 项通过；`npm run typecheck:server` 通过。
+- 仍未做：长期运行的真实内存测量、100k 事件上限下的完整评分耗时、把上限按设备/曲目调优。当前只能声明“单轮输入有界且溢出可审计”，不能声明内存占用已优化。

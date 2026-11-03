@@ -1296,11 +1296,26 @@ wss.on('connection', (socket) => {
   const eventLimit = Math.max(1, Math.min(100000, Number(process.env.RHYTHM_TAKE_EVENT_LIMIT) || 100000));
   const resourceBudget = new TakeResourceBudget({ maxEvents: eventLimit });
   let resourceLimitReached = false;
-  function admitResourceEvent(payload) {
+  // The overflowing payload is rejected, never half-recorded. Keep its
+  // identity so the Take can say exactly where the retained input stopped.
+  let resourceLimitEvidence = null;
+  /**
+   * @param {unknown} payload
+   * @param {'raw-midi'|'hit'|'note'|'pause'} kind
+   */
+  function admitResourceEvent(payload, kind = 'raw-midi') {
     if (resourceLimitReached) return false;
     if (resourceBudget.accept(payload)) return true;
     resourceLimitReached = true;
-    takeJournal?.append('resource_limit', { eventLimit, atSessionMs: pauseLedger.lastNowMs });
+    resourceLimitEvidence = {
+      ...resourceBudget.snapshot(),
+      reached: true,
+      rejectedKind: kind,
+      rejectedSourceId: payload?.packet?.sourceId ?? null,
+      rejectedSourceSeq: payload?.packet?.sourceSeq ?? null,
+      rejectedAtSessionMs: pauseLedger.lastNowMs,
+    };
+    takeJournal?.append('resource_limit', { ...resourceLimitEvidence, atSessionMs: pauseLedger.lastNowMs });
     finishSession({ interrupted: true, endReason: 'resource_limit' });
     return false;
   }
@@ -1467,7 +1482,7 @@ wss.on('connection', (socket) => {
         takeJournal?.append('first_input_clock_started', { atSessionMs: atMs, capturedAtMs: packet.capturedAtMs });
       }
     }
-    if (!admitResourceEvent(ingest)) return;
+    if (!admitResourceEvent(ingest, 'raw-midi')) return;
     const decodedList = addon.decodeMidiPackets([ingest]);
     const decoded = decodedList[0];
     const admission = admissionLedger.record(decoded, packet, atMs, {
@@ -2784,6 +2799,7 @@ wss.on('connection', (socket) => {
           native = nextNative;
           resourceBudget.reset();
           resourceLimitReached = false;
+          resourceLimitEvidence = null;
           activeTake = {
             takeId: take.takeId,
             businessTakeId: `take-${randomUUID()}`,
@@ -2920,7 +2936,7 @@ wss.on('connection', (socket) => {
         break;
       }
       case 'hit': {
-        if (!native || !admitResourceEvent(msg)) return;
+        if (!native || !admitResourceEvent(msg, 'hit')) return;
         const seq = Number(msg.seq);
         const atMs = Number(msg.atMs);
         if (!Number.isFinite(seq) || !Number.isFinite(atMs)) throw new Error('hit 字段非法');
@@ -2952,7 +2968,7 @@ wss.on('connection', (socket) => {
         };
         // napi-rs Option<u32> rejects null; omit the field instead.
         if (velocity != null && Number.isFinite(velocity)) event.velocity = velocity;
-        if (!admitResourceEvent(event)) return;
+        if (!admitResourceEvent(event, 'note')) return;
         rawNotes.push(event);
         break;
       }
@@ -2981,7 +2997,7 @@ wss.on('connection', (socket) => {
         break;
       }
       case 'pause': {
-        if (!native || !admitResourceEvent()) return;
+        if (!native || !admitResourceEvent(undefined, 'pause')) return;
         const nowMs = armedClock ? armedClock.now(performance.now()) : Number(msg.nowMs);
         const sourceMs = armedClock?.transport === 'node-midi' ? performance.now() : Number(msg.atSourceMs);
         const result = pauseLedger.pause(nowMs, sourceMs, () => {
@@ -3359,6 +3375,14 @@ wss.on('connection', (socket) => {
         captureQuarantinedPackets: admissionCounters.captureQuarantinedPackets,
         duplicateEventIds: admissionCounters.duplicateEventIds,
         pauseSegments: pauseLedger.snapshot().segments,
+      },
+      resourceBudget: {
+        ...resourceBudget.snapshot(),
+        reached: resourceLimitReached,
+        rejectedKind: resourceLimitEvidence?.rejectedKind ?? null,
+        rejectedSourceId: resourceLimitEvidence?.rejectedSourceId ?? null,
+        rejectedSourceSeq: resourceLimitEvidence?.rejectedSourceSeq ?? null,
+        rejectedAtSessionMs: resourceLimitEvidence?.rejectedAtSessionMs ?? null,
       },
       connectionClosed: interrupted && endReason !== 'resource_limit',
       node: {

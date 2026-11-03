@@ -12,6 +12,11 @@ export class TakeResourceBudget {
     this.reset();
   }
   reset() { this.events = 0; this.bytes = 0; }
+  /** Read-only measurement for Take evidence. */
+  /** @returns {{ eventLimit: number, byteLimit: number, events: number, bytes: number }} */
+  snapshot() {
+    return { eventLimit: this.maxEvents, byteLimit: this.maxBytes, events: this.events, bytes: this.bytes };
+  }
   /** @param {unknown} [payload] @returns {boolean} */
   accept(payload) {
     const bytes = payload === undefined ? 0 : Buffer.byteLength(JSON.stringify(payload), 'utf8');

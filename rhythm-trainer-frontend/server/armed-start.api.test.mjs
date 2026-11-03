@@ -376,8 +376,19 @@ it('ends an over-budget take explicitly and accepts a fresh take afterwards', as
   const record = JSON.parse(readFileSync(join(dataDir, 'takes', `${report.takeId}.json`), 'utf8'));
   expect(record.lifecycle.endReason).toBe('resource_limit');
   expect(record.assessment.trustworthy).toBe(false);
+  expect(record.assessment.scoreStatus).toBe('DEGRADED');
   expect(record.assessment.timelineReport.captureDiagnostics.admission.packets).toBe(100);
+  // The boundary is auditable: the 101st packet was rejected, not retained,
+  // and the record says where input stopped.
+  expect(record.evidence.captureDiagnostics.resourceBudget).toMatchObject({
+    eventLimit: 100, reached: true, events: 100,
+    rejectedKind: 'raw-midi', rejectedSourceId: 'budget', rejectedSourceSeq: 101,
+  });
   await start(3000000, undefined, { modeId: 'fixed-line', armed: false });
   const next = await request({ type: 'finish' }, 'report');
   expect(next.persisted).toBe(true);
+  const nextRecord = JSON.parse(readFileSync(join(dataDir, 'takes', `${next.takeId}.json`), 'utf8'));
+  expect(nextRecord.evidence.captureDiagnostics.resourceBudget).toMatchObject({
+    reached: false, events: 0, rejectedKind: null, rejectedSourceSeq: null,
+  });
 });
