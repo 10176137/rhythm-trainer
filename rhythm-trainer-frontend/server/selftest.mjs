@@ -1265,6 +1265,11 @@ async function scenarioDisconnectFinalizesTake() {
   const list = await (await fetch(`http://127.0.0.1:${PORT}/api/sessions?limit=10`)).json();
   const interrupted = list.items.find((item) => item.interrupted === true);
   check('断连后出现中断会话', !!interrupted, JSON.stringify(list.items.slice(0, 3)));
+  const takes = await (await fetch(`http://127.0.0.1:${PORT}/api/takes?limit=10`)).json();
+  const interruptedTake = (takes.items ?? []).find((item) => item.interrupted === true);
+  check('断连 Take 持久化结束原因为 interrupted',
+    !!interruptedTake && interruptedTake.endReason === 'interrupted',
+    JSON.stringify((takes.items ?? []).slice(0, 3)));
   if (interrupted) {
     const detail = await (await fetch(`http://127.0.0.1:${PORT}/api/sessions/${interrupted.sessionId}`)).json();
     check('中断报告标记 interrupted / 不可信', detail.interrupted === true

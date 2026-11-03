@@ -26,6 +26,7 @@ import { reachedSongEnd, songCompletionAtMs } from './song-completion.mjs';
 import { beginNativeTake, assertTakeCommand, finalizeAndRelease } from './practice/take-lifecycle.mjs';
 import { closeTakeEvidence } from './practice/take-cleanup.mjs';
 import { allocateTakeResources } from './practice/take-resources.mjs';
+import { classifyTakeEnd } from './practice/take-end.mjs';
 import { SessionOwnership } from './practice/session-ownership.mjs';
 import { observeConnectionStatus } from './midi/connection-status.mjs';
 import { MidiAdmissionLedger } from './midi/admission-ledger.mjs';
@@ -1317,7 +1318,7 @@ wss.on('connection', (socket) => {
       rejectedAtSessionMs: pauseLedger.lastNowMs,
     };
     takeJournal?.append('resource_limit', { ...resourceLimitEvidence, atSessionMs: pauseLedger.lastNowMs });
-    finishSession({ interrupted: true, endReason: 'resource_limit' });
+    finishSession({ trigger: 'resource_limit' });
     return false;
   }
   let countdownSuppressed = 0;
@@ -1994,7 +1995,7 @@ wss.on('connection', (socket) => {
     // persistence of the interrupted attempt, not cross-device Take resumption.
     if (native && activeTake) {
       try {
-        finishSession({ interrupted: true });
+        finishSession({ trigger: 'connection_closed' });
       } catch (err) {
         console.error('[engine] 断连结算失败:', String((err && err.message) || err));
         if (coordinator && activeTake) {
@@ -3015,7 +3016,7 @@ wss.on('connection', (socket) => {
         pauseLedger.advance(nowMs);
         if (reachedSongEnd(meta?.autoFinishAtMs, nowMs, pauseLedger.pauseSegments)) {
           takeJournal?.append('song_end_reached', { atSessionMs: nowMs, plannedEndMs: meta.autoFinishAtMs });
-          finishSession();
+          finishSession({ trigger: 'song-end' });
         }
         break;
       }
@@ -3055,7 +3056,7 @@ wss.on('connection', (socket) => {
         break;
       }
       case 'finish': {
-        finishSession();
+        finishSession({ trigger: 'user' });
         break;
       }
       default:
@@ -3076,8 +3077,11 @@ wss.on('connection', (socket) => {
     }
   }
 
-  function finalizeTimelineSession({ interrupted = false, endReason = null } = {}) {
+  function finalizeTimelineSession({ trigger = 'user' } = {}) {
     if (!native) return;
+    const end = classifyTakeEnd(trigger);
+    const interrupted = end.interrupted;
+    const endReason = end.endReason;
     // Drain Node input that was captured before the stop boundary, then close
     // the sink so events arriving during finalization cannot enter the take.
     try { if (!resourceLimitReached) midiAdapter.flush(); } catch { /* adapter diagnostics already emitted */ }
@@ -3086,13 +3090,16 @@ wss.on('connection', (socket) => {
     ownership.detachSink(handleNodeMidiEvent);
     sendJudgments([], Infinity);
     const finishedTake = activeTake;
-    if (interrupted) {
+    if (end.journalEvent) {
       // A browser/device switch closes this socket. Preserve the captured Take
       // as an explicitly untrusted, interrupted report instead of dropping it.
-      if (endReason !== 'resource_limit' || takeHealth.value !== 'disconnected') {
-        takeHealth.value = endReason === 'resource_limit' ? 'degraded' : 'disconnected';
+      // A disconnect that already degraded the Take is never "upgraded".
+      if (end.health === 'degraded') {
+        if (takeHealth.value !== 'disconnected') takeHealth.value = 'degraded';
+      } else {
+        takeHealth.value = end.health;
       }
-      takeJournal?.append(endReason === 'resource_limit' ? 'resource_limit_closed' : 'connection_closed', { atSessionMs: pauseLedger.lastNowMs });
+      takeJournal?.append(end.journalEvent, { atSessionMs: pauseLedger.lastNowMs });
     }
     // Worst health OBSERVED during the take (never "upgraded" by the order list).
     const worstHealth = takeHealth.value;

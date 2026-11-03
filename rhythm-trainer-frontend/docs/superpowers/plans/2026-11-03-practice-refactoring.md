@@ -454,3 +454,7 @@ Follow 的 note、pause、resume、finish、abandon 消息新增可选业务 `ta
 按 `2026-11-03-p2-session-ownership.md` 的 P2.2 执行：新增 `allocateTakeResources`，把 timeline `start` 的 trace、journal、`take_started`、live feedback、sink 五项收拢为一次带失败回滚的分配；释放仍走既有 `failActiveTake`，没有新增第二套清理路径。行为、协议字段与失败文案不变。
 
 验证：新增 4 项单元测试（含工厂注入失败），相关 41 项、`selftest` 251 项、`typecheck:server`、`build` 通过；全量 1161 项中 1 项失败仍是 E5 缺 `RHYTHM_REAL_SCORE_PATH`。P2.3（结束原因边界）与 Follow 适配仍未开始。
+
+## 21. 实施记录：P2.3 结束原因分类（2026-11-03）
+
+新增 `classifyTakeEnd` 统一用户结束、自然曲终、资源上限、断连四类触发器，`engine-server` 四条路径只传 trigger；历史落盘值保持不变（`completed` / `resource_limit` / `interrupted`）。未知 trigger 抛错，不猜默认。验证：3 项分类单测、相关 40 项、`selftest` 252 项、`typecheck:server`、`build` 通过；全量 1164 项中 1 项失败仍是 E5 缺真实谱。Follow 的模式适配仍未开始。

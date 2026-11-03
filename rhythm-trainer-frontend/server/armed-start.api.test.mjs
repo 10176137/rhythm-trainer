@@ -109,6 +109,7 @@ describe('armed practice through real Node MIDI admission and Rust scoring', () 
       const liveJudgments = received.slice(mark).flatMap(m => m.type === 'judgments' ? m.items : []);
       expect(liveJudgments.some(item => item.targetIndex === 0 && ['perfect', 'good'].includes(item.grade))).toBe(true);
       const saved = JSON.parse(readFileSync(join(dataDir, 'takes', `${report.takeId}.json`), 'utf8'));
+      expect(saved.lifecycle.endReason).toBe('completed');
       expect(saved.evidence.pauseIntervals).toEqual([
         { startMs: 100, endMs: 4100 },
         { startMs: 4200, endMs: 5200 },

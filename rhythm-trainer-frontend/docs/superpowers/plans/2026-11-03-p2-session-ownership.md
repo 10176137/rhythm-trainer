@@ -89,7 +89,7 @@ git diff --check
 
 后续：
 
-- P2.3 统一用户结束、自然完成、资源上限、断连的重叠边界，明确结束原因分类，不改变已持久化的历史字段（仍未开始）。
+- P2.3 统一用户结束、自然完成、资源上限、断连的重叠边界，明确结束原因分类，不改变已持久化的历史字段（已完成，见 §8）。
 - Follow 的模式适配与资源编排共用本模块，不强迫 Follow 复用 timeline 评分模型（仍未开始）。
 
 ## 7. 实施记录：P2.2 启动资源分配收拢（2026-11-03）
@@ -103,3 +103,17 @@ git diff --check
 - 行为不变：分配顺序、`started` 消息字段、`take_started` 内容、失败错误文案与清理证据均保持原样。
 
 验证：`server/practice/take-resources.test.mjs` 4 项通过（顺序、部分资源回滚、回滚失败不掩盖原始错误、无回调仅重抛）；`take-resources` + `armed-start.api` + `follow-protocol` + `take-persistence` 共 41 项通过；`npm run typecheck:server` 通过；`npm run selftest` 251 项通过；全量 1161 项中 1155 通过、5 skip、1 失败仍是既有 E5 缺真实谱环境阻塞。
+
+## 8. 实施记录：P2.3 结束原因分类（2026-11-03）
+
+新增 `server/practice/take-end.mjs` 的 `classifyTakeEnd(trigger)`，把四条结束路径的语义固定在一处：
+
+| trigger | interrupted | endReason（内存） | 历史落盘 | journal | health |
+| --- | --- | --- | --- | --- | --- |
+| `user` / `song-end` | false | null | `completed`（不变） | 无 | 不覆盖 |
+| `resource_limit` | true | `resource_limit` | `resource_limit`（不变） | `resource_limit_closed` | `degraded`（已 `disconnected` 时不覆盖） |
+| `connection_closed` | true | null | `interrupted`（不变） | `connection_closed` | `disconnected` |
+
+未知 trigger 直接抛错，不猜默认值。`engine-server.mjs` 的 `finish`、自动曲终、资源上限、断连四条路径改为传 trigger；`finalizeTimelineSession` 只消费分类结果，持久化的 `lifecycle.endReason` 映射保持原样。重叠触发（用户结束与曲终同 tick、结算 flush 期间触发资源上限）仍由“同步结算 + 先到者置空 native”裁决，本次只统一了语义，不改变裁决顺序。
+
+验证：`take-end` 单测 3 项；相关 40 项通过；`selftest` 252 项通过（新增断连 Take 的 `lifecycle.endReason === 'interrupted'` 断言）；全量 1164 项中 1158 通过、5 skip、1 失败仍是既有 E5 环境阻塞；`typecheck:server`、`build` 通过。
