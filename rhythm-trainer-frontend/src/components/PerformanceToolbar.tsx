@@ -52,9 +52,9 @@ export default function PerformanceToolbar(props: Props) {
       <AppButton type="button" className={`pt-btn ${props.metronomeOn ? 'on' : ''}`} aria-pressed={props.metronomeOn}
         title={`节拍器跟随练习速度（${config.tempo} BPM）`} disabled={props.busy} onClick={props.onToggleMetronome}><TimerIcon aria-hidden />{props.metronomeOn ? '节拍器开' : '节拍器'}</AppButton>
       {config.modeId === 'score' && <AppButton type="button" className={`pt-btn ${config.loopEnabled ? 'on' : ''}`} aria-pressed={config.loopEnabled} disabled={locked}
-        title={config.loopSelectionPending ? '点击谱面选择新的循环起点和终点' : '关闭后清除选区；再次开启可重新选择'}
+        title={config.loopSelectionPending ? (config.loopStartNote && !config.loopEndNote ? '起点已选：点击谱面选择终点' : '点击谱面先选起点（A），再选终点（B）') : '关闭后清除选区；再次开启可重新选择'}
         onClick={() => onPatch({ loopEnabled: !config.loopEnabled, loopSelectionPending: !config.loopEnabled,
-          loopStartNote: null, loopEndNote: null, playbackStartNote: null, loopStartBar: 1, loopEndBar: Math.max(1, props.barCount) })}><LoopIcon aria-hidden />{config.loopEnabled ? config.loopSelectionPending ? '选择循环范围' : '循环中' : '循环'}</AppButton>}
+          loopStartNote: null, loopEndNote: null, playbackStartNote: null, loopStartBar: 1, loopEndBar: Math.max(1, props.barCount) })}><LoopIcon aria-hidden />{config.loopEnabled ? config.loopSelectionPending ? (config.loopStartNote && !config.loopEndNote ? '选终点' : '选起点') : '循环中' : '循环'}</AppButton>}
     {props.playbackControls}
     </div>
     <span className="pt-toolbar-spacer" />

@@ -1620,7 +1620,7 @@ export default function App() {
     }
     const loopActive = config.modeId === 'score' && config.loopEnabled;
     if (loopActive && config.loopSelectionPending) {
-      addFeedback('请选择循环范围', '旧选区已清除，请点击谱面选择新的 A/B 音符，再开始练习。', 'neutral');
+      addFeedback('请选择循环范围', '旧选区已清除：先点击谱面选起点（A），再点击结束音（B），然后开始练习。', 'neutral');
       return false;
     }
     const engineMode = engineModeFor(config);
@@ -3225,12 +3225,40 @@ export default function App() {
   };
 
   /**
-   * Tapping a note adjusts the loop range silently:
-   *   no range yet      → this note becomes a one-note range (A/B visible)
-   *   range exists      → the endpoint NEAREST this note moves here; outside
-   *                       the range the side decides, so a one-note range can
-   *                       grow in either direction instead of clamping.
-   * No hint text: the band and A/B handles are the feedback.
+   * Phase 1 of the pending pick (2026-11-05 user request): fix the start (A)
+   * and keep waiting for the end (B). loopSelectionPending stays true, so the
+   * toolbar keeps showing the selection stage and practice cannot start
+   * half-selected. Bars mirror the start so a reload never shows a stale
+   * wider range; storage and settings draft stay in lockstep with config.
+   */
+  const commitLoopPendingStart = (start: LoopBoundaryNote) => {
+    const barLimit = Math.max(1, maxBar);
+    const loopStartBar = Math.min(Math.max(1, start.measureOrdinal), barLimit);
+    const nextConfig: PracticeConfig = {
+      ...configRef.current,
+      loopEnabled: true,
+      loopStartNote: start,
+      loopStartBar,
+      loopEndBar: loopStartBar,
+    };
+    setConfig(nextConfig);
+    setSettingsDraft((prev) => prev ? {
+      ...prev,
+      config: { ...prev.config, loopStartNote: start, loopStartBar, loopEndBar: loopStartBar },
+    } : prev);
+    savePracticeSettings({ config: nextConfig, metronomeOn });
+    setSettingsSaved(true);
+    addFeedback('起点已选', `第 ${start.measureOrdinal} 小节已设为起点，再点击谱面上的结束音。`, 'neutral');
+  };
+
+  /**
+   * Tapping a note on the score:
+   *   selection pending  → FIRST tap sets the start (A), SECOND tap sets the
+   *                        end (B); an end tapped before the start swaps the
+   *                        pair so the band stays ordered.
+   *   range exists       → the endpoint NEAREST this note moves here; outside
+   *                        the range the side decides, so a one-note range can
+   *                        grow in either direction instead of clamping.
    */
   const handleLoopPickTap = (eventId: string) => {
     if (practiceInProgress) return;
@@ -3242,6 +3270,19 @@ export default function App() {
     const tappedEvent = resolveEventById(engineDoc, canonicalId);
     if (!tappedEvent) return;
     const tapped = boundaryFromEvent(tappedEvent);
+    if (configRef.current.loopSelectionPending) {
+      const pendingStart = resolveBoundaryEvent(engineDoc, configRef.current.loopStartNote);
+      if (!pendingStart) {
+        commitLoopPendingStart(tapped);
+        return;
+      }
+      const start = boundaryFromEvent(pendingStart);
+      const range = tappedEvent.onsetBeat < pendingStart.onsetBeat
+        ? { start: tapped, end: start }
+        : { start, end: tapped };
+      commitLoopRange(range, true);
+      return;
+    }
     const startEvent = resolveBoundaryEvent(engineDoc, configRef.current.loopStartNote);
     const endEvent = resolveBoundaryEvent(engineDoc, configRef.current.loopEndNote);
     if (!startEvent || !endEvent) {
@@ -3256,6 +3297,9 @@ export default function App() {
 
   const handleLoopDragCommit = (which: 'start' | 'end', eventId: string) => {
     if (practiceInProgress) return;
+    // Pending selection is tap-only (A then B); a drag here would commit a
+    // half-selected one-note range and silently leave selection mode.
+    if (configRef.current.loopSelectionPending) return;
     const engineDoc = scoreDocRef.current.engine;
     if (!engineDoc) return;
     const draggedEvent = resolveEventById(engineDoc, eventId);
@@ -3683,7 +3727,9 @@ export default function App() {
               activeNoteIds={audition.active ? audition.activeNoteIds : !practiceInProgress && selectedScoreRange ? [selectedScoreRange.start.eventId] : activeNoteIds}
               hand={config.hand}
               notes={visibleTargetNotes}
-              loopRangeNotes={config.modeId === 'score' && config.loopEnabled && config.loopStartNote && config.loopEndNote ? { start: { eventId: config.loopStartNote.eventId }, end: { eventId: config.loopEndNote.eventId } } : undefined}
+              loopRangeNotes={config.modeId === 'score' && config.loopEnabled && config.loopStartNote && (config.loopEndNote || config.loopSelectionPending)
+                ? { start: { eventId: config.loopStartNote.eventId }, end: { eventId: (config.loopEndNote ?? config.loopStartNote).eventId } }
+                : undefined}
               loopEnabled={config.modeId === 'score' && config.loopEnabled}
               onLoopDragCommit={(edge, id) => scorePick.request(id, edge)}
               onSelectNote={route?.id === 'performance' ? (id) => scorePick.request(id) : undefined}
