@@ -1,0 +1,36 @@
+name: Alignment V2 verification
+
+on:
+  push:
+    branches:
+      - r2-3-alignment-v2
+  workflow_dispatch:
+
+jobs:
+  scoring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rust tests (legacy + candidate + frozen contracts)
+        working-directory: rhythm-trainer-core-v0.2
+        run: cargo test --workspace
+      - name: Build current Rust N-API addon
+        working-directory: rhythm-trainer-core-v0.2/bindings/node
+        run: |
+          npm ci
+          npm run build:debug
+      - name: Install frontend and mock MIDI dependencies
+        working-directory: rhythm-trainer-frontend
+        run: npm ci
+      - name: Node engine, shadow and persistence tests
+        working-directory: rhythm-trainer-frontend
+        run: |
+          npx vitest run server/alignment-shadow.test.mjs server/alignment-shadow.protocol.test.mjs server/take-finalization.test.mjs server/take-persistence.test.mjs
+      - name: Synthetic baseline benchmark (unchanged)
+        run: node audit-r1/benchmarks/alignment-v1/run-benchmark.mjs
+      - name: Synthetic candidate benchmark
+        run: node audit-r1/benchmarks/alignment-v1/run-benchmark.mjs --candidate
