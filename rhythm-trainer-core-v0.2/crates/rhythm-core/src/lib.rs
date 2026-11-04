@@ -9,6 +9,7 @@ mod matcher;
 mod midi;
 mod replay;
 mod alignment_candidate;
+pub mod alignment_dp_v2;
 mod scoring_v1;
 mod ring_buffer;
 mod schedule;
@@ -35,6 +36,10 @@ pub use ring_buffer::RingBuffer;
 pub use schedule::{apply_judgment_windows, build_schedule, AtomKind, JudgmentProfile, RhythmAtom, RhythmPattern, TargetHit};
 pub use alignment_candidate::{
     align_performances_candidate, LATE_WINDOW_INTERVAL_RATIO, MAX_LATE_WINDOW_MS,
+};
+pub use alignment_dp_v2::{
+    validate_alignment_result_v2, AlignmentDpConfigV1, AlignmentDiagnosticV2, AlignmentKind,
+    AlignmentPairV2, AlignmentResultV2, AlignmentStatusV2, AmbiguousGroupV2,
 };
 pub use scoring_v1::{
     align_performances, align_performances_traced, score_performance, score_performance_candidate, AlignmentBranch,

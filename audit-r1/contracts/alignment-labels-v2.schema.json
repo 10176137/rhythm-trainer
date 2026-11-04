@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://10176137.github.io/rhythm-trainer/contracts/alignment-labels-v2.schema.json",
+  "title": "AlignmentLabelsV2",
+  "description": "Ground-truth labels for alignment benchmark cases, schemaVersion 2 (PRD §5.3). Extends the v1 expected shape with timing-feature labels (absolute onset errors, local IOI errors, phase-change count), a cascade trigger declaration, and an ambiguity domain. Labels must never be passed to the algorithm under test; the runner validates them against this schema before any engine call. Existing schemaVersion-1 cases keep their files and their imperative validator — this schema applies only to cases whose manifest entry carries labelsSchema: 2.",
+  "type": "object",
+  "required": ["schemaVersion", "caseId", "mode", "source", "expected"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "mode": { "enum": ["timeline", "follow"] },
+    "source": { "enum": ["synthetic", "mock", "real-device", "public-labeled"] },
+    "license": { "type": "string", "minLength": 1 },
+    "expected": {
+      "type": "object",
+      "required": ["inputQuality", "assessable", "pairs", "missedScoreEventIds", "extraPerformedIds"],
+      "additionalProperties": false,
+      "properties": {
+        "inputQuality": { "enum": ["healthy", "degraded", "unscorable"] },
+        "assessable": {
+          "type": "array",
+          "items": { "enum": ["pitch", "onset", "duration"] },
+          "uniqueItems": true
+        },
+        "pairs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["scoreEventId", "performedNoteId", "pitchMatched", "onsetErrorMs"],
+            "additionalProperties": false,
+            "properties": {
+              "scoreEventId": { "type": "string", "minLength": 1 },
+              "performedNoteId": { "type": "string", "minLength": 1 },
+              "pitchMatched": { "type": "boolean" },
+              "onsetErrorMs": { "type": "number" },
+              "assignmentAmbiguous": {
+                "type": "boolean",
+                "description": "True when ground truth itself cannot decide WHICH same-pitch instance was played (cross-hand unison); the pair identity is then only correct up to in-group permutation."
+              }
+            }
+          }
+        },
+        "missedScoreEventIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "extraPerformedIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "unassessableScoreEventIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "ambiguousPairs": {
+          "type": "array",
+          "description": "scoreEventIds whose pair identity is ambiguous up to in-group permutation; runner counts them separately instead of as plain pairing errors.",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "absoluteOnsetErrorMs": {
+          "type": "array",
+          "description": "Expected raw onset error per label pair, in pair order: performed.onsetMs - targetOnsetMs.",
+          "items": { "type": "number" }
+        },
+        "localIoiErrorMs": {
+          "type": "array",
+          "description": "Expected IOI residual per adjacent label pair with positive reliable time deltas; length must be <= pairs length - 1.",
+          "items": { "type": "number" }
+        },
+        "phaseChangeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Expected number of distinct phase-change events derived at construction time."
+        },
+        "cascadeTrigger": {
+          "type": "object",
+          "description": "Declares an injected error used to measure cascade errors: everything after the trigger that is labeled clean must not gain algorithm-caused errors.",
+          "required": ["triggerScoreEventId", "cleanTailScoreEventIds"],
+          "additionalProperties": false,
+          "properties": {
+            "triggerScoreEventId": { "type": "string", "minLength": 1 },
+            "cleanTailScoreEventIds": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            }
+          }
+        },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}
