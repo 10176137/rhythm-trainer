@@ -941,6 +941,29 @@ async function handleApi(req, res, urlPath, query) {
     sendJson(res, 200, take);
     return;
   }
+  // Read-only research API: only the immutable sidecar explicitly referenced
+  // by this Take may be opened. Never infer paths from arbitrary query strings.
+  const shadowMatch = urlPath.match(/^\/api\/takes\/([A-Za-z0-9_-]+)\/alignment-shadow$/);
+  if (shadowMatch) {
+    const takeId = shadowMatch[1];
+    const take = readTakeById(takeId);
+    const ref = `assessments/${takeId}/offline-alignment-shadow-v1.json`;
+    if (!take || take.assessment?.assessmentV2Ref !== ref) {
+      sendJson(res, 404, { error: 'alignment shadow not found' });
+      return;
+    }
+    try {
+      const stored = JSON.parse(fs.readFileSync(
+        path.join(ASSESSMENTS_DIR, takeId, 'offline-alignment-shadow-v1.json'), 'utf8'));
+      if (stored.takeId !== takeId || stored.scope !== 'timeline-posthoc-research') {
+        throw new Error('alignment sidecar identity mismatch');
+      }
+      sendJson(res, 200, stored);
+    } catch {
+      sendJson(res, 404, { error: 'alignment shadow not readable' });
+    }
+    return;
+  }
   const sessionMatch = urlPath.match(/^\/api\/sessions\/([A-Za-z0-9_-]+)$/);
   if (sessionMatch) {
     const record = readAnyRecord(sessionMatch[1]);
