@@ -123,6 +123,9 @@ describe('Timeline opt-in Alignment Shadow Sidecar', () => {
     expect(artifact.comparison.recovered).toBeGreaterThanOrEqual(1);
     expect(artifact.candidate.pairs.some((p) => p.onsetErrorMs === 300)).toBe(true);
     expect(artifact.input.traceSha256).toMatch(/^[a-f0-9]{64}$/);
+    const httpShadow = await fetch('http://127.0.0.1:' + PORT + '/api/takes/' + result.takeId + '/alignment-shadow');
+    expect(httpShadow.status).toBe(200);
+    expect(await httpShadow.json()).toEqual(artifact);
     send({ type: 'persist-retry', takeId: result.takeId });
     const retried = await receive('persist-retry-result');
     expect(retried.persisted).toBe(true);
