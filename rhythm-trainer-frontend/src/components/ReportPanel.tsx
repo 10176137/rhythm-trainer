@@ -8,6 +8,7 @@ import type { HandSelection } from '../types/practice';
 import type { RetryComparison } from '../types/teaching';
 import FullScoreReport from './FullScoreReport';
 import TargetedPracticePanel from './TargetedPracticePanel';
+import { algorithmCn } from '../features/practice/scoreVariants';
 import type { TeachingRunDTO } from '../services/teachingRunRepository';
 
 interface Props {
@@ -131,6 +132,14 @@ export default function ReportPanel({
           {report.trustworthy ? '数据可信' : '数据不可信'}
         </span>
       </div>
+
+      {scoreAlgorithmVersion && (
+        <p className="report-algorithm-line" title="本报告的音符对齐与评分算法">
+          评分算法：<b>{algorithmCn(scoreAlgorithmVersion)}</b>
+          <span className="report-algorithm-version">（{scoreAlgorithmVersion}）</span>
+          {scoreConfigVersion ? <span> · 配置 {scoreConfigVersion}</span> : null}
+        </p>
+      )}
 
       <div className="report-grid">
         {cells.map(([label, value]) => (

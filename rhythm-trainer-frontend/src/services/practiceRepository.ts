@@ -23,6 +23,9 @@ export interface SessionSummary {
   reportKind?: TakeReportKind;
   endReason?: 'completed' | 'interrupted' | string | null;
   scoreStatus?: string | null;
+  /** Alignment the take's official score was computed with ('dp' | 'candidate' | 'legacy'). */
+  finalAlignmentScorer?: string | null;
+  hasScoreVariants?: boolean;
   scoreId?: string | null;
   scoreSnapshotRef?: string | null;
   legacySessionId?: string | null;
@@ -127,10 +130,15 @@ export interface TakeRecordDetail {
   assessment: {
     trustworthy: boolean;
     scoreStatus: string;
+    /** Alignment the official score was computed with ('dp' | 'candidate' | 'legacy'). */
+    finalAlignmentScorer?: string | null;
     scope?: 'follow' | string;
     strictTiming?: boolean;
     timelineReport?: SessionDetail | null;
     followReport?: FollowReport | null;
+    /** Same-input scores from the alignments NOT active at finalize time
+     * (2026-11-05 user request); the official score lives in timelineReport. */
+    scoreVariants?: Record<string, EngineSessionScoreReport | { error: string } | null> | null;
   };
   engineDiagnostics?: Record<string, unknown> | null;
   legacy?: {

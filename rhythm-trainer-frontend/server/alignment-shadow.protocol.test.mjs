@@ -131,6 +131,10 @@ describe('Take finalization shadow opt-in', () => {
     expect(take.assessment.timelineReport.scoreV1).toEqual(result.scoreV1);
     expect(take.assessment.finalAlignmentScorer).toBe('dp');
     expect(take.assessment.timelineReport.finalAlignmentScorer).toBe('dp');
+    // Score variants (2026-11-05): the two non-active alignments stored on
+    // the same inputs so the take record page can switch views.
+    expect(take.assessment.scoreVariants?.candidate?.algorithmVersion).toBe('scoring-v1.0.0+alignment-candidate-v2');
+    expect(take.assessment.scoreVariants?.legacy?.algorithmVersion).toBe('scoring-v1.0.1');
     expect(take.assessment.alignmentShadow).toBeUndefined();
     expect(sidecar).toMatchObject({
       takeId, status: 'compared', authority: 'diagnostic-only',

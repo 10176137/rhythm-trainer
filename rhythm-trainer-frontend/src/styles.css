@@ -1373,3 +1373,19 @@
 .session-control-notice{padding:20px 24px;box-shadow:0 12px 40px #252d3c20}
 .session-control-notice strong{font-size:16px}
 .session-control-notice p{font-size:13px;line-height:1.8;margin:10px 0;color:#697386}
+
+/* Score-variant views (2026-11-05): algorithm line + history switcher */
+.report-algorithm-line {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary, #666);
+}
+.report-algorithm-line b { color: var(--text-primary, #222); }
+.report-algorithm-version { opacity: 0.75; }
+.score-variant-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 6px 0;
+}

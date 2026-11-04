@@ -428,6 +428,8 @@ function takeSummary(take) {
     reportKind,
     endReason: take.lifecycle?.endReason ?? null,
     scoreStatus: take.assessment?.scoreStatus ?? null,
+    finalAlignmentScorer: take.assessment?.finalAlignmentScorer ?? null,
+    hasScoreVariants: !!take.assessment?.scoreVariants,
     attemptStatus: take.assessment?.attemptStatus ?? null,
     inputQuality: take.assessment?.inputQuality ?? 'unknown',
     planAuthority: take.assessment?.planAuthority ?? 'unknown',
@@ -3306,6 +3308,11 @@ wss.on('connection', (socket) => {
     // that produced the atoms. Performed notes use the mapped session times of
     // the key-lifecycle events, never raw device clocks.
     let scoreV1 = null;
+    // Score variants (2026-11-05 user request): the other two alignments are
+    // computed on the SAME inputs and stored beside the official score so the
+    // take record page can switch views without re-scoring. Failures degrade
+    // to null and never touch the official score.
+    let scoreVariants = null;
     let alignmentShadow = null; // independent diagnostic observation, never a grade
     let scoreStatus = 'UNAVAILABLE';
     let scoreConfigVersion = null;
@@ -3409,6 +3416,22 @@ wss.on('connection', (socket) => {
           : FINAL_ALIGNMENT_SCORER === 'candidate'
             ? addon.scorePerformanceCandidate(adjustedScoreEvents, performedNotes)
             : addon.scorePerformance(adjustedScoreEvents, performedNotes);
+        // Coexistence: store the non-active alignments beside the official
+        // score (same admitted inputs, same pause adjustment). A missing
+        // export or a scoring error degrades that variant to null; the take
+        // history page then simply hides its switch entry.
+        scoreVariants = {};
+        const VARIANT_SCORER_EXPORTS = { dp: 'scorePerformanceDpV2', candidate: 'scorePerformanceCandidate', legacy: 'scorePerformance' };
+        for (const variantName of ['dp', 'candidate', 'legacy']) {
+          if (variantName === FINAL_ALIGNMENT_SCORER) continue;
+          const variantFn = addon[VARIANT_SCORER_EXPORTS[variantName]];
+          if (typeof variantFn !== 'function') continue;
+          try {
+            scoreVariants[variantName] = variantFn(adjustedScoreEvents, performedNotes);
+          } catch {
+            scoreVariants[variantName] = null;
+          }
+        }
         if (ALIGNMENT_SHADOW_ENABLED) {
           // Exactly the same admitted MIDI notes, paused-target shifts and
           // session-time domain as the official score. Any candidate error is
@@ -3630,6 +3653,7 @@ wss.on('connection', (socket) => {
       },
       assessment: {
         finalAlignmentScorer: FINAL_ALIGNMENT_SCORER,
+        scoreVariants,
         trustworthy: !!record.report?.trustworthy,
         ...deriveTakeStatus({
           attemptStatus: interrupted ? 'interrupted' : (report.state === 'invalid' ? 'rejected' : 'completed'),
