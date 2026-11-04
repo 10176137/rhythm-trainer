@@ -51,7 +51,7 @@ function invoke(dir, overrides = {}) {
     alignCandidate: () => candidate,
     traceInfo,
     traceDir,
-    captureDiagnostics: { inputHealth: 'healthy', clockMapping: { status: 'ok' } },
+    captureDiagnostics: { inputHealth: 'healthy', scoreStatus: 'AVAILABLE', clockMapping: { status: 'ok' } },
     scoreFingerprint: 'frozen-score',
     planFingerprint: 'frozen-plan',
     codeSha: '9b5ae66',
@@ -126,7 +126,7 @@ describe('offline alignment research shadow', () => {
     const dir = tmp();
     const art = invoke(dir, {
       traceInfo: { traceId: 'missing', dropped: 8, persistenceDegraded: true },
-      captureDiagnostics: { inputHealth: 'degraded', clockMapping: { status: 'unscorable' } },
+      captureDiagnostics: { inputHealth: 'degraded', scoreStatus: 'DEGRADED', clockMapping: { status: 'unscorable' } },
     });
     expect(art.status).toBe('DEGRADED');
     expect(art.input.traceSha256).toBeNull();
