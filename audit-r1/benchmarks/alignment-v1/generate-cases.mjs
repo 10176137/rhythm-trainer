@@ -173,6 +173,35 @@ function timelineCase({ id, scenario, tags, scoreEvents = baseEvents(), performe
   return { trace, labelFile, manifest: { caseId: id, mode: 'timeline', scenario, tags, source: 'synthetic', license: 'internal-test-only' } };
 }
 
+// V2-label variant: same trace shape, labels validated against
+// audit-r1/contracts/alignment-labels-v2.schema.json (AJV, draft 2020-12).
+// Adds timing-feature labels (absolute onset errors, reliable local IOI
+// residuals with their transition index, phase-change count), a cascade
+// trigger declaration, and an ambiguity domain. The write loop picks the
+// `.labels.v2.json` suffix from schemaVersion.
+function timelineCaseV2({ id, scenario, tags, scoreEvents = baseEvents(), performed, quality, expected, notes }) {
+  const item = timelineCase({ id, scenario, tags, scoreEvents, performed, quality, labels: {}, notes: undefined });
+  item.labelFile = {
+    schemaVersion: 2,
+    datasetVersion: DATASET_VERSION,
+    caseId: id,
+    mode: 'timeline',
+    source: 'synthetic',
+    license: 'internal-test-only',
+    expected: {
+      inputQuality: 'healthy',
+      assessable: ['pitch', 'onset', 'duration'],
+      pairs: [],
+      missedScoreEventIds: [],
+      extraPerformedIds: [],
+      ...expected,
+      notes,
+    },
+  };
+  item.manifest = { ...item.manifest, labelsSchema: 2 };
+  return item;
+}
+
 function followCase({ id, scenario, tags, groups, inputs, pauseAtMs = null, expected, notes }) {
   const trace = {
     schemaVersion: 1,
@@ -728,13 +757,212 @@ cases.push(followCase({
   notes: 'After completion, further input is extra.',
 }));
 
+// --- alignment-v2 Task D cases (2026-11-04, schemaVersion 2 labels) --------
+// Scenario matrix the V2 PRD adds on top of the P0 cascade set: degraded
+// clock, timeline pause, same-onset different-pitch, adversarial mixture and
+// selection/pass boundaries. Labels carry construction-fixed timing features.
+
+// Clock degraded: the mapping is untrustworthy, so the CASE quality is
+// degraded — but note identities are still construction-fixed and must hold;
+// a degraded clock must never be misread as user misses.
+const clockJitter = { s1: 10, s2: -15, s3: 12, s4: -8, s5: 15, s6: -12, s7: 9, s8: -14 };
+const clockDegradedPerformed = performedFor(base, { offsets: clockJitter });
+cases.push(timelineCaseV2({
+  id: 'tl-clock-degraded-v2',
+  scenario: 'unstable clock mapping with bounded jitter, identities intact',
+  tags: ['timing', 'input-evidence', 'degraded', 'v2'],
+  performed: clockDegradedPerformed,
+  quality: { clockQuality: 'unstable' },
+  expected: {
+    inputQuality: 'degraded',
+    assessable: ['pitch', 'onset'],
+    ...labelsFor(base, clockDegradedPerformed),
+    absoluteOnsetErrorMs: [10, -15, 12, -8, 15, -12, 9, -14],
+    localIoiErrorMs: [
+      { afterPairIndex: 0, ioiErrorMs: -25 },
+      { afterPairIndex: 1, ioiErrorMs: 27 },
+      { afterPairIndex: 2, ioiErrorMs: -20 },
+      { afterPairIndex: 3, ioiErrorMs: 23 },
+      { afterPairIndex: 4, ioiErrorMs: -27 },
+      { afterPairIndex: 5, ioiErrorMs: 21 },
+      { afterPairIndex: 6, ioiErrorMs: -23 },
+    ],
+    phaseChangeCount: 0,
+  },
+  notes: 'Jitter only: no phase step; degraded input quality must not turn jitter into misses.',
+}));
+
+// Timeline pause: the trace lives in the pause-adjusted session domain (the
+// server adjusts targets before scoring). The 2000 ms wall-clock pause leaves
+// NO residual offset in this domain; small post-pause jitter must not be
+// read as a fake 300 ms late note.
+const pauseOnsets = [0, 750, 1500, 2250, 3000, 3750, 4500, 5250];
+const pauseScore = BASE_PITCHES.map((pitch, index) => ({
+  scoreEventId: `s${index + 1}`,
+  measure: index < 4 ? 1 : 2,
+  beatPosition: index,
+  pitch,
+  targetOnsetMs: pauseOnsets[index],
+  targetDurationMs: BEAT_MS,
+  partId: 'P1',
+  parseConfidence: 1,
+}));
+const pauseJitter = { s4: 12, s5: -10, s6: 8, s7: -9, s8: 11 };
+const pausePerformed = performedFor(pauseScore, { offsets: pauseJitter });
+cases.push(timelineCaseV2({
+  id: 'tl-pause-resume-v2',
+  scenario: 'pause then resume in the adjusted session domain',
+  tags: ['timing', 'pause', 'v2'],
+  scoreEvents: pauseScore,
+  performed: pausePerformed,
+  labels: undefined,
+  expected: {
+    ...labelsFor(pauseScore, pausePerformed),
+    absoluteOnsetErrorMs: [0, 0, 0, 12, -10, 8, -9, 11],
+    localIoiErrorMs: [
+      { afterPairIndex: 0, ioiErrorMs: 0 },
+      { afterPairIndex: 1, ioiErrorMs: 0 },
+      { afterPairIndex: 2, ioiErrorMs: 12 },
+      { afterPairIndex: 3, ioiErrorMs: -22 },
+      { afterPairIndex: 4, ioiErrorMs: 18 },
+      { afterPairIndex: 5, ioiErrorMs: -17 },
+      { afterPairIndex: 6, ioiErrorMs: 20 },
+    ],
+    phaseChangeCount: 0,
+  },
+  notes: 'Adjusted domain is consecutive: the pause must not create a fake lateness step.',
+}));
+
+// Same onset, different pitches: one chord of three DISTINCT pitches struck
+// together, then two sequential notes. No valid IOI samples inside the group.
+const sameTimeScore = [
+  event('s1', 1, 0, 60),
+  event('s2', 1, 0, 64),
+  event('s3', 1, 0, 67),
+  event('s4', 1, 1, 72),
+  event('s5', 2, 1, 67),
+];
+const sameTimePerformed = [
+  { performedNoteId: 'p-s1', pitch: 60, onsetMs: onset(0), releaseMs: round(onset(0) + BEAT_MS), pairingStatus: 'complete' },
+  { performedNoteId: 'p-s2', pitch: 64, onsetMs: round(onset(0) + 2), releaseMs: round(onset(0) + 2 + BEAT_MS), pairingStatus: 'complete' },
+  { performedNoteId: 'p-s3', pitch: 67, onsetMs: round(onset(0) + 5), releaseMs: round(onset(0) + 5 + BEAT_MS), pairingStatus: 'complete' },
+  { performedNoteId: 'p-s4', pitch: 72, onsetMs: onset(1), releaseMs: round(onset(1) + BEAT_MS), pairingStatus: 'complete' },
+  { performedNoteId: 'p-s5', pitch: 67, onsetMs: onset(4), releaseMs: round(onset(4) + BEAT_MS), pairingStatus: 'complete' },
+];
+cases.push(timelineCaseV2({
+  id: 'tl-same-time-diff-pitch',
+  scenario: 'three different pitches at one onset, struck together',
+  tags: ['chord', 'same-onset', 'v2'],
+  scoreEvents: chordScore,
+  performed: sameTimePerformed,
+  labels: undefined,
+  expected: {
+    ...labelsFor(sameTimeScore, sameTimePerformed),
+    absoluteOnsetErrorMs: [0, 2, 5, 0, 0],
+    localIoiErrorMs: [
+      { afterPairIndex: 2, ioiErrorMs: 0 },
+      { afterPairIndex: 3, ioiErrorMs: 0 },
+    ],
+    phaseChangeCount: 0,
+  },
+  notes: 'Inside the same-onset group there are no IOI speed samples (PRD 5.2); transitions s3->s4 and s4->s5 only.',
+}));
+
+// Adversarial mixture: isolated late (+300, returns), one wrong pitch, one
+// skipped target, one mid-phrase extra, and a repeated same-pitch tail.
+const adversarialScore = [
+  event('s1', 1, 0, 60),
+  event('s2', 1, 1, 62),
+  event('s3', 1, 2, 64),
+  event('s4', 1, 3, 65),
+  event('s5', 2, 0, 67),
+  event('s6', 2, 1, 69),
+  event('s7', 2, 2, 60),
+  event('s8', 2, 3, 60),
+];
+const adversarialPerformed = [
+  { performedNoteId: 'p-s1', pitch: 60, onsetMs: onset(0), releaseMs: round(onset(0) + BEAT_MS), pairingStatus: 'complete' },
+  { performedNoteId: 'p-s2', pitch: 62, onsetMs: round(onset(1) + 300), releaseMs: round(onset(1) + 300 + BEAT_MS), pairingStatus: 'complete' },
+  { performedNoteId: 'p-s3', pitch: 64, onsetMs: onset(2), releaseMs: round(onset(2) + BEAT_MS), pairingStatus: 'complete' },
+  { performedNoteId: 'p-s4', pitch: 66, onsetMs: onset(3), releaseMs: round(onset(3) + BEAT_MS), pairingStatus: 'complete' },
+  { performedNoteId: 'p-s6', pitch: 69, onsetMs: onset(5), releaseMs: round(onset(5) + BEAT_MS), pairingStatus: 'complete' },
+  { performedNoteId: 'p-extra-1', pitch: 70, onsetMs: round(onset(5) + 150), releaseMs: round(onset(5) + 150 + BEAT_MS), pairingStatus: 'complete' },
+  { performedNoteId: 'p-s7', pitch: 60, onsetMs: onset(6), releaseMs: round(onset(6) + BEAT_MS), pairingStatus: 'complete' },
+  { performedNoteId: 'p-s8', pitch: 60, onsetMs: onset(7), releaseMs: round(onset(7) + BEAT_MS), pairingStatus: 'complete' },
+];
+cases.push(timelineCaseV2({
+  id: 'tl-adversarial-mixed',
+  scenario: 'late + wrong pitch + miss + extra + repeated pitch in one take',
+  tags: ['timing', 'cascade', 'mixed', 'hard', 'v2'],
+  scoreEvents: adversarialScore,
+  performed: adversarialPerformed,
+  labels: undefined,
+  expected: {
+    pairs: [
+      { scoreEventId: 's1', performedNoteId: 'p-s1', pitchMatched: true, onsetErrorMs: 0 },
+      { scoreEventId: 's2', performedNoteId: 'p-s2', pitchMatched: true, onsetErrorMs: 300 },
+      { scoreEventId: 's3', performedNoteId: 'p-s3', pitchMatched: true, onsetErrorMs: 0 },
+      { scoreEventId: 's4', performedNoteId: 'p-s4', pitchMatched: false, onsetErrorMs: 0 },
+      { scoreEventId: 's6', performedNoteId: 'p-s6', pitchMatched: true, onsetErrorMs: 0 },
+      { scoreEventId: 's7', performedNoteId: 'p-s7', pitchMatched: true, onsetErrorMs: 0 },
+      { scoreEventId: 's8', performedNoteId: 'p-s8', pitchMatched: true, onsetErrorMs: 0 },
+    ],
+    missedScoreEventIds: ['s5'],
+    extraPerformedIds: ['p-extra-1'],
+    absoluteOnsetErrorMs: [0, 300, 0, 0, 0, 0, 0],
+    localIoiErrorMs: [
+      { afterPairIndex: 0, ioiErrorMs: 300 },
+      { afterPairIndex: 1, ioiErrorMs: -300 },
+      { afterPairIndex: 2, ioiErrorMs: 0 },
+      { afterPairIndex: 4, ioiErrorMs: 0 },
+      { afterPairIndex: 5, ioiErrorMs: 0 },
+    ],
+    phaseChangeCount: 0,
+    cascadeTrigger: {
+      triggerScoreEventId: 's2',
+      cleanTailScoreEventIds: ['s3', 's6', 's7', 's8'],
+    },
+  },
+  notes: 's4 wrong-pitch and s5 missed are REAL injected errors (excluded from the clean tail); s2 late returns to grid; s7/s8 repeat pitch 60.',
+}));
+
+// Selection / pass boundary: the same two-note fragment appears twice (two
+// expanded pass occurrences); identities must never pair across the pass
+// boundary even though pitch and rhythm repeat.
+const passScore = [
+  event('s1-pass1', 1, 0, 60),
+  event('s2-pass1', 1, 1, 62),
+  event('s1-pass2', 2, 0, 60),
+  event('s2-pass2', 2, 1, 62),
+];
+const passPerformed = performedFor(passScore);
+cases.push(timelineCaseV2({
+  id: 'tl-selection-pass-boundary',
+  scenario: 'selection repeated as two expanded passes',
+  tags: ['selection', 'pass-boundary', 'v2'],
+  scoreEvents: passScore,
+  performed: passPerformed,
+  labels: undefined,
+  expected: {
+    ...labelsFor(passScore, passPerformed),
+    absoluteOnsetErrorMs: [0, 0, 0, 0],
+    localIoiErrorMs: [
+      { afterPairIndex: 0, ioiErrorMs: 0 },
+      { afterPairIndex: 1, ioiErrorMs: 0 },
+      { afterPairIndex: 2, ioiErrorMs: 0 },
+    ],
+    phaseChangeCount: 0,
+  },
+  notes: 'pass-expanded occurrences (s1-pass1 vs s1-pass2) must pair within their own pass only.',
+}));
+
 // ---------------------------------------------------------------------------
 // Write files
 
 const manifestCases = [];
 for (const item of cases) {
   const traceName = `${item.trace.caseId}.trace.json`;
-  const labelName = `${item.labelFile.caseId}.labels.json`;
+  const labelName = `${item.labelFile.caseId}${item.labelFile.schemaVersion === 2 ? '.labels.v2' : '.labels'}.json`;
   writeFileSync(path.join(CASE_DIR, traceName), `${JSON.stringify(item.trace, null, 2)}\n`, 'utf8');
   writeFileSync(path.join(LABEL_DIR, labelName), `${JSON.stringify(item.labelFile, null, 2)}\n`, 'utf8');
   manifestCases.push({

@@ -411,10 +411,88 @@
       "license": "internal-test-only",
       "trace": "cases/fw-extra-after-complete.trace.json",
       "labels": "labels/fw-extra-after-complete.labels.json"
+    },
+    {
+      "caseId": "tl-clock-degraded-v2",
+      "mode": "timeline",
+      "scenario": "unstable clock mapping with bounded jitter, identities intact",
+      "tags": [
+        "timing",
+        "input-evidence",
+        "degraded",
+        "v2"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "labelsSchema": 2,
+      "trace": "cases/tl-clock-degraded-v2.trace.json",
+      "labels": "labels/tl-clock-degraded-v2.labels.v2.json"
+    },
+    {
+      "caseId": "tl-pause-resume-v2",
+      "mode": "timeline",
+      "scenario": "pause then resume in the adjusted session domain",
+      "tags": [
+        "timing",
+        "pause",
+        "v2"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "labelsSchema": 2,
+      "trace": "cases/tl-pause-resume-v2.trace.json",
+      "labels": "labels/tl-pause-resume-v2.labels.v2.json"
+    },
+    {
+      "caseId": "tl-same-time-diff-pitch",
+      "mode": "timeline",
+      "scenario": "three different pitches at one onset, struck together",
+      "tags": [
+        "chord",
+        "same-onset",
+        "v2"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "labelsSchema": 2,
+      "trace": "cases/tl-same-time-diff-pitch.trace.json",
+      "labels": "labels/tl-same-time-diff-pitch.labels.v2.json"
+    },
+    {
+      "caseId": "tl-adversarial-mixed",
+      "mode": "timeline",
+      "scenario": "late + wrong pitch + miss + extra + repeated pitch in one take",
+      "tags": [
+        "timing",
+        "cascade",
+        "mixed",
+        "hard",
+        "v2"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "labelsSchema": 2,
+      "trace": "cases/tl-adversarial-mixed.trace.json",
+      "labels": "labels/tl-adversarial-mixed.labels.v2.json"
+    },
+    {
+      "caseId": "tl-selection-pass-boundary",
+      "mode": "timeline",
+      "scenario": "selection repeated as two expanded passes",
+      "tags": [
+        "selection",
+        "pass-boundary",
+        "v2"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "labelsSchema": 2,
+      "trace": "cases/tl-selection-pass-boundary.trace.json",
+      "labels": "labels/tl-selection-pass-boundary.labels.v2.json"
     }
   ],
   "counts": {
-    "timeline": 23,
+    "timeline": 28,
     "follow": 7
   }
 }

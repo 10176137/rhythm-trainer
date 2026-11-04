@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 2,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-selection-pass-boundary",
+  "mode": "timeline",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "assessable": [
+      "pitch",
+      "onset",
+      "duration"
+    ],
+    "pairs": [
+      {
+        "scoreEventId": "s1-pass1",
+        "performedNoteId": "p-s1-pass1",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s2-pass1",
+        "performedNoteId": "p-s2-pass1",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s1-pass2",
+        "performedNoteId": "p-s1-pass2",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s2-pass2",
+        "performedNoteId": "p-s2-pass2",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      }
+    ],
+    "missedScoreEventIds": [],
+    "extraPerformedIds": [],
+    "unassessableScoreEventIds": [],
+    "absoluteOnsetErrorMs": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "localIoiErrorMs": [
+      {
+        "afterPairIndex": 0,
+        "ioiErrorMs": 0
+      },
+      {
+        "afterPairIndex": 1,
+        "ioiErrorMs": 0
+      },
+      {
+        "afterPairIndex": 2,
+        "ioiErrorMs": 0
+      }
+    ],
+    "phaseChangeCount": 0,
+    "notes": "pass-expanded occurrences (s1-pass1 vs s1-pass2) must pair within their own pass only."
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-pause-resume-v2",
+  "mode": "timeline",
+  "scenario": "pause then resume in the adjusted session domain",
+  "config": {
+    "bpm": 80,
+    "countInMs": 3000,
+    "countInUs": 3000000,
+    "ticksPerQuarter": 960,
+    "hand": "both",
+    "range": {
+      "startMeasureOrdinal": 1,
+      "endMeasureOrdinal": 2
+    },
+    "repeatSelection": {
+      "kind": "none"
+    },
+    "plannerVersion": "benchmark-planner-1",
+    "scoreFingerprint": "benchmark:score:a6715c1cf1f3dcc18be709524f04e651",
+    "planFingerprint": "plan-v1:sha256:3ff106b0dcbdfd2b30b2e144f3ffa1ae533ad831f5f7d98e2e8687d6d6849c4b"
+  },
+  "scoreEvents": [
+    {
+      "scoreEventId": "s1",
+      "measure": 1,
+      "beatPosition": 0,
+      "pitch": 60,
+      "targetOnsetMs": 0,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s2",
+      "measure": 1,
+      "beatPosition": 1,
+      "pitch": 62,
+      "targetOnsetMs": 750,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s3",
+      "measure": 1,
+      "beatPosition": 2,
+      "pitch": 64,
+      "targetOnsetMs": 1500,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s4",
+      "measure": 1,
+      "beatPosition": 3,
+      "pitch": 65,
+      "targetOnsetMs": 2250,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s5",
+      "measure": 2,
+      "beatPosition": 4,
+      "pitch": 67,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s6",
+      "measure": 2,
+      "beatPosition": 5,
+      "pitch": 69,
+      "targetOnsetMs": 3750,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s7",
+      "measure": 2,
+      "beatPosition": 6,
+      "pitch": 71,
+      "targetOnsetMs": 4500,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s8",
+      "measure": 2,
+      "beatPosition": 7,
+      "pitch": 72,
+      "targetOnsetMs": 5250,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    }
+  ],
+  "performed": [
+    {
+      "performedNoteId": "p-s1",
+      "pitch": 60,
+      "onsetMs": 0,
+      "releaseMs": 750,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s2",
+      "pitch": 62,
+      "onsetMs": 750,
+      "releaseMs": 1500,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s3",
+      "pitch": 64,
+      "onsetMs": 1500,
+      "releaseMs": 2250,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s4",
+      "pitch": 65,
+      "onsetMs": 2262,
+      "releaseMs": 3012,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s5",
+      "pitch": 67,
+      "onsetMs": 2990,
+      "releaseMs": 3740,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s6",
+      "pitch": 69,
+      "onsetMs": 3758,
+      "releaseMs": 4508,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s7",
+      "pitch": 71,
+      "onsetMs": 4491,
+      "releaseMs": 5241,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s8",
+      "pitch": 72,
+      "onsetMs": 5261,
+      "releaseMs": 6011,
+      "pairingStatus": "complete"
+    }
+  ],
+  "qualitySignals": {
+    "noteOnMissing": 0,
+    "noteOffMissing": 0,
+    "duplicates": 0,
+    "outOfOrder": 0,
+    "clockQuality": "good",
+    "deviceDisconnected": false,
+    "queueOverflow": false,
+    "performedCount": 8
+  },
+  "derivation": "synthetic exact-answer trace; labels are authored separately"
+}

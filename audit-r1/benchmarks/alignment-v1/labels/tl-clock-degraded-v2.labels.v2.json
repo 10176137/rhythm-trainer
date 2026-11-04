@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 2,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-clock-degraded-v2",
+  "mode": "timeline",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "degraded",
+    "assessable": [
+      "pitch",
+      "onset"
+    ],
+    "pairs": [
+      {
+        "scoreEventId": "s1",
+        "performedNoteId": "p-s1",
+        "pitchMatched": true,
+        "onsetErrorMs": 10
+      },
+      {
+        "scoreEventId": "s2",
+        "performedNoteId": "p-s2",
+        "pitchMatched": true,
+        "onsetErrorMs": -15
+      },
+      {
+        "scoreEventId": "s3",
+        "performedNoteId": "p-s3",
+        "pitchMatched": true,
+        "onsetErrorMs": 12
+      },
+      {
+        "scoreEventId": "s4",
+        "performedNoteId": "p-s4",
+        "pitchMatched": true,
+        "onsetErrorMs": -8
+      },
+      {
+        "scoreEventId": "s5",
+        "performedNoteId": "p-s5",
+        "pitchMatched": true,
+        "onsetErrorMs": 15
+      },
+      {
+        "scoreEventId": "s6",
+        "performedNoteId": "p-s6",
+        "pitchMatched": true,
+        "onsetErrorMs": -12
+      },
+      {
+        "scoreEventId": "s7",
+        "performedNoteId": "p-s7",
+        "pitchMatched": true,
+        "onsetErrorMs": 9
+      },
+      {
+        "scoreEventId": "s8",
+        "performedNoteId": "p-s8",
+        "pitchMatched": true,
+        "onsetErrorMs": -14
+      }
+    ],
+    "missedScoreEventIds": [],
+    "extraPerformedIds": [],
+    "unassessableScoreEventIds": [],
+    "absoluteOnsetErrorMs": [
+      10,
+      -15,
+      12,
+      -8,
+      15,
+      -12,
+      9,
+      -14
+    ],
+    "localIoiErrorMs": [
+      {
+        "afterPairIndex": 0,
+        "ioiErrorMs": -25
+      },
+      {
+        "afterPairIndex": 1,
+        "ioiErrorMs": 27
+      },
+      {
+        "afterPairIndex": 2,
+        "ioiErrorMs": -20
+      },
+      {
+        "afterPairIndex": 3,
+        "ioiErrorMs": 23
+      },
+      {
+        "afterPairIndex": 4,
+        "ioiErrorMs": -27
+      },
+      {
+        "afterPairIndex": 5,
+        "ioiErrorMs": 21
+      },
+      {
+        "afterPairIndex": 6,
+        "ioiErrorMs": -23
+      }
+    ],
+    "phaseChangeCount": 0,
+    "notes": "Jitter only: no phase step; degraded input quality must not turn jitter into misses."
+  }
+}

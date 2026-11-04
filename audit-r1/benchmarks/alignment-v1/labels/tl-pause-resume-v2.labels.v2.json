@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 2,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-pause-resume-v2",
+  "mode": "timeline",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "assessable": [
+      "pitch",
+      "onset",
+      "duration"
+    ],
+    "pairs": [
+      {
+        "scoreEventId": "s1",
+        "performedNoteId": "p-s1",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s2",
+        "performedNoteId": "p-s2",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s3",
+        "performedNoteId": "p-s3",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s4",
+        "performedNoteId": "p-s4",
+        "pitchMatched": true,
+        "onsetErrorMs": 12
+      },
+      {
+        "scoreEventId": "s5",
+        "performedNoteId": "p-s5",
+        "pitchMatched": true,
+        "onsetErrorMs": -10
+      },
+      {
+        "scoreEventId": "s6",
+        "performedNoteId": "p-s6",
+        "pitchMatched": true,
+        "onsetErrorMs": 8
+      },
+      {
+        "scoreEventId": "s7",
+        "performedNoteId": "p-s7",
+        "pitchMatched": true,
+        "onsetErrorMs": -9
+      },
+      {
+        "scoreEventId": "s8",
+        "performedNoteId": "p-s8",
+        "pitchMatched": true,
+        "onsetErrorMs": 11
+      }
+    ],
+    "missedScoreEventIds": [],
+    "extraPerformedIds": [],
+    "unassessableScoreEventIds": [],
+    "absoluteOnsetErrorMs": [
+      0,
+      0,
+      0,
+      12,
+      -10,
+      8,
+      -9,
+      11
+    ],
+    "localIoiErrorMs": [
+      {
+        "afterPairIndex": 0,
+        "ioiErrorMs": 0
+      },
+      {
+        "afterPairIndex": 1,
+        "ioiErrorMs": 0
+      },
+      {
+        "afterPairIndex": 2,
+        "ioiErrorMs": 12
+      },
+      {
+        "afterPairIndex": 3,
+        "ioiErrorMs": -22
+      },
+      {
+        "afterPairIndex": 4,
+        "ioiErrorMs": 18
+      },
+      {
+        "afterPairIndex": 5,
+        "ioiErrorMs": -17
+      },
+      {
+        "afterPairIndex": 6,
+        "ioiErrorMs": 20
+      }
+    ],
+    "phaseChangeCount": 0,
+    "notes": "Adjusted domain is consecutive: the pause must not create a fake lateness step."
+  }
+}

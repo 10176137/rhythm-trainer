@@ -4,10 +4,11 @@
   "title": "AlignmentLabelsV2",
   "description": "Ground-truth labels for alignment benchmark cases, schemaVersion 2 (PRD §5.3). Extends the v1 expected shape with timing-feature labels (absolute onset errors, local IOI errors, phase-change count), a cascade trigger declaration, and an ambiguity domain. Labels must never be passed to the algorithm under test; the runner validates them against this schema before any engine call. Existing schemaVersion-1 cases keep their files and their imperative validator — this schema applies only to cases whose manifest entry carries labelsSchema: 2.",
   "type": "object",
-  "required": ["schemaVersion", "caseId", "mode", "source", "expected"],
+  "required": ["schemaVersion", "datasetVersion", "caseId", "mode", "source", "expected"],
   "additionalProperties": false,
   "properties": {
     "schemaVersion": { "const": 2 },
+    "datasetVersion": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
     "mode": { "enum": ["timeline", "follow"] },
     "source": { "enum": ["synthetic", "mock", "real-device", "public-labeled"] },
@@ -69,8 +70,16 @@
         },
         "localIoiErrorMs": {
           "type": "array",
-          "description": "Expected IOI residual per adjacent label pair with positive reliable time deltas; length must be <= pairs length - 1.",
-          "items": { "type": "number" }
+          "description": "Expected local IOI residual, one entry per RELIABLE adjacent transition. Transitions inside a same-onset group (no valid speed sample) and transitions across missed notes are omitted; afterPairIndex is the 0-based index of the EARLIER pair of the transition, matching the pairs array order.",
+          "items": {
+            "type": "object",
+            "required": ["afterPairIndex", "ioiErrorMs"],
+            "additionalProperties": false,
+            "properties": {
+              "afterPairIndex": { "type": "integer", "minimum": 0 },
+              "ioiErrorMs": { "type": "number" }
+            }
+          }
         },
         "phaseChangeCount": {
           "type": "integer",

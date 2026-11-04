@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-selection-pass-boundary",
+  "mode": "timeline",
+  "scenario": "selection repeated as two expanded passes",
+  "config": {
+    "bpm": 80,
+    "countInMs": 3000,
+    "countInUs": 3000000,
+    "ticksPerQuarter": 960,
+    "hand": "both",
+    "range": {
+      "startMeasureOrdinal": 1,
+      "endMeasureOrdinal": 2
+    },
+    "repeatSelection": {
+      "kind": "none"
+    },
+    "plannerVersion": "benchmark-planner-1",
+    "scoreFingerprint": "benchmark:score:b5c467fd787003fca8a68cb4785ebab3",
+    "planFingerprint": "plan-v1:sha256:6b14c48c3eab4932d7a5adcd5b419d0fdf4aeb669e532929a5ddefc3d8219ad6"
+  },
+  "scoreEvents": [
+    {
+      "scoreEventId": "s1-pass1",
+      "measure": 1,
+      "beatPosition": 0,
+      "pitch": 60,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s2-pass1",
+      "measure": 1,
+      "beatPosition": 1,
+      "pitch": 62,
+      "targetOnsetMs": 3750,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s1-pass2",
+      "measure": 2,
+      "beatPosition": 0,
+      "pitch": 60,
+      "targetOnsetMs": 3000,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    },
+    {
+      "scoreEventId": "s2-pass2",
+      "measure": 2,
+      "beatPosition": 1,
+      "pitch": 62,
+      "targetOnsetMs": 3750,
+      "targetDurationMs": 750,
+      "partId": "P1",
+      "parseConfidence": 1
+    }
+  ],
+  "performed": [
+    {
+      "performedNoteId": "p-s1-pass1",
+      "pitch": 60,
+      "onsetMs": 3000,
+      "releaseMs": 3750,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s2-pass1",
+      "pitch": 62,
+      "onsetMs": 3750,
+      "releaseMs": 4500,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s1-pass2",
+      "pitch": 60,
+      "onsetMs": 3000,
+      "releaseMs": 3750,
+      "pairingStatus": "complete"
+    },
+    {
+      "performedNoteId": "p-s2-pass2",
+      "pitch": 62,
+      "onsetMs": 3750,
+      "releaseMs": 4500,
+      "pairingStatus": "complete"
+    }
+  ],
+  "qualitySignals": {
+    "noteOnMissing": 0,
+    "noteOffMissing": 0,
+    "duplicates": 0,
+    "outOfOrder": 0,
+    "clockQuality": "good",
+    "deviceDisconnected": false,
+    "queueOverflow": false,
+    "performedCount": 4
+  },
+  "derivation": "synthetic exact-answer trace; labels are authored separately"
+}

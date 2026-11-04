@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 2,
+  "datasetVersion": "alignment-bench-v1",
+  "caseId": "tl-adversarial-mixed",
+  "mode": "timeline",
+  "source": "synthetic",
+  "license": "internal-test-only",
+  "expected": {
+    "inputQuality": "healthy",
+    "assessable": [
+      "pitch",
+      "onset",
+      "duration"
+    ],
+    "pairs": [
+      {
+        "scoreEventId": "s1",
+        "performedNoteId": "p-s1",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s2",
+        "performedNoteId": "p-s2",
+        "pitchMatched": true,
+        "onsetErrorMs": 300
+      },
+      {
+        "scoreEventId": "s3",
+        "performedNoteId": "p-s3",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s4",
+        "performedNoteId": "p-s4",
+        "pitchMatched": false,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s6",
+        "performedNoteId": "p-s6",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s7",
+        "performedNoteId": "p-s7",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      },
+      {
+        "scoreEventId": "s8",
+        "performedNoteId": "p-s8",
+        "pitchMatched": true,
+        "onsetErrorMs": 0
+      }
+    ],
+    "missedScoreEventIds": [
+      "s5"
+    ],
+    "extraPerformedIds": [
+      "p-extra-1"
+    ],
+    "absoluteOnsetErrorMs": [
+      0,
+      300,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "localIoiErrorMs": [
+      {
+        "afterPairIndex": 0,
+        "ioiErrorMs": 300
+      },
+      {
+        "afterPairIndex": 1,
+        "ioiErrorMs": -300
+      },
+      {
+        "afterPairIndex": 2,
+        "ioiErrorMs": 0
+      },
+      {
+        "afterPairIndex": 4,
+        "ioiErrorMs": 0
+      },
+      {
+        "afterPairIndex": 5,
+        "ioiErrorMs": 0
+      }
+    ],
+    "phaseChangeCount": 0,
+    "cascadeTrigger": {
+      "triggerScoreEventId": "s2",
+      "cleanTailScoreEventIds": [
+        "s3",
+        "s6",
+        "s7",
+        "s8"
+      ]
+    },
+    "notes": "s4 wrong-pitch and s5 missed are REAL injected errors (excluded from the clean tail); s2 late returns to grid; s7/s8 repeat pitch 60."
+  }
+}
