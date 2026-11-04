@@ -38,6 +38,7 @@ import { resolveModeScoringConfig } from './mode-config.mjs';
 import { ScoreLibrary, ScoreLibraryError, SCORE_LIBRARY_SCHEMA_VERSION, MAX_SCORE_XML_BYTES } from './score-library.mjs';
 import { TakeTemplateStore, TakeTemplateError, TAKE_TEMPLATE_SCHEMA_VERSION } from './take-templates.mjs';
 import { TakeFinalizationService } from './take-finalization.mjs';
+import { buildAlignmentShadow, persistAlignmentShadow } from './alignment-shadow.mjs';
 import { deriveTakeStatus } from './take-status.mjs';
 import { TeachingOrchestrator, TeachingOrchestratorError } from './teaching-orchestrator.mjs';
 
@@ -57,6 +58,8 @@ const SCHEMA_VERSION = 1;
 // replayed deterministically. A normal exercise is far below this; a stuck
 // key producing endless wrong notes is truncated and marked as such.
 const FOLLOW_INPUT_LIMIT = 20000;
+// Explicit research opt-in only. Never changes scorePerformance or P08 output.
+const ALIGNMENT_SHADOW_ENABLED = process.env.RHYTHM_ALIGNMENT_SHADOW === '1';
 // Pass rule (product heuristic, same threshold as the core's prescription):
 // clean input, no miss/extra, mean absolute error within 30 ms.
 const PASS_MAE_MS = 30.0;
@@ -127,6 +130,7 @@ const DATA_DIR = process.env.RHYTHM_DATA_DIR
   || path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'rhythm-trainer-frontend');
 const SESSIONS_DIR = path.join(DATA_DIR, 'sessions');
 const TAKES_DIR = path.join(DATA_DIR, 'takes');
+const ASSESSMENTS_DIR = path.join(DATA_DIR, 'assessments');
 const SCORE_SNAPSHOTS_DIR = path.join(DATA_DIR, 'score-snapshots');
 const TRACES_DIR = path.join(DATA_DIR, 'traces');
 const JOURNALS_DIR = path.join(DATA_DIR, 'journals');
@@ -3020,6 +3024,7 @@ wss.on('connection', (socket) => {
     // that produced the atoms. Performed notes use the mapped session times of
     // the key-lifecycle events, never raw device clocks.
     let scoreV1 = null;
+    let shadowInputs = null; // same adjusted score and admitted MIDI fed to official scoring
     let scoreStatus = 'UNAVAILABLE';
     let scoreConfigVersion = null;
     let scoreAlgorithmVersion = null;
@@ -3117,6 +3122,7 @@ wss.on('connection', (socket) => {
         pauseAdjusted = closedPauseSegments.length > 0;
 
         scoreV1 = addon.scorePerformance(adjustedScoreEvents, performedNotes);
+        if (ALIGNMENT_SHADOW_ENABLED) shadowInputs = { scoreEvents: adjustedScoreEvents, performedNotes };
         scoreConfigVersion = scoreV1.configVersion ?? null;
         scoreAlgorithmVersion = scoreV1.algorithmVersion ?? null;
         scoreStatus = performedNotes.length === 0 ? 'INSUFFICIENT_DATA' : 'AVAILABLE';
@@ -3199,6 +3205,42 @@ wss.on('connection', (socket) => {
 
     // Persist one authoritative Take record (never a PracticeSession aggregate).
     const businessTakeId = finishedTake?.businessTakeId ?? `take-${randomUUID()}`;
+    // Shadow is an additive immutable research artifact. Candidate exceptions,
+    // validation failures, and sidecar disk faults never block an official Take.
+    let assessmentV2Ref = null;
+    let assessmentV2Summary = null;
+    if (ALIGNMENT_SHADOW_ENABLED && shadowInputs) {
+      try {
+        const artifact = buildAlignmentShadow({
+          takeId: businessTakeId,
+          scoreEvents: shadowInputs.scoreEvents,
+          performedNotes: shadowInputs.performedNotes,
+          baselineReport: scoreV1,
+          alignCandidate: typeof addon.alignPerformancesCandidate === 'function'
+            ? (scoreEvents, performedNotes) => addon.alignPerformancesCandidate(scoreEvents, performedNotes)
+            : null,
+          scoreFingerprint: meta?.scoreFingerprint ?? null,
+          planFingerprint: meta?.planFingerprint ?? null,
+          traceInfo,
+          traceDir: TRACES_DIR,
+          captureDiagnostics,
+          codeSha: process.env.RHYTHM_CODE_SHA ?? null,
+        });
+        const saved = persistAlignmentShadow({ assessmentsDir: ASSESSMENTS_DIR, artifact });
+        assessmentV2Ref = saved.ref;
+        assessmentV2Summary = {
+          schemaVersion: artifact.schemaVersion,
+          alignmentAlgorithm: artifact.algorithmVersion,
+          scoringPolicy: artifact.scoringPolicyVersion,
+          inputQuality: artifact.input.inputHealth,
+          status: artifact.status,
+          reasonCode: artifact.reasonCode,
+          changedTargetCount: artifact.comparison?.changedTargets?.length ?? null,
+        };
+      } catch (error) {
+        console.error('[engine] Alignment shadow 失败，不影响正式 Take:', String(error?.message ?? error));
+      }
+    }
     const sessionId = businessTakeId;
     const startedAtIso = finishedTake?.startedAtIso ?? null;
     const scoreSnapshotRef = ensureScoreSnapshot(meta?.scoreId, meta?.scoreFingerprint);
@@ -3313,6 +3355,7 @@ wss.on('connection', (socket) => {
           persistenceStatus: 'persisted',
         }),
         timelineReport: record,
+        ...(assessmentV2Ref ? { assessmentV2Ref, assessmentV2Summary } : {}),
       },
       engineDiagnostics: {
         practiceSessionId: record.practiceSessionId,
