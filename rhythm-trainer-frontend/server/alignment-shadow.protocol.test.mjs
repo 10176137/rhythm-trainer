@@ -66,7 +66,7 @@ beforeAll(async () => {
     });
     child.once('exit', (code) => { clearTimeout(timer); reject(new Error(`engine exited: ${code}, ${stderr}`)); });
   });
-  ws = new WebSocket(`ws://127.0.0.1:${port}`);
+  ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
   ws.on('message', (raw) => {
     let data;
     try { data = JSON.parse(String(raw)); } catch { return; }
