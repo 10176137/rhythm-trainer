@@ -2030,13 +2030,32 @@ pub fn js_score_performance(
     score_events: Vec<JsScoreEventInput>,
     performed: Vec<JsPerformedNoteInput>,
 ) -> napi::Result<JsSessionScoreReport> {
+    js_score_performance_impl(score_events, performed, false)
+}
+
+/// A versioned scoring entrypoint: v2 candidate note pairing + unchanged v1 metrics.
+/// The legacy `scorePerformance` export remains bit-identical for rollback.
+#[napi(js_name = "scorePerformanceCandidate")]
+pub fn js_score_performance_candidate(
+    score_events: Vec<JsScoreEventInput>,
+    performed: Vec<JsPerformedNoteInput>,
+) -> napi::Result<JsSessionScoreReport> {
+    js_score_performance_impl(score_events, performed, true)
+}
+
+fn js_score_performance_impl(
+    score_events: Vec<JsScoreEventInput>,
+    performed: Vec<JsPerformedNoteInput>,
+    use_candidate: bool,
+) -> napi::Result<JsSessionScoreReport> {
     let core_score_events = score_events.into_iter().map(to_core_score_event).collect::<napi::Result<Vec<_>>>()?;
     let core_performed = performed.into_iter().map(to_core_performed_note).collect::<napi::Result<Vec<_>>>()?;
-    let report = rhythm_core::score_performance(
-        &core_score_events,
-        &core_performed,
-        &rhythm_core::ScoringConfig::default(),
-    ).map_err(napi_error)?;
+    let config = rhythm_core::ScoringConfig::default();
+    let report = if use_candidate {
+        rhythm_core::score_performance_candidate(&core_score_events, &core_performed, &config)
+    } else {
+        rhythm_core::score_performance(&core_score_events, &core_performed, &config)
+    }.map_err(napi_error)?;
 
     let score_by_id: std::collections::BTreeMap<&str, &rhythm_core::ScoreEvent> = core_score_events
         .iter().map(|event| (event.score_event_id.as_str(), event)).collect();
