@@ -50,6 +50,7 @@ export default function HistoryView({
   const [detail, setDetail] = useState<TakeRecordDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [scoreView, setScoreView] = useState<ScoreViewKey>('official');
+  const [reportOpen, setReportOpen] = useState(false);
   const detailRequest = useRef(0);
   useEffect(() => () => { detailRequest.current += 1; }, []);
 
@@ -72,6 +73,7 @@ export default function HistoryView({
     setExpandedId(takeId);
     setDetail(null);
     setScoreView('official');
+    setReportOpen(false);
     setDetailLoading(true);
     try {
       const loaded = await practiceRepository.getTake(takeId);
@@ -162,11 +164,28 @@ export default function HistoryView({
                   {detailLoading && <p className="history-empty">载入报告中…</p>}
                   {!detailLoading && detail && (
                     <>
+                      {/* Variant switching sits at the TOP of the detail (2026-11-05
+                          user feedback: it was buried in the collapsed report
+                          section and never seen). Switching auto-opens the report. */}
+                      {timeline?.report && (
+                        <>
+                          <ScoreVariantSwitcher
+                            officialScorer={detail.assessment.finalAlignmentScorer ?? null}
+                            variants={scoreVariants}
+                            value={scoreView}
+                            onChange={(value) => { setScoreView(value); setReportOpen(true); }}
+                          />
+                          {scoreView !== 'official' && variantAlgorithmVersion && (
+                            <p className="history-take-link">当前视图：{algorithmCn(variantAlgorithmVersion)}（{variantAlgorithmVersion}）· 同一份演奏数据的不同对齐结果，仅供对比，正式成绩以「当时默认」为准。</p>
+                          )}
+                        </>
+                      )}
                       <NoteReviewPanel key={detail.takeId} takeId={detail.takeId} />
                       <PerformanceReplayPanel key={`replay-${detail.takeId}`} takeId={detail.takeId} />
-                      <details><summary>查看汇总与原始报告</summary>
+                      <details open={reportOpen} onToggle={(event) => setReportOpen(event.currentTarget.open)}><summary>查看汇总与原始报告</summary>
                       <p className="history-take-link">
                         Take {detail.takeId} · {detail.lifecycle.modeId} · {(detail.lifecycle.endReason === 'interrupted' || detail.lifecycle.endReason === 'resource_limit') ? '中断' : '完成'}
+                        {detail.assessment.finalAlignmentScorer ? ` · 评分算法 ${scorerCn(detail.assessment.finalAlignmentScorer)}` : ''}
                         {detail.legacy?.sessionId ? ` · 旧记录 ${detail.legacy.sessionId}` : ''}
                       </p>
                       {timeline?.takeTemplateName && (
@@ -190,40 +209,29 @@ export default function HistoryView({
                         </>
                       )}
                       {timeline?.report && (
-                        <>
-                          <ScoreVariantSwitcher
-                            officialScorer={detail.assessment.finalAlignmentScorer ?? null}
-                            variants={scoreVariants}
-                            value={scoreView}
-                            onChange={setScoreView}
-                          />
-                          {scoreView !== 'official' && variantAlgorithmVersion && (
-                            <p className="history-take-link">当前视图：{algorithmCn(variantAlgorithmVersion)}（{variantAlgorithmVersion}）· 同一份演奏数据的三种对齐结果，仅供对比，正式成绩以「当时默认」为准。</p>
-                          )}
-                          <ReportPanel
-                            report={timeline.report as EngineReport}
-                            analysis={timeline.analysis as EngineTimingAnalysis | { error: string } | null}
-                            durations={timeline.durations ?? null}
-                            scoreV1={variantScoreV1 ?? null}
-                            scoreStatus={timeline.scoreStatus ?? null}
-                            scoringConfig={timeline.scoringConfig ?? null}
-                            scoreConfigVersion={timeline.scoreConfigVersion ?? null}
-                            scoreAlgorithmVersion={variantAlgorithmVersion ?? timeline.scoreAlgorithmVersion ?? null}
-                            scoreInputNoteCount={timeline.scoreInputNoteCount ?? 0}
-                            scoreUnmappedNoteCount={timeline.scoreUnmappedNoteCount ?? 0}
-                            pauseAdjusted={timeline.pauseAdjusted ?? false}
-                            sessionId={timeline.sessionId ?? detail.takeId}
-                            takeId={detail.takeId}
-                            scoreFingerprint={detail.score?.scoreFingerprint ?? timeline.scoreFingerprint ?? null}
-                            activeScoreFingerprint={activeScoreFingerprint}
-                            scoreBarCount={timeline.scoreBarCount ?? null}
-                            practiceBpm={timeline.bpm ?? snapshotTempo ?? 72}
-                            practiceHand={storedHand(timeline.hand)}
-                            retryComparison={timeline.retryComparison ?? null}
-                            onTeachingRunCreated={onTeachingRunCreated}
-                            onNavigateTeaching={onNavigateTeaching}
-                          />
-                        </>
+                        <ReportPanel
+                          report={timeline.report as EngineReport}
+                          analysis={timeline.analysis as EngineTimingAnalysis | { error: string } | null}
+                          durations={timeline.durations ?? null}
+                          scoreV1={variantScoreV1 ?? null}
+                          scoreStatus={timeline.scoreStatus ?? null}
+                          scoringConfig={timeline.scoringConfig ?? null}
+                          scoreConfigVersion={timeline.scoreConfigVersion ?? null}
+                          scoreAlgorithmVersion={variantAlgorithmVersion ?? timeline.scoreAlgorithmVersion ?? null}
+                          scoreInputNoteCount={timeline.scoreInputNoteCount ?? 0}
+                          scoreUnmappedNoteCount={timeline.scoreUnmappedNoteCount ?? 0}
+                          pauseAdjusted={timeline.pauseAdjusted ?? false}
+                          sessionId={timeline.sessionId ?? detail.takeId}
+                          takeId={detail.takeId}
+                          scoreFingerprint={detail.score?.scoreFingerprint ?? timeline.scoreFingerprint ?? null}
+                          activeScoreFingerprint={activeScoreFingerprint}
+                          scoreBarCount={timeline.scoreBarCount ?? null}
+                          practiceBpm={timeline.bpm ?? snapshotTempo ?? 72}
+                          practiceHand={storedHand(timeline.hand)}
+                          retryComparison={timeline.retryComparison ?? null}
+                          onTeachingRunCreated={onTeachingRunCreated}
+                          onNavigateTeaching={onNavigateTeaching}
+                        />
                       )}
                       {!followReport && !timeline?.report && (
                         <p className="history-empty">该 Take 没有可展示的报告。</p>
