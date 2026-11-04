@@ -33,11 +33,12 @@ pub use replay::{replay_score, ReplayResult};
 pub use ring_buffer::RingBuffer;
 pub use schedule::{apply_judgment_windows, build_schedule, AtomKind, JudgmentProfile, RhythmAtom, RhythmPattern, TargetHit};
 pub use scoring_v1::{
-    align_performances, score_performance, AlignmentPair, AlignmentResult, Confidence,
+    align_performances, align_performances_traced, score_performance, AlignmentBranch,
+    AlignmentPair, AlignmentResult, AlignmentStep, Confidence,
     Diagnostic as ScoringDiagnostic,
     MeasureReport, OverallScore, PairingStatusV1, PerformedNoteV1, PitchAccuracy, PracticeProfileV1,
     PracticeRange, RhythmMetrics, ScoreEvent, ScoringConfig, SessionScoreReport, SubScore,
-    SCORING_ALGORITHM_VERSION,
+    TracedAlignment, SCORING_ALGORITHM_VERSION,
 };
 pub use session::{EngineDiagnostics, SessionEngine, SessionReport, SessionState};
 pub use stats::{calculate_stats, ScoreStats};

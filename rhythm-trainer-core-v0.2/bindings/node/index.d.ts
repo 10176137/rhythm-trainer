@@ -548,6 +548,34 @@ export interface JsSessionScoreReport {
   diagnostics: Array<JsScoringDiagnostic>
   practiceRanges: Array<JsPracticeRange>
 }
+export interface JsAlignmentStep {
+  step: number
+  /**
+   * CHORD_MATCH / CHORD_FALLBACK / CHORD_MISS / CHORD_PRE_EXTRA /
+   * MATCH / WRONG_PITCH / LOOKAHEAD_SKIP_TARGET / LOOKAHEAD_SKIP_PERFORMED /
+   * MISS_WINDOW / EXTRA_WINDOW
+   */
+  branch: string
+  targetId: string
+  performedId: string
+  deltaMs: number
+  targetIndex: number
+  performedIndex: number
+}
+export interface JsTracedAlignment {
+  pairs: Array<JsAlignmentPairOutput>
+  missedScoreEventIds: Array<string>
+  extraPerformedIds: Array<string>
+  restWindowExtraIds: Array<string>
+  steps: Array<JsAlignmentStep>
+}
+/**
+ * Observation-only alignment trace (alignment-v2 P0 root-cause work). Runs
+ * the SAME frozen scoring_v1 matcher and returns its result plus the
+ * per-step decision trace. The official score path stays `scorePerformance`;
+ * diagnostics/benchmarks may call this without affecting any user score.
+ */
+export declare function alignPerformancesTraced(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsTracedAlignment
 /**
  * Scores a finalized performance using the existing rhythm-core scoring_v1
  * implementation. Returns the complete report, including event-level results
