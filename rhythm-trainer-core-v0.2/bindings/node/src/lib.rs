@@ -1947,6 +1947,41 @@ pub struct JsTracedAlignment {
     pub steps: Vec<JsAlignmentStep>,
 }
 
+#[napi(object)]
+pub struct JsCandidateAlignment {
+    pub pairs: Vec<JsAlignmentPairOutput>,
+    pub missed_score_event_ids: Vec<String>,
+    pub extra_performed_ids: Vec<String>,
+}
+
+/// Rule-based alignment candidate (alignment-v2, benchmark/shadow only).
+/// Never called by `scorePerformance`; the caller opts in explicitly.
+#[napi(js_name = "alignPerformancesCandidate")]
+pub fn js_align_performances_candidate(
+    score_events: Vec<JsScoreEventInput>,
+    performed: Vec<JsPerformedNoteInput>,
+) -> napi::Result<JsCandidateAlignment> {
+    let core_score_events = score_events.into_iter().map(to_core_score_event).collect::<napi::Result<Vec<_>>>()?;
+    let core_performed = performed.into_iter().map(to_core_performed_note).collect::<napi::Result<Vec<_>>>()?;
+    let result = rhythm_core::align_performances_candidate(
+        &core_score_events,
+        &core_performed,
+        &rhythm_core::ScoringConfig::default(),
+    ).map_err(napi_error)?;
+    Ok(JsCandidateAlignment {
+        pairs: result.pairs.iter().map(|pair| JsAlignmentPairOutput {
+            score_event_id: pair.score_event_id.clone(),
+            performed_note_id: pair.performed_note_id.clone(),
+            pitch_matched: pair.pitch_matched,
+            onset_error_ms: pair.onset_error_ms,
+            measure: pair.measure,
+            pairing_status: None,
+        }).collect(),
+        missed_score_event_ids: result.missed_score_event_ids.clone(),
+        extra_performed_ids: result.extra_performed_ids.clone(),
+    })
+}
+
 /// Observation-only alignment trace (alignment-v2 P0 root-cause work). Runs
 /// the SAME frozen scoring_v1 matcher and returns its result plus the
 /// per-step decision trace. The official score path stays `scorePerformance`;

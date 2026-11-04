@@ -569,6 +569,16 @@ export interface JsTracedAlignment {
   restWindowExtraIds: Array<string>
   steps: Array<JsAlignmentStep>
 }
+export interface JsCandidateAlignment {
+  pairs: Array<JsAlignmentPairOutput>
+  missedScoreEventIds: Array<string>
+  extraPerformedIds: Array<string>
+}
+/**
+ * Rule-based alignment candidate (alignment-v2, benchmark/shadow only).
+ * Never called by `scorePerformance`; the caller opts in explicitly.
+ */
+export declare function alignPerformancesCandidate(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsCandidateAlignment
 /**
  * Observation-only alignment trace (alignment-v2 P0 root-cause work). Runs
  * the SAME frozen scoring_v1 matcher and returns its result plus the
