@@ -13,6 +13,8 @@ use crate::CoreError;
 use std::collections::BTreeMap;
 
 pub const SCORING_ALGORITHM_VERSION: &str = "scoring-v1.0.1";
+/// Experimental official scoring with candidate note identity alignment; all scoring formulas remain v1.
+pub const SCORING_CANDIDATE_ALGORITHM_VERSION: &str = "scoring-v1.0.0+alignment-candidate-v2";
 
 // ---------------------------------------------------------------------------
 // Versioned configuration (spec §7.2/§8: no magic numbers outside here).
@@ -137,11 +139,95 @@ pub struct AlignmentResult {
     pub rest_window_extra_ids: Vec<String>,
 }
 
+// ---------------------------------------------------------------------------
+// Alignment observation trace (alignment-v2 P0). Read-only: the frozen
+// `AlignmentResult` must never depend on these values; `align_performances`
+// simply drops the trace so behavior and outputs stay byte-identical.
+
+/// Why the greedy matcher took a decision at one cursor position. Codes follow
+/// the alignment-v2 root-cause vocabulary (PRD §4.1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlignmentBranch {
+    /// Paired inside a same-onset group by pitch.
+    ChordMatch,
+    /// Paired inside a same-onset group to the closest remaining note — a
+    /// wrong chord pitch reported as such.
+    ChordFallbackWrongPitch,
+    /// A whole same-onset group had no candidate in its window.
+    ChordMiss,
+    /// Consumed as extra while scanning forward to a chord's window.
+    ChordPreExtra,
+    /// Monotonic-window pair with matching pitch.
+    Match,
+    /// Monotonic-window pair with mismatched pitch (monotonic progress).
+    WrongPitchPair,
+    /// Target missed because a later target's pitch claims this performed note.
+    LookaheadSkipTarget,
+    /// Performed note extra because a later performed note claims this pitch.
+    LookaheadSkipPerformed,
+    /// Later than `max_onset_deviation_ms`: target missed, performed note
+    /// deliberately NOT consumed — the cascade origin for late notes.
+    MissWindow,
+    /// Earlier than `-max_onset_deviation_ms`: performed note consumed as extra.
+    ExtraWindow,
+}
+
+impl AlignmentBranch {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            AlignmentBranch::ChordMatch => "CHORD_MATCH",
+            AlignmentBranch::ChordFallbackWrongPitch => "CHORD_FALLBACK",
+            AlignmentBranch::ChordMiss => "CHORD_MISS",
+            AlignmentBranch::ChordPreExtra => "CHORD_PRE_EXTRA",
+            AlignmentBranch::Match => "MATCH",
+            AlignmentBranch::WrongPitchPair => "WRONG_PITCH",
+            AlignmentBranch::LookaheadSkipTarget => "LOOKAHEAD_SKIP_TARGET",
+            AlignmentBranch::LookaheadSkipPerformed => "LOOKAHEAD_SKIP_PERFORMED",
+            AlignmentBranch::MissWindow => "MISS_WINDOW",
+            AlignmentBranch::ExtraWindow => "EXTRA_WINDOW",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AlignmentStep {
+    /// Zero-based decision index in this alignment run.
+    pub step: usize,
+    pub branch: AlignmentBranch,
+    /// Target under the cursor when the decision fired (empty for pure-extra
+    /// consumption steps).
+    pub target_id: String,
+    pub performed_id: String,
+    /// `performed.onset_ms - target.target_onset_ms` (0 for steps without both).
+    pub delta_ms: f64,
+    pub target_index: usize,
+    pub performed_index: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct TracedAlignment {
+    pub result: AlignmentResult,
+    pub steps: Vec<AlignmentStep>,
+}
+
+/// Frozen public entry point: identical result to [`align_performances_traced`]
+/// with the observation trace discarded.
 pub fn align_performances(
     score_events: &[ScoreEvent],
     performed: &[PerformedNoteV1],
     config: &ScoringConfig,
 ) -> Result<AlignmentResult, CoreError> {
+    Ok(align_performances_traced(score_events, performed, config)?.result)
+}
+
+/// Same matcher, same decisions — plus the per-step observation trace used by
+/// the alignment-v2 root-cause work and offline benchmark diagnostics.
+pub fn align_performances_traced(
+    score_events: &[ScoreEvent],
+    performed: &[PerformedNoteV1],
+    config: &ScoringConfig,
+) -> Result<TracedAlignment, CoreError> {
+    let mut traced = TracedAlignment::default();
     for event in score_events {
         if !event.target_onset_ms.is_finite() || event.target_onset_ms < 0.0 {
             return Err(CoreError::InvalidEvent("score target onset must be finite and >= 0".into()));
@@ -153,6 +239,25 @@ pub fn align_performances(
     performed_sorted.sort_by(|a, b| a.onset_ms.total_cmp(&b.onset_ms).then(a.performed_note_id.cmp(&b.performed_note_id)));
 
     let mut result = AlignmentResult::default();
+    let mut step_index = 0usize;
+    /** Observation-only step recorder; never affects `result`. */
+    macro_rules! record {
+        ($branch:expr, $target:expr, $performed:expr, $delta:expr, $ti:expr, $pi:expr) => {
+            {
+                let step = step_index;
+                step_index += 1;
+                traced.steps.push(AlignmentStep {
+                    step,
+                    branch: $branch,
+                    target_id: $target,
+                    performed_id: $performed,
+                    delta_ms: $delta,
+                    target_index: $ti,
+                    performed_index: $pi,
+                });
+            }
+        };
+    }
     let mut i = 0usize; // target cursor
     let mut j = 0usize; // performed cursor
     let max_dev = config.max_onset_deviation_ms;
@@ -176,6 +281,7 @@ pub fn align_performances(
         if group_size > 1 {
             while j < performed_sorted.len() && performed_sorted[j].onset_ms < target.target_onset_ms - max_dev {
                 if !consumed[j] {
+                    record!(AlignmentBranch::ChordPreExtra, String::new(), performed_sorted[j].performed_note_id.clone(), performed_sorted[j].onset_ms - target.target_onset_ms, i, j);
                     result.extra_performed_ids.push(performed_sorted[j].performed_note_id.clone());
                     consumed[j] = true;
                 }
@@ -197,6 +303,7 @@ pub fn align_performances(
             }
             if candidate_start == candidate_end {
                 for group_target in &targets[i..i + group_size] {
+                    record!(AlignmentBranch::ChordMiss, group_target.score_event_id.clone(), String::new(), 0.0, i, j);
                     result.missed_score_event_ids.push(group_target.score_event_id.clone());
                 }
                 i += group_size;
@@ -245,14 +352,21 @@ pub fn align_performances(
                 if let Some(candidate) = pair_index {
                     let matched_note = performed_sorted[candidate];
                     consumed[candidate] = true;
+                    let pitch_matched = matched_note.pitch == group_target.pitch;
+                    if pitch_matched {
+                        record!(AlignmentBranch::ChordMatch, group_target.score_event_id.clone(), matched_note.performed_note_id.clone(), matched_note.onset_ms - group_target.target_onset_ms, i, candidate);
+                    } else {
+                        record!(AlignmentBranch::ChordFallbackWrongPitch, group_target.score_event_id.clone(), matched_note.performed_note_id.clone(), matched_note.onset_ms - group_target.target_onset_ms, i, candidate);
+                    }
                     result.pairs.push(AlignmentPair {
                         score_event_id: group_target.score_event_id.clone(),
                         performed_note_id: matched_note.performed_note_id.clone(),
-                        pitch_matched: matched_note.pitch == group_target.pitch,
+                        pitch_matched,
                         onset_error_ms: matched_note.onset_ms - group_target.target_onset_ms,
                         measure: group_target.measure,
                     });
                 } else {
+                    record!(AlignmentBranch::ChordMiss, group_target.score_event_id.clone(), String::new(), 0.0, i, candidate_end);
                     result.missed_score_event_ids.push(group_target.score_event_id.clone());
                 }
             }
@@ -270,12 +384,16 @@ pub fn align_performances(
         if delta < -max_dev {
             // Performed note is far earlier than this target: it cannot belong
             // to it (or any later target) — an extra.
+            record!(AlignmentBranch::ExtraWindow, target.score_event_id.clone(), note.performed_note_id.clone(), delta, i, j);
             result.extra_performed_ids.push(note.performed_note_id.clone());
             j += 1;
             continue;
         }
         if delta > max_dev {
-            // No performed note near this target: missed.
+            // No performed note near this target: missed. The performed note
+            // stays unconsumed and is re-compared against the NEXT target —
+            // the cascade origin for late notes.
+            record!(AlignmentBranch::MissWindow, target.score_event_id.clone(), note.performed_note_id.clone(), delta, i, j);
             result.missed_score_event_ids.push(target.score_event_id.clone());
             i += 1;
             continue;
@@ -284,6 +402,7 @@ pub fn align_performances(
         // (chord/repeat scale) decides whether skipping is the better story.
         let pitch_equal = note.pitch == target.pitch;
         if pitch_equal {
+            record!(AlignmentBranch::Match, target.score_event_id.clone(), note.performed_note_id.clone(), delta, i, j);
             result.pairs.push(AlignmentPair {
                 score_event_id: target.score_event_id.clone(),
                 performed_note_id: note.performed_note_id.clone(),
@@ -301,15 +420,18 @@ pub fn align_performances(
             .any(|p| p.pitch == target.pitch && (p.onset_ms - target.target_onset_ms).abs() <= max_dev);
         if lookahead_target_has_pitch {
             // This performed note belongs to a later target — current is missed.
+            record!(AlignmentBranch::LookaheadSkipTarget, target.score_event_id.clone(), note.performed_note_id.clone(), delta, i, j);
             result.missed_score_event_ids.push(target.score_event_id.clone());
             i += 1;
         } else if lookahead_performed_has_pitch {
             // The matching performed note comes shortly — this one is extra.
+            record!(AlignmentBranch::LookaheadSkipPerformed, target.score_event_id.clone(), note.performed_note_id.clone(), delta, i, j);
             result.extra_performed_ids.push(note.performed_note_id.clone());
             j += 1;
         } else {
             // Wrong pitch within the window: pair it (monotonic progress) and
             // report the pitch mismatch — never silently drop it.
+            record!(AlignmentBranch::WrongPitchPair, target.score_event_id.clone(), note.performed_note_id.clone(), delta, i, j);
             result.pairs.push(AlignmentPair {
                 score_event_id: target.score_event_id.clone(),
                 performed_note_id: note.performed_note_id.clone(),
@@ -322,10 +444,12 @@ pub fn align_performances(
         }
     }
     while i < targets.len() {
+        record!(AlignmentBranch::MissWindow, targets[i].score_event_id.clone(), String::new(), 0.0, i, j);
         result.missed_score_event_ids.push(targets[i].score_event_id.clone());
         i += 1;
     }
     while j < performed_sorted.len() {
+        record!(AlignmentBranch::ExtraWindow, String::new(), performed_sorted[j].performed_note_id.clone(), 0.0, i, j);
         result.extra_performed_ids.push(performed_sorted[j].performed_note_id.clone());
         j += 1;
     }
@@ -347,7 +471,8 @@ pub fn align_performances(
             }
         }
     }
-    Ok(result)
+    traced.result = result;
+    Ok(traced)
 }
 
 // ---------------------------------------------------------------------------
@@ -571,6 +696,35 @@ pub fn score_performance(
         }
     }
     let alignment = align_performances(score_events, performed, config)?;
+    score_with_alignment(score_events, performed, config, alignment, SCORING_ALGORITHM_VERSION)
+}
+
+/// Candidate-aligned official scoring: only note pairing differs from v1.
+/// Raw onset, IOI, duration, diagnostics and weights reuse the exact v1 path.
+pub fn score_performance_candidate(
+    score_events: &[ScoreEvent],
+    performed: &[PerformedNoteV1],
+    config: &ScoringConfig,
+) -> Result<SessionScoreReport, CoreError> {
+    if config.weights.pitch + config.weights.onset + config.weights.rhythm + config.weights.duration + config.weights.continuity <= 0.0 {
+        return Err(CoreError::InvalidConfig("score weights must sum > 0".into()));
+    }
+    for note in performed {
+        if !note.onset_ms.is_finite() || note.onset_ms < 0.0 {
+            return Err(CoreError::InvalidEvent("performed onset must be finite and >= 0".into()));
+        }
+    }
+    let alignment = crate::alignment_candidate::align_performances_candidate(score_events, performed, config)?;
+    score_with_alignment(score_events, performed, config, alignment, SCORING_CANDIDATE_ALGORITHM_VERSION)
+}
+
+fn score_with_alignment(
+    score_events: &[ScoreEvent],
+    performed: &[PerformedNoteV1],
+    config: &ScoringConfig,
+    alignment: AlignmentResult,
+    algorithm_version: &str,
+) -> Result<SessionScoreReport, CoreError> {
     let pairs = &alignment.pairs;
 
     // ---- onset metrics ----
@@ -906,7 +1060,7 @@ pub fn score_performance(
     }
 
     Ok(SessionScoreReport {
-        algorithm_version: SCORING_ALGORITHM_VERSION.to_string(),
+        algorithm_version: algorithm_version.to_string(),
         alignment,
         pitch,
         onset,

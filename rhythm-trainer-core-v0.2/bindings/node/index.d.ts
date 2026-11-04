@@ -548,12 +548,55 @@ export interface JsSessionScoreReport {
   diagnostics: Array<JsScoringDiagnostic>
   practiceRanges: Array<JsPracticeRange>
 }
+export interface JsAlignmentStep {
+  step: number
+  /**
+   * CHORD_MATCH / CHORD_FALLBACK / CHORD_MISS / CHORD_PRE_EXTRA /
+   * MATCH / WRONG_PITCH / LOOKAHEAD_SKIP_TARGET / LOOKAHEAD_SKIP_PERFORMED /
+   * MISS_WINDOW / EXTRA_WINDOW
+   */
+  branch: string
+  targetId: string
+  performedId: string
+  deltaMs: number
+  targetIndex: number
+  performedIndex: number
+}
+export interface JsTracedAlignment {
+  pairs: Array<JsAlignmentPairOutput>
+  missedScoreEventIds: Array<string>
+  extraPerformedIds: Array<string>
+  restWindowExtraIds: Array<string>
+  steps: Array<JsAlignmentStep>
+}
+export interface JsCandidateAlignment {
+  pairs: Array<JsAlignmentPairOutput>
+  missedScoreEventIds: Array<string>
+  extraPerformedIds: Array<string>
+}
+/**
+ * Rule-based alignment candidate (alignment-v2, benchmark/shadow only).
+ * Never called by `scorePerformance`; the caller opts in explicitly.
+ */
+export declare function alignPerformancesCandidate(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsCandidateAlignment
+/**
+ * Observation-only alignment trace (alignment-v2 P0 root-cause work). Runs
+ * the SAME frozen scoring_v1 matcher and returns its result plus the
+ * per-step decision trace. The official score path stays `scorePerformance`;
+ * diagnostics/benchmarks may call this without affecting any user score.
+ */
+export declare function alignPerformancesTraced(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsTracedAlignment
 /**
  * Scores a finalized performance using the existing rhythm-core scoring_v1
  * implementation. Returns the complete report, including event-level results
  * derived from the existing alignment (no second scoring algorithm).
  */
 export declare function scorePerformance(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsSessionScoreReport
+/**
+ * A versioned scoring entrypoint: v2 candidate note pairing + unchanged v1 metrics.
+ * The legacy `scorePerformance` export remains bit-identical for rollback.
+ */
+export declare function scorePerformanceCandidate(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsSessionScoreReport
 /**
  * Builds the PlannerOutput (task card §2.3) from the frozen ScoreDocumentV1,
  * ImportReportV1 and parity-case config JSON instances.

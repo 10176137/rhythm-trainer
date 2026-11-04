@@ -8,6 +8,7 @@ pub mod follow;
 mod matcher;
 mod midi;
 mod replay;
+mod alignment_candidate;
 mod scoring_v1;
 mod ring_buffer;
 mod schedule;
@@ -32,12 +33,16 @@ pub use matcher::HitMatcher;
 pub use replay::{replay_score, ReplayResult};
 pub use ring_buffer::RingBuffer;
 pub use schedule::{apply_judgment_windows, build_schedule, AtomKind, JudgmentProfile, RhythmAtom, RhythmPattern, TargetHit};
+pub use alignment_candidate::{
+    align_performances_candidate, LATE_WINDOW_INTERVAL_RATIO, MAX_LATE_WINDOW_MS,
+};
 pub use scoring_v1::{
-    align_performances, score_performance, AlignmentPair, AlignmentResult, Confidence,
+    align_performances, align_performances_traced, score_performance, score_performance_candidate, AlignmentBranch,
+    AlignmentPair, AlignmentResult, AlignmentStep, Confidence,
     Diagnostic as ScoringDiagnostic,
     MeasureReport, OverallScore, PairingStatusV1, PerformedNoteV1, PitchAccuracy, PracticeProfileV1,
     PracticeRange, RhythmMetrics, ScoreEvent, ScoringConfig, SessionScoreReport, SubScore,
-    SCORING_ALGORITHM_VERSION,
+    TracedAlignment, SCORING_ALGORITHM_VERSION, SCORING_CANDIDATE_ALGORITHM_VERSION,
 };
 pub use session::{EngineDiagnostics, SessionEngine, SessionReport, SessionState};
 pub use stats::{calculate_stats, ScoreStats};

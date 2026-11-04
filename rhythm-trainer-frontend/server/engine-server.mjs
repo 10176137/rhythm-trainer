@@ -53,6 +53,7 @@ import { resolveModeScoringConfig } from './mode-config.mjs';
 import { ScoreLibrary, ScoreLibraryError, SCORE_LIBRARY_SCHEMA_VERSION, MAX_SCORE_XML_BYTES } from './score-library.mjs';
 import { TakeTemplateStore, TakeTemplateError, TAKE_TEMPLATE_SCHEMA_VERSION } from './take-templates.mjs';
 import { TakeFinalizationService } from './take-finalization.mjs';
+import { buildAlignmentShadow, persistAlignmentShadowOnce } from './alignment-shadow.mjs';
 import { deriveTakeStatus } from './take-status.mjs';
 import { ReadingAttemptStore, ReadingAttemptError } from './reading-attempts.mjs';
 import { ProfileEvidenceCache } from './profile-evidence.mjs';
@@ -128,6 +129,19 @@ try {
   process.exit(1);
 }
 
+// Candidate alignment is the final scoring default on the experimental branch.
+// Explicit legacy rollback must never silently happen after a candidate error.
+const FINAL_ALIGNMENT_SCORER = process.env.RHYTHM_FINAL_ALIGNMENT_SCORER || 'candidate';
+if (!['candidate', 'legacy'].includes(FINAL_ALIGNMENT_SCORER)) {
+  console.error('[engine] RHYTHM_FINAL_ALIGNMENT_SCORER 只能是 candidate 或 legacy');
+  process.exit(1);
+}
+if (FINAL_ALIGNMENT_SCORER === 'candidate' && typeof addon.scorePerformanceCandidate !== 'function') {
+  console.error('[engine] 当前 Rust N-API addon 没有 scorePerformanceCandidate；请重新构建本分支 addon，或显式设置 RHYTHM_FINAL_ALIGNMENT_SCORER=legacy');
+  process.exit(1);
+}
+console.log(`[engine] final scoring alignment = ${FINAL_ALIGNMENT_SCORER}`);
+
 // R2-3h: the planner authority is resolved ONCE at startup from
 // RHYTHM_PLANNER (production default 'rust' since 2026-10-27 by user
 // authorization; RHYTHM_PLANNER=rts rolls back) and is the single source of
@@ -149,6 +163,9 @@ const DATA_DIR = process.env.RHYTHM_DATA_DIR
   || path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'rhythm-trainer-frontend');
 const SESSIONS_DIR = path.join(DATA_DIR, 'sessions');
 const TAKES_DIR = path.join(DATA_DIR, 'takes');
+const ALIGNMENT_SHADOW_DIR = path.join(DATA_DIR, 'alignment-shadow');
+// Optional diagnostic sidecar. It never overrides the selected official score.
+const ALIGNMENT_SHADOW_ENABLED = process.env.RHYTHM_ALIGNMENT_SHADOW === '1';
 const SCORE_SNAPSHOTS_DIR = path.join(DATA_DIR, 'score-snapshots');
 const TRACES_DIR = path.join(DATA_DIR, 'traces');
 const JOURNALS_DIR = path.join(DATA_DIR, 'journals');
@@ -3285,6 +3302,7 @@ wss.on('connection', (socket) => {
     // that produced the atoms. Performed notes use the mapped session times of
     // the key-lifecycle events, never raw device clocks.
     let scoreV1 = null;
+    let alignmentShadow = null; // independent diagnostic observation, never a grade
     let scoreStatus = 'UNAVAILABLE';
     let scoreConfigVersion = null;
     let scoreAlgorithmVersion = null;
@@ -3382,7 +3400,32 @@ wss.on('connection', (socket) => {
         });
         pauseAdjusted = closedPauseSegments.length > 0;
 
-        scoreV1 = addon.scorePerformance(adjustedScoreEvents, performedNotes);
+        scoreV1 = FINAL_ALIGNMENT_SCORER === 'candidate'
+          ? addon.scorePerformanceCandidate(adjustedScoreEvents, performedNotes)
+          : addon.scorePerformance(adjustedScoreEvents, performedNotes);
+        if (ALIGNMENT_SHADOW_ENABLED) {
+          // Exactly the same admitted MIDI notes, paused-target shifts and
+          // session-time domain as the official score. Any candidate error is
+          // recorded in its own diagnostic result, not propagated to scoring.
+          try {
+            alignmentShadow = buildAlignmentShadow({
+              scoreEvents: adjustedScoreEvents,
+              performedNotes,
+              // In candidate mode compare it against the frozen v1 baseline;
+              // in legacy mode compare against the same authoritative v1 score.
+              official: FINAL_ALIGNMENT_SCORER === 'candidate'
+                ? addon.scorePerformance(adjustedScoreEvents, performedNotes)
+                : scoreV1,
+              addon,
+            });
+          } catch (error) {
+            alignmentShadow = {
+              schemaVersion: 1,
+              status: 'error',
+              reason: String(error?.message ?? error).slice(0, 500),
+            };
+          }
+        }
         scoreConfigVersion = scoreV1.configVersion ?? null;
         scoreAlgorithmVersion = scoreV1.algorithmVersion ?? null;
         scoreStatus = performedNotes.length === 0 ? 'INSUFFICIENT_DATA' : 'AVAILABLE';
@@ -3515,6 +3558,7 @@ wss.on('connection', (socket) => {
       takeTemplateUpdatedAtIso: meta?.takeTemplateUpdatedAtIso ?? null,
       retryComparison: null,
       coreAlgorithmVersion: meta ? addon.SCORING_ALGORITHM_VERSION : null,
+      finalAlignmentScorer: FINAL_ALIGNMENT_SCORER,
       // Replay inputs: the exact atom list and count-in that built the targets.
       atoms: meta ? meta.atoms : null,
       countInBeats: meta ? meta.countInBeats : null,
@@ -3578,6 +3622,7 @@ wss.on('connection', (socket) => {
         captureDiagnostics: record.captureDiagnostics,
       },
       assessment: {
+        finalAlignmentScorer: FINAL_ALIGNMENT_SCORER,
         trustworthy: !!record.report?.trustworthy,
         ...deriveTakeStatus({
           attemptStatus: interrupted ? 'interrupted' : (report.state === 'invalid' ? 'rejected' : 'completed'),
@@ -3605,7 +3650,34 @@ wss.on('connection', (socket) => {
       trustworthy: !!report.trustworthy && healthClean,
       targetCount: report.targetCount, assisted: record.assisted, transferTest: false, delayedRetest: false,
     } };
-    const applyMasteryEvidence = () => { if (!takeRecord.lifecycle.standbyOnly) profileCache.recover([takeRecord]); };
+    // Profile is a derived cache: only a newly committed Take may contribute.
+    // Retry success runs this exactly once; the finalizer guards duplicates.
+    const applyMasteryEvidence = () => {
+      // Shadow failures must never affect Take persistence or mastery.
+      if (alignmentShadow) {
+        try {
+          persistAlignmentShadowOnce({
+            dir: ALIGNMENT_SHADOW_DIR,
+            takeId: businessTakeId,
+            shadow: {
+              ...alignmentShadow,
+              provenance: {
+                traceId: record.traceId,
+                planFingerprint: record.planFingerprint,
+                scoreFingerprint: record.scoreFingerprint,
+                officialScoreStatus: record.scoreStatus,
+                inputHealth: captureDiagnostics.inputHealth,
+                clockMappingStatus: captureDiagnostics.clockMapping?.status ?? 'unknown',
+              },
+            },
+          });
+        } catch (error) {
+          console.error('[alignment-shadow] 影子证据保存失败（官方 Take 不受影响）:',
+            String(error?.message ?? error));
+        }
+      }
+      if (!takeRecord.lifecycle.standbyOnly) profileCache.recover([takeRecord]);
+    };
     if (!takeRecord.lifecycle.standbyOnly && record.traceId) {
       try { loadPerformanceReplay(path.join(DATA_DIR, 'performance-replays'), takeRecord, () => readTrace(TRACES_DIR, record.traceId)); }
       catch (error) { console.warn('[replay] 本地重放保存失败:', error.message); }

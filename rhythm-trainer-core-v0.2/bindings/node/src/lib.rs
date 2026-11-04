@@ -1924,6 +1924,104 @@ fn to_core_performed_note(note: JsPerformedNoteInput) -> napi::Result<rhythm_cor
     })
 }
 
+#[napi(object)]
+pub struct JsAlignmentStep {
+    pub step: u32,
+    /// CHORD_MATCH / CHORD_FALLBACK / CHORD_MISS / CHORD_PRE_EXTRA /
+    /// MATCH / WRONG_PITCH / LOOKAHEAD_SKIP_TARGET / LOOKAHEAD_SKIP_PERFORMED /
+    /// MISS_WINDOW / EXTRA_WINDOW
+    pub branch: String,
+    pub target_id: String,
+    pub performed_id: String,
+    pub delta_ms: f64,
+    pub target_index: u32,
+    pub performed_index: u32,
+}
+
+#[napi(object)]
+pub struct JsTracedAlignment {
+    pub pairs: Vec<JsAlignmentPairOutput>,
+    pub missed_score_event_ids: Vec<String>,
+    pub extra_performed_ids: Vec<String>,
+    pub rest_window_extra_ids: Vec<String>,
+    pub steps: Vec<JsAlignmentStep>,
+}
+
+#[napi(object)]
+pub struct JsCandidateAlignment {
+    pub pairs: Vec<JsAlignmentPairOutput>,
+    pub missed_score_event_ids: Vec<String>,
+    pub extra_performed_ids: Vec<String>,
+}
+
+/// Rule-based alignment candidate (alignment-v2, benchmark/shadow only).
+/// Never called by `scorePerformance`; the caller opts in explicitly.
+#[napi(js_name = "alignPerformancesCandidate")]
+pub fn js_align_performances_candidate(
+    score_events: Vec<JsScoreEventInput>,
+    performed: Vec<JsPerformedNoteInput>,
+) -> napi::Result<JsCandidateAlignment> {
+    let core_score_events = score_events.into_iter().map(to_core_score_event).collect::<napi::Result<Vec<_>>>()?;
+    let core_performed = performed.into_iter().map(to_core_performed_note).collect::<napi::Result<Vec<_>>>()?;
+    let result = rhythm_core::align_performances_candidate(
+        &core_score_events,
+        &core_performed,
+        &rhythm_core::ScoringConfig::default(),
+    ).map_err(napi_error)?;
+    Ok(JsCandidateAlignment {
+        pairs: result.pairs.iter().map(|pair| JsAlignmentPairOutput {
+            score_event_id: pair.score_event_id.clone(),
+            performed_note_id: pair.performed_note_id.clone(),
+            pitch_matched: pair.pitch_matched,
+            onset_error_ms: pair.onset_error_ms,
+            measure: pair.measure,
+            pairing_status: None,
+        }).collect(),
+        missed_score_event_ids: result.missed_score_event_ids.clone(),
+        extra_performed_ids: result.extra_performed_ids.clone(),
+    })
+}
+
+/// Observation-only alignment trace (alignment-v2 P0 root-cause work). Runs
+/// the SAME frozen scoring_v1 matcher and returns its result plus the
+/// per-step decision trace. The official score path stays `scorePerformance`;
+/// diagnostics/benchmarks may call this without affecting any user score.
+#[napi(js_name = "alignPerformancesTraced")]
+pub fn js_align_performances_traced(
+    score_events: Vec<JsScoreEventInput>,
+    performed: Vec<JsPerformedNoteInput>,
+) -> napi::Result<JsTracedAlignment> {
+    let core_score_events = score_events.into_iter().map(to_core_score_event).collect::<napi::Result<Vec<_>>>()?;
+    let core_performed = performed.into_iter().map(to_core_performed_note).collect::<napi::Result<Vec<_>>>()?;
+    let traced = rhythm_core::align_performances_traced(
+        &core_score_events,
+        &core_performed,
+        &rhythm_core::ScoringConfig::default(),
+    ).map_err(napi_error)?;
+    Ok(JsTracedAlignment {
+        pairs: traced.result.pairs.iter().map(|pair| JsAlignmentPairOutput {
+            score_event_id: pair.score_event_id.clone(),
+            performed_note_id: pair.performed_note_id.clone(),
+            pitch_matched: pair.pitch_matched,
+            onset_error_ms: pair.onset_error_ms,
+            measure: pair.measure,
+            pairing_status: None,
+        }).collect(),
+        missed_score_event_ids: traced.result.missed_score_event_ids.clone(),
+        extra_performed_ids: traced.result.extra_performed_ids.clone(),
+        rest_window_extra_ids: traced.result.rest_window_extra_ids.clone(),
+        steps: traced.steps.iter().map(|step| JsAlignmentStep {
+            step: step.step as u32,
+            branch: step.branch.as_str().to_string(),
+            target_id: step.target_id.clone(),
+            performed_id: step.performed_id.clone(),
+            delta_ms: step.delta_ms,
+            target_index: step.target_index as u32,
+            performed_index: step.performed_index as u32,
+        }).collect(),
+    })
+}
+
 /// Scores a finalized performance using the existing rhythm-core scoring_v1
 /// implementation. Returns the complete report, including event-level results
 /// derived from the existing alignment (no second scoring algorithm).
@@ -1932,13 +2030,32 @@ pub fn js_score_performance(
     score_events: Vec<JsScoreEventInput>,
     performed: Vec<JsPerformedNoteInput>,
 ) -> napi::Result<JsSessionScoreReport> {
+    js_score_performance_impl(score_events, performed, false)
+}
+
+/// A versioned scoring entrypoint: v2 candidate note pairing + unchanged v1 metrics.
+/// The legacy `scorePerformance` export remains bit-identical for rollback.
+#[napi(js_name = "scorePerformanceCandidate")]
+pub fn js_score_performance_candidate(
+    score_events: Vec<JsScoreEventInput>,
+    performed: Vec<JsPerformedNoteInput>,
+) -> napi::Result<JsSessionScoreReport> {
+    js_score_performance_impl(score_events, performed, true)
+}
+
+fn js_score_performance_impl(
+    score_events: Vec<JsScoreEventInput>,
+    performed: Vec<JsPerformedNoteInput>,
+    use_candidate: bool,
+) -> napi::Result<JsSessionScoreReport> {
     let core_score_events = score_events.into_iter().map(to_core_score_event).collect::<napi::Result<Vec<_>>>()?;
     let core_performed = performed.into_iter().map(to_core_performed_note).collect::<napi::Result<Vec<_>>>()?;
-    let report = rhythm_core::score_performance(
-        &core_score_events,
-        &core_performed,
-        &rhythm_core::ScoringConfig::default(),
-    ).map_err(napi_error)?;
+    let config = rhythm_core::ScoringConfig::default();
+    let report = if use_candidate {
+        rhythm_core::score_performance_candidate(&core_score_events, &core_performed, &config)
+    } else {
+        rhythm_core::score_performance(&core_score_events, &core_performed, &config)
+    }.map_err(napi_error)?;
 
     let score_by_id: std::collections::BTreeMap<&str, &rhythm_core::ScoreEvent> = core_score_events
         .iter().map(|event| (event.score_event_id.as_str(), event)).collect();

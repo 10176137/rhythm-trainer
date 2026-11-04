@@ -25,6 +25,9 @@ const OUT_DIR = path.join(__dirname, 'out');
 const MANIFEST_PATH = path.join(__dirname, 'manifest.json');
 const require = createRequire(import.meta.url);
 const addon = require(path.join(REPO, 'rhythm-trainer-core-v0.2', 'bindings', 'node'));
+/** `--candidate` evaluates the alignment-v2 rule-based candidate instead of
+ * the frozen scoring_v1 matcher. Baseline artifacts stay untouched. */
+const USE_CANDIDATE = process.argv.includes('--candidate');
 
 const sha = (value) => createHash('sha256').update(value).digest('hex');
 const round = (value, digits = 3) => (value == null || !Number.isFinite(value) ? value : Number(value.toFixed(digits)));
@@ -74,7 +77,36 @@ function timelineResult(trace, labels) {
     const { releaseMs, ...rest } = note;
     return releaseMs == null ? rest : note;
   });
-  const report = addon.scorePerformance(trace.scoreEvents, performed);
+  let report;
+  if (USE_CANDIDATE) {
+    const candidate = addon.alignPerformancesCandidate(trace.scoreEvents, performed);
+    const eventResults = [
+      ...candidate.pairs.map((pair) => ({ scoreEventId: pair.scoreEventId, result: pair.pitchMatched ? 'MATCH' : 'WRONG_PITCH' })),
+      ...candidate.missedScoreEventIds.map((scoreEventId) => ({ scoreEventId, result: 'MISSING' })),
+    ];
+    report = {
+      alignmentPairs: candidate.pairs.map((pair) => ({
+        scoreEventId: pair.scoreEventId,
+        performedNoteId: pair.performedNoteId,
+        pitchMatched: pair.pitchMatched,
+        onsetErrorMs: pair.onsetErrorMs,
+      })),
+      eventResults,
+      missedScoreEventIds: candidate.missedScoreEventIds,
+      extraPerformedIds: candidate.extraPerformedIds,
+      algorithmVersion: 'alignment-candidate-v2',
+      confidence: 'n/a',
+      dataDegraded: false,
+      pitch: {
+        correct: candidate.pairs.filter((pair) => pair.pitchMatched).length,
+        wrongPitch: candidate.pairs.filter((pair) => !pair.pitchMatched).length,
+        missed: candidate.missedScoreEventIds.length,
+        extra: candidate.extraPerformedIds.length,
+      },
+    };
+  } else {
+    report = addon.scorePerformance(trace.scoreEvents, performed);
+  }
   const runtimeMs = performance.now() - started;
 
   const expectedPairs = new Map(labels.expected.pairs.map((pair) => [pair.scoreEventId, pair]));
@@ -486,10 +518,11 @@ function main() {
     ],
   };
 
-  const jsonPath = path.join(OUT_DIR, 'latest.json');
+  const prefix = USE_CANDIDATE ? 'candidate' : 'latest';
+  const jsonPath = path.join(OUT_DIR, `${prefix}.json`);
   writeFileSync(jsonPath, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
-  writeFileSync(path.join(OUT_DIR, 'latest.csv'), toCsv(first), 'utf8');
-  writeFileSync(path.join(OUT_DIR, 'summary.md'), toMarkdown(manifest, first, aggregateResult, metadata), 'utf8');
+  writeFileSync(path.join(OUT_DIR, `${prefix}.csv`), toCsv(first), 'utf8');
+  writeFileSync(path.join(OUT_DIR, `${prefix}.md`), toMarkdown(manifest, first, aggregateResult, metadata), 'utf8');
   console.log(`wrote ${jsonPath}`);
   console.log(`deterministic=${deterministic} timelineF1=${aggregateResult.timeline.macro.pairingF1} followKindAccuracy=${aggregateResult.follow.macro.kindAccuracy}`);
   if (!deterministic) process.exitCode = 1;
