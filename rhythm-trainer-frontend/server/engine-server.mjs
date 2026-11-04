@@ -108,6 +108,19 @@ try {
   process.exit(1);
 }
 
+// Candidate alignment is the final scoring default on the experimental branch.
+// Explicit legacy rollback must never silently happen after a candidate error.
+const FINAL_ALIGNMENT_SCORER = process.env.RHYTHM_FINAL_ALIGNMENT_SCORER || 'candidate';
+if (!['candidate', 'legacy'].includes(FINAL_ALIGNMENT_SCORER)) {
+  console.error('[engine] RHYTHM_FINAL_ALIGNMENT_SCORER 只能是 candidate 或 legacy');
+  process.exit(1);
+}
+if (FINAL_ALIGNMENT_SCORER === 'candidate' && typeof addon.scorePerformanceCandidate !== 'function') {
+  console.error('[engine] 当前 Rust N-API addon 没有 scorePerformanceCandidate；请重新构建本分支 addon，或显式设置 RHYTHM_FINAL_ALIGNMENT_SCORER=legacy');
+  process.exit(1);
+}
+console.log(`[engine] final scoring alignment = ${FINAL_ALIGNMENT_SCORER}`);
+
 // R2-3h: the planner authority is resolved ONCE at startup from
 // RHYTHM_PLANNER (default 'rts') and is the single source of truth the
 // browser queries — never a second switch maintained client-side. An
@@ -129,7 +142,7 @@ const DATA_DIR = process.env.RHYTHM_DATA_DIR
 const SESSIONS_DIR = path.join(DATA_DIR, 'sessions');
 const TAKES_DIR = path.join(DATA_DIR, 'takes');
 const ALIGNMENT_SHADOW_DIR = path.join(DATA_DIR, 'alignment-shadow');
-// Opt-in only. Never changes scorePerformance, P08, Take trust or mastery.
+// Optional diagnostic sidecar. It never overrides the selected official score.
 const ALIGNMENT_SHADOW_ENABLED = process.env.RHYTHM_ALIGNMENT_SHADOW === '1';
 const SCORE_SNAPSHOTS_DIR = path.join(DATA_DIR, 'score-snapshots');
 const TRACES_DIR = path.join(DATA_DIR, 'traces');
@@ -3121,7 +3134,9 @@ wss.on('connection', (socket) => {
         });
         pauseAdjusted = closedPauseSegments.length > 0;
 
-        scoreV1 = addon.scorePerformance(adjustedScoreEvents, performedNotes);
+        scoreV1 = FINAL_ALIGNMENT_SCORER === 'candidate'
+          ? addon.scorePerformanceCandidate(adjustedScoreEvents, performedNotes)
+          : addon.scorePerformance(adjustedScoreEvents, performedNotes);
         if (ALIGNMENT_SHADOW_ENABLED) {
           // Exactly the same admitted MIDI notes, paused-target shifts and
           // session-time domain as the official score. Any candidate error is
@@ -3130,7 +3145,11 @@ wss.on('connection', (socket) => {
             alignmentShadow = buildAlignmentShadow({
               scoreEvents: adjustedScoreEvents,
               performedNotes,
-              official: scoreV1,
+              // In candidate mode compare it against the frozen v1 baseline;
+              // in legacy mode compare against the same authoritative v1 score.
+              official: FINAL_ALIGNMENT_SCORER === 'candidate'
+                ? addon.scorePerformance(adjustedScoreEvents, performedNotes)
+                : scoreV1,
               addon,
             });
           } catch (error) {
@@ -3265,6 +3284,7 @@ wss.on('connection', (socket) => {
       takeTemplateUpdatedAtIso: meta?.takeTemplateUpdatedAtIso ?? null,
       retryComparison: null,
       coreAlgorithmVersion: meta ? addon.SCORING_ALGORITHM_VERSION : null,
+      finalAlignmentScorer: FINAL_ALIGNMENT_SCORER,
       // Replay inputs: the exact atom list and count-in that built the targets.
       atoms: meta ? meta.atoms : null,
       countInBeats: meta ? meta.countInBeats : null,
@@ -3327,6 +3347,7 @@ wss.on('connection', (socket) => {
         captureDiagnostics: record.captureDiagnostics,
       },
       assessment: {
+        finalAlignmentScorer: FINAL_ALIGNMENT_SCORER,
         trustworthy: !!record.report?.trustworthy,
         ...deriveTakeStatus({
           attemptStatus: interrupted ? 'interrupted' : (report.state === 'invalid' ? 'rejected' : 'completed'),
