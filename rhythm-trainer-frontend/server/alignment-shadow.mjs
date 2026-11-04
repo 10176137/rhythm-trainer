@@ -154,6 +154,7 @@ export function buildAlignmentShadow({
     tracePersistenceDegraded: traceInfo?.persistenceDegraded ?? null,
     clockMappingStatus: captureDiagnostics?.clockMapping?.status ?? 'unknown',
     inputHealth: captureDiagnostics?.inputHealth ?? 'unknown',
+    officialScoreStatus: captureDiagnostics?.scoreStatus ?? 'UNAVAILABLE',
   };
   const out = {
     schemaVersion: 1,
@@ -208,8 +209,17 @@ export function buildAlignmentShadow({
       || input.traceDropped !== 0
       || input.tracePersistenceDegraded === true
       || input.traceSha256 === null;
-    out.status = degraded ? 'DEGRADED' : 'AVAILABLE';
-    out.reasonCode = degraded ? 'EVIDENCE_QUALITY_LIMITED' : null;
+    if (input.officialScoreStatus === 'INSUFFICIENT_DATA') {
+      out.status = 'INSUFFICIENT';
+      out.reasonCode = 'OFFICIAL_SCORE_INSUFFICIENT';
+    } else if (input.officialScoreStatus === 'INVALID'
+      || input.officialScoreStatus === 'UNAVAILABLE') {
+      out.status = 'UNAVAILABLE';
+      out.reasonCode = 'OFFICIAL_SCORE_NOT_AVAILABLE';
+    } else {
+      out.status = degraded || input.officialScoreStatus !== 'AVAILABLE' ? 'DEGRADED' : 'AVAILABLE';
+      out.reasonCode = out.status === 'DEGRADED' ? 'EVIDENCE_QUALITY_LIMITED' : null;
+    }
   } catch (error) {
     out.status = 'INVALID';
     out.reasonCode = 'ALIGNMENT_COMPARISON_INVALID';
