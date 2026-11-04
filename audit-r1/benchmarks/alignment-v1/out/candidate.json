@@ -2,25 +2,31 @@
   "schemaVersion": 1,
   "benchmarkVersion": "alignment-bench-run-v1",
   "datasetVersion": "alignment-bench-v1",
-  "generatedAt": "2026-11-04T08:25:39.534Z",
-  "gitSha": "9b5ae66d205444ff86faaa6a868675a57addbe9a",
-  "node": "v26.12.0",
+  "generatedAt": "2026-11-04T15:30:11.232Z",
+  "gitSha": "1180a1d52cefaa990b84b59033ddaf41011eeac8",
+  "node": "v24.19.0",
   "deterministic": true,
   "runHashes": [
-    "bb7be49fa8a3bee817ac09e41e3e5833133c76e3e0a2383379dca64886beb32d",
-    "bb7be49fa8a3bee817ac09e41e3e5833133c76e3e0a2383379dca64886beb32d"
+    "5f3744ad85a50f9c5ca0a7c9eb21de4e1683e9649651be2d7d7efba39566c099",
+    "5f3744ad85a50f9c5ca0a7c9eb21de4e1683e9649651be2d7d7efba39566c099"
   ],
-  "datasetManifestSha256": "545ce512e3d378bda831df16bc6baad34cc50d9cfbef66c68f95eaf3d9cd5634",
+  "datasetManifestSha256": "a45d8624e39fa51c1be5314172959f32e0163ce12deda12e11425b9b70ec3402",
   "aggregate": {
     "timeline": {
-      "cases": 23,
+      "cases": 28,
       "macro": {
         "pairingPrecision": 1,
-        "pairingRecall": 0.995,
-        "pairingF1": 0.997,
-        "classAccuracy": 0.995,
+        "pairingRecall": 0.996,
+        "pairingF1": 0.998,
+        "classAccuracy": 0.996,
         "onsetMaeVsLabel": 0
       },
+      "cascadeTotal": 0,
+      "cascadeCases": 1,
+      "localIoiMaeVsLabel": 0,
+      "ambiguousPredictedTotal": 0,
+      "ambiguousCorrectTotal": 0,
+      "resourceLimitedCases": [],
       "casesWithPairingErrors": [
         "tl-early-300-control"
       ],
@@ -38,11 +44,11 @@
         "qualityAccuracy": 1
       }
     },
-    "runtimeMs": 2.482
+    "runtimeMs": 4.229
   },
   "runs": [
     {
-      "hash": "bb7be49fa8a3bee817ac09e41e3e5833133c76e3e0a2383379dca64886beb32d",
+      "hash": "5f3744ad85a50f9c5ca0a7c9eb21de4e1683e9649651be2d7d7efba39566c099",
       "cases": [
         {
           "caseId": "tl-clean-exact",
@@ -89,6 +95,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -114,7 +130,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.765
+          "runtimeMs": 0.404
         },
         {
           "caseId": "tl-late-global",
@@ -161,6 +177,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -186,7 +212,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.065
+          "runtimeMs": 0.133
         },
         {
           "caseId": "tl-local-deviations",
@@ -233,6 +259,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -258,7 +294,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.051
+          "runtimeMs": 0.111
         },
         {
           "caseId": "tl-tempo-drift",
@@ -306,6 +342,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -331,7 +377,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.046
+          "runtimeMs": 0.108
         },
         {
           "caseId": "tl-one-miss",
@@ -378,6 +424,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 7,
             "pitchWrong": 0,
             "pitchMissed": 1,
@@ -403,7 +459,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.101
+          "runtimeMs": 0.121
         },
         {
           "caseId": "tl-consecutive-miss",
@@ -451,6 +507,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 5,
             "pitchWrong": 0,
             "pitchMissed": 3,
@@ -476,7 +542,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.046
+          "runtimeMs": 0.103
         },
         {
           "caseId": "tl-wrong-pitch",
@@ -523,6 +589,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 7,
             "pitchWrong": 1,
             "pitchMissed": 0,
@@ -548,7 +624,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.045
+          "runtimeMs": 0.065
         },
         {
           "caseId": "tl-extra-note",
@@ -595,6 +671,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -620,7 +706,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.07
+          "runtimeMs": 0.079
         },
         {
           "caseId": "tl-mixed-errors",
@@ -669,6 +755,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 6,
             "pitchWrong": 1,
             "pitchMissed": 1,
@@ -694,7 +790,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.044
+          "runtimeMs": 0.078
         },
         {
           "caseId": "tl-chord-arrival-order",
@@ -737,6 +833,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 4,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -757,7 +863,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.036
+          "runtimeMs": 0.06
         },
         {
           "caseId": "tl-cross-hand-unison",
@@ -800,6 +906,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 3,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -820,7 +936,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.029
+          "runtimeMs": 0.05
         },
         {
           "caseId": "tl-fast-repeated-note",
@@ -863,6 +979,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 4,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -883,7 +1009,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.028
+          "runtimeMs": 0.064
         },
         {
           "caseId": "tl-tie-long-note",
@@ -924,6 +1050,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 2,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -949,7 +1085,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.035
+          "runtimeMs": 0.043
         },
         {
           "caseId": "tl-missing-note-off",
@@ -996,6 +1132,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -1021,7 +1167,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.047
+          "runtimeMs": 0.078
         },
         {
           "caseId": "tl-duplicate-packet",
@@ -1068,6 +1214,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -1093,7 +1249,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.049
+          "runtimeMs": 0.099
         },
         {
           "caseId": "tl-one-note-400ms-late",
@@ -1141,6 +1297,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -1166,7 +1332,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.043
+          "runtimeMs": 0.057
         },
         {
           "caseId": "tl-late-300-return",
@@ -1214,6 +1380,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -1239,7 +1415,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.041
+          "runtimeMs": 0.102
         },
         {
           "caseId": "tl-late-300-phase",
@@ -1287,6 +1463,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -1312,7 +1498,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.049
+          "runtimeMs": 0.083
         },
         {
           "caseId": "tl-late-600-phase",
@@ -1360,6 +1546,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -1385,7 +1581,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.041
+          "runtimeMs": 0.092
         },
         {
           "caseId": "tl-early-300-control",
@@ -1433,6 +1629,16 @@
             "classAccuracy": 0.875,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 7,
             "pitchWrong": 0,
             "pitchMissed": 1,
@@ -1460,7 +1666,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.042
+          "runtimeMs": 0.09
         },
         {
           "caseId": "tl-missing-note-on",
@@ -1507,6 +1713,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 7,
             "pitchWrong": 0,
             "pitchMissed": 1,
@@ -1532,7 +1748,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.04
+          "runtimeMs": 0.06
         },
         {
           "caseId": "tl-device-disconnect",
@@ -1579,6 +1795,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 4,
             "pitchWrong": 0,
             "pitchMissed": 4,
@@ -1599,7 +1825,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.033
+          "runtimeMs": 0.09
         },
         {
           "caseId": "tl-empty-input",
@@ -1636,6 +1862,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": null,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 0,
             "pitchWrong": 0,
             "pitchMissed": 1,
@@ -1650,7 +1886,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.011
+          "runtimeMs": 1.036
         },
         {
           "caseId": "fw-clean",
@@ -1701,7 +1937,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.345,
+          "runtimeMs": 0.208,
           "tags": [
             "follow",
             "clean"
@@ -1751,7 +1987,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.039,
+          "runtimeMs": 0.059,
           "tags": [
             "follow",
             "missing-target",
@@ -1809,7 +2045,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.076,
+          "runtimeMs": 0.123,
           "tags": [
             "follow",
             "wrong-note"
@@ -1862,7 +2098,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.059,
+          "runtimeMs": 0.084,
           "tags": [
             "follow",
             "chord",
@@ -1918,7 +2154,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.061,
+          "runtimeMs": 0.091,
           "tags": [
             "follow",
             "duplicate"
@@ -2023,16 +2259,426 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.038,
+          "runtimeMs": 0.066,
           "tags": [
             "follow",
             "extra"
           ]
+        },
+        {
+          "caseId": "tl-clock-degraded-v2",
+          "mode": "timeline",
+          "scenario": "unstable clock mapping with bounded jitter, identities intact",
+          "tags": [
+            "timing",
+            "input-evidence",
+            "degraded",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "degraded",
+            "assessable": [
+              "pitch",
+              "onset"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-candidate-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 7,
+            "localIoiTotal": 7,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": null,
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "degraded",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.057
+        },
+        {
+          "caseId": "tl-pause-resume-v2",
+          "mode": "timeline",
+          "scenario": "pause then resume in the adjusted session domain",
+          "tags": [
+            "timing",
+            "pause",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-candidate-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 7,
+            "localIoiTotal": 7,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": null,
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.056
+        },
+        {
+          "caseId": "tl-same-time-diff-pitch",
+          "mode": "timeline",
+          "scenario": "three different pitches at one onset, struck together",
+          "tags": [
+            "chord",
+            "same-onset",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 5,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 5,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH"
+            },
+            "algorithmVersion": "alignment-candidate-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 2,
+            "localIoiTotal": 2,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": null,
+            "pitchCorrect": 5,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 1,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.043
+        },
+        {
+          "caseId": "tl-adversarial-mixed",
+          "mode": "timeline",
+          "scenario": "late + wrong pitch + miss + extra + repeated pitch in one take",
+          "tags": [
+            "timing",
+            "cascade",
+            "mixed",
+            "hard",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 7,
+            "missed": 1,
+            "extra": 1,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 7,
+            "missed": 1,
+            "extra": 1,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "WRONG_PITCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH",
+              "s5": "MISSING"
+            },
+            "algorithmVersion": "alignment-candidate-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": 0,
+            "cascadeCleanCount": 4,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 5,
+            "localIoiTotal": 5,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": null,
+            "pitchCorrect": 6,
+            "pitchWrong": 1,
+            "pitchMissed": 1,
+            "pitchExtra": 1,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 1,
+                "errorRate": 0.25
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.092
+        },
+        {
+          "caseId": "tl-selection-pass-boundary",
+          "mode": "timeline",
+          "scenario": "selection repeated as two expanded passes",
+          "tags": [
+            "selection",
+            "pass-boundary",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 4,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 4,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1-pass1": "MATCH",
+              "s2-pass1": "MATCH",
+              "s1-pass2": "MATCH",
+              "s2-pass2": "MATCH"
+            },
+            "algorithmVersion": "alignment-candidate-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 3,
+            "localIoiTotal": 3,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": null,
+            "pitchCorrect": 4,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 2,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 2,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.037
         }
       ]
     },
     {
-      "hash": "bb7be49fa8a3bee817ac09e41e3e5833133c76e3e0a2383379dca64886beb32d",
+      "hash": "5f3744ad85a50f9c5ca0a7c9eb21de4e1683e9649651be2d7d7efba39566c099",
       "cases": [
         {
           "caseId": "tl-clean-exact",
@@ -2079,6 +2725,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -2104,7 +2760,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.045
+          "runtimeMs": 0.055
         },
         {
           "caseId": "tl-late-global",
@@ -2151,6 +2807,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -2176,7 +2842,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.042
+          "runtimeMs": 0.055
         },
         {
           "caseId": "tl-local-deviations",
@@ -2223,6 +2889,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -2248,7 +2924,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.039
+          "runtimeMs": 0.054
         },
         {
           "caseId": "tl-tempo-drift",
@@ -2296,6 +2972,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -2321,7 +3007,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.039
+          "runtimeMs": 0.055
         },
         {
           "caseId": "tl-one-miss",
@@ -2368,6 +3054,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 7,
             "pitchWrong": 0,
             "pitchMissed": 1,
@@ -2393,7 +3089,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.037
+          "runtimeMs": 0.055
         },
         {
           "caseId": "tl-consecutive-miss",
@@ -2441,6 +3137,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 5,
             "pitchWrong": 0,
             "pitchMissed": 3,
@@ -2466,7 +3172,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.033
+          "runtimeMs": 0.049
         },
         {
           "caseId": "tl-wrong-pitch",
@@ -2513,6 +3219,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 7,
             "pitchWrong": 1,
             "pitchMissed": 0,
@@ -2538,7 +3254,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.046
+          "runtimeMs": 0.053
         },
         {
           "caseId": "tl-extra-note",
@@ -2585,6 +3301,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -2610,7 +3336,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.043
+          "runtimeMs": 0.058
         },
         {
           "caseId": "tl-mixed-errors",
@@ -2659,6 +3385,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 6,
             "pitchWrong": 1,
             "pitchMissed": 1,
@@ -2684,7 +3420,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.041
+          "runtimeMs": 0.054
         },
         {
           "caseId": "tl-chord-arrival-order",
@@ -2727,6 +3463,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 4,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -2747,7 +3493,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.024
+          "runtimeMs": 0.034
         },
         {
           "caseId": "tl-cross-hand-unison",
@@ -2790,6 +3536,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 3,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -2810,7 +3566,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.02
+          "runtimeMs": 0.03
         },
         {
           "caseId": "tl-fast-repeated-note",
@@ -2853,6 +3609,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 4,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -2873,7 +3639,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.023
+          "runtimeMs": 0.033
         },
         {
           "caseId": "tl-tie-long-note",
@@ -2914,6 +3680,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 2,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -2939,7 +3715,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.014
+          "runtimeMs": 0.024
         },
         {
           "caseId": "tl-missing-note-off",
@@ -2986,6 +3762,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -3011,7 +3797,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.041
+          "runtimeMs": 0.053
         },
         {
           "caseId": "tl-duplicate-packet",
@@ -3058,6 +3844,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -3083,7 +3879,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.041
+          "runtimeMs": 0.054
         },
         {
           "caseId": "tl-one-note-400ms-late",
@@ -3131,6 +3927,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -3156,7 +3962,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.04
+          "runtimeMs": 0.051
         },
         {
           "caseId": "tl-late-300-return",
@@ -3204,6 +4010,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -3229,7 +4045,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.041
+          "runtimeMs": 0.052
         },
         {
           "caseId": "tl-late-300-phase",
@@ -3277,6 +4093,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -3302,7 +4128,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.04
+          "runtimeMs": 0.051
         },
         {
           "caseId": "tl-late-600-phase",
@@ -3350,6 +4176,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 8,
             "pitchWrong": 0,
             "pitchMissed": 0,
@@ -3375,7 +4211,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.038
+          "runtimeMs": 0.05
         },
         {
           "caseId": "tl-early-300-control",
@@ -3423,6 +4259,16 @@
             "classAccuracy": 0.875,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 7,
             "pitchWrong": 0,
             "pitchMissed": 1,
@@ -3450,7 +4296,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.041
+          "runtimeMs": 0.051
         },
         {
           "caseId": "tl-missing-note-on",
@@ -3497,6 +4343,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 7,
             "pitchWrong": 0,
             "pitchMissed": 1,
@@ -3522,7 +4378,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.042
+          "runtimeMs": 0.05
         },
         {
           "caseId": "tl-device-disconnect",
@@ -3569,6 +4425,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": 0,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 4,
             "pitchWrong": 0,
             "pitchMissed": 4,
@@ -3589,7 +4455,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.03
+          "runtimeMs": 0.047
         },
         {
           "caseId": "tl-empty-input",
@@ -3626,6 +4492,16 @@
             "classAccuracy": 1,
             "onsetMaeVsLabel": null,
             "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": null,
             "pitchCorrect": 0,
             "pitchWrong": 0,
             "pitchMissed": 1,
@@ -3640,7 +4516,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.013
+          "runtimeMs": 0.016
         },
         {
           "caseId": "fw-clean",
@@ -3691,7 +4567,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.078,
+          "runtimeMs": 0.097,
           "tags": [
             "follow",
             "clean"
@@ -3741,7 +4617,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.032,
+          "runtimeMs": 0.075,
           "tags": [
             "follow",
             "missing-target",
@@ -3799,7 +4675,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.073,
+          "runtimeMs": 0.092,
           "tags": [
             "follow",
             "wrong-note"
@@ -3852,7 +4728,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.051,
+          "runtimeMs": 0.099,
           "tags": [
             "follow",
             "chord",
@@ -3908,7 +4784,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.054,
+          "runtimeMs": 0.084,
           "tags": [
             "follow",
             "duplicate"
@@ -3963,7 +4839,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.059,
+          "runtimeMs": 0.09,
           "tags": [
             "follow",
             "pause",
@@ -4013,11 +4889,421 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.032,
+          "runtimeMs": 0.065,
           "tags": [
             "follow",
             "extra"
           ]
+        },
+        {
+          "caseId": "tl-clock-degraded-v2",
+          "mode": "timeline",
+          "scenario": "unstable clock mapping with bounded jitter, identities intact",
+          "tags": [
+            "timing",
+            "input-evidence",
+            "degraded",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "degraded",
+            "assessable": [
+              "pitch",
+              "onset"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-candidate-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 7,
+            "localIoiTotal": 7,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": null,
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "degraded",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.057
+        },
+        {
+          "caseId": "tl-pause-resume-v2",
+          "mode": "timeline",
+          "scenario": "pause then resume in the adjusted session domain",
+          "tags": [
+            "timing",
+            "pause",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-candidate-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 7,
+            "localIoiTotal": 7,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": null,
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.091
+        },
+        {
+          "caseId": "tl-same-time-diff-pitch",
+          "mode": "timeline",
+          "scenario": "three different pitches at one onset, struck together",
+          "tags": [
+            "chord",
+            "same-onset",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 5,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 5,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH"
+            },
+            "algorithmVersion": "alignment-candidate-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 2,
+            "localIoiTotal": 2,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": null,
+            "pitchCorrect": 5,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 1,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.046
+        },
+        {
+          "caseId": "tl-adversarial-mixed",
+          "mode": "timeline",
+          "scenario": "late + wrong pitch + miss + extra + repeated pitch in one take",
+          "tags": [
+            "timing",
+            "cascade",
+            "mixed",
+            "hard",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 7,
+            "missed": 1,
+            "extra": 1,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 7,
+            "missed": 1,
+            "extra": 1,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "WRONG_PITCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH",
+              "s5": "MISSING"
+            },
+            "algorithmVersion": "alignment-candidate-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": 0,
+            "cascadeCleanCount": 4,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 5,
+            "localIoiTotal": 5,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": null,
+            "pitchCorrect": 6,
+            "pitchWrong": 1,
+            "pitchMissed": 1,
+            "pitchExtra": 1,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 1,
+                "errorRate": 0.25
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.057
+        },
+        {
+          "caseId": "tl-selection-pass-boundary",
+          "mode": "timeline",
+          "scenario": "selection repeated as two expanded passes",
+          "tags": [
+            "selection",
+            "pass-boundary",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 4,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 4,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1-pass1": "MATCH",
+              "s2-pass1": "MATCH",
+              "s1-pass2": "MATCH",
+              "s2-pass2": "MATCH"
+            },
+            "algorithmVersion": "alignment-candidate-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": null,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 3,
+            "localIoiTotal": 3,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": null,
+            "pitchCorrect": 4,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 2,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 2,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.038
         }
       ]
     }

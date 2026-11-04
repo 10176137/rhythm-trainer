@@ -840,7 +840,7 @@ const sameTimeScore = [
   event('s2', 1, 0, 64),
   event('s3', 1, 0, 67),
   event('s4', 1, 1, 72),
-  event('s5', 2, 1, 67),
+  event('s5', 2, 4, 67),
 ];
 const sameTimePerformed = [
   { performedNoteId: 'p-s1', pitch: 60, onsetMs: onset(0), releaseMs: round(onset(0) + BEAT_MS), pairingStatus: 'complete' },
@@ -853,19 +853,19 @@ cases.push(timelineCaseV2({
   id: 'tl-same-time-diff-pitch',
   scenario: 'three different pitches at one onset, struck together',
   tags: ['chord', 'same-onset', 'v2'],
-  scoreEvents: chordScore,
+  scoreEvents: sameTimeScore,
   performed: sameTimePerformed,
   labels: undefined,
   expected: {
     ...labelsFor(sameTimeScore, sameTimePerformed),
     absoluteOnsetErrorMs: [0, 2, 5, 0, 0],
     localIoiErrorMs: [
-      { afterPairIndex: 2, ioiErrorMs: 0 },
+      { afterPairIndex: 2, ioiErrorMs: -5 },
       { afterPairIndex: 3, ioiErrorMs: 0 },
     ],
     phaseChangeCount: 0,
   },
-  notes: 'Inside the same-onset group there are no IOI speed samples (PRD 5.2); transitions s3->s4 and s4->s5 only.',
+  notes: 'Inside the same-onset group there are no IOI speed samples (PRD 5.2); transitions s3->s4 and s4->s5 only. The -5 ms residual comes from the +5 ms arrival of the last chord tone.',
 }));
 
 // Adversarial mixture: isolated late (+300, returns), one wrong pitch, one
@@ -875,10 +875,10 @@ const adversarialScore = [
   event('s2', 1, 1, 62),
   event('s3', 1, 2, 64),
   event('s4', 1, 3, 65),
-  event('s5', 2, 0, 67),
-  event('s6', 2, 1, 69),
-  event('s7', 2, 2, 60),
-  event('s8', 2, 3, 60),
+  event('s5', 2, 4, 67),
+  event('s6', 2, 5, 69),
+  event('s7', 2, 6, 60),
+  event('s8', 2, 7, 60),
 ];
 const adversarialPerformed = [
   { performedNoteId: 'p-s1', pitch: 60, onsetMs: onset(0), releaseMs: round(onset(0) + BEAT_MS), pairingStatus: 'complete' },
@@ -932,8 +932,8 @@ cases.push(timelineCaseV2({
 const passScore = [
   event('s1-pass1', 1, 0, 60),
   event('s2-pass1', 1, 1, 62),
-  event('s1-pass2', 2, 0, 60),
-  event('s2-pass2', 2, 1, 62),
+  event('s1-pass2', 2, 4, 60),
+  event('s2-pass2', 2, 5, 62),
 ];
 const passPerformed = performedFor(passScore);
 cases.push(timelineCaseV2({

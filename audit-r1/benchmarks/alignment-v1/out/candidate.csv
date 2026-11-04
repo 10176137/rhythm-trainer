@@ -1,31 +1,36 @@
 caseId,mode,scenario,pairingPrecision,pairingRecall,pairingF1,classAccuracy,onsetMaeVsLabel,kindAccuracy,quality,qualityCorrect,runtimeMs
-tl-clean-exact,timeline,"clean, exact performance",1,1,1,1,0,,healthy,true,0.765
-tl-late-global,timeline,whole performance 50 ms late,1,1,1,1,0,,healthy,true,0.065
-tl-local-deviations,timeline,local timing deviations within the band,1,1,1,1,0,,healthy,true,0.051
-tl-tempo-drift,timeline,accelerando / tempo drift,1,1,1,1,0,,healthy,true,0.046
-tl-one-miss,timeline,one missing target,1,1,1,1,0,,healthy,true,0.101
-tl-consecutive-miss,timeline,three consecutive missing targets,1,1,1,1,0,,healthy,true,0.046
-tl-wrong-pitch,timeline,one wrong pitch at the correct time,1,1,1,1,0,,healthy,true,0.045
-tl-extra-note,timeline,one inserted note between targets,1,1,1,1,0,,healthy,true,0.07
-tl-mixed-errors,timeline,missing + wrong pitch + extra interleaved,1,1,1,1,0,,healthy,true,0.044
-tl-chord-arrival-order,timeline,same-onset chord arrives in reverse pitch order,1,1,1,1,0,,healthy,true,0.036
-tl-cross-hand-unison,timeline,two staves notate the same MIDI pitch on one onset,1,1,1,1,0,,healthy,true,0.029
-tl-fast-repeated-note,timeline,fast repeated same pitch,1,1,1,1,0,,healthy,true,0.028
-tl-tie-long-note,timeline,tied long note followed by a short note,1,1,1,1,0,,healthy,true,0.035
-tl-missing-note-off,timeline,Note On without Note Off,1,1,1,1,0,,degraded,true,0.047
-tl-duplicate-packet,timeline,duplicated MIDI packet for the same key/onset,1,1,1,1,0,,degraded,true,0.049
-tl-one-note-400ms-late,timeline,one note 400 ms late (outside the normal matching band),1,1,1,1,0,,healthy,true,0.043
-tl-late-300-return,timeline,"one note 300 ms late, then back on the original grid",1,1,1,1,0,,healthy,true,0.041
-tl-late-300-phase,timeline,"one 300 ms phase change, stable intervals afterwards",1,1,1,1,0,,healthy,true,0.049
-tl-late-600-phase,timeline,one 600 ms phase change: shifted notes land in the next window,1,1,1,1,0,,healthy,true,0.041
-tl-early-300-control,timeline,one note 300 ms early (asymmetry control),1,0.875,0.933,0.875,0,,healthy,true,0.042
-tl-missing-note-on,timeline,one Note On lost before capture,1,1,1,1,0,,degraded,true,0.04
-tl-device-disconnect,timeline,device disconnects after four notes,1,1,1,1,0,,degraded,true,0.033
-tl-empty-input,timeline,no performed events at all,1,1,1,1,,,unscorable,true,0.011
-fw-clean,follow,Follow: clean three-target performance,,,,,,1,healthy,true,0.345
-fw-skip-target,follow,"Follow: one target skipped, performer continues",,,,,,1,healthy,true,0.039
-fw-wrong-then-correct,follow,Follow: wrong note then recovery,,,,,,1,healthy,true,0.076
-fw-chord-spread,follow,Follow: chord arrives spread beyond tolerance,,,,,,1,healthy,true,0.059
-fw-duplicate-note,follow,Follow: repeated key inside an incomplete chord,,,,,,1,healthy,true,0.061
+tl-clean-exact,timeline,"clean, exact performance",1,1,1,1,0,,healthy,true,0.404
+tl-late-global,timeline,whole performance 50 ms late,1,1,1,1,0,,healthy,true,0.133
+tl-local-deviations,timeline,local timing deviations within the band,1,1,1,1,0,,healthy,true,0.111
+tl-tempo-drift,timeline,accelerando / tempo drift,1,1,1,1,0,,healthy,true,0.108
+tl-one-miss,timeline,one missing target,1,1,1,1,0,,healthy,true,0.121
+tl-consecutive-miss,timeline,three consecutive missing targets,1,1,1,1,0,,healthy,true,0.103
+tl-wrong-pitch,timeline,one wrong pitch at the correct time,1,1,1,1,0,,healthy,true,0.065
+tl-extra-note,timeline,one inserted note between targets,1,1,1,1,0,,healthy,true,0.079
+tl-mixed-errors,timeline,missing + wrong pitch + extra interleaved,1,1,1,1,0,,healthy,true,0.078
+tl-chord-arrival-order,timeline,same-onset chord arrives in reverse pitch order,1,1,1,1,0,,healthy,true,0.06
+tl-cross-hand-unison,timeline,two staves notate the same MIDI pitch on one onset,1,1,1,1,0,,healthy,true,0.05
+tl-fast-repeated-note,timeline,fast repeated same pitch,1,1,1,1,0,,healthy,true,0.064
+tl-tie-long-note,timeline,tied long note followed by a short note,1,1,1,1,0,,healthy,true,0.043
+tl-missing-note-off,timeline,Note On without Note Off,1,1,1,1,0,,degraded,true,0.078
+tl-duplicate-packet,timeline,duplicated MIDI packet for the same key/onset,1,1,1,1,0,,degraded,true,0.099
+tl-one-note-400ms-late,timeline,one note 400 ms late (outside the normal matching band),1,1,1,1,0,,healthy,true,0.057
+tl-late-300-return,timeline,"one note 300 ms late, then back on the original grid",1,1,1,1,0,,healthy,true,0.102
+tl-late-300-phase,timeline,"one 300 ms phase change, stable intervals afterwards",1,1,1,1,0,,healthy,true,0.083
+tl-late-600-phase,timeline,one 600 ms phase change: shifted notes land in the next window,1,1,1,1,0,,healthy,true,0.092
+tl-early-300-control,timeline,one note 300 ms early (asymmetry control),1,0.875,0.933,0.875,0,,healthy,true,0.09
+tl-missing-note-on,timeline,one Note On lost before capture,1,1,1,1,0,,degraded,true,0.06
+tl-device-disconnect,timeline,device disconnects after four notes,1,1,1,1,0,,degraded,true,0.09
+tl-empty-input,timeline,no performed events at all,1,1,1,1,,,unscorable,true,1.036
+fw-clean,follow,Follow: clean three-target performance,,,,,,1,healthy,true,0.208
+fw-skip-target,follow,"Follow: one target skipped, performer continues",,,,,,1,healthy,true,0.059
+fw-wrong-then-correct,follow,Follow: wrong note then recovery,,,,,,1,healthy,true,0.123
+fw-chord-spread,follow,Follow: chord arrives spread beyond tolerance,,,,,,1,healthy,true,0.084
+fw-duplicate-note,follow,Follow: repeated key inside an incomplete chord,,,,,,1,healthy,true,0.091
 fw-pause-resume,follow,Follow: pause then resume invalidates the next interval,,,,,,1,healthy,true,0.107
-fw-extra-after-complete,follow,Follow: input after the final target,,,,,,1,healthy,true,0.038
+fw-extra-after-complete,follow,Follow: input after the final target,,,,,,1,healthy,true,0.066
+tl-clock-degraded-v2,timeline,"unstable clock mapping with bounded jitter, identities intact",1,1,1,1,0,,degraded,true,0.057
+tl-pause-resume-v2,timeline,pause then resume in the adjusted session domain,1,1,1,1,0,,healthy,true,0.056
+tl-same-time-diff-pitch,timeline,"three different pitches at one onset, struck together",1,1,1,1,0,,healthy,true,0.043
+tl-adversarial-mixed,timeline,late + wrong pitch + miss + extra + repeated pitch in one take,1,1,1,1,0,,healthy,true,0.092
+tl-selection-pass-boundary,timeline,selection repeated as two expanded passes,1,1,1,1,0,,healthy,true,0.037

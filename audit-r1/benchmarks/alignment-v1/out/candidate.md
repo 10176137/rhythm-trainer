@@ -1,8 +1,8 @@
-# Alignment benchmark v1 — baseline summary
+# Alignment benchmark v1 — rule candidate (alignment-candidate-v2) summary
 
-- Generated: 2026-11-04T08:25:39.534Z
-- Git SHA: `9b5ae66d205444ff86faaa6a868675a57addbe9a`
-- Dataset: `alignment-bench-v1` (23 timeline, 7 follow)
+- Generated: 2026-11-04T15:30:11.232Z
+- Git SHA: `1180a1d52cefaa990b84b59033ddaf41011eeac8`
+- Dataset: `alignment-bench-v1` (28 timeline, 7 follow)
 - Baseline: Rust `alignment-candidate-v2` / FollowRuntime
 - Deterministic (two runs): **yes**
 
@@ -11,11 +11,14 @@
 | Metric | Value |
 |---|---|
 | pairingPrecision | 1 |
-| pairingRecall | 0.995 |
-| pairingF1 | 0.997 |
-| classAccuracy | 0.995 |
+| pairingRecall | 0.996 |
+| pairingF1 | 0.998 |
+| classAccuracy | 0.996 |
 | onsetMaeVsLabel | 0 |
 | quality accuracy | 1 |
+| cascade errors (v2 clean-tail) | 0 across 1 trigger cases |
+| local IOI MAE vs label (ms) | 0 |
+| ambiguous pairs predicted / label-matched | 0 / 0 |
 
 ## Aggregate (Follow)
 
@@ -28,31 +31,36 @@
 
 ## Timeline cases
 
-| Case | Precision | Recall | F1 | Class acc. | Onset ∆ (ms) | Quality |
-|---|---|---|---|---|---|---|
-| tl-clean-exact | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-late-global | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-local-deviations | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-tempo-drift | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-one-miss | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-consecutive-miss | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-wrong-pitch | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-extra-note | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-mixed-errors | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-chord-arrival-order | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-cross-hand-unison | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-fast-repeated-note | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-tie-long-note | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-missing-note-off | 1 | 1 | 1 | 1 | 0 | degraded |
-| tl-duplicate-packet | 1 | 1 | 1 | 1 | 0 | degraded |
-| tl-one-note-400ms-late | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-late-300-return | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-late-300-phase | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-late-600-phase | 1 | 1 | 1 | 1 | 0 | healthy |
-| tl-early-300-control | 1 | 0.875 | 0.933 | 0.875 | 0 | healthy |
-| tl-missing-note-on | 1 | 1 | 1 | 1 | 0 | degraded |
-| tl-device-disconnect | 1 | 1 | 1 | 1 | 0 | degraded |
-| tl-empty-input | 1 | 1 | 1 | 1 | — | unscorable |
+| Case | Precision | Recall | F1 | Class acc. | Onset ∆ (ms) | Cascade | IOI MAE | Quality |
+|---|---|---|---|---|---|---|---|---|
+| tl-clean-exact | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-late-global | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-local-deviations | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-tempo-drift | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-one-miss | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-consecutive-miss | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-wrong-pitch | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-extra-note | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-mixed-errors | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-chord-arrival-order | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-cross-hand-unison | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-fast-repeated-note | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-tie-long-note | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-missing-note-off | 1 | 1 | 1 | 1 | 0 | — | — | degraded |
+| tl-duplicate-packet | 1 | 1 | 1 | 1 | 0 | — | — | degraded |
+| tl-one-note-400ms-late | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-late-300-return | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-late-300-phase | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-late-600-phase | 1 | 1 | 1 | 1 | 0 | — | — | healthy |
+| tl-early-300-control | 1 | 0.875 | 0.933 | 0.875 | 0 | — | — | healthy |
+| tl-missing-note-on | 1 | 1 | 1 | 1 | 0 | — | — | degraded |
+| tl-device-disconnect | 1 | 1 | 1 | 1 | 0 | — | — | degraded |
+| tl-empty-input | 1 | 1 | 1 | 1 | — | — | — | unscorable |
+| tl-clock-degraded-v2 | 1 | 1 | 1 | 1 | 0 | — | 0 | degraded |
+| tl-pause-resume-v2 | 1 | 1 | 1 | 1 | 0 | — | 0 | healthy |
+| tl-same-time-diff-pitch | 1 | 1 | 1 | 1 | 0 | — | 0 | healthy |
+| tl-adversarial-mixed | 1 | 1 | 1 | 1 | 0 | 0/4 | 0 | healthy |
+| tl-selection-pass-boundary | 1 | 1 | 1 | 1 | 0 | — | 0 | healthy |
 
 ## Follow cases
 

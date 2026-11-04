@@ -28,6 +28,15 @@ const addon = require(path.join(REPO, 'rhythm-trainer-core-v0.2', 'bindings', 'n
 /** `--candidate` evaluates the alignment-v2 rule-based candidate instead of
  * the frozen scoring_v1 matcher. Baseline artifacts stay untouched. */
 const USE_CANDIDATE = process.argv.includes('--candidate');
+/** `--dp` evaluates the alignment-v2 weighted sequence DP candidate
+ * (alignPerformancesDpV2). Mutually exclusive with `--candidate`. */
+const USE_DP = process.argv.includes('--dp');
+if (USE_CANDIDATE && USE_DP) throw new Error('--candidate and --dp are mutually exclusive');
+const Ajv2020 = require(path.join(REPO, 'rhythm-trainer-frontend', 'node_modules', 'ajv', 'dist', '2020')).default;
+const ajv = new Ajv2020({ allErrors: true, strict: false });
+const validateLabelsV2Schema = ajv.compile(
+  JSON.parse(readFileSync(path.join(REPO, 'audit-r1', 'contracts', 'alignment-labels-v2.schema.json'), 'utf8')),
+);
 
 const sha = (value) => createHash('sha256').update(value).digest('hex');
 const round = (value, digits = 3) => (value == null || !Number.isFinite(value) ? value : Number(value.toFixed(digits)));
@@ -78,7 +87,40 @@ function timelineResult(trace, labels) {
     return releaseMs == null ? rest : note;
   });
   let report;
-  if (USE_CANDIDATE) {
+  if (USE_DP) {
+    const dp = addon.alignPerformancesDpV2(trace.scoreEvents, performed);
+    const eventResults = [
+      ...dp.pairs.map((pair) => ({
+        scoreEventId: pair.scoreEventId,
+        result: pair.kind === 'CORRECT_PITCH' ? 'MATCH' : 'WRONG_PITCH',
+        assignmentAmbiguous: pair.assignmentAmbiguous,
+      })),
+      ...dp.missedScoreEventIds.map((scoreEventId) => ({ scoreEventId, result: 'MISSING' })),
+    ];
+    report = {
+      alignmentPairs: dp.pairs.map((pair) => ({
+        scoreEventId: pair.scoreEventId,
+        performedNoteId: pair.performedNoteId,
+        pitchMatched: pair.kind === 'CORRECT_PITCH',
+        onsetErrorMs: pair.onsetErrorMs,
+      })),
+      eventResults,
+      missedScoreEventIds: dp.missedScoreEventIds,
+      extraPerformedIds: dp.extraPerformedIds,
+      algorithmVersion: dp.algorithmVersion,
+      confidence: 'n/a',
+      dataDegraded: dp.status !== 'completed',
+      resourceStatus: dp.status,
+      ambiguousGroups: dp.ambiguousGroups,
+      diagnostics: dp.diagnostics,
+      pitch: {
+        correct: dp.pairs.filter((pair) => pair.kind === 'CORRECT_PITCH').length,
+        wrongPitch: dp.pairs.filter((pair) => pair.kind !== 'CORRECT_PITCH').length,
+        missed: dp.missedScoreEventIds.length,
+        extra: dp.extraPerformedIds.length,
+      },
+    };
+  } else if (USE_CANDIDATE) {
     const candidate = addon.alignPerformancesCandidate(trace.scoreEvents, performed);
     const eventResults = [
       ...candidate.pairs.map((pair) => ({ scoreEventId: pair.scoreEventId, result: pair.pitchMatched ? 'MATCH' : 'WRONG_PITCH' })),
@@ -157,6 +199,70 @@ function timelineResult(trace, labels) {
     if (predictedExtras.has(performedNoteId)) extraCorrect += 1;
   }
 
+  // --- V2-only metrics (labelsSchema 2) -------------------------------------
+  // Cascade accounting: everything the labels declare CLEAN after the
+  // injected trigger must keep its exact identity; any predicted deviation
+  // there is algorithm-caused (the trigger's own real error is not counted).
+  const cascade = labels.expected.cascadeTrigger;
+  let cascadeCount = null;
+  let cascadeCleanCount = null;
+  if (cascade) {
+    cascadeCount = 0;
+    cascadeCleanCount = cascade.cleanTailScoreEventIds.length;
+    for (const scoreEventId of cascade.cleanTailScoreEventIds) {
+      const expectedPair = expectedPairs.get(scoreEventId);
+      const predicted = predictedPairs.get(scoreEventId);
+      const predictedClass = predictedClasses.get(scoreEventId);
+      if (expectedPair) {
+        if (!predicted || predicted.performedNoteId !== expectedPair.performedNoteId
+          || predictedClass !== (expectedPair.pitchMatched ? 'MATCH' : 'WRONG_PITCH')) cascadeCount += 1;
+      } else if (predictedClass !== 'MISSING') {
+        cascadeCount += 1;
+      }
+    }
+  }
+
+  // Ambiguity coverage: the DP reports which assignments it could not observe;
+  // labels may declare the same ambiguity (cross-hand unison).
+  const predictedAmbiguousIds = new Set((report.eventResults ?? []).filter((entry) => entry.assignmentAmbiguous).map((entry) => entry.scoreEventId));
+  const labelAmbiguousIds = new Set(labels.expected.ambiguousPairs ?? []);
+  const ambiguousPredicted = report.ambiguousGroups ? predictedAmbiguousIds.size : null;
+  const ambiguousLabel = labels.expected.ambiguousPairs ? labelAmbiguousIds.size : null;
+  const ambiguousCorrect = labels.expected.ambiguousPairs
+    ? [...labelAmbiguousIds].filter((id) => predictedAmbiguousIds.has(id)).length
+    : null;
+
+  // Local IOI residuals: predicted from CONFIRMED pairs only, compared with
+  // the construction-fixed label residual per reliable transition.
+  let localIoiMae = null;
+  let localIoiCovered = null;
+  let localIoiTotal = null;
+  const ioiEntries = labels.expected.localIoiErrorMs;
+  if (Array.isArray(ioiEntries) && ioiEntries.length > 0) {
+    const performedById = new Map(trace.performed.map((note) => [note.performedNoteId, note]));
+    const scoreById = new Map(trace.scoreEvents.map((event) => [event.scoreEventId, event]));
+    let sum = 0;
+    let covered = 0;
+    for (const entry of ioiEntries) {
+      const pairA = labels.expected.pairs[entry.afterPairIndex];
+      const pairB = labels.expected.pairs[entry.afterPairIndex + 1];
+      if (!pairA || !pairB) continue;
+      const predA = predictedPairs.get(pairA.scoreEventId);
+      const predB = predictedPairs.get(pairB.scoreEventId);
+      if (!predA || !predB || predA.performedNoteId !== pairA.performedNoteId || predB.performedNoteId !== pairB.performedNoteId) continue;
+      const noteA = performedById.get(pairA.performedNoteId);
+      const noteB = performedById.get(pairB.performedNoteId);
+      const scoreA = scoreById.get(pairA.scoreEventId);
+      const scoreB = scoreById.get(pairB.scoreEventId);
+      const predictedIoi = (noteB.onsetMs - noteA.onsetMs) - (scoreB.targetOnsetMs - scoreA.targetOnsetMs);
+      sum += Math.abs(predictedIoi - entry.ioiErrorMs);
+      covered += 1;
+    }
+    localIoiMae = covered === 0 ? null : sum / covered;
+    localIoiCovered = covered;
+    localIoiTotal = ioiEntries.length;
+  }
+
   const expectedClassCount = expectedPairs.size + labels.expected.missedScoreEventIds.length + labels.expected.extraPerformedIds.length;
   const classCorrect = pitchClassCorrect + missedCorrect + extraCorrect;
   // Unassessable targets are excluded from precision/recall/class denominators:
@@ -200,6 +306,16 @@ function timelineResult(trace, labels) {
       classAccuracy: round(expectedClassCount === 0 ? 1 : classCorrect / expectedClassCount),
       onsetMaeVsLabel: round(intersection === 0 ? null : onsetDeltaSum / intersection),
       onsetMaxDeltaVsLabel: round(onsetDeltaMax),
+      cascadeCount,
+      cascadeCleanCount,
+      ambiguousPredicted,
+      ambiguousLabel,
+      ambiguousCorrect,
+      localIoiMaeVsLabel: round(localIoiMae),
+      localIoiCovered,
+      localIoiTotal,
+      labelPhaseChangeCount: labels.expected.phaseChangeCount ?? null,
+      resourceStatus: report.resourceStatus ?? null,
       pitchCorrect: report.pitch.correct,
       pitchWrong: report.pitch.wrongPitch,
       pitchMissed: report.pitch.missed,
@@ -300,6 +416,12 @@ function canonicalize(result) {
 }
 
 function validateLabels(trace, labels) {
+  if (labels.schemaVersion === 2) {
+    if (!validateLabelsV2Schema(labels)) {
+      const detail = validateLabelsV2Schema.errors.map((error) => `${error.instancePath} ${error.message}`).join('; ');
+      throw new Error(`${trace.caseId}: labels violate alignment-labels-v2 schema: ${detail}`);
+    }
+  }
   const expected = labels.expected;
   if (trace.mode === 'follow') {
     if (!Array.isArray(expected.kinds) || expected.kinds.length !== trace.inputs.length) {
@@ -378,15 +500,21 @@ function aggregate(results) {
   const follow = results.filter((result) => result.mode === 'follow');
   const mean = (values) => (values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length);
   return {
-    timeline: {
-      cases: timeline.length,
-      macro: {
-        pairingPrecision: round(mean(timeline.map((result) => result.metrics.pairingPrecision))),
-        pairingRecall: round(mean(timeline.map((result) => result.metrics.pairingRecall))),
-        pairingF1: round(mean(timeline.map((result) => result.metrics.pairingF1))),
-        classAccuracy: round(mean(timeline.map((result) => result.metrics.classAccuracy))),
-        onsetMaeVsLabel: round(mean(timeline.map((result) => result.metrics.onsetMaeVsLabel).filter((value) => value != null))),
-      },
+      timeline: {
+        cases: timeline.length,
+        macro: {
+          pairingPrecision: round(mean(timeline.map((result) => result.metrics.pairingPrecision))),
+          pairingRecall: round(mean(timeline.map((result) => result.metrics.pairingRecall))),
+          pairingF1: round(mean(timeline.map((result) => result.metrics.pairingF1))),
+          classAccuracy: round(mean(timeline.map((result) => result.metrics.classAccuracy))),
+          onsetMaeVsLabel: round(mean(timeline.map((result) => result.metrics.onsetMaeVsLabel).filter((value) => value != null))),
+        },
+        cascadeTotal: round(timeline.reduce((sum, result) => sum + (result.metrics.cascadeCount ?? 0), 0)),
+        cascadeCases: timeline.filter((result) => result.metrics.cascadeCount != null).length,
+        localIoiMaeVsLabel: round(mean(timeline.map((result) => result.metrics.localIoiMaeVsLabel).filter((value) => value != null))),
+        ambiguousPredictedTotal: round(timeline.reduce((sum, result) => sum + (result.metrics.ambiguousPredicted ?? 0), 0)),
+        ambiguousCorrectTotal: round(timeline.reduce((sum, result) => sum + (result.metrics.ambiguousCorrect ?? 0), 0)),
+        resourceLimitedCases: timeline.filter((result) => result.metrics.resourceStatus === 'resource-limit').map((result) => result.caseId),
       casesWithPairingErrors: timeline.filter((result) => result.metrics.pairingF1 < 1).map((result) => result.caseId),
       casesWithClassErrors: timeline.filter((result) => result.metrics.classAccuracy < 1).map((result) => result.caseId),
       qualityAccuracy: round(mean(timeline.map((result) => result.metrics.qualityCorrect ? 1 : 0))),
@@ -434,8 +562,9 @@ function toCsv(results) {
 }
 
 function toMarkdown(manifest, results, aggregateResult, metadata) {
+  const modeLabel = USE_DP ? 'DP candidate (alignment-dp-v2)' : USE_CANDIDATE ? 'rule candidate (alignment-candidate-v2)' : 'frozen scoring_v1 baseline';
   const lines = [];
-  lines.push('# Alignment benchmark v1 — baseline summary');
+  lines.push(`# Alignment benchmark v1 — ${modeLabel} summary`);
   lines.push('');
   lines.push(`- Generated: ${metadata.generatedAt}`);
   lines.push(`- Git SHA: \`${metadata.gitSha ?? 'unknown'}\``);
@@ -449,6 +578,10 @@ function toMarkdown(manifest, results, aggregateResult, metadata) {
   lines.push('|---|---|');
   for (const [key, value] of Object.entries(aggregateResult.timeline.macro)) lines.push(`| ${key} | ${value ?? '—'} |`);
   lines.push(`| quality accuracy | ${aggregateResult.timeline.qualityAccuracy ?? '—'} |`);
+  lines.push(`| cascade errors (v2 clean-tail) | ${aggregateResult.timeline.cascadeTotal ?? '—'} across ${aggregateResult.timeline.cascadeCases ?? 0} trigger cases |`);
+  lines.push(`| local IOI MAE vs label (ms) | ${aggregateResult.timeline.localIoiMaeVsLabel ?? '—'} |`);
+  lines.push(`| ambiguous pairs predicted / label-matched | ${aggregateResult.timeline.ambiguousPredictedTotal ?? 0} / ${aggregateResult.timeline.ambiguousCorrectTotal ?? 0} |`);
+  if (aggregateResult.timeline.resourceLimitedCases.length > 0) lines.push(`| resource-limited cases | ${aggregateResult.timeline.resourceLimitedCases.join(', ')} |`);
   lines.push('');
   lines.push('## Aggregate (Follow)');
   lines.push('');
@@ -458,10 +591,12 @@ function toMarkdown(manifest, results, aggregateResult, metadata) {
   lines.push('');
   lines.push('## Timeline cases');
   lines.push('');
-  lines.push('| Case | Precision | Recall | F1 | Class acc. | Onset ∆ (ms) | Quality |');
-  lines.push('|---|---|---|---|---|---|---|');
+  lines.push('| Case | Precision | Recall | F1 | Class acc. | Onset ∆ (ms) | Cascade | IOI MAE | Quality |');
+  lines.push('|---|---|---|---|---|---|---|---|---|');
   for (const result of results.filter((entry) => entry.mode === 'timeline')) {
-    lines.push(`| ${result.caseId} | ${result.metrics.pairingPrecision} | ${result.metrics.pairingRecall} | ${result.metrics.pairingF1} | ${result.metrics.classAccuracy} | ${result.metrics.onsetMaeVsLabel ?? '—'} | ${result.metrics.quality}${result.metrics.qualityCorrect ? '' : ' ❌'} |`);
+    const cascadeCell = result.metrics.cascadeCount == null ? '—' : `${result.metrics.cascadeCount}/${result.metrics.cascadeCleanCount}`;
+    const ioiCell = result.metrics.localIoiMaeVsLabel == null ? '—' : result.metrics.localIoiMaeVsLabel;
+    lines.push(`| ${result.caseId} | ${result.metrics.pairingPrecision} | ${result.metrics.pairingRecall} | ${result.metrics.pairingF1} | ${result.metrics.classAccuracy} | ${result.metrics.onsetMaeVsLabel ?? '—'} | ${cascadeCell} | ${ioiCell} | ${result.metrics.quality}${result.metrics.qualityCorrect ? '' : ' ❌'} |`);
   }
   lines.push('');
   lines.push('## Follow cases');
@@ -518,13 +653,13 @@ function main() {
     ],
   };
 
-  const prefix = USE_CANDIDATE ? 'candidate' : 'latest';
+  const prefix = USE_DP ? 'dp' : USE_CANDIDATE ? 'candidate' : 'latest';
   const jsonPath = path.join(OUT_DIR, `${prefix}.json`);
   writeFileSync(jsonPath, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
   writeFileSync(path.join(OUT_DIR, `${prefix}.csv`), toCsv(first), 'utf8');
   writeFileSync(path.join(OUT_DIR, `${prefix}.md`), toMarkdown(manifest, first, aggregateResult, metadata), 'utf8');
   console.log(`wrote ${jsonPath}`);
-  console.log(`deterministic=${deterministic} timelineF1=${aggregateResult.timeline.macro.pairingF1} followKindAccuracy=${aggregateResult.follow.macro.kindAccuracy}`);
+  console.log(`deterministic=${deterministic} timelineF1=${aggregateResult.timeline.macro.pairingF1} followKindAccuracy=${aggregateResult.follow.macro.kindAccuracy} cascade=${aggregateResult.timeline.cascadeTotal} ioiMae=${aggregateResult.timeline.localIoiMaeVsLabel}`);
   if (!deterministic) process.exitCode = 1;
 }
 

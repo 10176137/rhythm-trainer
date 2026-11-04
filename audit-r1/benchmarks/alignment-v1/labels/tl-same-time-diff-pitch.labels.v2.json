@@ -41,7 +41,7 @@
         "scoreEventId": "s5",
         "performedNoteId": "p-s5",
         "pitchMatched": true,
-        "onsetErrorMs": 2250
+        "onsetErrorMs": 0
       }
     ],
     "missedScoreEventIds": [],
@@ -57,7 +57,7 @@
     "localIoiErrorMs": [
       {
         "afterPairIndex": 2,
-        "ioiErrorMs": 0
+        "ioiErrorMs": -5
       },
       {
         "afterPairIndex": 3,
@@ -65,6 +65,6 @@
       }
     ],
     "phaseChangeCount": 0,
-    "notes": "Inside the same-onset group there are no IOI speed samples (PRD 5.2); transitions s3->s4 and s4->s5 only."
+    "notes": "Inside the same-onset group there are no IOI speed samples (PRD 5.2); transitions s3->s4 and s4->s5 only. The -5 ms residual comes from the +5 ms arrival of the last chord tone."
   }
 }

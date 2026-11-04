@@ -18,8 +18,8 @@
       "kind": "none"
     },
     "plannerVersion": "benchmark-planner-1",
-    "scoreFingerprint": "benchmark:score:b0349cf66986d474b90c8f8a949b7511",
-    "planFingerprint": "plan-v1:sha256:fb313cdc603c8030312b7f675d50a9b8fcd6f8a4276755120a9da7c81574fc05"
+    "scoreFingerprint": "benchmark:score:12d0c90aa75b7e05caf2e5fe06adcabd",
+    "planFingerprint": "plan-v1:sha256:dd2a99bfbef09668b2f6a891c6b6ff7e4311881ed4b25da4030071bd3081507f"
   },
   "scoreEvents": [
     {
@@ -65,9 +65,9 @@
     {
       "scoreEventId": "s5",
       "measure": 2,
-      "beatPosition": 0,
+      "beatPosition": 4,
       "pitch": 67,
-      "targetOnsetMs": 3000,
+      "targetOnsetMs": 6000,
       "targetDurationMs": 750,
       "partId": "P1",
       "parseConfidence": 1
@@ -75,9 +75,9 @@
     {
       "scoreEventId": "s6",
       "measure": 2,
-      "beatPosition": 1,
+      "beatPosition": 5,
       "pitch": 69,
-      "targetOnsetMs": 3750,
+      "targetOnsetMs": 6750,
       "targetDurationMs": 750,
       "partId": "P1",
       "parseConfidence": 1
@@ -85,9 +85,9 @@
     {
       "scoreEventId": "s7",
       "measure": 2,
-      "beatPosition": 2,
+      "beatPosition": 6,
       "pitch": 60,
-      "targetOnsetMs": 4500,
+      "targetOnsetMs": 7500,
       "targetDurationMs": 750,
       "partId": "P1",
       "parseConfidence": 1
@@ -95,9 +95,9 @@
     {
       "scoreEventId": "s8",
       "measure": 2,
-      "beatPosition": 3,
+      "beatPosition": 7,
       "pitch": 60,
-      "targetOnsetMs": 5250,
+      "targetOnsetMs": 8250,
       "targetDurationMs": 750,
       "partId": "P1",
       "parseConfidence": 1
