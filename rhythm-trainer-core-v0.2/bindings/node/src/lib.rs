@@ -2022,6 +2022,116 @@ pub fn js_align_performances_traced(
     })
 }
 
+/// Alignment V2 domain types (PRD Task B) exposed for the offline benchmark.
+#[napi(object)]
+pub struct JsAlignmentPairV2 {
+    pub score_event_id: String,
+    pub performed_note_id: String,
+    /// `CORRECT_PITCH` or `WRONG_PITCH`.
+    pub kind: String,
+    pub onset_error_ms: f64,
+    /// Aligner-internal assignment cost; diagnostics only, not a probability.
+    pub match_cost: f64,
+    pub assignment_ambiguous: bool,
+    pub measure: u32,
+}
+
+#[napi(object)]
+pub struct JsAmbiguousGroupV2 {
+    pub score_event_ids: Vec<String>,
+    pub performed_note_ids: Vec<String>,
+    pub reason_code: String,
+}
+
+#[napi(object)]
+pub struct JsAlignmentDiagnosticV2 {
+    pub code: String,
+    pub score_event_ids: Vec<String>,
+    pub performed_note_ids: Vec<String>,
+    pub detail: String,
+}
+
+#[napi(object)]
+pub struct JsAlignmentResultV2 {
+    pub pairs: Vec<JsAlignmentPairV2>,
+    pub missed_score_event_ids: Vec<String>,
+    pub extra_performed_ids: Vec<String>,
+    pub ambiguous_groups: Vec<JsAmbiguousGroupV2>,
+    pub diagnostics: Vec<JsAlignmentDiagnosticV2>,
+    /// `completed` or `resource-limit` (see `diagnostics` for the reason).
+    pub status: String,
+    pub algorithm_version: String,
+    pub parameter_fingerprint: String,
+}
+
+/// Weighted sequence DP alignment candidate (alignment-v2 Task C). Research
+/// scope: benchmark/shadow only — the official score path must opt in
+/// explicitly via `scorePerformanceDpV2`.
+#[napi(js_name = "alignPerformancesDpV2")]
+pub fn js_align_performances_dp_v2(
+    score_events: Vec<JsScoreEventInput>,
+    performed: Vec<JsPerformedNoteInput>,
+) -> napi::Result<JsAlignmentResultV2> {
+    let core_score_events = score_events.into_iter().map(to_core_score_event).collect::<napi::Result<Vec<_>>>()?;
+    let core_performed = performed.into_iter().map(to_core_performed_note).collect::<napi::Result<Vec<_>>>()?;
+    let result = rhythm_core::align_performances_dp_v2(
+        &core_score_events,
+        &core_performed,
+        &rhythm_core::ScoringConfig::default(),
+        &rhythm_core::AlignmentDpConfigV1::default(),
+    ).map_err(napi_error)?;
+    Ok(to_js_alignment_result_v2(&result))
+}
+
+fn to_js_alignment_result_v2(result: &rhythm_core::AlignmentResultV2) -> JsAlignmentResultV2 {
+    JsAlignmentResultV2 {
+        pairs: result.pairs.iter().map(|pair| JsAlignmentPairV2 {
+            score_event_id: pair.score_event_id.clone(),
+            performed_note_id: pair.performed_note_id.clone(),
+            kind: pair.kind.as_str().to_string(),
+            onset_error_ms: pair.onset_error_ms,
+            match_cost: pair.match_cost,
+            assignment_ambiguous: pair.assignment_ambiguous,
+            measure: pair.measure,
+        }).collect(),
+        missed_score_event_ids: result.missed_score_event_ids.clone(),
+        extra_performed_ids: result.extra_performed_ids.clone(),
+        ambiguous_groups: result.ambiguous_groups.iter().map(|group| JsAmbiguousGroupV2 {
+            score_event_ids: group.score_event_ids.clone(),
+            performed_note_ids: group.performed_note_ids.clone(),
+            reason_code: group.reason_code.clone(),
+        }).collect(),
+        diagnostics: result.diagnostics.iter().map(|diagnostic| JsAlignmentDiagnosticV2 {
+            code: diagnostic.code.clone(),
+            score_event_ids: diagnostic.score_event_ids.clone(),
+            performed_note_ids: diagnostic.performed_note_ids.clone(),
+            detail: diagnostic.detail.clone(),
+        }).collect(),
+        status: match result.status {
+            rhythm_core::AlignmentStatusV2::Completed => "completed".to_string(),
+            rhythm_core::AlignmentStatusV2::ResourceLimit { .. } => "resource-limit".to_string(),
+        },
+        algorithm_version: result.algorithm_version.clone(),
+        parameter_fingerprint: result.parameter_fingerprint.clone(),
+    }
+}
+
+/// DP-candidate-aligned versioned scoring entrypoint: v2 DP note pairing +
+/// unchanged v1 metrics/formulas. Falls back to the frozen legacy matcher
+/// (stamped with the LEGACY algorithm version) when the DP exceeds its
+/// resource budget.
+#[napi(js_name = "scorePerformanceDpV2")]
+pub fn js_score_performance_dp_v2(
+    score_events: Vec<JsScoreEventInput>,
+    performed: Vec<JsPerformedNoteInput>,
+) -> napi::Result<JsSessionScoreReport> {
+    let core_score_events = score_events.into_iter().map(to_core_score_event).collect::<napi::Result<Vec<_>>>()?;
+    let core_performed = performed.into_iter().map(to_core_performed_note).collect::<napi::Result<Vec<_>>>()?;
+    let config = rhythm_core::ScoringConfig::default();
+    let report = rhythm_core::score_performance_dp_v2(&core_score_events, &core_performed, &config).map_err(napi_error)?;
+    js_score_report_from_core(&core_score_events, &core_performed, report)
+}
+
 /// Scores a finalized performance using the existing rhythm-core scoring_v1
 /// implementation. Returns the complete report, including event-level results
 /// derived from the existing alignment (no second scoring algorithm).
@@ -2056,7 +2166,16 @@ fn js_score_performance_impl(
     } else {
         rhythm_core::score_performance(&core_score_events, &core_performed, &config)
     }.map_err(napi_error)?;
+    js_score_report_from_core(&core_score_events, &core_performed, report)
+}
 
+/// Shared JsSessionScoreReport conversion for every scoring entrypoint
+/// (legacy / candidate / DP V2): same event-result derivation, same shape.
+fn js_score_report_from_core(
+    core_score_events: &[rhythm_core::ScoreEvent],
+    core_performed: &[rhythm_core::PerformedNoteV1],
+    report: rhythm_core::SessionScoreReport,
+) -> napi::Result<JsSessionScoreReport> {
     let score_by_id: std::collections::BTreeMap<&str, &rhythm_core::ScoreEvent> = core_score_events
         .iter().map(|event| (event.score_event_id.as_str(), event)).collect();
     let performed_by_id: std::collections::BTreeMap<&str, &rhythm_core::PerformedNoteV1> = core_performed

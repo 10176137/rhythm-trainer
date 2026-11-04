@@ -718,6 +718,38 @@ pub fn score_performance_candidate(
     score_with_alignment(score_events, performed, config, alignment, SCORING_CANDIDATE_ALGORITHM_VERSION)
 }
 
+/// Report version when the DP V2 candidate produced the alignment.
+pub const SCORING_DP_V2_ALGORITHM_VERSION: &str = "scoring-v1.0.0+alignment-dp-v2";
+
+/// DP-candidate-aligned official scoring: only note pairing differs from v1
+/// (weighted sequence DP over onset blocks). Scoring formulas, weights and
+/// report shape reuse the exact v1 path. When the DP exceeds its configured
+/// resource budget, the legacy frozen matcher takes over and the report is
+/// stamped with the LEGACY version so a degraded run is never disguised as a
+/// V2 result (PRD Gate D: 超限时保留旧结果并标记 V2 未运行).
+pub fn score_performance_dp_v2(
+    score_events: &[ScoreEvent],
+    performed: &[PerformedNoteV1],
+    config: &ScoringConfig,
+) -> Result<SessionScoreReport, CoreError> {
+    if config.weights.pitch + config.weights.onset + config.weights.rhythm + config.weights.duration + config.weights.continuity <= 0.0 {
+        return Err(CoreError::InvalidConfig("score weights must sum > 0".into()));
+    }
+    for note in performed {
+        if !note.onset_ms.is_finite() || note.onset_ms < 0.0 {
+            return Err(CoreError::InvalidEvent("performed onset must be finite and >= 0".into()));
+        }
+    }
+    let dp_config = crate::alignment_dp_v2::AlignmentDpConfigV1::default();
+    let alignment_v2 = crate::alignment_dp_v2::align_performances_dp_v2(score_events, performed, config, &dp_config)?;
+    let (alignment, version) = if matches!(alignment_v2.status, crate::alignment_dp_v2::AlignmentStatusV2::Completed) {
+        (crate::alignment_dp_v2::to_legacy_alignment(&alignment_v2, performed), SCORING_DP_V2_ALGORITHM_VERSION)
+    } else {
+        (align_performances(score_events, performed, config)?, SCORING_ALGORITHM_VERSION)
+    };
+    score_with_alignment(score_events, performed, config, alignment, version)
+}
+
 fn score_with_alignment(
     score_events: &[ScoreEvent],
     performed: &[PerformedNoteV1],

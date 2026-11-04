@@ -38,16 +38,19 @@ pub use alignment_candidate::{
     align_performances_candidate, LATE_WINDOW_INTERVAL_RATIO, MAX_LATE_WINDOW_MS,
 };
 pub use alignment_dp_v2::{
-    validate_alignment_result_v2, AlignmentDpConfigV1, AlignmentDiagnosticV2, AlignmentKind,
-    AlignmentPairV2, AlignmentResultV2, AlignmentStatusV2, AmbiguousGroupV2,
+    align_performances_dp_v2, to_legacy_alignment, validate_alignment_result_v2, AlignmentDpConfigV1,
+    AlignmentDiagnosticV2, AlignmentKind, AlignmentPairV2, AlignmentResultV2, AlignmentStatusV2,
+    AmbiguousGroupV2, ALIGNMENT_DP_V2_ALGORITHM_VERSION, ALIGNMENT_RESOURCE_LIMIT,
+    LATE_BUT_PAIRED_BEYOND_LEGACY_WINDOW, SAME_PITCH_ASSIGNMENT_AMBIGUOUS,
 };
 pub use scoring_v1::{
-    align_performances, align_performances_traced, score_performance, score_performance_candidate, AlignmentBranch,
+    align_performances, align_performances_traced, score_performance, score_performance_candidate, score_performance_dp_v2,
+    AlignmentBranch,
     AlignmentPair, AlignmentResult, AlignmentStep, Confidence,
     Diagnostic as ScoringDiagnostic,
     MeasureReport, OverallScore, PairingStatusV1, PerformedNoteV1, PitchAccuracy, PracticeProfileV1,
     PracticeRange, RhythmMetrics, ScoreEvent, ScoringConfig, SessionScoreReport, SubScore,
-    TracedAlignment, SCORING_ALGORITHM_VERSION, SCORING_CANDIDATE_ALGORITHM_VERSION,
+    TracedAlignment, SCORING_ALGORITHM_VERSION, SCORING_CANDIDATE_ALGORITHM_VERSION, SCORING_DP_V2_ALGORITHM_VERSION,
 };
 pub use session::{EngineDiagnostics, SessionEngine, SessionReport, SessionState};
 pub use stats::{calculate_stats, ScoreStats};

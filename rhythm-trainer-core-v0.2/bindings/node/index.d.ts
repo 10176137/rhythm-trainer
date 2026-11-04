@@ -586,6 +586,53 @@ export declare function alignPerformancesCandidate(scoreEvents: Array<JsScoreEve
  * diagnostics/benchmarks may call this without affecting any user score.
  */
 export declare function alignPerformancesTraced(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsTracedAlignment
+/** Alignment V2 domain types (PRD Task B) exposed for the offline benchmark. */
+export interface JsAlignmentPairV2 {
+  scoreEventId: string
+  performedNoteId: string
+  /** `CORRECT_PITCH` or `WRONG_PITCH`. */
+  kind: string
+  onsetErrorMs: number
+  /** Aligner-internal assignment cost; diagnostics only, not a probability. */
+  matchCost: number
+  assignmentAmbiguous: boolean
+  measure: number
+}
+export interface JsAmbiguousGroupV2 {
+  scoreEventIds: Array<string>
+  performedNoteIds: Array<string>
+  reasonCode: string
+}
+export interface JsAlignmentDiagnosticV2 {
+  code: string
+  scoreEventIds: Array<string>
+  performedNoteIds: Array<string>
+  detail: string
+}
+export interface JsAlignmentResultV2 {
+  pairs: Array<JsAlignmentPairV2>
+  missedScoreEventIds: Array<string>
+  extraPerformedIds: Array<string>
+  ambiguousGroups: Array<JsAmbiguousGroupV2>
+  diagnostics: Array<JsAlignmentDiagnosticV2>
+  /** `completed` or `resource-limit` (see `diagnostics` for the reason). */
+  status: string
+  algorithmVersion: string
+  parameterFingerprint: string
+}
+/**
+ * Weighted sequence DP alignment candidate (alignment-v2 Task C). Research
+ * scope: benchmark/shadow only — the official score path must opt in
+ * explicitly via `scorePerformanceDpV2`.
+ */
+export declare function alignPerformancesDpV2(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsAlignmentResultV2
+/**
+ * DP-candidate-aligned versioned scoring entrypoint: v2 DP note pairing +
+ * unchanged v1 metrics/formulas. Falls back to the frozen legacy matcher
+ * (stamped with the LEGACY algorithm version) when the DP exceeds its
+ * resource budget.
+ */
+export declare function scorePerformanceDpV2(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsSessionScoreReport
 /**
  * Scores a finalized performance using the existing rhythm-core scoring_v1
  * implementation. Returns the complete report, including event-level results
