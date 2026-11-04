@@ -5,6 +5,7 @@ import { OsmdScoreViewAdapter } from '../score-engine/view/score-view-adapter';
 import { groupSystems, loopBandBoxes, nearestLoopEdge } from '../score-engine/view/score-layout';
 import { applyMeasureGrid, prepareMeasureGrid, renderMeasureGrid } from './osmdEngraving';
 import { bindNoteSelection } from '../features/score/bindNoteSelection';
+import { needsFollowScroll } from './followScroll';
 import type { HighlightState } from '../score-engine/view/score-view-adapter';
 
 interface Props {
@@ -488,6 +489,10 @@ export default function OsmdScoreView({
     if (!system) return;
     const viewRect = outer.getBoundingClientRect();
     const margin = parseFloat(getComputedStyle(outer).paddingTop) || 8;
+    // A note tap fires the follow signal while the system is already on
+    // screen. Re-aligning it would scroll the pane under the fixed toolbar
+    // and look like the page jumping; only move when the system is clipped.
+    if (!needsFollowScroll(system, viewRect, margin)) return;
     const top = Math.max(0, outer.scrollTop + system.top - viewRect.top - margin);
     if (Math.abs(outer.scrollTop - top) > 2) outer.scrollTo({ top, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   }, [followSignal, follow, loading, fitWidth, viewportEpoch, scrollRef]);

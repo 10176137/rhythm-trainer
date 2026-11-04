@@ -3425,7 +3425,15 @@ export default function App() {
   }, [route?.id, trainingRoomOpen, trainingDrill?.program, session.status, session.originPerfMs, session.countInMs, session.targets, session.finish]);
   const practiceWorkspaceVisible = route?.id === 'workbench' || route?.id === 'performance' || (route?.id === 'training' && trainingRoomOpen);
   const readingFocus = practiceWorkspaceVisible && readingFreeSession !== null && readingFocusEnabled;
-  const practiceFocus = readingFocus || (practiceWorkspaceVisible && !readingFreeSession && !readingSetupActive && (prepRemain !== null || status === 'countdown' || status === 'running' || status === 'paused'));
+  const practiceFocusTarget = readingFocus || (practiceWorkspaceVisible && !readingFreeSession && !readingSetupActive && (prepRemain !== null || status === 'countdown' || status === 'running' || status === 'paused'));
+  // A note pick interrupts the armed Take, finalizes it, then starts its
+  // replacement. Dropping the focus layout for that gap reflows the page (the
+  // score pane and its scrollbar change size) and reads as a flash, so keep
+  // the previous layout until the replacement Take is running.
+  const focusLatchRef = useRef(false);
+  if (practiceFocusTarget || status === 'processing') focusLatchRef.current = true;
+  else if (!scorePick.pending && !starting && !autoStartRequested) focusLatchRef.current = false;
+  const practiceFocus = practiceFocusTarget || focusLatchRef.current;
   // App 风格工作区：演奏/学习页在非识谱配置、非自由识谱、非完成态时占满视口，
   // 乐谱面板与底部教练底座融合为一张卡片；完成态与识谱页恢复普通滚动。
   const appWorkspace = practiceWorkspaceVisible
