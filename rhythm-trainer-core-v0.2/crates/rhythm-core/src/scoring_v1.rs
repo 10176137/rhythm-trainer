@@ -13,6 +13,8 @@ use crate::CoreError;
 use std::collections::BTreeMap;
 
 pub const SCORING_ALGORITHM_VERSION: &str = "scoring-v1.0.0";
+/// Experimental official scoring with candidate note identity alignment; all scoring formulas remain v1.
+pub const SCORING_CANDIDATE_ALGORITHM_VERSION: &str = "scoring-v1.0.0+alignment-candidate-v2";
 
 // ---------------------------------------------------------------------------
 // Versioned configuration (spec §7.2/§8: no magic numbers outside here).
@@ -686,6 +688,35 @@ pub fn score_performance(
         }
     }
     let alignment = align_performances(score_events, performed, config)?;
+    score_with_alignment(score_events, performed, config, alignment, SCORING_ALGORITHM_VERSION)
+}
+
+/// Candidate-aligned official scoring: only note pairing differs from v1.
+/// Raw onset, IOI, duration, diagnostics and weights reuse the exact v1 path.
+pub fn score_performance_candidate(
+    score_events: &[ScoreEvent],
+    performed: &[PerformedNoteV1],
+    config: &ScoringConfig,
+) -> Result<SessionScoreReport, CoreError> {
+    if config.weights.pitch + config.weights.onset + config.weights.rhythm + config.weights.duration + config.weights.continuity <= 0.0 {
+        return Err(CoreError::InvalidConfig("score weights must sum > 0".into()));
+    }
+    for note in performed {
+        if !note.onset_ms.is_finite() || note.onset_ms < 0.0 {
+            return Err(CoreError::InvalidEvent("performed onset must be finite and >= 0".into()));
+        }
+    }
+    let alignment = crate::alignment_candidate::align_performances_candidate(score_events, performed, config)?;
+    score_with_alignment(score_events, performed, config, alignment, SCORING_CANDIDATE_ALGORITHM_VERSION)
+}
+
+fn score_with_alignment(
+    score_events: &[ScoreEvent],
+    performed: &[PerformedNoteV1],
+    config: &ScoringConfig,
+    alignment: AlignmentResult,
+    algorithm_version: &str,
+) -> Result<SessionScoreReport, CoreError> {
     let pairs = &alignment.pairs;
 
     // ---- onset metrics ----
@@ -1021,7 +1052,7 @@ pub fn score_performance(
     }
 
     Ok(SessionScoreReport {
-        algorithm_version: SCORING_ALGORITHM_VERSION.to_string(),
+        algorithm_version: algorithm_version.to_string(),
         alignment,
         pitch,
         onset,
