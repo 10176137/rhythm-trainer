@@ -592,6 +592,8 @@ export declare function alignPerformancesTraced(scoreEvents: Array<JsScoreEventI
  * derived from the existing alignment (no second scoring algorithm).
  */
 export declare function scorePerformance(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsSessionScoreReport
+/** Candidate-based final grading with unchanged v1 scoring formulas; selected by the engine when enabled. */
+export declare function scorePerformanceCandidate(scoreEvents: Array<JsScoreEventInput>, performed: Array<JsPerformedNoteInput>): JsSessionScoreReport
 /**
  * Builds the PlannerOutput (task card §2.3) from the frozen ScoreDocumentV1,
  * ImportReportV1 and parity-case config JSON instances.
