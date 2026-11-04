@@ -122,12 +122,15 @@ describe('Take finalization shadow opt-in', () => {
     const result = await waitFor('report');
     expect(result.persisted).toBe(true);
     expect(result.scoreV1).toBeTruthy();
+    expect(result.scoreV1.algorithmVersion).toBe('scoring-v1.0.0+alignment-candidate-v2');
     const takeId = result.takeId;
     const takeFile = path.join(DIR, 'takes', `${takeId}.json`);
     const sidecarFile = path.join(DIR, 'alignment-shadow', `${takeId}.json`);
     const take = JSON.parse(fs.readFileSync(takeFile, 'utf8'));
     const sidecar = JSON.parse(fs.readFileSync(sidecarFile, 'utf8'));
     expect(take.assessment.timelineReport.scoreV1).toEqual(result.scoreV1);
+    expect(take.assessment.finalAlignmentScorer).toBe('candidate');
+    expect(take.assessment.timelineReport.finalAlignmentScorer).toBe('candidate');
     expect(take.assessment.alignmentShadow).toBeUndefined();
     expect(sidecar).toMatchObject({
       takeId, status: 'compared', authority: 'diagnostic-only',
