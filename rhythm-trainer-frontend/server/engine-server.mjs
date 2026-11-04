@@ -129,15 +129,19 @@ try {
   process.exit(1);
 }
 
-// Candidate alignment is the final scoring default on the experimental branch.
-// Explicit legacy rollback must never silently happen after a candidate error.
-const FINAL_ALIGNMENT_SCORER = process.env.RHYTHM_FINAL_ALIGNMENT_SCORER || 'candidate';
-if (!['candidate', 'legacy'].includes(FINAL_ALIGNMENT_SCORER)) {
-  console.error('[engine] RHYTHM_FINAL_ALIGNMENT_SCORER 只能是 candidate 或 legacy');
+// DP alignment (alignment-v2 Task C) is the final scoring default by user
+// authorization (2026-11-04, real-practice validation). `candidate` and
+// `legacy` remain explicit rollback values; a missing addon export is a hard
+// startup failure so a stale build can never silently score with another
+// algorithm than the one configured.
+const FINAL_ALIGNMENT_SCORER = process.env.RHYTHM_FINAL_ALIGNMENT_SCORER || 'dp';
+if (!['dp', 'candidate', 'legacy'].includes(FINAL_ALIGNMENT_SCORER)) {
+  console.error('[engine] RHYTHM_FINAL_ALIGNMENT_SCORER 只能是 dp、candidate 或 legacy');
   process.exit(1);
 }
-if (FINAL_ALIGNMENT_SCORER === 'candidate' && typeof addon.scorePerformanceCandidate !== 'function') {
-  console.error('[engine] 当前 Rust N-API addon 没有 scorePerformanceCandidate；请重新构建本分支 addon，或显式设置 RHYTHM_FINAL_ALIGNMENT_SCORER=legacy');
+const REQUIRED_SCORER_EXPORT = { dp: 'scorePerformanceDpV2', candidate: 'scorePerformanceCandidate', legacy: 'scorePerformance' }[FINAL_ALIGNMENT_SCORER];
+if (typeof addon[REQUIRED_SCORER_EXPORT] !== 'function') {
+  console.error(`[engine] 当前 Rust N-API addon 没有 ${REQUIRED_SCORER_EXPORT}；请重新构建本分支 addon，或显式设置 RHYTHM_FINAL_ALIGNMENT_SCORER=legacy`);
   process.exit(1);
 }
 console.log(`[engine] final scoring alignment = ${FINAL_ALIGNMENT_SCORER}`);
@@ -3400,9 +3404,11 @@ wss.on('connection', (socket) => {
         });
         pauseAdjusted = closedPauseSegments.length > 0;
 
-        scoreV1 = FINAL_ALIGNMENT_SCORER === 'candidate'
-          ? addon.scorePerformanceCandidate(adjustedScoreEvents, performedNotes)
-          : addon.scorePerformance(adjustedScoreEvents, performedNotes);
+        scoreV1 = FINAL_ALIGNMENT_SCORER === 'dp'
+          ? addon.scorePerformanceDpV2(adjustedScoreEvents, performedNotes)
+          : FINAL_ALIGNMENT_SCORER === 'candidate'
+            ? addon.scorePerformanceCandidate(adjustedScoreEvents, performedNotes)
+            : addon.scorePerformance(adjustedScoreEvents, performedNotes);
         if (ALIGNMENT_SHADOW_ENABLED) {
           // Exactly the same admitted MIDI notes, paused-target shifts and
           // session-time domain as the official score. Any candidate error is
@@ -3412,7 +3418,8 @@ wss.on('connection', (socket) => {
               scoreEvents: adjustedScoreEvents,
               performedNotes,
               // In candidate mode compare it against the frozen v1 baseline;
-              // in legacy mode compare against the same authoritative v1 score.
+              // in dp mode the official score IS the baseline (candidate vs
+              // dp diff); in legacy mode compare against the same v1 score.
               official: FINAL_ALIGNMENT_SCORER === 'candidate'
                 ? addon.scorePerformance(adjustedScoreEvents, performedNotes)
                 : scoreV1,
