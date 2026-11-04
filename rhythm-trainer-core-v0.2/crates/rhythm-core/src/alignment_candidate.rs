@@ -6,15 +6,20 @@
 //! the same note is then compared against the NEXT target and either steals it
 //! (wrong-pitch cascade) or halves the tail into miss+extra pairs.
 //!
-//! This candidate keeps every other decision of the frozen matcher and adds
-//! one rule: a late performed note that carries the CURRENT target's pitch is
-//! paired with that target inside a bounded late window derived from the local
-//! target interval. It never rewrites `onset_error_ms` — grading still sees
-//! the raw lateness. Notes that cannot belong to the current target are
-//! consumed instead of being left to steal the following target.
+//! This candidate is a monotonic, rule-based greedy matcher — NOT a
+//! dynamic-programming sequence aligner, Needleman–Wunsch implementation, or
+//! DTW implementation.
 //!
-//! Not wired into `scorePerformance`: callers must opt in explicitly while the
-//! benchmark gate is open.
+//! It keeps the frozen matcher's chord / early-note / wrong-pitch lookahead
+//! decisions and adds a bounded one-sided late-note rule: if a performed note
+//! is later than the normal window but has the CURRENT target's pitch, pair it
+//! to that target when its lateness is within a window derived from the next
+//! target interval (capped at 600 ms). The raw `onset_error_ms` is preserved.
+//!
+//! The separate `scorePerformanceCandidate` N-API entrypoint runs the v1
+//! scoring formulas over this candidate alignment. On the experimental
+//! `r2-3-alignment-v2` branch the Node engine selects it by default;
+//! `scorePerformance` remains the frozen legacy entrypoint for rollback.
 
 use crate::{AlignmentPair, AlignmentResult, CoreError, PerformedNoteV1, ScoreEvent, ScoringConfig};
 
