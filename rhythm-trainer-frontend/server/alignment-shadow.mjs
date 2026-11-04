@@ -208,7 +208,8 @@ export function buildAlignmentShadow({
       || input.clockMappingStatus !== 'ok'
       || input.traceDropped !== 0
       || input.tracePersistenceDegraded === true
-      || input.traceSha256 === null;
+      || input.traceSha256 === null
+      || !out.sourceCodeSha;
     if (input.officialScoreStatus === 'INSUFFICIENT_DATA') {
       out.status = 'INSUFFICIENT';
       out.reasonCode = 'OFFICIAL_SCORE_INSUFFICIENT';
