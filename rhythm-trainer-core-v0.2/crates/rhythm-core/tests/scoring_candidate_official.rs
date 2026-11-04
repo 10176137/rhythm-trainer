@@ -56,7 +56,8 @@ fn late_phase_is_correctly_paired_but_not_retimed() {
     }
     assert_eq!(new.onset.out_of_tolerance_count, 4);
     // The onset subscore is NOT artificially improved by the alignment.
-    assert_eq!(new.overall.subscores.iter().find(|s| s.name == "onset").unwrap().score, Some(20.0));
+    let onset_score = new.overall.subscores.iter().find(|s| s.name == "onset").unwrap().score.unwrap();
+    assert!((onset_score - 20.0).abs() < 1e-9, "onset score must reflect four late notes");
     assert_eq!(new.duration.graded, 5);
     assert_eq!(new.duration.too_long_count, 0);
     assert_eq!(new.duration.too_short_count, 0);
