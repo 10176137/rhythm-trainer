@@ -1,8 +1,8 @@
 # Alignment benchmark v1 — baseline summary
 
-- Generated: 2026-10-26T08:31:40.631Z
-- Git SHA: `e75a622c04a2af1d12b412619e43dc1ddf5d7561`
-- Dataset: `alignment-bench-v1` (19 timeline, 7 follow)
+- Generated: 2026-11-04T08:08:49.846Z
+- Git SHA: `5e8d9de09bb7a45583eaa2e5e80429d5ae8376da`
+- Dataset: `alignment-bench-v1` (23 timeline, 7 follow)
 - Baseline: Rust `scoring-v1.0.0` / FollowRuntime
 - Deterministic (two runs): **yes**
 
@@ -10,10 +10,10 @@
 
 | Metric | Value |
 |---|---|
-| pairingPrecision | 1 |
-| pairingRecall | 0.98 |
-| pairingF1 | 0.989 |
-| classAccuracy | 0.98 |
+| pairingPrecision | 0.975 |
+| pairingRecall | 0.918 |
+| pairingF1 | 0.939 |
+| classAccuracy | 0.918 |
 | onsetMaeVsLabel | 0 |
 | quality accuracy | 1 |
 
@@ -46,6 +46,10 @@
 | tl-missing-note-off | 1 | 1 | 1 | 1 | 0 | degraded |
 | tl-duplicate-packet | 1 | 1 | 1 | 1 | 0 | degraded |
 | tl-one-note-400ms-late | 1 | 0.875 | 0.933 | 0.875 | 0 | healthy |
+| tl-late-300-return | 1 | 0.875 | 0.933 | 0.875 | 0 | healthy |
+| tl-late-300-phase | 1 | 0.375 | 0.545 | 0.375 | 0 | healthy |
+| tl-late-600-phase | 0.429 | 0.375 | 0.4 | 0.375 | 0 | healthy |
+| tl-early-300-control | 1 | 0.875 | 0.933 | 0.875 | 0 | healthy |
 | tl-missing-note-on | 1 | 1 | 1 | 1 | 0 | degraded |
 | tl-device-disconnect | 1 | 1 | 1 | 1 | 0 | degraded |
 | tl-empty-input | 1 | 1 | 1 | 1 | — | unscorable |
@@ -66,5 +70,9 @@
 
 - `tl-tempo-drift` — accelerando / tempo drift
 - `tl-one-note-400ms-late` — one note 400 ms late (outside the normal matching band)
+- `tl-late-300-return` — one note 300 ms late, then back on the original grid
+- `tl-late-300-phase` — one 300 ms phase change, stable intervals afterwards
+- `tl-late-600-phase` — one 600 ms phase change: shifted notes land in the next window
+- `tl-early-300-control` — one note 300 ms early (asymmetry control)
 
 Labels are independent of the implementation; a low score is a benchmark observation, not a gate failure at Stage 3.

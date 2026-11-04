@@ -433,6 +433,65 @@ cases.push(timelineCase({
   notes: 'Ground truth still pairs s4; the baseline may fail this case.',
 }));
 
+// --- alignment-v2 P0 cascade cases (2026-11-04) ---------------------------
+// The user-visible defect: one late note makes every FOLLOWING note fail.
+// Labels stay construction-fixed (each p-sX is the same musical note); the
+// baseline is EXPECTED to fail some of these — that failure is the documented
+// cascade baseline alignment_v2 candidates must beat.
+
+// +300 ms on one note, the player resumes the original grid. At the 750 ms
+// benchmark IOI the late note lands outside both windows: punished twice
+// (target MISSED + note EXTRA) but the following notes keep their own targets.
+const late300Return = performedFor(base, { offsets: { s4: 300 } });
+cases.push(timelineCase({
+  id: 'tl-late-300-return',
+  scenario: 'one note 300 ms late, then back on the original grid',
+  tags: ['timing', 'cascade', 'hard'],
+  performed: late300Return,
+  labels: labelsFor(base, late300Return),
+  notes: 'Ground truth pairs s4 with +300 ms; identity must not be split into miss+extra.',
+}));
+
+// A +300 ms phase shift from s4 onward: every shifted note is outside both
+// windows (own target +300, next target -450), so the frozen baseline reports
+// the whole tail as miss+extra pairs.
+const phase300Offsets = { s4: 300, s5: 300, s6: 300, s7: 300, s8: 300 };
+const phase300 = performedFor(base, { offsets: phase300Offsets });
+cases.push(timelineCase({
+  id: 'tl-late-300-phase',
+  scenario: 'one 300 ms phase change, stable intervals afterwards',
+  tags: ['timing', 'cascade', 'hard'],
+  performed: phase300,
+  labels: labelsFor(base, phase300),
+  notes: 'One phase change; identity per note must hold with raw +300 ms errors.',
+}));
+
+// +600 ms phase shift: the shifted note lands INSIDE the next target window
+// (750 - 600 = -150), so the frozen greedy matcher steals the next target and
+// the whole tail mispairs with WRONG_PITCH labels — the user-reported shape.
+const phase600Offsets = { s4: 600, s5: 600, s6: 600, s7: 600, s8: 600 };
+const phase600 = performedFor(base, { offsets: phase600Offsets });
+cases.push(timelineCase({
+  id: 'tl-late-600-phase',
+  scenario: 'one 600 ms phase change: shifted notes land in the next window',
+  tags: ['timing', 'cascade', 'hard'],
+  performed: phase600,
+  labels: labelsFor(base, phase600),
+  notes: 'The late s4 note must not steal s5; shifted correct-pitch notes must stay MATCH.',
+}));
+
+// Early-note control: an early note is consumed as an extra immediately and
+// never steals a target — the cascade asymmetry baseline.
+const early300 = performedFor(base, { offsets: { s4: -300 } });
+cases.push(timelineCase({
+  id: 'tl-early-300-control',
+  scenario: 'one note 300 ms early (asymmetry control)',
+  tags: ['timing', 'cascade', 'control'],
+  performed: early300,
+  labels: labelsFor(base, early300),
+  notes: 'Early notes must keep behaving as today: no cascade, identity preserved.',
+}));
+
 const missingOn = performedFor(base, { skip: ['s3'] });
 cases.push(timelineCase({
   id: 'tl-missing-note-on',

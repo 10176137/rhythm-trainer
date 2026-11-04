@@ -221,6 +221,62 @@
       "labels": "labels/tl-one-note-400ms-late.labels.json"
     },
     {
+      "caseId": "tl-late-300-return",
+      "mode": "timeline",
+      "scenario": "one note 300 ms late, then back on the original grid",
+      "tags": [
+        "timing",
+        "cascade",
+        "hard"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-late-300-return.trace.json",
+      "labels": "labels/tl-late-300-return.labels.json"
+    },
+    {
+      "caseId": "tl-late-300-phase",
+      "mode": "timeline",
+      "scenario": "one 300 ms phase change, stable intervals afterwards",
+      "tags": [
+        "timing",
+        "cascade",
+        "hard"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-late-300-phase.trace.json",
+      "labels": "labels/tl-late-300-phase.labels.json"
+    },
+    {
+      "caseId": "tl-late-600-phase",
+      "mode": "timeline",
+      "scenario": "one 600 ms phase change: shifted notes land in the next window",
+      "tags": [
+        "timing",
+        "cascade",
+        "hard"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-late-600-phase.trace.json",
+      "labels": "labels/tl-late-600-phase.labels.json"
+    },
+    {
+      "caseId": "tl-early-300-control",
+      "mode": "timeline",
+      "scenario": "one note 300 ms early (asymmetry control)",
+      "tags": [
+        "timing",
+        "cascade",
+        "control"
+      ],
+      "source": "synthetic",
+      "license": "internal-test-only",
+      "trace": "cases/tl-early-300-control.trace.json",
+      "labels": "labels/tl-early-300-control.labels.json"
+    },
+    {
       "caseId": "tl-missing-note-on",
       "mode": "timeline",
       "scenario": "one Note On lost before capture",
@@ -358,7 +414,7 @@
     }
   ],
   "counts": {
-    "timeline": 19,
+    "timeline": 23,
     "follow": 7
   }
 }
