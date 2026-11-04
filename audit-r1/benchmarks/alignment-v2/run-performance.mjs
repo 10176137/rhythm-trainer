@@ -57,21 +57,37 @@ function runWorker(n, phaseMs) {
   const startCandidate = performance.now();
   const candidate = addon.alignPerformancesCandidate(data.scoreEvents, data.performedNotes);
   const candidateMs = performance.now() - startCandidate;
+  const startDp = performance.now();
+  const dp = addon.alignPerformancesDpV2(data.scoreEvents, data.performedNotes);
+  const dpMs = performance.now() - startDp;
+  const startDpScore = performance.now();
+  addon.scorePerformanceDpV2(data.scoreEvents, data.performedNotes);
+  const dpScoreMs = performance.now() - startDpScore;
   const expected = new Map(data.scoreEvents.map((s, i) => [s.scoreEventId, `p${i}`]));
   const wrong = candidate.pairs.filter((p) => expected.get(p.scoreEventId) !== p.performedNoteId || !p.pitchMatched);
   const clean = candidate.pairs.length === n && wrong.length === 0
     && candidate.missedScoreEventIds.length === 0 && candidate.extraPerformedIds.length === 0;
+  const dpWrong = dp.pairs.filter((p) => expected.get(p.scoreEventId) !== p.performedNoteId || p.kind !== 'CORRECT_PITCH');
+  const dpClean = dp.status === 'completed' && dp.pairs.length === n && dpWrong.length === 0
+    && dp.missedScoreEventIds.length === 0 && dp.extraPerformedIds.length === 0;
   return {
     size: n,
     phaseMs,
-    status: clean ? 'pass' : 'incorrect-pairing',
+    status: clean && dpClean ? 'pass' : 'incorrect-pairing',
     candidatePaired: candidate.pairs.length,
     mismatchedPairs: wrong.length,
     missed: candidate.missedScoreEventIds.length,
     extra: candidate.extraPerformedIds.length,
+    dpStatus: dp.status,
+    dpPaired: dp.pairs.length,
+    dpMismatchedPairs: dpWrong.length,
+    dpMissed: dp.missedScoreEventIds.length,
+    dpExtra: dp.extraPerformedIds.length,
     officialPaired: official.alignmentPairs?.length ?? null,
     officialMs: Number(officialMs.toFixed(2)),
     candidateMs: Number(candidateMs.toFixed(2)),
+    dpAlignMs: Number(dpMs.toFixed(2)),
+    dpScoreMs: Number(dpScoreMs.toFixed(2)),
     rssMb: Number((process.memoryUsage().rss / 1048576).toFixed(1)),
   };
 }
@@ -89,7 +105,8 @@ if (process.argv[2] === '--worker') {
   let head = null;
   try { head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim(); } catch { /* missing git metadata */ }
   const cases = [];
-  for (const size of [5000, 10000]) {
+  const sizes = [...process.argv.slice(2).map(Number).filter((value) => value > 0), 5000, 10000];
+  for (const size of [...new Set(sizes)]) {
     for (const phaseMs of [0, 300]) {
       const run = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--worker', String(size), String(phaseMs)], {
         cwd: REPO, encoding: 'utf8', timeout: TIMEOUT_MS, maxBuffer: 1024 * 1024,
@@ -104,7 +121,7 @@ if (process.argv[2] === '--worker') {
     }
   }
   const report = {
-    benchmarkVersion: 'alignment-v2-performance-v1',
+    benchmarkVersion: 'alignment-v2-performance-v2',
     gitSha: head,
     createdAtIso: new Date().toISOString(),
     device: { platform: process.platform, arch: process.arch, nodeVersion: process.version },

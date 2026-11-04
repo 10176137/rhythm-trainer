@@ -1,7 +1,7 @@
 # Alignment benchmark v1 — DP candidate (alignment-dp-v2) summary
 
-- Generated: 2026-11-04T15:30:11.601Z
-- Git SHA: `1180a1d52cefaa990b84b59033ddaf41011eeac8`
+- Generated: 2026-11-04T15:37:33.889Z
+- Git SHA: `78cacceadcdd271244c0f34f3ba177811f1f635c`
 - Dataset: `alignment-bench-v1` (28 timeline, 7 follow)
 - Baseline: Rust `alignment-dp-v2` / FollowRuntime
 - Deterministic (two runs): **yes**

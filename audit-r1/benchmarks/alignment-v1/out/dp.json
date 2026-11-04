@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "benchmarkVersion": "alignment-bench-run-v1",
   "datasetVersion": "alignment-bench-v1",
-  "generatedAt": "2026-11-04T15:30:11.601Z",
-  "gitSha": "1180a1d52cefaa990b84b59033ddaf41011eeac8",
+  "generatedAt": "2026-11-04T15:37:33.889Z",
+  "gitSha": "78cacceadcdd271244c0f34f3ba177811f1f635c",
   "node": "v24.19.0",
   "deterministic": true,
   "runHashes": [
@@ -40,7 +40,7 @@
         "qualityAccuracy": 1
       }
     },
-    "runtimeMs": 4.537
+    "runtimeMs": 4.051
   },
   "runs": [
     {
@@ -126,7 +126,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.365
+          "runtimeMs": 0.363
         },
         {
           "caseId": "tl-late-global",
@@ -208,7 +208,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.138
+          "runtimeMs": 0.17
         },
         {
           "caseId": "tl-local-deviations",
@@ -290,7 +290,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.165
+          "runtimeMs": 0.137
         },
         {
           "caseId": "tl-tempo-drift",
@@ -373,7 +373,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.156
+          "runtimeMs": 0.16
         },
         {
           "caseId": "tl-one-miss",
@@ -455,7 +455,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.145
+          "runtimeMs": 0.143
         },
         {
           "caseId": "tl-consecutive-miss",
@@ -538,7 +538,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.103
+          "runtimeMs": 0.13
         },
         {
           "caseId": "tl-wrong-pitch",
@@ -620,7 +620,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.112
+          "runtimeMs": 0.117
         },
         {
           "caseId": "tl-extra-note",
@@ -702,7 +702,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.119
+          "runtimeMs": 0.118
         },
         {
           "caseId": "tl-mixed-errors",
@@ -786,7 +786,2635 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.108
+          "runtimeMs": 0.114
+        },
+        {
+          "caseId": "tl-chord-arrival-order",
+          "mode": "timeline",
+          "scenario": "same-onset chord arrives in reverse pitch order",
+          "tags": [
+            "chord",
+            "arrival-order"
+          ],
+          "expected": {
+            "pairs": 4,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 4,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 4,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.076
+        },
+        {
+          "caseId": "tl-cross-hand-unison",
+          "mode": "timeline",
+          "scenario": "two staves notate the same MIDI pitch on one onset",
+          "tags": [
+            "chord",
+            "unison",
+            "cross-hand"
+          ],
+          "expected": {
+            "pairs": 3,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 3,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 2,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 3,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 3,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.068
+        },
+        {
+          "caseId": "tl-fast-repeated-note",
+          "mode": "timeline",
+          "scenario": "fast repeated same pitch",
+          "tags": [
+            "repeated-pitch",
+            "hard"
+          ],
+          "expected": {
+            "pairs": 4,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 4,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 4,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.068
+        },
+        {
+          "caseId": "tl-tie-long-note",
+          "mode": "timeline",
+          "scenario": "tied long note followed by a short note",
+          "tags": [
+            "tie",
+            "duration"
+          ],
+          "expected": {
+            "pairs": 2,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 2,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 2,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 1,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 1,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.043
+        },
+        {
+          "caseId": "tl-missing-note-off",
+          "mode": "timeline",
+          "scenario": "Note On without Note Off",
+          "tags": [
+            "input-evidence",
+            "missing-release",
+            "degraded"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "degraded",
+            "assessable": [
+              "pitch",
+              "onset"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "degraded",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.113
+        },
+        {
+          "caseId": "tl-duplicate-packet",
+          "mode": "timeline",
+          "scenario": "duplicated MIDI packet for the same key/onset",
+          "tags": [
+            "input-evidence",
+            "duplicate",
+            "degraded"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 1,
+            "unassessable": 0,
+            "inputQuality": "degraded",
+            "assessable": [
+              "pitch",
+              "onset"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 1,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 1,
+            "quality": "degraded",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.151
+        },
+        {
+          "caseId": "tl-one-note-400ms-late",
+          "mode": "timeline",
+          "scenario": "one note 400 ms late (outside the normal matching band)",
+          "tags": [
+            "timing",
+            "hard",
+            "out-of-band"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.114
+        },
+        {
+          "caseId": "tl-late-300-return",
+          "mode": "timeline",
+          "scenario": "one note 300 ms late, then back on the original grid",
+          "tags": [
+            "timing",
+            "cascade",
+            "hard"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.122
+        },
+        {
+          "caseId": "tl-late-300-phase",
+          "mode": "timeline",
+          "scenario": "one 300 ms phase change, stable intervals afterwards",
+          "tags": [
+            "timing",
+            "cascade",
+            "hard"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.136
+        },
+        {
+          "caseId": "tl-late-600-phase",
+          "mode": "timeline",
+          "scenario": "one 600 ms phase change: shifted notes land in the next window",
+          "tags": [
+            "timing",
+            "cascade",
+            "hard"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.133
+        },
+        {
+          "caseId": "tl-early-300-control",
+          "mode": "timeline",
+          "scenario": "one note 300 ms early (asymmetry control)",
+          "tags": [
+            "timing",
+            "cascade",
+            "control"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.12
+        },
+        {
+          "caseId": "tl-missing-note-on",
+          "mode": "timeline",
+          "scenario": "one Note On lost before capture",
+          "tags": [
+            "input-evidence",
+            "missing-note-on",
+            "degraded"
+          ],
+          "expected": {
+            "pairs": 7,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 1,
+            "inputQuality": "degraded",
+            "assessable": [
+              "pitch",
+              "onset"
+            ]
+          },
+          "predicted": {
+            "pairs": 7,
+            "missed": 1,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH",
+              "s3": "MISSING"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 7,
+            "pitchWrong": 0,
+            "pitchMissed": 1,
+            "pitchExtra": 0,
+            "quality": "degraded",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 3,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.111
+        },
+        {
+          "caseId": "tl-device-disconnect",
+          "mode": "timeline",
+          "scenario": "device disconnects after four notes",
+          "tags": [
+            "input-evidence",
+            "disconnect",
+            "degraded"
+          ],
+          "expected": {
+            "pairs": 4,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 4,
+            "inputQuality": "degraded",
+            "assessable": [
+              "pitch",
+              "onset"
+            ]
+          },
+          "predicted": {
+            "pairs": 4,
+            "missed": 4,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MISSING",
+              "s6": "MISSING",
+              "s7": "MISSING",
+              "s8": "MISSING"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 4,
+            "pitchWrong": 0,
+            "pitchMissed": 4,
+            "pitchExtra": 0,
+            "quality": "degraded",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.089
+        },
+        {
+          "caseId": "tl-empty-input",
+          "mode": "timeline",
+          "scenario": "no performed events at all",
+          "tags": [
+            "input-evidence",
+            "empty",
+            "unscorable"
+          ],
+          "expected": {
+            "pairs": 0,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 1,
+            "inputQuality": "unscorable",
+            "assessable": []
+          },
+          "predicted": {
+            "pairs": 0,
+            "missed": 1,
+            "extra": 0,
+            "classes": {
+              "s1": "MISSING"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": null,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 0,
+            "pitchWrong": 0,
+            "pitchMissed": 1,
+            "pitchExtra": 0,
+            "quality": "unscorable",
+            "qualityCorrect": true,
+            "perMeasure": {}
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.033
+        },
+        {
+          "caseId": "fw-clean",
+          "mode": "follow",
+          "scenario": "Follow: clean three-target performance",
+          "expected": {
+            "inputQuality": "healthy",
+            "kinds": [
+              "correct",
+              "correct",
+              "complete"
+            ],
+            "completedTargets": 3,
+            "standardTargets": 3,
+            "wrongNoteCount": 0,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 0,
+            "pendingTargetId": null,
+            "intervalJudged": [
+              false,
+              true,
+              true
+            ],
+            "notes": "Intervals match the notated beats at 60 BPM."
+          },
+          "predicted": {
+            "kinds": [
+              "correct",
+              "correct",
+              "complete"
+            ],
+            "intervalJudged": [
+              false,
+              true,
+              true
+            ],
+            "completedTargets": 3,
+            "standardTargets": 3,
+            "wrongNoteCount": 0,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 0,
+            "totalTargets": 3
+          },
+          "metrics": {
+            "kindAccuracy": 1,
+            "countMismatches": [],
+            "intervalMismatches": [],
+            "quality": "healthy",
+            "qualityCorrect": true
+          },
+          "runtimeMs": 0.185,
+          "tags": [
+            "follow",
+            "clean"
+          ]
+        },
+        {
+          "caseId": "fw-skip-target",
+          "mode": "follow",
+          "scenario": "Follow: one target skipped, performer continues",
+          "expected": {
+            "inputQuality": "healthy",
+            "kinds": [
+              "correct",
+              "wrong"
+            ],
+            "completedTargets": 1,
+            "standardTargets": 1,
+            "wrongNoteCount": 1,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 0,
+            "pendingTargetId": "g2",
+            "intervalJudged": [
+              false
+            ],
+            "notes": "E4 while waiting on D4 is wrong and must not advance."
+          },
+          "predicted": {
+            "kinds": [
+              "correct",
+              "wrong"
+            ],
+            "intervalJudged": [
+              false
+            ],
+            "completedTargets": 1,
+            "standardTargets": 1,
+            "wrongNoteCount": 1,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 0,
+            "pendingTargetId": "g2",
+            "totalTargets": 3
+          },
+          "metrics": {
+            "kindAccuracy": 1,
+            "countMismatches": [],
+            "intervalMismatches": [],
+            "quality": "healthy",
+            "qualityCorrect": true
+          },
+          "runtimeMs": 0.073,
+          "tags": [
+            "follow",
+            "missing-target",
+            "hard"
+          ]
+        },
+        {
+          "caseId": "fw-wrong-then-correct",
+          "mode": "follow",
+          "scenario": "Follow: wrong note then recovery",
+          "expected": {
+            "inputQuality": "healthy",
+            "kinds": [
+              "wrong",
+              "correct",
+              "correct",
+              "complete"
+            ],
+            "completedTargets": 3,
+            "standardTargets": 2,
+            "wrongNoteCount": 1,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 0,
+            "pendingTargetId": null,
+            "intervalJudged": [
+              false,
+              true,
+              true
+            ],
+            "notes": "The wrong note keeps the first target non-standard; later targets recover."
+          },
+          "predicted": {
+            "kinds": [
+              "wrong",
+              "correct",
+              "correct",
+              "complete"
+            ],
+            "intervalJudged": [
+              false,
+              true,
+              true
+            ],
+            "completedTargets": 3,
+            "standardTargets": 2,
+            "wrongNoteCount": 1,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 0,
+            "totalTargets": 3
+          },
+          "metrics": {
+            "kindAccuracy": 1,
+            "countMismatches": [],
+            "intervalMismatches": [],
+            "quality": "healthy",
+            "qualityCorrect": true
+          },
+          "runtimeMs": 0.102,
+          "tags": [
+            "follow",
+            "wrong-note"
+          ]
+        },
+        {
+          "caseId": "fw-chord-spread",
+          "mode": "follow",
+          "scenario": "Follow: chord arrives spread beyond tolerance",
+          "expected": {
+            "inputQuality": "healthy",
+            "kinds": [
+              "partial",
+              "correct",
+              "complete"
+            ],
+            "completedTargets": 2,
+            "standardTargets": 0,
+            "wrongNoteCount": 0,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 0,
+            "pendingTargetId": null,
+            "intervalJudged": [
+              false,
+              true
+            ],
+            "notes": "The chord spread (100 ms) and the next interval (1100 ms vs 1000 ms) both exceed tolerance."
+          },
+          "predicted": {
+            "kinds": [
+              "partial",
+              "correct",
+              "complete"
+            ],
+            "intervalJudged": [
+              false,
+              true
+            ],
+            "completedTargets": 2,
+            "standardTargets": 0,
+            "wrongNoteCount": 0,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 0,
+            "totalTargets": 2
+          },
+          "metrics": {
+            "kindAccuracy": 1,
+            "countMismatches": [],
+            "intervalMismatches": [],
+            "quality": "healthy",
+            "qualityCorrect": true
+          },
+          "runtimeMs": 0.078,
+          "tags": [
+            "follow",
+            "chord",
+            "spread"
+          ]
+        },
+        {
+          "caseId": "fw-duplicate-note",
+          "mode": "follow",
+          "scenario": "Follow: repeated key inside an incomplete chord",
+          "expected": {
+            "inputQuality": "healthy",
+            "kinds": [
+              "partial",
+              "duplicate",
+              "correct",
+              "complete"
+            ],
+            "completedTargets": 2,
+            "standardTargets": 0,
+            "wrongNoteCount": 0,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 1,
+            "pendingTargetId": null,
+            "intervalJudged": [
+              false,
+              true
+            ],
+            "notes": "The second C4 is a duplicate while the chord is incomplete; the spread and next interval are non-standard."
+          },
+          "predicted": {
+            "kinds": [
+              "partial",
+              "duplicate",
+              "correct",
+              "complete"
+            ],
+            "intervalJudged": [
+              false,
+              true
+            ],
+            "completedTargets": 2,
+            "standardTargets": 0,
+            "wrongNoteCount": 0,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 1,
+            "totalTargets": 2
+          },
+          "metrics": {
+            "kindAccuracy": 1,
+            "countMismatches": [],
+            "intervalMismatches": [],
+            "quality": "healthy",
+            "qualityCorrect": true
+          },
+          "runtimeMs": 0.085,
+          "tags": [
+            "follow",
+            "duplicate"
+          ]
+        },
+        {
+          "caseId": "fw-pause-resume",
+          "mode": "follow",
+          "scenario": "Follow: pause then resume invalidates the next interval",
+          "expected": {
+            "inputQuality": "healthy",
+            "kinds": [
+              "correct",
+              "correct",
+              "complete"
+            ],
+            "completedTargets": 3,
+            "standardTargets": 3,
+            "wrongNoteCount": 0,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 0,
+            "pendingTargetId": null,
+            "intervalJudged": [
+              false,
+              false,
+              true
+            ],
+            "notes": "The interval across the pause is not judged; the next one is."
+          },
+          "predicted": {
+            "kinds": [
+              "correct",
+              "correct",
+              "complete"
+            ],
+            "intervalJudged": [
+              false,
+              false,
+              true
+            ],
+            "completedTargets": 3,
+            "standardTargets": 3,
+            "wrongNoteCount": 0,
+            "extraNoteCount": 0,
+            "duplicateNoteCount": 0,
+            "totalTargets": 3
+          },
+          "metrics": {
+            "kindAccuracy": 1,
+            "countMismatches": [],
+            "intervalMismatches": [],
+            "quality": "healthy",
+            "qualityCorrect": true
+          },
+          "runtimeMs": 0.102,
+          "tags": [
+            "follow",
+            "pause",
+            "resume"
+          ]
+        },
+        {
+          "caseId": "fw-extra-after-complete",
+          "mode": "follow",
+          "scenario": "Follow: input after the final target",
+          "expected": {
+            "inputQuality": "healthy",
+            "kinds": [
+              "complete",
+              "extra"
+            ],
+            "completedTargets": 1,
+            "standardTargets": 1,
+            "wrongNoteCount": 0,
+            "extraNoteCount": 1,
+            "duplicateNoteCount": 0,
+            "pendingTargetId": null,
+            "intervalJudged": [
+              false
+            ],
+            "notes": "After completion, further input is extra."
+          },
+          "predicted": {
+            "kinds": [
+              "complete",
+              "extra"
+            ],
+            "intervalJudged": [
+              false
+            ],
+            "completedTargets": 1,
+            "standardTargets": 1,
+            "wrongNoteCount": 0,
+            "extraNoteCount": 1,
+            "duplicateNoteCount": 0,
+            "totalTargets": 1
+          },
+          "metrics": {
+            "kindAccuracy": 1,
+            "countMismatches": [],
+            "intervalMismatches": [],
+            "quality": "healthy",
+            "qualityCorrect": true
+          },
+          "runtimeMs": 0.057,
+          "tags": [
+            "follow",
+            "extra"
+          ]
+        },
+        {
+          "caseId": "tl-clock-degraded-v2",
+          "mode": "timeline",
+          "scenario": "unstable clock mapping with bounded jitter, identities intact",
+          "tags": [
+            "timing",
+            "input-evidence",
+            "degraded",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "degraded",
+            "assessable": [
+              "pitch",
+              "onset"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 7,
+            "localIoiTotal": 7,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "degraded",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.133
+        },
+        {
+          "caseId": "tl-pause-resume-v2",
+          "mode": "timeline",
+          "scenario": "pause then resume in the adjusted session domain",
+          "tags": [
+            "timing",
+            "pause",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 7,
+            "localIoiTotal": 7,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.155
+        },
+        {
+          "caseId": "tl-same-time-diff-pitch",
+          "mode": "timeline",
+          "scenario": "three different pitches at one onset, struck together",
+          "tags": [
+            "chord",
+            "same-onset",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 5,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 5,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 2,
+            "localIoiTotal": 2,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": "completed",
+            "pitchCorrect": 5,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 1,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.07
+        },
+        {
+          "caseId": "tl-adversarial-mixed",
+          "mode": "timeline",
+          "scenario": "late + wrong pitch + miss + extra + repeated pitch in one take",
+          "tags": [
+            "timing",
+            "cascade",
+            "mixed",
+            "hard",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 7,
+            "missed": 1,
+            "extra": 1,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 7,
+            "missed": 1,
+            "extra": 1,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "WRONG_PITCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH",
+              "s5": "MISSING"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": 0,
+            "cascadeCleanCount": 4,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 5,
+            "localIoiTotal": 5,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": "completed",
+            "pitchCorrect": 6,
+            "pitchWrong": 1,
+            "pitchMissed": 1,
+            "pitchExtra": 1,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 1,
+                "errorRate": 0.25
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.116
+        },
+        {
+          "caseId": "tl-selection-pass-boundary",
+          "mode": "timeline",
+          "scenario": "selection repeated as two expanded passes",
+          "tags": [
+            "selection",
+            "pass-boundary",
+            "v2"
+          ],
+          "expected": {
+            "pairs": 4,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 4,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1-pass1": "MATCH",
+              "s2-pass1": "MATCH",
+              "s1-pass2": "MATCH",
+              "s2-pass2": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": 0,
+            "localIoiCovered": 3,
+            "localIoiTotal": 3,
+            "labelPhaseChangeCount": 0,
+            "resourceStatus": "completed",
+            "pitchCorrect": 4,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 2,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 2,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.066
+        }
+      ]
+    },
+    {
+      "hash": "ec2e2fa13b9ddaff0004aa561fc87b1110eac62d3309f6209ec552441119c8d4",
+      "cases": [
+        {
+          "caseId": "tl-clean-exact",
+          "mode": "timeline",
+          "scenario": "clean, exact performance",
+          "tags": [
+            "clean",
+            "baseline"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.112
+        },
+        {
+          "caseId": "tl-late-global",
+          "mode": "timeline",
+          "scenario": "whole performance 50 ms late",
+          "tags": [
+            "timing",
+            "systematic-offset"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.16
+        },
+        {
+          "caseId": "tl-local-deviations",
+          "mode": "timeline",
+          "scenario": "local timing deviations within the band",
+          "tags": [
+            "timing",
+            "local"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.116
+        },
+        {
+          "caseId": "tl-tempo-drift",
+          "mode": "timeline",
+          "scenario": "accelerando / tempo drift",
+          "tags": [
+            "timing",
+            "tempo-drift",
+            "hard"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.116
+        },
+        {
+          "caseId": "tl-one-miss",
+          "mode": "timeline",
+          "scenario": "one missing target",
+          "tags": [
+            "missing",
+            "hard"
+          ],
+          "expected": {
+            "pairs": 7,
+            "missed": 1,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 7,
+            "missed": 1,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH",
+              "s4": "MISSING"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 7,
+            "pitchWrong": 0,
+            "pitchMissed": 1,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 1,
+                "errorRate": 0.25
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.127
+        },
+        {
+          "caseId": "tl-consecutive-miss",
+          "mode": "timeline",
+          "scenario": "three consecutive missing targets",
+          "tags": [
+            "missing",
+            "consecutive",
+            "hard"
+          ],
+          "expected": {
+            "pairs": 5,
+            "missed": 3,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 5,
+            "missed": 3,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH",
+              "s3": "MISSING",
+              "s4": "MISSING",
+              "s5": "MISSING"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 5,
+            "pitchWrong": 0,
+            "pitchMissed": 3,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 2,
+                "errorRate": 0.5
+              },
+              "2": {
+                "total": 4,
+                "errors": 1,
+                "errorRate": 0.25
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.09
+        },
+        {
+          "caseId": "tl-wrong-pitch",
+          "mode": "timeline",
+          "scenario": "one wrong pitch at the correct time",
+          "tags": [
+            "pitch",
+            "hard"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 0,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "WRONG_PITCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 7,
+            "pitchWrong": 1,
+            "pitchMissed": 0,
+            "pitchExtra": 0,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.111
+        },
+        {
+          "caseId": "tl-extra-note",
+          "mode": "timeline",
+          "scenario": "one inserted note between targets",
+          "tags": [
+            "extra",
+            "hard"
+          ],
+          "expected": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 1,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 8,
+            "missed": 0,
+            "extra": 1,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s3": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "MATCH",
+              "s7": "MATCH",
+              "s8": "MATCH"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 8,
+            "pitchWrong": 0,
+            "pitchMissed": 0,
+            "pitchExtra": 1,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.113
+        },
+        {
+          "caseId": "tl-mixed-errors",
+          "mode": "timeline",
+          "scenario": "missing + wrong pitch + extra interleaved",
+          "tags": [
+            "missing",
+            "pitch",
+            "extra",
+            "hard"
+          ],
+          "expected": {
+            "pairs": 7,
+            "missed": 1,
+            "extra": 1,
+            "unassessable": 0,
+            "inputQuality": "healthy",
+            "assessable": [
+              "pitch",
+              "onset",
+              "duration"
+            ]
+          },
+          "predicted": {
+            "pairs": 7,
+            "missed": 1,
+            "extra": 1,
+            "classes": {
+              "s1": "MATCH",
+              "s2": "MATCH",
+              "s4": "MATCH",
+              "s5": "MATCH",
+              "s6": "WRONG_PITCH",
+              "s7": "MATCH",
+              "s8": "MATCH",
+              "s3": "MISSING"
+            },
+            "algorithmVersion": "alignment-dp-v2",
+            "confidence": "n/a",
+            "dataDegraded": false
+          },
+          "metrics": {
+            "pairingPrecision": 1,
+            "pairingRecall": 1,
+            "pairingF1": 1,
+            "classAccuracy": 1,
+            "onsetMaeVsLabel": 0,
+            "onsetMaxDeltaVsLabel": 0,
+            "cascadeCount": null,
+            "cascadeCleanCount": null,
+            "ambiguousPredicted": 0,
+            "ambiguousLabel": null,
+            "ambiguousCorrect": null,
+            "localIoiMaeVsLabel": null,
+            "localIoiCovered": null,
+            "localIoiTotal": null,
+            "labelPhaseChangeCount": null,
+            "resourceStatus": "completed",
+            "pitchCorrect": 6,
+            "pitchWrong": 1,
+            "pitchMissed": 1,
+            "pitchExtra": 1,
+            "quality": "healthy",
+            "qualityCorrect": true,
+            "perMeasure": {
+              "1": {
+                "total": 4,
+                "errors": 1,
+                "errorRate": 0.25
+              },
+              "2": {
+                "total": 4,
+                "errors": 0,
+                "errorRate": 0
+              }
+            }
+          },
+          "mismatches": {
+            "pairs": [],
+            "missed": [],
+            "extra": [],
+            "onsetDeltas": []
+          },
+          "runtimeMs": 0.111
         },
         {
           "caseId": "tl-chord-arrival-order",
@@ -932,7 +3560,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.059
+          "runtimeMs": 0.052
         },
         {
           "caseId": "tl-fast-repeated-note",
@@ -1005,7 +3633,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.067
+          "runtimeMs": 0.08
         },
         {
           "caseId": "tl-tie-long-note",
@@ -1070,2412 +3698,6 @@
               },
               "2": {
                 "total": 1,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.041
-        },
-        {
-          "caseId": "tl-missing-note-off",
-          "mode": "timeline",
-          "scenario": "Note On without Note Off",
-          "tags": [
-            "input-evidence",
-            "missing-release",
-            "degraded"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "degraded",
-            "assessable": [
-              "pitch",
-              "onset"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "degraded",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.109
-        },
-        {
-          "caseId": "tl-duplicate-packet",
-          "mode": "timeline",
-          "scenario": "duplicated MIDI packet for the same key/onset",
-          "tags": [
-            "input-evidence",
-            "duplicate",
-            "degraded"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 1,
-            "unassessable": 0,
-            "inputQuality": "degraded",
-            "assessable": [
-              "pitch",
-              "onset"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 1,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 1,
-            "quality": "degraded",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.152
-        },
-        {
-          "caseId": "tl-one-note-400ms-late",
-          "mode": "timeline",
-          "scenario": "one note 400 ms late (outside the normal matching band)",
-          "tags": [
-            "timing",
-            "hard",
-            "out-of-band"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.113
-        },
-        {
-          "caseId": "tl-late-300-return",
-          "mode": "timeline",
-          "scenario": "one note 300 ms late, then back on the original grid",
-          "tags": [
-            "timing",
-            "cascade",
-            "hard"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.113
-        },
-        {
-          "caseId": "tl-late-300-phase",
-          "mode": "timeline",
-          "scenario": "one 300 ms phase change, stable intervals afterwards",
-          "tags": [
-            "timing",
-            "cascade",
-            "hard"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.161
-        },
-        {
-          "caseId": "tl-late-600-phase",
-          "mode": "timeline",
-          "scenario": "one 600 ms phase change: shifted notes land in the next window",
-          "tags": [
-            "timing",
-            "cascade",
-            "hard"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.154
-        },
-        {
-          "caseId": "tl-early-300-control",
-          "mode": "timeline",
-          "scenario": "one note 300 ms early (asymmetry control)",
-          "tags": [
-            "timing",
-            "cascade",
-            "control"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.111
-        },
-        {
-          "caseId": "tl-missing-note-on",
-          "mode": "timeline",
-          "scenario": "one Note On lost before capture",
-          "tags": [
-            "input-evidence",
-            "missing-note-on",
-            "degraded"
-          ],
-          "expected": {
-            "pairs": 7,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 1,
-            "inputQuality": "degraded",
-            "assessable": [
-              "pitch",
-              "onset"
-            ]
-          },
-          "predicted": {
-            "pairs": 7,
-            "missed": 1,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH",
-              "s3": "MISSING"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 7,
-            "pitchWrong": 0,
-            "pitchMissed": 1,
-            "pitchExtra": 0,
-            "quality": "degraded",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 3,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.101
-        },
-        {
-          "caseId": "tl-device-disconnect",
-          "mode": "timeline",
-          "scenario": "device disconnects after four notes",
-          "tags": [
-            "input-evidence",
-            "disconnect",
-            "degraded"
-          ],
-          "expected": {
-            "pairs": 4,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 4,
-            "inputQuality": "degraded",
-            "assessable": [
-              "pitch",
-              "onset"
-            ]
-          },
-          "predicted": {
-            "pairs": 4,
-            "missed": 4,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MISSING",
-              "s6": "MISSING",
-              "s7": "MISSING",
-              "s8": "MISSING"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 4,
-            "pitchWrong": 0,
-            "pitchMissed": 4,
-            "pitchExtra": 0,
-            "quality": "degraded",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.084
-        },
-        {
-          "caseId": "tl-empty-input",
-          "mode": "timeline",
-          "scenario": "no performed events at all",
-          "tags": [
-            "input-evidence",
-            "empty",
-            "unscorable"
-          ],
-          "expected": {
-            "pairs": 0,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 1,
-            "inputQuality": "unscorable",
-            "assessable": []
-          },
-          "predicted": {
-            "pairs": 0,
-            "missed": 1,
-            "extra": 0,
-            "classes": {
-              "s1": "MISSING"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": null,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 0,
-            "pitchWrong": 0,
-            "pitchMissed": 1,
-            "pitchExtra": 0,
-            "quality": "unscorable",
-            "qualityCorrect": true,
-            "perMeasure": {}
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.031
-        },
-        {
-          "caseId": "fw-clean",
-          "mode": "follow",
-          "scenario": "Follow: clean three-target performance",
-          "expected": {
-            "inputQuality": "healthy",
-            "kinds": [
-              "correct",
-              "correct",
-              "complete"
-            ],
-            "completedTargets": 3,
-            "standardTargets": 3,
-            "wrongNoteCount": 0,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 0,
-            "pendingTargetId": null,
-            "intervalJudged": [
-              false,
-              true,
-              true
-            ],
-            "notes": "Intervals match the notated beats at 60 BPM."
-          },
-          "predicted": {
-            "kinds": [
-              "correct",
-              "correct",
-              "complete"
-            ],
-            "intervalJudged": [
-              false,
-              true,
-              true
-            ],
-            "completedTargets": 3,
-            "standardTargets": 3,
-            "wrongNoteCount": 0,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 0,
-            "totalTargets": 3
-          },
-          "metrics": {
-            "kindAccuracy": 1,
-            "countMismatches": [],
-            "intervalMismatches": [],
-            "quality": "healthy",
-            "qualityCorrect": true
-          },
-          "runtimeMs": 0.731,
-          "tags": [
-            "follow",
-            "clean"
-          ]
-        },
-        {
-          "caseId": "fw-skip-target",
-          "mode": "follow",
-          "scenario": "Follow: one target skipped, performer continues",
-          "expected": {
-            "inputQuality": "healthy",
-            "kinds": [
-              "correct",
-              "wrong"
-            ],
-            "completedTargets": 1,
-            "standardTargets": 1,
-            "wrongNoteCount": 1,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 0,
-            "pendingTargetId": "g2",
-            "intervalJudged": [
-              false
-            ],
-            "notes": "E4 while waiting on D4 is wrong and must not advance."
-          },
-          "predicted": {
-            "kinds": [
-              "correct",
-              "wrong"
-            ],
-            "intervalJudged": [
-              false
-            ],
-            "completedTargets": 1,
-            "standardTargets": 1,
-            "wrongNoteCount": 1,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 0,
-            "pendingTargetId": "g2",
-            "totalTargets": 3
-          },
-          "metrics": {
-            "kindAccuracy": 1,
-            "countMismatches": [],
-            "intervalMismatches": [],
-            "quality": "healthy",
-            "qualityCorrect": true
-          },
-          "runtimeMs": 0.056,
-          "tags": [
-            "follow",
-            "missing-target",
-            "hard"
-          ]
-        },
-        {
-          "caseId": "fw-wrong-then-correct",
-          "mode": "follow",
-          "scenario": "Follow: wrong note then recovery",
-          "expected": {
-            "inputQuality": "healthy",
-            "kinds": [
-              "wrong",
-              "correct",
-              "correct",
-              "complete"
-            ],
-            "completedTargets": 3,
-            "standardTargets": 2,
-            "wrongNoteCount": 1,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 0,
-            "pendingTargetId": null,
-            "intervalJudged": [
-              false,
-              true,
-              true
-            ],
-            "notes": "The wrong note keeps the first target non-standard; later targets recover."
-          },
-          "predicted": {
-            "kinds": [
-              "wrong",
-              "correct",
-              "correct",
-              "complete"
-            ],
-            "intervalJudged": [
-              false,
-              true,
-              true
-            ],
-            "completedTargets": 3,
-            "standardTargets": 2,
-            "wrongNoteCount": 1,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 0,
-            "totalTargets": 3
-          },
-          "metrics": {
-            "kindAccuracy": 1,
-            "countMismatches": [],
-            "intervalMismatches": [],
-            "quality": "healthy",
-            "qualityCorrect": true
-          },
-          "runtimeMs": 0.102,
-          "tags": [
-            "follow",
-            "wrong-note"
-          ]
-        },
-        {
-          "caseId": "fw-chord-spread",
-          "mode": "follow",
-          "scenario": "Follow: chord arrives spread beyond tolerance",
-          "expected": {
-            "inputQuality": "healthy",
-            "kinds": [
-              "partial",
-              "correct",
-              "complete"
-            ],
-            "completedTargets": 2,
-            "standardTargets": 0,
-            "wrongNoteCount": 0,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 0,
-            "pendingTargetId": null,
-            "intervalJudged": [
-              false,
-              true
-            ],
-            "notes": "The chord spread (100 ms) and the next interval (1100 ms vs 1000 ms) both exceed tolerance."
-          },
-          "predicted": {
-            "kinds": [
-              "partial",
-              "correct",
-              "complete"
-            ],
-            "intervalJudged": [
-              false,
-              true
-            ],
-            "completedTargets": 2,
-            "standardTargets": 0,
-            "wrongNoteCount": 0,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 0,
-            "totalTargets": 2
-          },
-          "metrics": {
-            "kindAccuracy": 1,
-            "countMismatches": [],
-            "intervalMismatches": [],
-            "quality": "healthy",
-            "qualityCorrect": true
-          },
-          "runtimeMs": 0.083,
-          "tags": [
-            "follow",
-            "chord",
-            "spread"
-          ]
-        },
-        {
-          "caseId": "fw-duplicate-note",
-          "mode": "follow",
-          "scenario": "Follow: repeated key inside an incomplete chord",
-          "expected": {
-            "inputQuality": "healthy",
-            "kinds": [
-              "partial",
-              "duplicate",
-              "correct",
-              "complete"
-            ],
-            "completedTargets": 2,
-            "standardTargets": 0,
-            "wrongNoteCount": 0,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 1,
-            "pendingTargetId": null,
-            "intervalJudged": [
-              false,
-              true
-            ],
-            "notes": "The second C4 is a duplicate while the chord is incomplete; the spread and next interval are non-standard."
-          },
-          "predicted": {
-            "kinds": [
-              "partial",
-              "duplicate",
-              "correct",
-              "complete"
-            ],
-            "intervalJudged": [
-              false,
-              true
-            ],
-            "completedTargets": 2,
-            "standardTargets": 0,
-            "wrongNoteCount": 0,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 1,
-            "totalTargets": 2
-          },
-          "metrics": {
-            "kindAccuracy": 1,
-            "countMismatches": [],
-            "intervalMismatches": [],
-            "quality": "healthy",
-            "qualityCorrect": true
-          },
-          "runtimeMs": 0.089,
-          "tags": [
-            "follow",
-            "duplicate"
-          ]
-        },
-        {
-          "caseId": "fw-pause-resume",
-          "mode": "follow",
-          "scenario": "Follow: pause then resume invalidates the next interval",
-          "expected": {
-            "inputQuality": "healthy",
-            "kinds": [
-              "correct",
-              "correct",
-              "complete"
-            ],
-            "completedTargets": 3,
-            "standardTargets": 3,
-            "wrongNoteCount": 0,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 0,
-            "pendingTargetId": null,
-            "intervalJudged": [
-              false,
-              false,
-              true
-            ],
-            "notes": "The interval across the pause is not judged; the next one is."
-          },
-          "predicted": {
-            "kinds": [
-              "correct",
-              "correct",
-              "complete"
-            ],
-            "intervalJudged": [
-              false,
-              false,
-              true
-            ],
-            "completedTargets": 3,
-            "standardTargets": 3,
-            "wrongNoteCount": 0,
-            "extraNoteCount": 0,
-            "duplicateNoteCount": 0,
-            "totalTargets": 3
-          },
-          "metrics": {
-            "kindAccuracy": 1,
-            "countMismatches": [],
-            "intervalMismatches": [],
-            "quality": "healthy",
-            "qualityCorrect": true
-          },
-          "runtimeMs": 0.104,
-          "tags": [
-            "follow",
-            "pause",
-            "resume"
-          ]
-        },
-        {
-          "caseId": "fw-extra-after-complete",
-          "mode": "follow",
-          "scenario": "Follow: input after the final target",
-          "expected": {
-            "inputQuality": "healthy",
-            "kinds": [
-              "complete",
-              "extra"
-            ],
-            "completedTargets": 1,
-            "standardTargets": 1,
-            "wrongNoteCount": 0,
-            "extraNoteCount": 1,
-            "duplicateNoteCount": 0,
-            "pendingTargetId": null,
-            "intervalJudged": [
-              false
-            ],
-            "notes": "After completion, further input is extra."
-          },
-          "predicted": {
-            "kinds": [
-              "complete",
-              "extra"
-            ],
-            "intervalJudged": [
-              false
-            ],
-            "completedTargets": 1,
-            "standardTargets": 1,
-            "wrongNoteCount": 0,
-            "extraNoteCount": 1,
-            "duplicateNoteCount": 0,
-            "totalTargets": 1
-          },
-          "metrics": {
-            "kindAccuracy": 1,
-            "countMismatches": [],
-            "intervalMismatches": [],
-            "quality": "healthy",
-            "qualityCorrect": true
-          },
-          "runtimeMs": 0.06,
-          "tags": [
-            "follow",
-            "extra"
-          ]
-        },
-        {
-          "caseId": "tl-clock-degraded-v2",
-          "mode": "timeline",
-          "scenario": "unstable clock mapping with bounded jitter, identities intact",
-          "tags": [
-            "timing",
-            "input-evidence",
-            "degraded",
-            "v2"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "degraded",
-            "assessable": [
-              "pitch",
-              "onset"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": 0,
-            "localIoiCovered": 7,
-            "localIoiTotal": 7,
-            "labelPhaseChangeCount": 0,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "degraded",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.123
-        },
-        {
-          "caseId": "tl-pause-resume-v2",
-          "mode": "timeline",
-          "scenario": "pause then resume in the adjusted session domain",
-          "tags": [
-            "timing",
-            "pause",
-            "v2"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": 0,
-            "localIoiCovered": 7,
-            "localIoiTotal": 7,
-            "labelPhaseChangeCount": 0,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.153
-        },
-        {
-          "caseId": "tl-same-time-diff-pitch",
-          "mode": "timeline",
-          "scenario": "three different pitches at one onset, struck together",
-          "tags": [
-            "chord",
-            "same-onset",
-            "v2"
-          ],
-          "expected": {
-            "pairs": 5,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 5,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": 0,
-            "localIoiCovered": 2,
-            "localIoiTotal": 2,
-            "labelPhaseChangeCount": 0,
-            "resourceStatus": "completed",
-            "pitchCorrect": 5,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 1,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.067
-        },
-        {
-          "caseId": "tl-adversarial-mixed",
-          "mode": "timeline",
-          "scenario": "late + wrong pitch + miss + extra + repeated pitch in one take",
-          "tags": [
-            "timing",
-            "cascade",
-            "mixed",
-            "hard",
-            "v2"
-          ],
-          "expected": {
-            "pairs": 7,
-            "missed": 1,
-            "extra": 1,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 7,
-            "missed": 1,
-            "extra": 1,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "WRONG_PITCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH",
-              "s5": "MISSING"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": 0,
-            "cascadeCleanCount": 4,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": 0,
-            "localIoiCovered": 5,
-            "localIoiTotal": 5,
-            "labelPhaseChangeCount": 0,
-            "resourceStatus": "completed",
-            "pitchCorrect": 6,
-            "pitchWrong": 1,
-            "pitchMissed": 1,
-            "pitchExtra": 1,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 1,
-                "errorRate": 0.25
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.144
-        },
-        {
-          "caseId": "tl-selection-pass-boundary",
-          "mode": "timeline",
-          "scenario": "selection repeated as two expanded passes",
-          "tags": [
-            "selection",
-            "pass-boundary",
-            "v2"
-          ],
-          "expected": {
-            "pairs": 4,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 4,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1-pass1": "MATCH",
-              "s2-pass1": "MATCH",
-              "s1-pass2": "MATCH",
-              "s2-pass2": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": 0,
-            "localIoiCovered": 3,
-            "localIoiTotal": 3,
-            "labelPhaseChangeCount": 0,
-            "resourceStatus": "completed",
-            "pitchCorrect": 4,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 2,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 2,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.062
-        }
-      ]
-    },
-    {
-      "hash": "ec2e2fa13b9ddaff0004aa561fc87b1110eac62d3309f6209ec552441119c8d4",
-      "cases": [
-        {
-          "caseId": "tl-clean-exact",
-          "mode": "timeline",
-          "scenario": "clean, exact performance",
-          "tags": [
-            "clean",
-            "baseline"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.11
-        },
-        {
-          "caseId": "tl-late-global",
-          "mode": "timeline",
-          "scenario": "whole performance 50 ms late",
-          "tags": [
-            "timing",
-            "systematic-offset"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.108
-        },
-        {
-          "caseId": "tl-local-deviations",
-          "mode": "timeline",
-          "scenario": "local timing deviations within the band",
-          "tags": [
-            "timing",
-            "local"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.108
-        },
-        {
-          "caseId": "tl-tempo-drift",
-          "mode": "timeline",
-          "scenario": "accelerando / tempo drift",
-          "tags": [
-            "timing",
-            "tempo-drift",
-            "hard"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.114
-        },
-        {
-          "caseId": "tl-one-miss",
-          "mode": "timeline",
-          "scenario": "one missing target",
-          "tags": [
-            "missing",
-            "hard"
-          ],
-          "expected": {
-            "pairs": 7,
-            "missed": 1,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 7,
-            "missed": 1,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH",
-              "s4": "MISSING"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 7,
-            "pitchWrong": 0,
-            "pitchMissed": 1,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 1,
-                "errorRate": 0.25
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.1
-        },
-        {
-          "caseId": "tl-consecutive-miss",
-          "mode": "timeline",
-          "scenario": "three consecutive missing targets",
-          "tags": [
-            "missing",
-            "consecutive",
-            "hard"
-          ],
-          "expected": {
-            "pairs": 5,
-            "missed": 3,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 5,
-            "missed": 3,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH",
-              "s3": "MISSING",
-              "s4": "MISSING",
-              "s5": "MISSING"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 5,
-            "pitchWrong": 0,
-            "pitchMissed": 3,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 2,
-                "errorRate": 0.5
-              },
-              "2": {
-                "total": 4,
-                "errors": 1,
-                "errorRate": 0.25
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.085
-        },
-        {
-          "caseId": "tl-wrong-pitch",
-          "mode": "timeline",
-          "scenario": "one wrong pitch at the correct time",
-          "tags": [
-            "pitch",
-            "hard"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "WRONG_PITCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 7,
-            "pitchWrong": 1,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.107
-        },
-        {
-          "caseId": "tl-extra-note",
-          "mode": "timeline",
-          "scenario": "one inserted note between targets",
-          "tags": [
-            "extra",
-            "hard"
-          ],
-          "expected": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 1,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 8,
-            "missed": 0,
-            "extra": 1,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "MATCH",
-              "s7": "MATCH",
-              "s8": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 8,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 1,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.113
-        },
-        {
-          "caseId": "tl-mixed-errors",
-          "mode": "timeline",
-          "scenario": "missing + wrong pitch + extra interleaved",
-          "tags": [
-            "missing",
-            "pitch",
-            "extra",
-            "hard"
-          ],
-          "expected": {
-            "pairs": 7,
-            "missed": 1,
-            "extra": 1,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 7,
-            "missed": 1,
-            "extra": 1,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s4": "MATCH",
-              "s5": "MATCH",
-              "s6": "WRONG_PITCH",
-              "s7": "MATCH",
-              "s8": "MATCH",
-              "s3": "MISSING"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 6,
-            "pitchWrong": 1,
-            "pitchMissed": 1,
-            "pitchExtra": 1,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 1,
-                "errorRate": 0.25
-              },
-              "2": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.106
-        },
-        {
-          "caseId": "tl-chord-arrival-order",
-          "mode": "timeline",
-          "scenario": "same-onset chord arrives in reverse pitch order",
-          "tags": [
-            "chord",
-            "arrival-order"
-          ],
-          "expected": {
-            "pairs": 4,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 4,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 4,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
                 "errors": 0,
                 "errorRate": 0
               }
@@ -3490,228 +3712,6 @@
           "runtimeMs": 0.054
         },
         {
-          "caseId": "tl-cross-hand-unison",
-          "mode": "timeline",
-          "scenario": "two staves notate the same MIDI pitch on one onset",
-          "tags": [
-            "chord",
-            "unison",
-            "cross-hand"
-          ],
-          "expected": {
-            "pairs": 3,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 3,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 2,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 3,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 3,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.05
-        },
-        {
-          "caseId": "tl-fast-repeated-note",
-          "mode": "timeline",
-          "scenario": "fast repeated same pitch",
-          "tags": [
-            "repeated-pitch",
-            "hard"
-          ],
-          "expected": {
-            "pairs": 4,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 4,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH",
-              "s3": "MATCH",
-              "s4": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 4,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 4,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.074
-        },
-        {
-          "caseId": "tl-tie-long-note",
-          "mode": "timeline",
-          "scenario": "tied long note followed by a short note",
-          "tags": [
-            "tie",
-            "duration"
-          ],
-          "expected": {
-            "pairs": 2,
-            "missed": 0,
-            "extra": 0,
-            "unassessable": 0,
-            "inputQuality": "healthy",
-            "assessable": [
-              "pitch",
-              "onset",
-              "duration"
-            ]
-          },
-          "predicted": {
-            "pairs": 2,
-            "missed": 0,
-            "extra": 0,
-            "classes": {
-              "s1": "MATCH",
-              "s2": "MATCH"
-            },
-            "algorithmVersion": "alignment-dp-v2",
-            "confidence": "n/a",
-            "dataDegraded": false
-          },
-          "metrics": {
-            "pairingPrecision": 1,
-            "pairingRecall": 1,
-            "pairingF1": 1,
-            "classAccuracy": 1,
-            "onsetMaeVsLabel": 0,
-            "onsetMaxDeltaVsLabel": 0,
-            "cascadeCount": null,
-            "cascadeCleanCount": null,
-            "ambiguousPredicted": 0,
-            "ambiguousLabel": null,
-            "ambiguousCorrect": null,
-            "localIoiMaeVsLabel": null,
-            "localIoiCovered": null,
-            "localIoiTotal": null,
-            "labelPhaseChangeCount": null,
-            "resourceStatus": "completed",
-            "pitchCorrect": 2,
-            "pitchWrong": 0,
-            "pitchMissed": 0,
-            "pitchExtra": 0,
-            "quality": "healthy",
-            "qualityCorrect": true,
-            "perMeasure": {
-              "1": {
-                "total": 1,
-                "errors": 0,
-                "errorRate": 0
-              },
-              "2": {
-                "total": 1,
-                "errors": 0,
-                "errorRate": 0
-              }
-            }
-          },
-          "mismatches": {
-            "pairs": [],
-            "missed": [],
-            "extra": [],
-            "onsetDeltas": []
-          },
-          "runtimeMs": 0.045
-        },
-        {
           "caseId": "tl-missing-note-off",
           "mode": "timeline",
           "scenario": "Note On without Note Off",
@@ -3791,7 +3791,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.113
+          "runtimeMs": 0.142
         },
         {
           "caseId": "tl-duplicate-packet",
@@ -3873,7 +3873,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.111
+          "runtimeMs": 0.117
         },
         {
           "caseId": "tl-one-note-400ms-late",
@@ -3956,7 +3956,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.114
+          "runtimeMs": 0.115
         },
         {
           "caseId": "tl-late-300-return",
@@ -4039,7 +4039,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.112
+          "runtimeMs": 0.118
         },
         {
           "caseId": "tl-late-300-phase",
@@ -4122,7 +4122,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.122
+          "runtimeMs": 0.133
         },
         {
           "caseId": "tl-late-600-phase",
@@ -4205,7 +4205,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.121
+          "runtimeMs": 0.126
         },
         {
           "caseId": "tl-early-300-control",
@@ -4288,7 +4288,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.111
+          "runtimeMs": 0.145
         },
         {
           "caseId": "tl-missing-note-on",
@@ -4370,7 +4370,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.099
+          "runtimeMs": 0.102
         },
         {
           "caseId": "tl-device-disconnect",
@@ -4447,7 +4447,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.077
+          "runtimeMs": 0.082
         },
         {
           "caseId": "tl-empty-input",
@@ -4508,7 +4508,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.025
+          "runtimeMs": 0.027
         },
         {
           "caseId": "fw-clean",
@@ -4559,7 +4559,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.09,
+          "runtimeMs": 0.092,
           "tags": [
             "follow",
             "clean"
@@ -4609,7 +4609,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.049,
+          "runtimeMs": 0.052,
           "tags": [
             "follow",
             "missing-target",
@@ -4667,7 +4667,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.097,
+          "runtimeMs": 0.099,
           "tags": [
             "follow",
             "wrong-note"
@@ -4720,7 +4720,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.077,
+          "runtimeMs": 0.079,
           "tags": [
             "follow",
             "chord",
@@ -4776,7 +4776,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.081,
+          "runtimeMs": 0.086,
           "tags": [
             "follow",
             "duplicate"
@@ -4831,7 +4831,7 @@
             "quality": "healthy",
             "qualityCorrect": true
           },
-          "runtimeMs": 0.089,
+          "runtimeMs": 0.106,
           "tags": [
             "follow",
             "pause",
@@ -4968,7 +4968,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.112
+          "runtimeMs": 0.122
         },
         {
           "caseId": "tl-pause-resume-v2",
@@ -5051,7 +5051,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.11
+          "runtimeMs": 0.112
         },
         {
           "caseId": "tl-same-time-diff-pitch",
@@ -5131,7 +5131,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.066
+          "runtimeMs": 0.07
         },
         {
           "caseId": "tl-adversarial-mixed",
@@ -5216,7 +5216,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.111
+          "runtimeMs": 0.118
         },
         {
           "caseId": "tl-selection-pass-boundary",
@@ -5295,7 +5295,7 @@
             "extra": [],
             "onsetDeltas": []
           },
-          "runtimeMs": 0.064
+          "runtimeMs": 0.068
         }
       ]
     }
